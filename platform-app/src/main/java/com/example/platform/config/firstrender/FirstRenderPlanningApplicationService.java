@@ -1,6 +1,6 @@
 package com.example.platform.config.firstrender;
 
-import com.example.platform.artifact.infrastructure.ArtifactRepository;
+import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.config.providerinteroperability.ProviderInteroperabilityAuthority;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.domain.ExecutionPlanId;
@@ -53,21 +53,21 @@ public class FirstRenderPlanningApplicationService {
     private final RenderJobService renderJobService;
     private final TimelineRevisionSaveService timelineRevisionSaveService;
     private final TimelineRevisionQueryService timelineRevisionQueryService;
-    private final ArtifactRepository artifactRepository;
+    private final ArtifactQueryService artifactQueries;
     private final ProviderInteroperabilityAuthority providerInteroperabilityAuthority;
 
     public FirstRenderPlanningApplicationService(
             RenderJobService renderJobService,
             TimelineRevisionSaveService timelineRevisionSaveService,
             TimelineRevisionQueryService timelineRevisionQueryService,
-            ArtifactRepository artifactRepository,
+            ArtifactQueryService artifactQueries,
             ProviderInteroperabilityAuthority providerInteroperabilityAuthority) {
         this.renderJobService = Objects.requireNonNull(renderJobService, "renderJobService");
         this.timelineRevisionSaveService = Objects.requireNonNull(
                 timelineRevisionSaveService, "timelineRevisionSaveService");
         this.timelineRevisionQueryService = Objects.requireNonNull(
                 timelineRevisionQueryService, "timelineRevisionQueryService");
-        this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
+        this.artifactQueries = Objects.requireNonNull(artifactQueries, "artifactQueries");
         this.providerInteroperabilityAuthority = Objects.requireNonNull(
                 providerInteroperabilityAuthority, "providerInteroperabilityAuthority");
     }
@@ -147,7 +147,7 @@ public class FirstRenderPlanningApplicationService {
      */
     private RenderSourceResolutionState resolveState(String tenantId, ArtifactId artifactId) {
         try {
-            return artifactRepository.exists(tenantId, artifactId)
+            return artifactQueries.getArtifact(tenantId, artifactId).isPresent()
                     ? RenderSourceResolutionState.RESOLVED
                     : RenderSourceResolutionState.FAILED;
         } catch (RuntimeException unresolvable) {

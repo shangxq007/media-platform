@@ -40,8 +40,8 @@ public class GlobalExceptionHandler {
         this.sentryMonitoringService = sentryMonitoringService;
     }
 
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ProblemDetail handleNoHandler(NoHandlerFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler({NoHandlerFoundException.class, org.springframework.web.servlet.resource.NoResourceFoundException.class})
+    public ProblemDetail handleNoHandler(Exception ex, HttpServletRequest request) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Resource not found");
         problem.setTitle("Not Found");
         problem.setType(URI.create("https://example.com/problems/NOT_FOUND"));
@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
         return timelineProblem(HttpStatus.FORBIDDEN, "SECURITY-403-001", ex.getMessage(), request);
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class, org.springframework.web.bind.ServletRequestBindingException.class})
     public ProblemDetail handleValidation(Exception ex, HttpServletRequest request) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setTitle(CommonErrorCode.INVALID_REQUEST.title());

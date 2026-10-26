@@ -1,0 +1,55 @@
+[Unit]
+Description=Media Platform protected synthetic executor (separate Owner install required)
+After=local-fs.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+SupplementaryGroups=b03-control
+ExecStart=/usr/bin/python3 -I -B /opt/media-platform/testinfra/scripts/testinfra/broker_service.py
+RuntimeDirectory=media-platform-executor
+RuntimeDirectoryMode=0711
+StateDirectory=media-platform-executor
+StateDirectoryMode=0700
+WorkingDirectory=/
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_KILL
+AmbientCapabilities=
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+TemporaryFileSystem=/etc:ro /run /var/lib
+BindPaths=/run/media-platform-executor /var/lib/media-platform-executor /var/lib/media-platform/testinfra-scratch
+BindReadOnlyPaths=/etc/media-platform/testinfra
+BindReadOnlyPaths=-/etc/ld.so.cache
+InaccessiblePaths=-/run/credentials -/root
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=no
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=~@mount @reboot @swap @module @raw-io
+ReadWritePaths=/var/lib/media-platform-executor /run/media-platform-executor /sys/fs/cgroup/media-platform-jobs.slice
+# Test scratch must be a private, bounded pre-created volume; root group traverse only.
+ReadWritePaths=/var/lib/media-platform/testinfra-scratch
+InaccessiblePaths=-/run/user -/var/lib/media-platform/testinfra
+TasksMax=80
+MemoryMax=2304M
+CPUQuota=200%
+LimitCORE=0
+LimitNOFILE=256
+LimitFSIZE=33554432
+KillMode=process
+SendSIGKILL=no
+Restart=no
+# A dead broker/observer retains Jobs and quarantine records; no automatic delete/replay.
+
+[Install]
+WantedBy=multi-user.target

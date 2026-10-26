@@ -109,6 +109,9 @@ class MediaTaskWorkflowRetryClassificationTest {
     void nonReproducibleBoundGraphIsNotRetriedInPrepare() {
         AtomicInteger prepareAttempts = new AtomicInteger();
         MediaTaskActivities failingPrepare = new MediaTaskActivities() {
+            @Override public void completeTask(PreparedTaskRef prepared, MediaTaskWorkflowResult result,String tenantId) {}
+            @Override public void failTask(BoundGraphReference reference,String tenantId,boolean cancelled) {}
+
             @Override
             public PreparedTaskRef prepareTask(BoundGraphReference reference, String tenantId) {
                 prepareAttempts.incrementAndGet();
@@ -158,6 +161,9 @@ class MediaTaskWorkflowRetryClassificationTest {
     private static MediaTaskActivities failingActivities(
             AtomicInteger executeAttempts, RuntimeException failure) {
         return new MediaTaskActivities() {
+            @Override public void completeTask(PreparedTaskRef prepared, MediaTaskWorkflowResult result,String tenantId) {}
+            @Override public void failTask(BoundGraphReference reference,String tenantId,boolean cancelled) {}
+
             @Override
             public PreparedTaskRef prepareTask(BoundGraphReference reference, String tenantId) {
                 return new PreparedTaskRef(

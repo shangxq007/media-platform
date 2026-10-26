@@ -1,0 +1,126 @@
+{
+  "used": [
+    {
+      "sha256": "f1e612fa27345be3107a85431e8a8aeb205c15364ab2f2d411e40a9d7bb08095",
+      "bytes": 172312,
+      "group": "com.zaxxer",
+      "artifact": "HikariCP",
+      "version": "7.0.2",
+      "filename": "HikariCP-7.0.2.jar"
+    },
+    {
+      "sha256": "73914527305a40cce504b0d3d90b23caf565136912d607ae8ae7c5895512332c",
+      "bytes": 1221004,
+      "group": "org.postgresql",
+      "artifact": "postgresql",
+      "version": "42.7.14",
+      "filename": "postgresql-42.7.14.jar"
+    },
+    {
+      "sha256": "7b751d952061954d5abfed7181c1f645d336091b679891591d63329c622eb832",
+      "bytes": 69908,
+      "group": "org.slf4j",
+      "artifact": "slf4j-api",
+      "version": "2.0.17",
+      "filename": "slf4j-api-2.0.17.jar"
+    },
+    {
+      "sha256": "d655d7e6f0c7ae07f10a2f3bbaaebb6d30e9b26204a068ad9e9b3950aa28792c",
+      "bytes": 250715,
+      "group": "org.junit.jupiter",
+      "artifact": "junit-jupiter-api",
+      "version": "6.0.3",
+      "filename": "junit-jupiter-api-6.0.3.jar"
+    },
+    {
+      "sha256": "1e2fab61ad27ea08fc7c70dd9677cf8c6d1ae5434d42dcfdd633b12c7e7c04d0",
+      "bytes": 356052,
+      "group": "org.junit.jupiter",
+      "artifact": "junit-jupiter-engine",
+      "version": "6.0.3",
+      "filename": "junit-jupiter-engine-6.0.3.jar"
+    },
+    {
+      "sha256": "39f262d09c3d52719fe0b77f080e90a3695e285d779a41b232e17963ae5da200",
+      "bytes": 171256,
+      "group": "org.junit.platform",
+      "artifact": "junit-platform-commons",
+      "version": "6.0.3",
+      "filename": "junit-platform-commons-6.0.3.jar"
+    },
+    {
+      "sha256": "491e9e4f745f161b8a8e4186a1a7c6a450ea12c70930c9aedae427215301d947",
+      "bytes": 280233,
+      "group": "org.junit.platform",
+      "artifact": "junit-platform-engine",
+      "version": "6.0.3",
+      "filename": "junit-platform-engine-6.0.3.jar"
+    },
+    {
+      "sha256": "315608372e4dc44bca0ccb3ae8a07ecc206b3367033fa05748a03ccd563f1301",
+      "bytes": 246132,
+      "group": "org.junit.platform",
+      "artifact": "junit-platform-launcher",
+      "version": "6.0.3",
+      "filename": "junit-platform-launcher-6.0.3.jar"
+    },
+    {
+      "sha256": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
+      "bytes": 14304,
+      "group": "org.opentest4j",
+      "artifact": "opentest4j",
+      "version": "1.3.0",
+      "filename": "opentest4j-1.3.0.jar"
+    },
+    {
+      "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38",
+      "bytes": 6806,
+      "group": "org.apiguardian",
+      "artifact": "apiguardian-api",
+      "version": "1.1.2",
+      "filename": "apiguardian-api-1.1.2.jar"
+    },
+    {
+      "sha256": "aa099cb666d430b665d52a2546ddf040a8d96a2fa06551f4f45a851d96fb6e37",
+      "bytes": 1107263,
+      "group": "org.springframework",
+      "artifact": "spring-test",
+      "version": "7.0.6",
+      "filename": "spring-test-7.0.6.jar"
+    },
+    {
+      "sha256": "cfb7a8255748c86c59b73611cca168e7476db38d8621c992cb6f1cc55f357e8e",
+      "bytes": 2032385,
+      "group": "org.springframework",
+      "artifact": "spring-core",
+      "version": "7.0.6",
+      "filename": "spring-core-7.0.6.jar"
+    },
+    {
+      "sha256": "e6cde9651d6795c8a6d3b10043c1edb1f3c2211fa28b15e6d537f078b1584583",
+      "bytes": 5445966,
+      "group": "org.jooq",
+      "artifact": "jooq",
+      "version": "3.21.9",
+      "filename": "jooq-3.21.9.jar"
+    },
+    {
+      "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28",
+      "bytes": 11640,
+      "group": "org.reactivestreams",
+      "artifact": "reactive-streams",
+      "version": "1.0.4",
+      "filename": "reactive-streams-1.0.4.jar"
+    },
+    {
+      "sha256": "a5846c59fea336431a4ae72ca14edbf5299b78486fa308eafb383f4ae0ea74e5",
+      "bytes": 67645,
+      "group": "io.r2dbc",
+      "artifact": "r2dbc-spi",
+      "version": "1.0.0.RELEASE",
+      "filename": "r2dbc-spi-1.0.0.RELEASE.jar"
+    }
+  ],
+  "target_versions_verified": true,
+  "limitation": "Offline Provider compilation uses target JDBC42.7.14 and jOOQ3.21.9. Flyway11.20.3 and real PG18 migration/codegen/SQL are verified separately by pg18-local, never inferred from this fake suite."
+}

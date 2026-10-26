@@ -210,6 +210,70 @@ public class WfHostResourceSnapshotDeviceRecord extends UpdatableRecordImpl<WfHo
         return (Long) get(11);
     }
 
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot_device.observed_compute_utilization_ratio</code>.
+     */
+    public void setObservedComputeUtilizationRatio(Double value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot_device.observed_compute_utilization_ratio</code>.
+     */
+    public Double getObservedComputeUtilizationRatio() {
+        return (Double) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot_device.observed_vram_used_bytes</code>.
+     */
+    public void setObservedVramUsedBytes(Long value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot_device.observed_vram_used_bytes</code>.
+     */
+    public Long getObservedVramUsedBytes() {
+        return (Long) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot_device.observed_encoder_utilization_ratio</code>.
+     */
+    public void setObservedEncoderUtilizationRatio(Double value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot_device.observed_encoder_utilization_ratio</code>.
+     */
+    public Double getObservedEncoderUtilizationRatio() {
+        return (Double) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot_device.observed_decoder_utilization_ratio</code>.
+     */
+    public void setObservedDecoderUtilizationRatio(Double value) {
+        set(15, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot_device.observed_decoder_utilization_ratio</code>.
+     */
+    public Double getObservedDecoderUtilizationRatio() {
+        return (Double) get(15);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -233,7 +297,7 @@ public class WfHostResourceSnapshotDeviceRecord extends UpdatableRecordImpl<WfHo
     /**
      * Create a detached, initialised WfHostResourceSnapshotDeviceRecord
      */
-    public WfHostResourceSnapshotDeviceRecord(String physicalHostId, String physicalHostIncarnationId, Long snapshotGeneration, String deviceId, Long vramBytes, Long computeUnits, Long encoderEngines, Long decoderEngines, Long safetyHeadroomVramBytes, Long safetyHeadroomComputeUnits, Long safetyHeadroomEncoderEngines, Long safetyHeadroomDecoderEngines) {
+    public WfHostResourceSnapshotDeviceRecord(String physicalHostId, String physicalHostIncarnationId, Long snapshotGeneration, String deviceId, Long vramBytes, Long computeUnits, Long encoderEngines, Long decoderEngines, Long safetyHeadroomVramBytes, Long safetyHeadroomComputeUnits, Long safetyHeadroomEncoderEngines, Long safetyHeadroomDecoderEngines, Double observedComputeUtilizationRatio, Long observedVramUsedBytes, Double observedEncoderUtilizationRatio, Double observedDecoderUtilizationRatio) {
         super(WfHostResourceSnapshotDevice.WF_HOST_RESOURCE_SNAPSHOT_DEVICE);
 
         setPhysicalHostId(physicalHostId);
@@ -248,6 +312,10 @@ public class WfHostResourceSnapshotDeviceRecord extends UpdatableRecordImpl<WfHo
         setSafetyHeadroomComputeUnits(safetyHeadroomComputeUnits);
         setSafetyHeadroomEncoderEngines(safetyHeadroomEncoderEngines);
         setSafetyHeadroomDecoderEngines(safetyHeadroomDecoderEngines);
+        setObservedComputeUtilizationRatio(observedComputeUtilizationRatio);
+        setObservedVramUsedBytes(observedVramUsedBytes);
+        setObservedEncoderUtilizationRatio(observedEncoderUtilizationRatio);
+        setObservedDecoderUtilizationRatio(observedDecoderUtilizationRatio);
         resetChangedOnNotNull();
     }
 }

@@ -27,8 +27,21 @@ public final class FencedReuseCompletionOrchestrator {
             ReusableArtifactPublication publication,
             CompletionEvidence completionEvidence,
         ArtifactCommitEvidence artifactCommitEvidence) {
+        if (!publication.record().artifactPin().artifactId().equals(artifactCommitEvidence.artifactId())) {
+            return new FencedReuseCompletionResult(ReusePublicationResult.COMPLETION_NOT_AUTHORITATIVE_REJECTED,
+                    CompletionDecision.EXPECTED_OUTPUT_INVALID_REJECTED);
+        }
         ReusePublicationResult staged = index.stageWinningPublication(publication);
-        if (staged != ReusePublicationResult.STAGED_PENDING
+        // Reuse is derived metadata. A different already-winning publication is retained;
+        // it cannot veto a new exact current native completion or be adopted as its output.
+        boolean existingWinner=false;
+        if(staged==ReusePublicationResult.CONFLICT_REJECTED) {
+            var old=index.lookup(publication.record().tenantId(),publication.record().executionReuseKey());
+            existingWinner=old.filter(r->r.tenantId().equals(publication.record().tenantId())
+                    && r.executionReuseKey().equals(publication.record().executionReuseKey())
+                    && !r.artifactPin().artifactId().equals(publication.record().artifactPin().artifactId())).isPresent();
+        }
+        if (!existingWinner && staged != ReusePublicationResult.STAGED_PENDING
                 && staged != ReusePublicationResult.PENDING_IDEMPOTENT
                 && staged != ReusePublicationResult.WINNER_IDEMPOTENT) {
             return new FencedReuseCompletionResult(staged, CompletionDecision.STALE_ATTEMPT_REJECTED);
@@ -41,6 +54,7 @@ public final class FencedReuseCompletionOrchestrator {
                     ReusePublicationResult.COMPLETION_NOT_AUTHORITATIVE_REJECTED,
                     completion);
         }
+        if(existingWinner)return new FencedReuseCompletionResult(ReusePublicationResult.COMPLETED_WITHOUT_CACHE,completion);
         ReusePublicationResult activated = index.activateWinningPublication(
                 publication, completionEvidence);
         return new FencedReuseCompletionResult(activated, completion);

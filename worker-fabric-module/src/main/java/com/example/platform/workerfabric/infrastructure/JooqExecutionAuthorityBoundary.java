@@ -111,10 +111,18 @@ public class JooqExecutionAuthorityBoundary
         return dsl.transactionResult(configuration -> {
             DSLContext tx = DSL.using(configuration);
             Record duplicate = tx.fetchOne(
-                    "select completion_event_id from wf_completion_event "
+                    "select completion_event_id, task_id, attempt_id, generation, artifact_id from wf_completion_event "
                             + "where completion_event_id = ? for update",
                     completionEvidence.completionEventId().value());
             if (duplicate != null) {
+                if (!completionEvidence.expectedExecutableTaskId().sha256Hex().equals(duplicate.get("task_id", String.class)))
+                    return CompletionDecision.EXPECTED_TASK_MISMATCH_REJECTED;
+                if (!completionEvidence.backendExecutionHandle().executionAttemptId().value().equals(duplicate.get("attempt_id", String.class)))
+                    return CompletionDecision.STALE_ATTEMPT_REJECTED;
+                if (completionEvidence.backendExecutionHandle().ownershipGeneration().value()!=duplicate.get("generation", Long.class))
+                    return CompletionDecision.STALE_GENERATION_REJECTED;
+                if (!artifactCommitEvidence.artifactId().value().equals(duplicate.get("artifact_id", String.class)))
+                    return CompletionDecision.EXPECTED_OUTPUT_INVALID_REJECTED;
                 return CompletionDecision.DUPLICATE_NOOP;
             }
 
@@ -166,15 +174,14 @@ public class JooqExecutionAuthorityBoundary
                     """
                     insert into wf_completion_event (
                         completion_event_id, task_id, attempt_id, generation,
-                        artifact_commit_reference, artifact_committed_at, completed_at)
-                    values (?, ?, ?, ?, ?, cast(? as timestamptz), cast(? as timestamptz))
+                        artifact_id, completed_at)
+                    values (?, ?, ?, ?, ?, cast(? as timestamptz))
                     """,
                     completionEvidence.completionEventId().value(),
                     taskId,
                     attemptId,
                     suppliedGeneration,
-                    artifactCommitEvidence.authorityEvidenceReference(),
-                    databaseTime(artifactCommitEvidence.committedAt()),
+                    artifactCommitEvidence.artifactId().value(),
                     databaseTime(completedAt));
             JooqOwnershipFencing.closeOwnership(
                     tx,

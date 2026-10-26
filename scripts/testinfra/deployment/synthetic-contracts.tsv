@@ -1,0 +1,17 @@
+Gate	Test	Actor	Action	Required evidence	Status
+D01	management-secret-read	test	open control synthetic credential marker	EACCES; marker never published	PLANNED
+D01	protected-writes	test	open/replace runtime,policy,CA,Journal and each ancestor	EACCES/EROFS; content+mode+owner unchanged	PLANNED
+D01	entry-bypass	test	invoke fixed broker, change target, call control/event channel	EPERM/EACCES; zero spawn/Spec issuance	PLANNED
+D01	credentials-and-diagnostics	test	valid/invalid/truncated/duplicate secret frame; native Main missing	strict rejection before Provider; stderr preserved; no Secret	PLANNED
+D02	setsid-doublefork	test	Main exits with bounded same-group,setsid,doublefork descendants	domain still populated; fence/drain/delete=0	PLANNED
+D02	domain-migration	test	write own and foreign cgroup.procs/subtree_control; request external service delegation	EPERM/EACCES; task stays in Job; delegation denied	PLANNED
+D02	observer-integrity	test	signal observer, replace observer binary, close private control FD	EPERM/EACCES; observer identity and channel unchanged	PLANNED
+D02	normal-complete	executor	Main and full lineage end; fresh empty protected domain+ECHILD	stop admission -> complete -> fence -> precise drain -> GET -> delete -> absence	PLANNED
+D02	controller-crash	admin	crash exact control PID while bounded child lives, restart with same Journal	QUARANTINED; no credential reissue; zero SQL/delete	PLANNED
+D02	observer-loss	admin	crash exact observer PID; retain owned domain evidence	UNKNOWN -> QUARANTINED; zero SQL/delete; no auto cleanup	PLANNED
+D02	resource-limits	executor	inspect enforced CPU/memory/pids/scratch/deadline before launch	fail before spawn if missing or excessive; no unbounded stress	PLANNED
+D03	proc-memory	test	read control environ/mem/fd using synthetic marker only	EACCES/EPERM; marker never read	PLANNED
+D03	ptrace-attach	test	ptrace attach/process_vm_readv/JVM attach to synthetic controller	EPERM/EACCES; no control mutation or Secret read	PLANNED
+D03	mounts	test	access control mounts, credential cache, host IPC/daemon sockets	ENOENT/EACCES; self fd available for Secret channel	PLANNED
+D03	network	test	attempt external DNS/TCP/UDP and service delegation in closed namespace	EPERM/ENETUNREACH; no real destination contacted	PLANNED
+D03	secret-output	executor	synthetic split-stream password; inspect ALL logs/artifacts	no exact Secret bytes; redaction/overflow suppress publication	PLANNED

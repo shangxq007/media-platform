@@ -2,9 +2,7 @@ package com.example.platform.migration;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 
 import java.sql.*;
 import java.util.*;
@@ -25,15 +23,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * assertions query the live catalog via the JDBC {@link DatabaseMetaData} and
  * {@code information_schema}.
  */
-@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class UserWorkflowDefinitionV1SchemaMigrationTest {
+class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerSupport {
 
-    @Container
-    static PostgreSQLContainer<?> db = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("uwd_v1_schema")
-            .withUsername("test")
-            .withPassword("test");
+    private static final String SCHEMA = isolatedSchemaName();
 
     private static boolean deployed = false;
 
@@ -42,8 +35,9 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
     @DisplayName("V1: canonical V1 migrates a clean database using only the consolidated V1")
     void v1_deploysFromCleanDatabase() {
         Flyway flyway = Flyway.configure()
-                .dataSource(db.getJdbcUrl(), db.getUsername(), db.getPassword())
-                .locations("filesystem:src/main/resources/db/migration")
+                .dataSource(scopedJdbcUrl(SCHEMA), username(), password())
+                .schemas(SCHEMA).defaultSchema(SCHEMA).createSchemas(true)
+                .locations("classpath:db/migration")
                 .load();
         var result = flyway.migrate();
         assertTrue(result.migrationsExecuted >= 1, "At least one migration should execute");
@@ -55,17 +49,20 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
     @DisplayName("V1: flyway_schema_history contains exactly one canonical V1 row (GCR-2 consolidation)")
     void flywayHistoryExactlyOneV1() throws Exception {
         assertTrue(deployed);
-        try (Connection conn = db.createConnection("")) {
+        try (Connection conn = openConnection(SCHEMA)) {
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(
-                         "select version, script from flyway_schema_history order by installed_rank")) {
+                         "select version, script from flyway_schema_history where type = 'SQL' order by installed_rank")) {
                 assertTrue(rs.next(), "flyway_schema_history must contain at least one row");
                 assertEquals("1", rs.getString("version"), "first migration version must be 1");
-                assertEquals("V1__initial_schema.sql", rs.getString("script"),
-                        "script must be the canonical consolidated V1");
+                assertEquals("V1__baseline.sql", rs.getString("script"),
+                        "script must be the canonical consolidated V1 baseline");
                 // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
                 // former V2..V7 incremental migrations are consolidated into V1.
-                assertFalse(rs.next(), "flyway_schema_history must contain exactly one row (V1)");
+                assertTrue(rs.next(), "approved graph execution migration required");
+                assertEquals("2",rs.getString("version"));
+                assertEquals("V2__graph_render_execution.sql",rs.getString("script"));
+                assertFalse(rs.next(), "only the unchanged baseline and graph execution migration are authorized");
             }
         }
     }
@@ -75,7 +72,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
     @DisplayName("V1: all four W2 tables exist")
     void allFourW2TablesExist() throws Exception {
         assertTrue(deployed);
-        Set<String> tables = getTables(db);
+        Set<String> tables = getTables();
         assertTrue(tables.contains("user_workflow_definition"), "user_workflow_definition required");
         assertTrue(tables.contains("user_workflow_definition_version"),
                 "user_workflow_definition_version required");
@@ -151,8 +148,8 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
         assertTrue(deployed);
 
         List<String> pkTables = new ArrayList<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, "public", null);
+        try (Connection conn = openConnection(SCHEMA)) {
+            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, SCHEMA, null);
             while (rs.next()) {
                 String table = rs.getString("TABLE_NAME").toLowerCase();
                 if (table.startsWith("user_workflow_definition")) {
@@ -168,10 +165,10 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
                 "all four W2 tables must have primary keys");
 
         // Edge unique constraint must include condition_ref.
-        try (Connection conn = db.createConnection("");
+        try (Connection conn = openConnection(SCHEMA);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                     "select indexdef from pg_indexes where tablename = 'user_workflow_definition_edge' "
+                     "select indexdef from pg_indexes where schemaname = '"+SCHEMA+"' and tablename = 'user_workflow_definition_edge' "
                              + "and indexdef ilike '%unique%'")) {
             List<String> uniqueDefs = new ArrayList<>();
             while (rs.next()) uniqueDefs.add(rs.getString("indexdef"));
@@ -185,7 +182,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
     @DisplayName("V1: pre-W2 tables preserved (render_job, notification_preference, outbox_events)")
     void preW2TablesPreserved() throws Exception {
         assertTrue(deployed);
-        Set<String> tables = getTables(db);
+        Set<String> tables = getTables();
         assertTrue(tables.contains("render_job"), "pre-W2 render_job must remain");
         assertTrue(tables.contains("notification_preference"),
                 "pre-W2 notification_preference must remain");
@@ -194,10 +191,10 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
 
     // === Helper methods (same convention as SchemaEquivalenceVerificationTest) ===
 
-    private Set<String> getTables(PostgreSQLContainer<?> db) throws SQLException {
+    private Set<String> getTables() throws SQLException {
         Set<String> tables = new TreeSet<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.getMetaData().getTables(null, "public", null, new String[]{"TABLE"});
+        try (Connection conn = openConnection(SCHEMA)) {
+            ResultSet rs = conn.getMetaData().getTables(null, SCHEMA, null, new String[]{"TABLE"});
             while (rs.next()) tables.add(rs.getString("TABLE_NAME").toLowerCase());
         }
         return tables;
@@ -205,8 +202,8 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
 
     private void assertColumn(String table, String name, String type, boolean nullable) throws SQLException {
         Map<String, ColumnInfo> columns = new TreeMap<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.getMetaData().getColumns(null, "public", table, null);
+        try (Connection conn = openConnection(SCHEMA)) {
+            ResultSet rs = conn.getMetaData().getColumns(null, SCHEMA, table, null);
             while (rs.next()) {
                 String col = rs.getString("COLUMN_NAME").toLowerCase();
                 // DatabaseMetaData reports the base type name (e.g. "varchar"); map it to

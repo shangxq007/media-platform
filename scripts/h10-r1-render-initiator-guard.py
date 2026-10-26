@@ -23,7 +23,7 @@ PRODUCTION_SCOPE = (
     "platform-app/src/main",
     "identity-access-module/src/main",
     "shared-kernel/src/main",
-    "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+    "platform-app/src/main/resources/db/migration/V1__baseline.sql",
 )
 
 ZERO_FIELDS = (
@@ -288,7 +288,7 @@ def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]
         r"(?:submitRenderJob|submissionService\s*\.\s*submit)\s*\([^;\n]*,\s*null\s*\)",
     )
 
-    schema_path = root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+    schema_path = root / "platform-app/src/main/resources/db/migration/V1__baseline.sql"
     schema = render_job_schema_block(read(schema_path)) if schema_path.is_file() else ""
     schema_count = len(re.findall(
         r"(?im)^\s*initiator_(?:type|id|tenant_id)\s+varchar\s*\(", schema

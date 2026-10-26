@@ -17,7 +17,7 @@ class I5CreditWalletRenderShadowArchitectureTest {
     @Test
     void walletSchemaIsVersionedTenantScopedDurableAndExact() throws IOException {
         String schema = Files.readString(ROOT.resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         String wallet = table(schema, "credit_wallet");
         String transaction = table(schema, "credit_transaction");
         assertTrue(wallet.contains("version bigint not null"));

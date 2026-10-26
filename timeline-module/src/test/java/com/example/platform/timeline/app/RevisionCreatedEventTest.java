@@ -50,8 +50,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * {@code REVISION_CREATED} outbox event in the SAME physical transaction as the
  * revision/ref/HEAD write.
  *
- * <p>Real PostgreSQL (Testcontainers) with the exact canonical {@code V1} +
- * {@code V2} migration applied from the repository, and a real
+ * <p>Real PostgreSQL (Testcontainers) with the single canonical {@code V1}
+ * baseline applied from the repository, and a real
  * {@link OutboxEventService} + {@link OutboxEventRouter}; the assertions read the
  * actual {@code outbox_events} rows.
  */
@@ -69,8 +69,7 @@ class RevisionCreatedEventTest extends PostgresTestContainerSupport {
     @BeforeAll
     static void setUpDatabase() throws Exception {
         dataSource = createDataSource();
-        applyMigration("V1__initial_schema.sql");
-        applyMigration("V2__render_binding_inputs.sql");
+        applyMigration("V1__baseline.sql");
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
         outbox = new OutboxEventService(dsl, 3,
                 new PostgresNotificationService(new JdbcTemplate(dataSource)),

@@ -55,7 +55,7 @@ final class DeliveryJobService {
             "package example; final class Shared {}\n",
         )
         self.write(
-            "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+            "platform-app/src/main/resources/db/migration/V1__baseline.sql",
             """create table render_job (
     id varchar(64) primary key,
     initiator_type varchar(32) not null,
@@ -189,7 +189,7 @@ final class DeliveryJobService {
         self.assert_red("MISSING_INITIATOR_AT_SUBMISSION_COUNT")
 
     def test_rejects_new_render_initiator_schema_field(self) -> None:
-        schema = self.root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+        schema = self.root / "platform-app/src/main/resources/db/migration/V1__baseline.sql"
         schema.write_text(
             schema.read_text().replace(
                 "    initiator_tenant_id varchar(64) not null\n",
@@ -200,7 +200,7 @@ final class DeliveryJobService {
         self.assert_red("NEW_SCHEMA_CHANGE_BEYOND_EXISTING_H10_R1_INITIATOR_COLUMNS")
 
     def test_rejects_missing_initiator_schema_column(self) -> None:
-        schema = self.root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+        schema = self.root / "platform-app/src/main/resources/db/migration/V1__baseline.sql"
         schema.write_text(schema.read_text().replace("    initiator_id varchar(128) not null,\n", ""), encoding="utf-8")
         result = self.run_guard()
         self.assertNotEqual(0, result.returncode)

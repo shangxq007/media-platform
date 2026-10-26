@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.19.0.xsd">
+<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.21.0.xsd">
   <jdbc>
     <driver>org.postgresql.Driver</driver>
-    <url>jdbc:postgresql://localhost:15432/jooq_codegen</url>
-    <user>codegen</user>
-    <password>codegen</password>
+    <url>__JOOQ_JDBC_URL__</url>
+    <user>__JOOQ_DB_USER__</user>
+    <password>__JOOQ_DB_AUTH__</password>
   </jdbc>
   <generator>
     <name>org.jooq.codegen.JavaGenerator</name>
     <database>
       <name>org.jooq.meta.postgres.PostgresDatabase</name>
       <includes>.*</includes>
-      <excludes></excludes>
+      <excludes>flyway_schema_history</excludes>
       <inputSchema>public</inputSchema>
       <forcedTypes>
         <!-- TIMESTAMPTZ → Instant via InstantConverter -->

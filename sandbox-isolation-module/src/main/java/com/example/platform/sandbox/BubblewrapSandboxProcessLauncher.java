@@ -344,6 +344,9 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
         }
         if (!candidate.isAbsolute()) return value;
         Path normalized = candidate.normalize();
+        // These exact roots are already mounted readonly. Preserve $ORIGIN for approved
+        // dynamically linked tools and adjacent DSOs; no additional mount is authorized here.
+        if (SYSTEM_ROOTS.stream().anyMatch(normalized::startsWith)) return normalized.toString();
         for (int index = 0; index < inputs.size(); index++) {
             Path input = inputs.get(index);
             if (normalized.equals(input)) {

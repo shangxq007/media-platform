@@ -60,7 +60,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
 
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
-                .locations("filesystem:src/main/resources/db/migration")
+                .locations("classpath:db/migration")
                 .schemas(SCHEMA)
                 .defaultSchema(SCHEMA)
                 .load();
@@ -73,9 +73,10 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         // (timeline_revision_ref, apply_command, timeline_revision_parent,
         // project_revision_counter, source_visual_description_snapshot, ownership
         // FKs/UNIQUEs, immutable snapshot trigger). ONE pre-release migration.
-        assertEquals(1, info.all().length, "Expected exactly one canonical V1 migration");
+        assertEquals(2, info.all().length, "Exact unchanged V1 plus approved graph execution migration");
         assertEquals("1", info.all()[0].getVersion().getVersion());
-        assertEquals("V1__initial_schema.sql", info.all()[0].getScript());
+        assertEquals("V2__graph_render_execution.sql",info.all()[1].getScript());
+        assertEquals("V1__baseline.sql", info.all()[0].getScript());
         deployed = true;
     }
 
@@ -131,6 +132,17 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
                 "worker-fabric normalized observation evidence required");
         assertTrue(tables.contains("wf_completion_event"),
                 "worker-fabric fenced completion authority required");
+        Map<String, ColumnInfo> completionColumns = getTableColumns("wf_completion_event");
+        assertTrue(completionColumns.containsKey("artifact_id"),
+                "Completion must link canonical Artifact identity");
+        assertFalse(completionColumns.containsKey("artifact_commit_reference"),
+                "Completion must not retain the opaque Artifact commit reference");
+        assertFalse(completionColumns.containsKey("artifact_committed_at"),
+                "Completion must not retain non-authoritative Artifact commit time");
+        assertEquals("NO", completionColumns.get("artifact_id").nullable());
+        assertTrue(getIndexNames("wf_completion_event")
+                        .contains("ix_wf_completion_event_artifact_id"),
+                "Completion Artifact FK requires its query/index support");
         assertTrue(tables.contains("observed_runtime_usage"),
                 "observed_runtime_usage authority required");
         assertTrue(tables.contains("billable_usage"), "billable_usage authority required");
@@ -353,15 +365,16 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
     void noActiveV2ToV5() {
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
-                .locations("filesystem:src/main/resources/db/migration")
+                .locations("classpath:db/migration")
                 .schemas(SCHEMA)
                 .defaultSchema(SCHEMA)
                 .load();
         var info = flyway.info();
         // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
         // exactly one canonical V1 migration; no incremental V2..V7.
-        assertEquals(1, info.all().length, "Only canonical V1 should be active");
+        assertEquals(2, info.all().length, "Only canonical V1 and approved graph execution V2 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
+        assertEquals("V2__graph_render_execution.sql",info.all()[1].getScript());
     }
 
     private static int count(Statement statement, String table) throws SQLException {

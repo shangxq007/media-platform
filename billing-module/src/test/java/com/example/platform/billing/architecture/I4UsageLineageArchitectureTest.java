@@ -24,7 +24,7 @@ class I4UsageLineageArchitectureTest {
             "../render-module/src/main/java/com/example/platform/render");
     private static final Path BILLING_MAIN = Path.of("src/main/java/com/example/platform/billing");
     private static final Path SCHEMA = Path.of(
-            "../platform-app/src/main/resources/db/migration/V1__initial_schema.sql");
+            "../platform-app/src/main/resources/db/migration/V1__baseline.sql");
 
     @Test
     void neutralObservationOwnershipAndRuntimeImportDirection() throws IOException {

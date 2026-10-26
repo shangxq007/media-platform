@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "runner_id": "OWNER_SELECT_DEDICATED_LINUX_RUNNER",
+  "manager": "OWNER_NOMINATED_RUNNER_ADMIN",
+  "principals": {
+    "admin": 0,
+    "control": 61001,
+    "executor": 0,
+    "test": 61003
+  },
+  "paths": {
+    "runtime": "/opt/media-platform/testinfra",
+    "policy": "/etc/media-platform/testinfra/policy",
+    "ca": "/etc/media-platform/testinfra/ca",
+    "journal": "/var/lib/media-platform/testinfra",
+    "scratch": "/var/lib/media-platform/testinfra-scratch"
+  },
+  "limits": {
+    "jobs": 1,
+    "pids": 64,
+    "memory_bytes": 2147483648,
+    "scratch_bytes": 1073741824,
+    "wall_seconds": 300,
+    "cpu_quota_percent": 200
+  },
+  "job_domain": "protected-cgroup-v2-or-equivalent"
+}

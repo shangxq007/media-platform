@@ -1,3 +1,5 @@
+PostgreSQL test infrastructure: [offline/Fake commands and deployment gates](scripts/testinfra/README.md).
+
 # Media Platform
 
 Media Build Platform — low-level reusable media capabilities for AI video production, rendering orchestration, and media asset management.

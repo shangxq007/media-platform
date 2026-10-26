@@ -10,9 +10,14 @@ public class ArtifactOutputReadService implements ArtifactOutputRead {
  private final ArtifactApplicationQuery scoped;
  private final ArtifactQueryService artifacts;
  private final StoragePlacementQuery storage;
- public ArtifactOutputReadService(ArtifactApplicationQuery scoped,ArtifactQueryService artifacts,StoragePlacementQuery storage){this.scoped=scoped;this.artifacts=artifacts;this.storage=storage;}
+ private final List<AcceptedRenderOutputQuery> accepted;
+ private final ArtifactContentRead content;
+ public ArtifactOutputReadService(ArtifactApplicationQuery scoped,ArtifactQueryService artifacts,StoragePlacementQuery storage,List<AcceptedRenderOutputQuery> accepted,ArtifactContentRead content){this.scoped=scoped;this.artifacts=artifacts;this.storage=storage;this.accepted=List.copyOf(accepted);this.content=content;}
  public Optional<ArtifactOutputReference> find(ArtifactScope scope) {
     TenantGuard.assertSameTenant(scope.tenantId());
+    var found=accepted.stream().map(q->q.find(scope)).flatMap(Optional::stream).distinct().toList();
+    if(found.size()>1)throw new IllegalStateException("conflicting accepted Render outputs");
+    if(found.size()==1)return Optional.of(new ArtifactOutputReference(scope,found.getFirst()));
     return storage.find(new StorageOwnershipScope(scope.tenantId(),scope.projectId()),new IssuanceIdempotencyKey("render-output:"+scope.renderJobId()))
         .flatMap(receipt->scoped.findArtifact(scope,ArtifactOutputCommitService.outputId(scope,receipt.objectId())))
         .filter(a->a.state()==ArtifactState.AVAILABLE && a.artifactKind()==ArtifactKind.RENDER_MASTER)
@@ -22,6 +27,12 @@ public class ArtifactOutputReadService implements ArtifactOutputRead {
     var scope=reference.scope();TenantGuard.assertSameTenant(scope.tenantId());
     var artifact=scoped.findArtifact(scope,reference.artifactId()).orElseThrow(()->new IllegalArgumentException("output not found in scope"));
     if(artifact.state()!=ArtifactState.AVAILABLE || artifact.artifactKind()!=ArtifactKind.RENDER_MASTER)throw new IllegalStateException("output is not available");
+    var acceptedIds=accepted.stream().map(q->q.find(scope)).flatMap(Optional::stream).distinct().toList();
+    if(acceptedIds.size()>1)throw new IllegalStateException("conflicting accepted Render outputs");
+    if(acceptedIds.contains(reference.artifactId())) {
+        var verified=content.read(scope,reference.artifactId());
+        return new Content(verified.bytes(),artifact.mediaType(),verified.contentType(),verified.fileName());
+    }
     var owner=new StorageOwnershipScope(scope.tenantId(),scope.projectId());
     var receipt=storage.find(owner,new IssuanceIdempotencyKey("render-output:"+scope.renderJobId())).orElseThrow(()->new IllegalStateException("output receipt unavailable"));
     if(!artifact.artifactId().equals(ArtifactOutputCommitService.outputId(scope,receipt.objectId())))throw new IllegalArgumentException("not the accepted Render output");

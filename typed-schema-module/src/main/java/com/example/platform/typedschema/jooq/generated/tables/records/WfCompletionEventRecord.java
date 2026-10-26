@@ -77,47 +77,31 @@ public class WfCompletionEventRecord extends UpdatableRecordImpl<WfCompletionEve
     }
 
     /**
-     * Setter for
-     * <code>public.wf_completion_event.artifact_commit_reference</code>.
+     * Setter for <code>public.wf_completion_event.artifact_id</code>.
      */
-    public void setArtifactCommitReference(String value) {
+    public void setArtifactId(String value) {
         set(4, value);
     }
 
     /**
-     * Getter for
-     * <code>public.wf_completion_event.artifact_commit_reference</code>.
+     * Getter for <code>public.wf_completion_event.artifact_id</code>.
      */
-    public String getArtifactCommitReference() {
+    public String getArtifactId() {
         return (String) get(4);
-    }
-
-    /**
-     * Setter for <code>public.wf_completion_event.artifact_committed_at</code>.
-     */
-    public void setArtifactCommittedAt(Instant value) {
-        set(5, value);
-    }
-
-    /**
-     * Getter for <code>public.wf_completion_event.artifact_committed_at</code>.
-     */
-    public Instant getArtifactCommittedAt() {
-        return (Instant) get(5);
     }
 
     /**
      * Setter for <code>public.wf_completion_event.completed_at</code>.
      */
     public void setCompletedAt(Instant value) {
-        set(6, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.wf_completion_event.completed_at</code>.
      */
     public Instant getCompletedAt() {
-        return (Instant) get(6);
+        return (Instant) get(5);
     }
 
     // -------------------------------------------------------------------------
@@ -143,15 +127,14 @@ public class WfCompletionEventRecord extends UpdatableRecordImpl<WfCompletionEve
     /**
      * Create a detached, initialised WfCompletionEventRecord
      */
-    public WfCompletionEventRecord(String completionEventId, String taskId, String attemptId, Long generation, String artifactCommitReference, Instant artifactCommittedAt, Instant completedAt) {
+    public WfCompletionEventRecord(String completionEventId, String taskId, String attemptId, Long generation, String artifactId, Instant completedAt) {
         super(WfCompletionEvent.WF_COMPLETION_EVENT);
 
         setCompletionEventId(completionEventId);
         setTaskId(taskId);
         setAttemptId(attemptId);
         setGeneration(generation);
-        setArtifactCommitReference(artifactCommitReference);
-        setArtifactCommittedAt(artifactCommittedAt);
+        setArtifactId(artifactId);
         setCompletedAt(completedAt);
         resetChangedOnNotNull();
     }

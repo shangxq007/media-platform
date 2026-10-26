@@ -33,6 +33,9 @@ public final class ArtifactSchemaFixture {
                 + "created_at timestamp not null,"
                 + "tombstoned_at timestamp,"
                 + "workspace_id varchar(128) not null,"
+                + "idempotency_key varchar(256),"
+                + "audit_provenance jsonb not null default '{}'::jsonb,"
+                + "unique (tenant_id, workspace_id, idempotency_key),"
                 + "constraint uq_artifact_tenant_id unique (tenant_id, id)"
                 + ")");
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_replica ("

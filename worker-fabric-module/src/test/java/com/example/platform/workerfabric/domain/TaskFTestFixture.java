@@ -76,7 +76,7 @@ final class TaskFTestFixture {
             committed.put(
                     completionEventId,
                     new ArtifactCommitEvidence(
-                            "artifact-authority-evidence-" + completionEventId.value(), NOW));
+                            new com.example.platform.shared.identity.ArtifactId("artifact-authority-evidence-" + completionEventId.value())));
         }
 
         boolean bytesExist(CompletionEventId completionEventId) {

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /**
  * Stops Temporal poll loops and waits for in-flight activities before JVM exit.
  */
-@ConditionalOnProperty(prefix = "app.temporal", name = "enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(prefix = "app.temporal", name = "worker-required", havingValue = "true", matchIfMissing = false)
 @Component
 
 public class TemporalWorkerGracefulShutdown {

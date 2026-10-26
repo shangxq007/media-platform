@@ -152,7 +152,7 @@ def compute(root: Path) -> dict[str, int]:
                      else java_sources(root, relative))
     )
 
-    schema = read(root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+    schema = read(root / "platform-app/src/main/resources/db/migration/V1__baseline.sql")
     write_intent_repository = read(
         root / "storage-module/src/main/java/com/example/platform/storage/"
         "infrastructure/identity/JdbcStorageWriteIntentRepository.java"

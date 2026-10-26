@@ -90,10 +90,8 @@ dependencies {
     testImplementation("org.springframework.modulith:spring-modulith-starter-test:2.0.4")
     testImplementation("org.springframework.modulith:spring-modulith-docs:2.0.4")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    // Version authority is spring-boot-dependencies:4.0.4 (testcontainers 2.0.4) — no inline pin.
-    // Testcontainers 2.x renamed these artifacts (old coordinates do not exist at 2.0.4).
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
-    testImplementation("org.testcontainers:testcontainers-postgresql")
+    testImplementation("org.postgresql:postgresql")
+    testImplementation("org.jooq:jooq-codegen")
 }
 
 tasks.named<Test>("test") {
@@ -135,3 +133,6 @@ tasks.register<Test>("renderIntegrationTest") {
     classpath = sourceSets.test.get().runtimeClasspath
     shouldRunAfter(tasks.test)
 }
+
+// Both official application assemblies are required build deliverables.
+tasks.named("assemble") { dependsOn(ffmpegWorkerBootJar) }

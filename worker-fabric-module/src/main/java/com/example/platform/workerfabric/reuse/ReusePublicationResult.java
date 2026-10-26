@@ -2,6 +2,7 @@ package com.example.platform.workerfabric.reuse;
 
 /** Result of the fenced pending/public activation protocol. */
 public enum ReusePublicationResult {
+    COMPLETED_WITHOUT_CACHE,
     STAGED_PENDING,
     PENDING_IDEMPOTENT,
     ACTIVATED_WINNER,

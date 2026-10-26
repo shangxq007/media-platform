@@ -61,3 +61,24 @@ tasks.jar {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 }
+
+// Explicit Linux runtime tool distribution, separate from the Java application classpath.
+// The bounded provider emits H.264 with libx264; a host ffmpeg without that encoder is insufficient.
+val ffmpegLinuxRuntime by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+dependencies {
+    ffmpegLinuxRuntime("org.bytedeco:ffmpeg:7.1.1-1.5.12:linux-x86_64-gpl")
+}
+tasks.register<Copy>("stageFfmpegLinuxRuntime") {
+    group = "distribution"
+    description = "Stages the pinned Linux FFmpeg runtime and license files; never executes it."
+    from(ffmpegLinuxRuntime.map { zipTree(it) })
+    into(layout.buildDirectory.dir("ffmpeg-runtime"))
+    includeEmptyDirs = false
+    eachFile {
+        if (name == "ffmpeg" || name == "ffprobe") permissions { unix("rwxr-xr-x") }
+    }
+}

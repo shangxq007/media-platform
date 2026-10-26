@@ -1,3 +1,5 @@
+> Current database-test entry: [PostgreSQL 18 test infrastructure](../../../scripts/testinfra/README.md). Older container/H2 test instructions below are superseded for database tests and do not authorize them. Application startup remains a separate contract.
+
 ---
 status: current
 last_verified: 2026-06-29
@@ -61,7 +63,7 @@ owner: platform
 | Flyway Migrations | 1 version (V1 - consolidated baseline, 2339 lines) |
 | Tables | 133 |
 | Schema Location | `classpath:db/migration` |
-| Test Schema | PostgreSQL via Testcontainers |
+| Test Schema | PG18 controlled Provider + owned schemas; live verification pending |
 | H2 Support | ❌ Not supported |
 | jOOQ Codegen | Not configured — all manual DSL |
 

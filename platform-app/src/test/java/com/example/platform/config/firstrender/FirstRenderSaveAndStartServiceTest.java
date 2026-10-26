@@ -34,7 +34,7 @@ class FirstRenderSaveAndStartServiceTest {
     void setUp() {
         store = mock(BoundGraphInputStore.class);
         starter = mock(FirstRenderWorkflowStarter.class);
-        service = new FirstRenderSaveAndStartService(store, starter);
+        service = new FirstRenderSaveAndStartService(store, starter, mock(com.example.platform.render.api.GraphRenderLifecycle.class));
         savedReference = new BoundGraphReference(
                 TENANT, JOB, "render-binding-inputs/" + TENANT + "/" + JOB,
                 "a".repeat(64), "b".repeat(64));

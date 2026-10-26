@@ -1,0 +1,24 @@
+name: Offline test infrastructure
+on:
+  pull_request:
+    paths:
+      - scripts/test-infra
+      - scripts/testinfra/**
+      - scripts/startup/**
+      - shared-kernel/src/testFixtures/**
+      - .github/workflows/test-infrastructure.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Credential-free offline contracts
+        run: python3 -B scripts/test-infra unit --output "$RUNNER_TEMP/test-infra-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+# No live phase, cloud secret, service/container, dependency install or deployment claim.
+# Fake Java verification requires the reviewed cached lock on an approved runner.

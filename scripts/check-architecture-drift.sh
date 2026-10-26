@@ -187,7 +187,7 @@ def sole_boundary_proof(sources: dict[str, str]) -> bool:
 
 
 def parent_fk_proof() -> bool:
-    schema_path = ROOT / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+    schema_path = ROOT / "platform-app/src/main/resources/db/migration/V1__baseline.sql"
     if not schema_path.is_file():
         return False
     schema = strip_sql_comments(schema_path.read_text(encoding="utf-8"))
@@ -459,14 +459,14 @@ else
 fi
 
 # CANONICAL_DOUBLE_TIME_RATE_AUTHORITY = 0 (media tables carry no double time/rate)
-if awk '/create table media_asset |create table media_stream |create table media_probe_observation /,/^\);/' platform-app/src/main/resources/db/migration/V1__initial_schema.sql | grep -q "double precision"; then
+if awk '/create table media_asset |create table media_stream |create table media_probe_observation /,/^\);/' platform-app/src/main/resources/db/migration/V1__baseline.sql | grep -q "double precision"; then
     fail "canonical media tables contain double precision time/rate authority"
 else
     pass "canonical media tables contain no double precision time/rate"
 fi
 
 # RAW_PROBE_RESULT_IS_NOT_CANONICAL_MEDIA_AUTHORITY: old MAM double table removed
-if grep -q "create table media_asset_metadata" platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q "create table media_asset_metadata" platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     fail "legacy media_asset_metadata table (double authority) still present"
 else
     pass "legacy media_asset_metadata double authority removed"
@@ -1349,7 +1349,7 @@ if grep -q 'timeline_revision_parent' timeline-module/src/main/java/com/example/
 else
     fail "graph authority missing"
 fi
-if grep -q 'parent_revision_id' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'timeline_revision_parent' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'parent_revision_id' platform-app/src/main/resources/db/migration/V1__baseline.sql && grep -q 'timeline_revision_parent' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "V4 migration retires legacy parent authority (edges single authority)"
 else
     fail "V4 migration incomplete"
@@ -1510,7 +1510,7 @@ fi
 
 # ROADMAP_18 CIP2 gates
 # CIP2G1: durable snapshot persistence exists
-if grep -q 'source_visual_description_snapshot' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && [ -f media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionSnapshotRepository.java ]; then
+if grep -q 'source_visual_description_snapshot' platform-app/src/main/resources/db/migration/V1__baseline.sql && [ -f media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionSnapshotRepository.java ]; then
     pass "CIP2G1 durable snapshot persistence exists"
 else
     fail "CIP2G1 durable persistence missing"
@@ -1522,7 +1522,7 @@ else
     pass "CIP2G2/G3 historical reload: zero normalizer/probe dependency"
 fi
 # CIP2G4: immutable content binding (artifact_id column)
-if grep -q 'artifact_id' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'source_visual_description_snapshot' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'artifact_id' platform-app/src/main/resources/db/migration/V1__baseline.sql && grep -q 'source_visual_description_snapshot' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "CIP2G4 immutable content binding (artifact content version)"
 else
     fail "CIP2G4 artifact binding missing"
@@ -1552,7 +1552,7 @@ else
 fi
 # CIP2G14: no float DB conversion (scoped to source_visual_description_snapshot
 # definition inside canonical V1; other tables legitimately use numeric types)
-if awk '/create table source_visual_description_snapshot/,/^\);/' platform-app/src/main/resources/db/migration/V1__initial_schema.sql | grep -q 'double precision\|::double\|float8'; then
+if awk '/create table source_visual_description_snapshot/,/^\);/' platform-app/src/main/resources/db/migration/V1__baseline.sql | grep -q 'double precision\|::double\|float8'; then
     fail "CIP2G14 float DB conversion"
 else
     pass "CIP2G14 zero Rational float DB conversion"
@@ -1560,12 +1560,12 @@ fi
 
 # ROADMAP_18 CIP2D/CIP2E gates
 # CIP2DG1-7: DB-enforced ownership (composite FKs, Artifact-keyed after convergence)
-if grep -q 'fk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'fk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__baseline.sql && grep -q 'fk_svd_artifact' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "CIP2DG1/2/3/4 DB-enforced stream+artifact ownership (composite FKs)"
 else
     fail "CIP2DG1-4 ownership FKs missing"
 fi
-if grep -q 'uq_ms_id_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'uq_ms_id_artifact' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "CIP2DG1/5/6/7 composite-FK prerequisite UNIQUE keys present"
 else
     fail "CIP2DG5-7 UNIQUE prerequisites missing"
@@ -1603,13 +1603,13 @@ fi
 
 # ROADMAP_18 CIP2F/CIP2G gates
 # CIP2FG1/2: content-version snapshot identity (composite PK)
-if grep -q 'pk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'pk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "CIP2FG1/2 F2 composite snapshot identity (media_stream_id, artifact_id)"
 else
     fail "CIP2FG1/2 composite PK missing"
 fi
 # CIP2FG3/4: DB-level snapshot immutability trigger
-if grep -q 'trg_svd_snapshot_immutable' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'trg_svd_snapshot_immutable' platform-app/src/main/resources/db/migration/V1__baseline.sql && grep -q 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "CIP2FG3/4 direct SQL rebind/payload rewrite rejected (immutability trigger)"
 else
     fail "CIP2FG3/4 immutability trigger missing"
@@ -1627,13 +1627,13 @@ else
     pass "CIP2FG8/GG2 zero upsert-by-stream; append-only snapshot write"
 fi
 # CIP2GG1: artifact content identity — render artifact table has no content column
-if grep -q 'create table artifact (' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -qE 'storage_uri|format varchar' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'create table artifact (' platform-app/src/main/resources/db/migration/V1__baseline.sql && grep -qE 'storage_uri|format varchar' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "CIP2GG1 artifact id = content identity (no digest column to rebind)"
 else
     fail "CIP2GG1 artifact immutability unproven"
 fi
 # V6 regression: composite ownership FKs still present (Artifact-keyed)
-if grep -q 'fk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'fk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__baseline.sql && grep -q 'fk_svd_artifact' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
     pass "V6 regression: cross-artifact ownership FKs retained"
 else
     fail "V6 ownership regression"

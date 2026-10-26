@@ -135,6 +135,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
                                     .eq(candidate.executionAttemptId().value()))
                             .and(DSL.field("wf_completion_event.generation").eq(
                                     candidate.ownershipGeneration().value()))
+                            .and(DSL.field("wf_completion_event.artifact_id").eq(candidate.artifactPin().artifactId().value()))
                             .and(DSL.field("wf_execution_attempt.state").eq("SUCCEEDED")));
             if (!completionExists) {
                 return ReusePublicationResult.COMPLETION_NOT_AUTHORITATIVE_REJECTED;

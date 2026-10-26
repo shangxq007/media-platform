@@ -64,6 +64,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
+import org.jooq.conf.MappedSchema;
+import org.jooq.conf.RenderMapping;
+import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,12 +75,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 
 /**
- * H7 V2 ownership and production-path matrix against PostgreSQL 16 and the exact
+ * H7 V2 ownership and production-path matrix against PostgreSQL 18 and the exact
  * classpath Flyway V1 schema.
  *
  * <p>HTTP authorization preparation is intentionally not faked here. Exact coverage is
@@ -85,11 +86,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code TimelineControllerAuthorizationPreparationTest.currentControllerRejectsBeforeHistoryDisclosure},
  * and {@code TimelineControllerAuthorizationPreparationTest.legacyControllerRejectsBeforeHeadDisclosure}.</p>
  */
-@Testcontainers
-class H7V2CanonicalOwnershipInvariantTest {
+class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static final String SCHEMA = isolatedSchemaName();
 
     private static JdbcTemplate jdbc;
     private static DataSource dataSource;
@@ -109,11 +108,11 @@ class H7V2CanonicalOwnershipInvariantTest {
 
     @BeforeAll
     static void migrateExactCanonicalV1() {
-        String schema = "public";
-        String separator = POSTGRES.getJdbcUrl().contains("?") ? "&" : "?";
-        String scopedUrl = POSTGRES.getJdbcUrl() + separator + "currentSchema=" + schema;
+        String schema = SCHEMA;
+        String separator = jdbcUrl().contains("?") ? "&" : "?";
+        String scopedUrl = scopedJdbcUrl(schema);
         flyway = Flyway.configure()
-                .dataSource(scopedUrl, POSTGRES.getUsername(), POSTGRES.getPassword())
+                .dataSource(scopedUrl, username(), password())
                 .schemas(schema)
                 .defaultSchema(schema)
                 .createSchemas(true)
@@ -121,13 +120,16 @@ class H7V2CanonicalOwnershipInvariantTest {
                 .load();
         flyway.migrate();
         var ds = new DriverManagerDataSource();
-        ds.setDriverClassName(POSTGRES.getDriverClassName());
+        ds.setDriverClassName(driverClassName());
         ds.setUrl(scopedUrl);
-        ds.setUsername(POSTGRES.getUsername());
-        ds.setPassword(POSTGRES.getPassword());
+        ds.setUsername(username());
+        ds.setPassword(password());
+        ds.setConnectionProperties(connectionProperties());
         dataSource = ds;
         jdbc = new JdbcTemplate(ds);
-        dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
+        dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES, new Settings()
+                .withRenderMapping(new RenderMapping().withSchemata(
+                        new MappedSchema().withInput("public").withOutput(SCHEMA))));
     }
 
     @BeforeEach
@@ -192,20 +194,20 @@ class H7V2CanonicalOwnershipInvariantTest {
     }
 
     @Test
-    @DisplayName("REAL_CANONICAL_V1_POSTGRES_TESTING=PASS (server major 16, exact classpath Flyway V1)")
-    void postgresqlServerMajorIs16AndOnlyExactClasspathFlywayV1IsApplied() {
+    @DisplayName("REAL_CANONICAL_V1_POSTGRES_TESTING=PASS (server major 18, exact classpath Flyway V1)")
+    void postgresqlServerMajorIs18AndOnlyExactClasspathFlywayV1IsApplied() {
         Integer serverMajor = jdbc.queryForObject(
                 "select current_setting('server_version_num')::integer / 10000", Integer.class);
-        assertEquals(16, serverMajor, "H7 V2 matrix requires PostgreSQL server major 16");
+        assertEquals(18, serverMajor, "H7 V2 matrix requires PostgreSQL server major 18");
 
         var applied = Arrays.stream(flyway.info().applied())
                 .filter(info -> info.getVersion() != null)
                 .toList();
-        assertEquals(2, applied.size(), "the classpath contains exactly the consolidated V1 + V2 baseline");
+        assertEquals(2, applied.size(), "exact baseline plus graph execution migration inventory");
         assertEquals("1", applied.get(0).getVersion().getVersion());
-        assertEquals("V1__initial_schema.sql", applied.get(0).getScript());
-        assertEquals("2", applied.get(1).getVersion().getVersion());
-        assertEquals("V2__render_binding_inputs.sql", applied.get(1).getScript());
+        assertEquals("V1__baseline.sql", applied.get(0).getScript());
+        assertEquals("2",applied.get(1).getVersion().getVersion());
+        assertEquals("V2__graph_render_execution.sql",applied.get(1).getScript());
     }
 
     @Test

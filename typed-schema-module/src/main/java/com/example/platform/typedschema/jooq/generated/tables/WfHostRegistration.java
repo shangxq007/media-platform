@@ -8,6 +8,7 @@ import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostReadiness.WfHostReadinessPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshot.WfHostResourceSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostSnapshotGenerationAuthority.WfHostSnapshotGenerationAuthorityPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfRuntimeRegistration.WfRuntimeRegistrationPath;
@@ -167,6 +168,19 @@ public class WfHostRegistration extends TableImpl<WfHostRegistrationRecord> {
     @Override
     public UniqueKey<WfHostRegistrationRecord> getPrimaryKey() {
         return Keys.WF_HOST_REGISTRATION_PKEY;
+    }
+
+    private transient WfHostReadinessPath _wfHostReadiness;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.wf_host_readiness</code> table
+     */
+    public WfHostReadinessPath wfHostReadiness() {
+        if (_wfHostReadiness == null)
+            _wfHostReadiness = new WfHostReadinessPath(this, null, Keys.WF_HOST_READINESS__WF_HOST_READINESS_PHYSICAL_HOST_ID_PHYSICAL_HOST_INCARNATI_FKEY.getInverseKey());
+
+        return _wfHostReadiness;
     }
 
     private transient WfHostResourceSnapshotPath _wfHostResourceSnapshot;

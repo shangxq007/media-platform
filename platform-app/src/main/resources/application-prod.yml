@@ -1,6 +1,6 @@
 # Active with: SPRING_PROFILES_ACTIVE=prod (e.g. Docker / Kubernetes).
-# Default datasource in application.yml is H2 (dev). In production you MUST override via
-# environment variables (SPRING_DATASOURCE_*) or a mounted file (see spring.config.import below).
+# Datasource and Flyway credentials are injected by the Bitwarden bootstrap.
+# In production you MUST provide them via the approved environment contract.
 
 spring:
   h2:

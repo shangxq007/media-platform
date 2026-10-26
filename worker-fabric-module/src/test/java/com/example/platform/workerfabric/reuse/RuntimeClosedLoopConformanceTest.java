@@ -95,6 +95,21 @@ class RuntimeClosedLoopConformanceTest {
     @TempDir Path temp;
 
     @Test
+    void scopedRenderPublicationDoesNotAdoptAnotherJobsReusableArtifact() throws Exception {
+        Harness harness=harness("provider-a");
+        var graph=RuntimeClosedLoopGraphFixture.single("scoped-repeat",sourceDigest("scoped-repeat"),"provider-a");
+        harness.seedSource("scoped-repeat",sourceDigest("scoped-repeat"));
+        harness.renderJob="job-one";var first=harness.execute(graph,allTaskIds(graph),"run-one");
+        harness.renderJob="job-two";var second=harness.execute(graph,allTaskIds(graph),"run-two");
+        assertThat(second.reuseDecisions().values()).allMatch(d->d.outcome()==ValidatedReuseDecision.Outcome.MISS);
+        assertThat(second.outputArtifactPins()).isNotEqualTo(first.outputArtifactPins());
+        assertThat(harness.runtime.executions()).isEqualTo(2);
+        assertThat(second.executedTaskResults().values()).allMatch(r->r.fencedCompletion().completionDecision()==CompletionDecision.COMPLETED && r.fencedCompletion().publicationResult()==ReusePublicationResult.COMPLETED_WITHOUT_CACHE);
+        assertThat(harness.index.lookup(TENANT,first.executionReuseKeys().values().iterator().next()).orElseThrow().artifactPin()).isEqualTo(first.outputArtifactPins().values().iterator().next());
+        assertThat(harness.authority.getArtifact(TENANT,first.outputArtifactPins().values().iterator().next().artifactId())).isPresent();
+    }
+
+    @Test
     void firstMissPublishesDurablyAndEquivalentHitSkipsRuntime() throws Exception {
         Harness harness = harness("provider-a");
         String sourceDigest = sourceDigest("unit-one");
@@ -554,6 +569,8 @@ class RuntimeClosedLoopConformanceTest {
         private ArtifactMaterializerPort materializer;
         private RuntimeClosedLoopOrchestrator orchestrator;
         private boolean forceStaleOwner;
+        private String renderJob;
+        private long scopedGeneration;
 
         private Harness(Path root, List<String> providers) throws IOException {
             this.root = root;
@@ -632,16 +649,17 @@ class RuntimeClosedLoopConformanceTest {
                 ProviderBoundExecutableTaskGraph graph,
                 Set<ExecutableTaskId> requested,
                 String run) throws IOException {
+            long generationNumber=renderJob==null?1:++scopedGeneration;
             Map<ExecutableTaskId, TaskRuntimeExecution> executions = new LinkedHashMap<>();
             Map<ExecutableTaskId, Cacheability> cacheability = new LinkedHashMap<>();
             for (ExecutableTask task : graph.tasks()) {
                 bindings.putIfAbsent(task.providerBindingPin(), binding());
-                ExecutionAttemptId attempt = new ExecutionAttemptId("attempt-" + task.id().sha256Hex());
-                ExecutionOwnershipGeneration generation = ExecutionOwnershipGeneration.first();
+                ExecutionAttemptId attempt = new ExecutionAttemptId("attempt-" + (renderJob==null?"":run+"-") + task.id().sha256Hex());
+                ExecutionOwnershipGeneration generation = new ExecutionOwnershipGeneration(generationNumber);
                 RemoteProviderExecutionHandle handle = RemoteProviderExecutionHandle.forRemoteExecution(
                         attempt, generation, new RemoteExecutionId("remote-" + task.id().sha256Hex()));
                 CompletionEvidence completion = new CompletionEvidence(
-                        new CompletionEventId("completion-" + task.id().sha256Hex()),
+                        new CompletionEventId("completion-" + (renderJob==null?"":run+"-") + task.id().sha256Hex()),
                         handle,
                         task.id(),
                         ObservedExecutionState.SUCCEEDED,
@@ -665,7 +683,7 @@ class RuntimeClosedLoopConformanceTest {
                                 Artifact.CURRENT_SCHEMA_VERSION,
                                 ReplicaRole.PRIMARY,
                                 "local",
-                                List.of(), NOW, NOW, null, null)));
+                                List.of(), NOW, NOW, renderJob, renderJob==null?null:"project-scoped")));
                 cacheability.put(task.id(), Cacheability.CACHEABLE);
             }
             // Bindings may have been added after the current immutable orchestrator was built.

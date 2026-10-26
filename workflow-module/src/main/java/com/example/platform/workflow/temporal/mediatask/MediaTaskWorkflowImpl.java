@@ -8,18 +8,7 @@ import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 import java.time.Duration;
 
-/**
- * Skeleton implementation of {@link MediaTaskWorkflow} (P2-5b-1-R2).
- *
- * <p>Deterministic workflow code only: no clock, no random, no I/O, no repository access — every
- * side effect happens inside {@link MediaTaskActivities}. The workflow iterates nothing yet: the
- * whole graph is one activity (Option C, decided). The workflow prepares the graph and then executes
- * it in one further activity call (P2-5b-2b-2a); the activity owns every side effect.
- *
- * <p>Retry policy is bounded and mirrors {@code RenderWorkflowImpl}: a retry re-invokes the same
- * activity with the same stable reference; it must never mint a new attempt/generation (the
- * platform attempt identity is created outside Temporal and resolved by the activity).
- */
+/** Deterministic workflow: prepare and execute the verified graph, then await durable Render terminal projection. Every domain side effect is an activity; projection retries do not repeat FFmpeg. */
 @WorkflowImpl(taskQueues = RenderTaskQueue.NAME)
 public class MediaTaskWorkflowImpl implements MediaTaskWorkflow {
 
@@ -71,6 +60,12 @@ public class MediaTaskWorkflowImpl implements MediaTaskWorkflow {
                     .setRetryOptions(mediaTaskActivityRetryOptions())
                     .build());
 
+    // Terminal projection is a durable Temporal retry, not a successful Workflow with a lost DB write.
+    private final MediaTaskActivities terminalActivities=Workflow.newActivityStub(MediaTaskActivities.class,
+            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(2))
+            .setRetryOptions(RetryOptions.newBuilder().setInitialInterval(Duration.ofSeconds(1))
+                    .setMaximumInterval(Duration.ofSeconds(30)).setDoNotRetry(DETERMINISTIC_NO_RETRY_TYPES).build()).build());
+
     @Override
     public MediaTaskWorkflowResult run(BoundGraphReference reference, String tenantId) {
         Workflow.getVersion(VERSION_MARKER, Workflow.DEFAULT_VERSION, 1);
@@ -84,9 +79,16 @@ public class MediaTaskWorkflowImpl implements MediaTaskWorkflow {
             throw new IllegalArgumentException("tenantId must match the bound graph reference scope");
         }
 
-        PreparedTaskRef prepared = activities.prepareTask(reference, tenantId);
-
-        // Whole-graph execution (Option C): one activity call executes every task of the graph.
-        return activities.executeTask(prepared, tenantId);
+        try {
+            PreparedTaskRef prepared = activities.prepareTask(reference, tenantId);
+            MediaTaskWorkflowResult result=activities.executeTask(prepared, tenantId);
+            // Separate retriable projection: a database/outbox fault must not rerun FFmpeg.
+            terminalActivities.completeTask(prepared,result,tenantId);
+            return result;
+        } catch (io.temporal.failure.TemporalFailure failure) {
+            boolean cancelled=io.temporal.workflow.CancellationScope.current().isCancelRequested();
+            Workflow.newDetachedCancellationScope(()->terminalActivities.failTask(reference,tenantId,cancelled)).run();
+            throw failure;
+        }
     }
 }

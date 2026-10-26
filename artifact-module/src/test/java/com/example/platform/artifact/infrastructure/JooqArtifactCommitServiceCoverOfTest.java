@@ -153,20 +153,19 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
     }
 
     @Test
-    void idempotencyKeyReplayIsDelegatedToTheCallerAndReCommitFailsClosed() {
+    void exactIdempotencyKeyReplayIsResolvedAndDifferentKeyReCommitFailsClosed() {
         commitService.commit(request(SUBJECT_ARTIFACT_ID_2, TENANT, SUBJECT_DIGEST, "subject-key-2", List.of()));
 
         ArtifactCommitResult first = commitService.commit(request(
                 COVER_ARTIFACT_ID_2, TENANT, COVER_DIGEST, "cover-key-2",
                 List.of(coverOf(SUBJECT_ARTIFACT_ID_2))));
 
-        // Canonical idempotency contract of the jOOQ adapter (COVER-PROVIDER-001 increment 4): the
-        // adapter is fail-closed on an already-committed identity and does NOT perform an idempotent
-        // re-commit; it delegates idempotency-key replay to the caller's durable record (for the
-        // cover slice: CoverImageTaskStore). The request's idempotency key is carried back on the
-        // canonical result so the caller can re-resolve its own durable record.
+        // Exact key + immutable intent replays the Artifact-owned durable receipt. A different key
+        // still cannot adopt an existing identity, and conflicts create no rows or edges.
         assertThat(first.idempotencyKey()).isEqualTo("cover-key-2");
-        assertThat(commitService.findByIdempotencyKey(TENANT, "cover-key-2")).isEmpty();
+        assertThat(commitService.findByIdempotencyKey(TENANT, "cover-key-2")).contains(first);
+        assertThat(commitService.commit(request(COVER_ARTIFACT_ID_2, TENANT, COVER_DIGEST, "cover-key-2",
+                List.of(coverOf(SUBJECT_ARTIFACT_ID_2))))).isEqualTo(first);
 
         // A re-commit of an existing Artifact identity fails closed and creates no second Artifact,
         // replica or provenance edge.

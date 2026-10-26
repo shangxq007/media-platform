@@ -1,0 +1,50 @@
+[
+  {
+    "path": "platform-app/src/test/java/com/example/platform/migration/UserWorkflowDefinitionV1SchemaMigrationTest.java",
+    "base_total": 6,
+    "candidate_total": 6,
+    "selected": 6,
+    "file_identical": false,
+    "sha256": "dc67b3af8cbaf8412002d62dacc2abfff0428a0ea42a16c2d51c2e55b60caa84"
+  },
+  {
+    "path": "platform-app/src/test/java/com/example/platform/H7V2CanonicalOwnershipInvariantTest.java",
+    "base_total": 27,
+    "candidate_total": 27,
+    "selected": 1,
+    "file_identical": false,
+    "sha256": "e563b05d3332e842eaa58611a9772d677a071afc95b407f7569dddba635ffdb5"
+  },
+  {
+    "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
+    "base_total": 10,
+    "candidate_total": 10,
+    "selected": 10,
+    "file_identical": true,
+    "sha256": "8a8a785cdee11a6de6a94ab051f9f07bcf3788e4573e72477348666fddec3682"
+  },
+  {
+    "path": "platform-app/src/test/java/com/example/platform/Gcr5Gcr6DatabaseStructuralIntegrityTest.java",
+    "base_total": 8,
+    "candidate_total": 8,
+    "selected": 8,
+    "file_identical": true,
+    "sha256": "f302c5468165e9e2c1c55a48b580067183e3cc08f685f6ecceb1d3c401067ebf"
+  },
+  {
+    "path": "platform-app/src/test/java/com/example/platform/FlywaySchemaIntegrationTest.java",
+    "base_total": 1,
+    "candidate_total": 1,
+    "selected": 1,
+    "file_identical": true,
+    "sha256": "a242cc3a484232a3e908cfeb8b3b3fe8e9a58884c09d7ecf1ee5b909ec023586"
+  },
+  {
+    "path": "platform-app/src/test/java/com/example/platform/testinfra/TestDatabaseIsolationGuardTest.java",
+    "base_total": 2,
+    "candidate_total": 2,
+    "selected": 2,
+    "file_identical": true,
+    "sha256": "55837ca12b7163478b8097f51265119e5b231cc9fa4ee199dea0abe73e5312f2"
+  }
+]

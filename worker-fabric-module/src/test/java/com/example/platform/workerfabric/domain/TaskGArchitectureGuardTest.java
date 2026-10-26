@@ -147,7 +147,7 @@ class TaskGArchitectureGuardTest {
         String registration = source(WORKER_INFRASTRUCTURE.resolve(
                 "JooqWorkerFabricRegistrationBoundary.java"));
         String migration = source(REPO_ROOT.resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         assertThat(registration)
                 .contains(
                         "wf_host_snapshot_generation_authority.current_generation",
@@ -319,7 +319,7 @@ class TaskGArchitectureGuardTest {
     @Test
     void duplicateActiveNativeLeaseCountIsZero() {
         assertThat(source(repoRoot().resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql")))
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql")))
                 .contains(
                         "create unique index ux_wf_one_active_native_lease_per_task",
                         "on wf_task_lease (task_id) where active");

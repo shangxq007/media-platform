@@ -95,7 +95,7 @@ public final class ArtifactOutputCommitOrchestrator {
         ArtifactCommitResult result;
         try {
             result = artifactCommitService.commit(commitRequest);
-            requireCommitMatches(stagedOutput, publication, result);
+            requireCommitMatches(stagedOutput, publication, commitRequest, result);
             metrics.artifactCommit(Phase16RuntimeMetrics.OperationOutcome.SUCCESS);
         } catch (RuntimeException failure) {
             metrics.artifactCommit(Phase16RuntimeMetrics.OperationOutcome.FAILURE);
@@ -143,9 +143,19 @@ public final class ArtifactOutputCommitOrchestrator {
     private static void requireCommitMatches(
             StagedExecutionOutput stagedOutput,
             DurableStoragePublication publication,
+            ArtifactCommitRequest request,
             ArtifactCommitResult result) {
         Objects.requireNonNull(result, "ArtifactCommitService result");
-        if (result.artifact().state() != ArtifactState.AVAILABLE
+        if (!result.artifact().artifactId().equals(request.artifactId())
+                || !result.artifact().tenantId().equals(request.tenantId())
+                || !result.replicaBinding().artifactId().equals(request.artifactId())
+                || !result.idempotencyKey().equals(request.idempotencyKey())
+                || result.artifact().mediaType()!=request.mediaType()
+                || result.artifact().artifactKind()!=request.artifactKind()
+                || result.artifact().schemaVersion()!=request.schemaVersion()
+                || result.replicaBinding().replicaRole()!=request.replicaRole()
+                || !result.replicaBinding().region().equals(request.region())
+                || result.artifact().state() != ArtifactState.AVAILABLE
                 || !result.artifact().contentDigest().matches(stagedOutput.contentDigest())
                 || result.artifact().byteLength() != stagedOutput.byteLength()
                 || !result.replicaBinding().storageObjectId().equals(publication.objectId())

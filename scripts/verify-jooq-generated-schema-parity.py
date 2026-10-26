@@ -760,8 +760,9 @@ def verify_identity_parity(
 def verify(schema_path: Path, generated_root: Path) -> tuple[int, int, int, int]:
     if not schema_path.is_file():
         raise VerificationError(f"CANONICAL_SCHEMA_MISSING path={schema_path}")
-    # Existing callers pass V1; include subsequent versioned migrations from that same authority.
-    if schema_path.name == "V1__initial_schema.sql":
+    # The baseline anchors the Versioned migration directory; include subsequent
+    # versioned migrations from that same authority.
+    if schema_path.name == "V1__baseline.sql":
         migrations = sorted(schema_path.parent.glob("V*__*.sql"),
                             key=lambda p: tuple(int(n) for n in p.name.split("__", 1)[0][1:].split("_")))
         sql = "\n".join(p.read_text(encoding="utf-8") for p in migrations)

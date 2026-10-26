@@ -51,7 +51,7 @@ class TaskEArchitectureGuardTest {
     @Test
     void duplicateActiveReservationCountIsZero() throws Exception {
         String schema = Files.readString(repoRoot().resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         assertThat(schema)
                 .contains("ux_wf_one_active_reservation_per_task")
                 .contains("on wf_reservation (task_id) where state = 'ACTIVE'");

@@ -7,9 +7,9 @@
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/media_platform}
-    username: ${SPRING_DATASOURCE_USERNAME:media_platform}
-    password: ${SPRING_DATASOURCE_PASSWORD:media_platform}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   graphql:
@@ -18,9 +18,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
-    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
-    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
+    url: ${SPRING_FLYWAY_URL}
+    user: ${SPRING_FLYWAY_USER}
+    password: ${SPRING_FLYWAY_PASSWORD}
 
 app:
   security:

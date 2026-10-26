@@ -230,15 +230,14 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                 """
                 insert into wf_completion_event (
                     completion_event_id, task_id, attempt_id, generation,
-                    artifact_commit_reference, artifact_committed_at, completed_at)
-                values (?, ?, ?, ?, 'artifact-authority-evidence',
-                        cast(? as timestamptz), cast(? as timestamptz))
+                    artifact_id, completed_at)
+                values (?, ?, ?, ?, ?, cast(? as timestamptz))
                 """,
                 eventId.value(),
                 grant.executableTaskId().sha256Hex(),
                 grant.attempt().id().value(),
                 grant.attempt().ownershipGeneration().value(),
-                OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                ARTIFACT_ID.value(),
                 OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
         dsl.execute(
                 "update wf_execution_attempt set state = 'SUCCEEDED' where attempt_id = ?",

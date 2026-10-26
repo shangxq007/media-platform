@@ -104,6 +104,12 @@ public class RenderBindingInputs extends TableImpl<RenderBindingInputsRecord> {
      */
     public final TableField<RenderBindingInputsRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
+    /**
+     * The column
+     * <code>public.render_binding_inputs.candidate_set_digest</code>.
+     */
+    public final TableField<RenderBindingInputsRecord, String> CANDIDATE_SET_DIGEST = createField(DSL.name("candidate_set_digest"), SQLDataType.VARCHAR(64), this, "");
+
     private RenderBindingInputs(Name alias, Table<RenderBindingInputsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

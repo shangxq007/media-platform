@@ -188,8 +188,8 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         Map<String, Object> singleMigration = migrations.get(0);
         Assertions.assertEquals("1", String.valueOf(singleMigration.get("version")),
                 "Only V1 may be active before first release");
-        Assertions.assertEquals("V1__initial_schema.sql", String.valueOf(singleMigration.get("script")),
-                "Greenfield baseline must use exactly V1__initial_schema.sql");
+        Assertions.assertEquals("V1__baseline.sql", String.valueOf(singleMigration.get("script")),
+                "Greenfield baseline must use exactly V1__baseline.sql");
     }
 
     // ========== Removed routes ==========

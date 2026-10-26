@@ -81,7 +81,7 @@ class TaskDArchitectureGuardTest {
     @Test
     void duplicateActiveNativeLeaseCountIsZero() throws Exception {
         String schema = Files.readString(repoRoot().resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         assertThat(schema)
                 .contains("create unique index ux_wf_one_active_native_lease_per_task")
                 .contains("on wf_task_lease (task_id) where active");

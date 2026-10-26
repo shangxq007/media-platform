@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * (frozen contract TEPHV1 CONTRACT_V1, W1-GAP-006).
  *
  * <p>Active when {@code render.execution.mode=temporal}: cancels the durable
- * workflow whose workflowId equals the render job id. Cancellation reaches
+ * workflow with the shared tenant/job-scoped Render workflow identity. Cancellation reaches
  * the workflow (cancel signal handler marks CANCELLED) and is distinguishable
  * from failure via the workflow status query. Does NOT mutate Timeline,
  * Product READY, RenderExecutionPlan or Plugin state.</p>
@@ -34,11 +34,10 @@ public class TemporalRenderCancellationContinuation implements RenderJobCancella
     public void cancelAfterJobCancelled(String tenantId, String jobId) {
         log.info("Cancelling Temporal render workflow: jobId={} tenant={}", jobId, tenantId);
         try {
-            WorkflowStub stub = workflowClient.newUntypedWorkflowStub(jobId);
+            WorkflowStub stub = workflowClient.newUntypedWorkflowStub(com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenantId,jobId));
             stub.cancel();
-        } catch (Exception e) {
-            log.warn("Temporal workflow cancellation failed or already terminated: jobId={}",
-                    jobId, e);
+        } catch (io.temporal.client.WorkflowNotFoundException notStarted) {
+            log.info("Render workflow has not started or is no longer retained: jobId={}",jobId);
         }
     }
 }

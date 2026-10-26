@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 
-@ConditionalOnProperty(prefix = "app.temporal", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "app.temporal", name = "worker-required", havingValue = "true")
 public class TemporalWorkerHealthIndicator implements HealthIndicator {
 
     private final WorkerFactory workerFactory;

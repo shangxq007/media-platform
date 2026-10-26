@@ -1,0 +1,8 @@
+#!/usr/bin/env -S python3 -I -B
+"""Credential-free entry. Live commands fail before adapter/runtime initialization."""
+import sys
+from pathlib import Path
+sys.dont_write_bytecode=True
+sys.path.insert(0,str(Path(__file__).resolve().parent/'testinfra'))
+from cli import main
+raise SystemExit(main())

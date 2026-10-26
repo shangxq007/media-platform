@@ -14,16 +14,18 @@ owner: platform
 
 **权威库结构**以 **`platform-app/src/main/resources/db/migration/`** 下的 **Flyway 迁移脚本**为准。
 
-当前仓库包含 V1 至 V9 九个 Flyway 迁移；精确文件名、校验和、发布流程和
+当前仓库只包含一个 Flyway 迁移（`V1__baseline.sql`）；精确文件名、校验和、发布流程和
 回滚限制以[规范 Flyway 文档](database/flyway-migration-baseline.md)为准。
-`V1__initial_schema.sql` 是不可变基线，后续变更必须使用单调递增的前向迁移。
+`V1__baseline.sql` 是不可变基线；技术验收前不得改动其字节，后续变更必须使用单调递增的前向迁移。
+
+> 2026-10-20 F8 R2 更正：迁移清单为单一 `V1__baseline.sql`。本文件其余 Schema 统计未在本轮重新核验。
 
 - 新增表、改列、索引、约束：**只通过新的版本化迁移**（如 `V2__xxx.sql`）完成，并与代码同一 MR/发版。
 - **PostgreSQL-only**: 所有迁移使用 PostgreSQL 语法，不支持 H2
 
 ## 迁移历史
 
-开发阶段曾有 V1–V25 共 25 个增量迁移脚本，在上线前合并为单一 `V1__initial_schema.sql`。
+开发阶段曾有 V1–V25 共 25 个增量迁移脚本，在上线前合并为单一 baseline（现名 `V1__baseline.sql`）。
 
 合并规则：
 - 所有 `ALTER TABLE ADD COLUMN` 内联到对应 `CREATE TABLE`

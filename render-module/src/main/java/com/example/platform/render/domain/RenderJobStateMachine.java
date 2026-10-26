@@ -32,6 +32,7 @@ public class RenderJobStateMachine {
      */
     static final Map<RenderJobStatus, Set<RenderJobStatus>> VALID_TRANSITIONS = Map.ofEntries(
             Map.entry(RenderJobStatus.QUEUED, Set.of(
+                    RenderJobStatus.FAILED,
                     RenderJobStatus.SELECTING_PROVIDER,
                     RenderJobStatus.CANCELLED,
                     RenderJobStatus.REJECTED

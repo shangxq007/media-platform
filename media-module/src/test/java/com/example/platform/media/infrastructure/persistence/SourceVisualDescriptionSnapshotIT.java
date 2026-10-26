@@ -1,5 +1,8 @@
 package com.example.platform.media.infrastructure.persistence;
 
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
+import com.example.platform.shared.test.TestDatabaseSchema;
+
 import com.example.platform.colorimage.AlphaDescription;
 import com.example.platform.colorimage.ChromaSubsampling;
 import com.example.platform.colorimage.Chromaticity;
@@ -28,9 +31,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Optional;
 
@@ -42,11 +42,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * binding, profile/UNSPECIFIED-UNKNOWN/Rational preservation, transaction
  * rollback, non-visual streams.
  */
-@Testcontainers
 class SourceVisualDescriptionSnapshotIT {
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static TestDatabaseSchema database;
 
     private static DSLContext dsl;
     private static JooqSourceVisualDescriptionSnapshotRepository repo;
@@ -54,9 +52,9 @@ class SourceVisualDescriptionSnapshotIT {
     private static final ArtifactId ARTIFACT_V1 = new ArtifactId("artifact-v1");
 
     @BeforeAll
-    static void setup() {
-        PG.start();
-        dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+    static void setup() throws Exception {
+        database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
+        dsl = database.dsl();
         dsl.execute("""
                 create table media_stream (
                     id varchar(64) primary key,
@@ -99,10 +97,8 @@ class SourceVisualDescriptionSnapshotIT {
     }
 
     @AfterAll
-    static void teardown() {
-        if (PG != null) {
-            PG.stop();
-        }
+    static void teardown() throws Exception {
+        if (database!=null) database.close();
     }
 
     @BeforeEach
@@ -256,11 +252,12 @@ class SourceVisualDescriptionSnapshotIT {
     @Test
     void transactionRollbackLeavesNoOrphan() {
         MediaStreamId ghost = new MediaStreamId("stream-ghost");
-        assertThrows(org.jooq.exception.DataAccessException.class, () -> dsl.transaction(tx -> {
+        var failure=assertThrows(org.jooq.exception.DataAccessException.class, () -> dsl.transaction(tx -> {
             tx.dsl().execute("insert into source_visual_description_snapshot "
-                    + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) "
-                    + "values (?, ?, ?, ?)", ghost.value(), "asset-1", "artifact-v1", "x");
+                    + "(media_stream_id, artifact_id, canonical_payload) "
+                    + "values (?, ?, ?)", ghost.value(), "artifact-v1", "x");
         }));
+        assertEquals("23503",failure.sqlState(),"rollback must exercise the actual stream FK, not an obsolete-column error");
         Long count = dsl.fetchOne("select count(*) from source_visual_description_snapshot "
                 + "where media_stream_id = ?", ghost.value()).get(0, Long.class);
         assertEquals(0, count, "no orphan snapshot row after failed transaction");

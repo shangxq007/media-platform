@@ -131,6 +131,30 @@ public class WfHostResourceSnapshotDevice extends TableImpl<WfHostResourceSnapsh
      */
     public final TableField<WfHostResourceSnapshotDeviceRecord, Long> SAFETY_HEADROOM_DECODER_ENGINES = createField(DSL.name("safety_headroom_decoder_engines"), SQLDataType.BIGINT.nullable(false), this, "");
 
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot_device.observed_compute_utilization_ratio</code>.
+     */
+    public final TableField<WfHostResourceSnapshotDeviceRecord, Double> OBSERVED_COMPUTE_UTILIZATION_RATIO = createField(DSL.name("observed_compute_utilization_ratio"), SQLDataType.DOUBLE, this, "");
+
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot_device.observed_vram_used_bytes</code>.
+     */
+    public final TableField<WfHostResourceSnapshotDeviceRecord, Long> OBSERVED_VRAM_USED_BYTES = createField(DSL.name("observed_vram_used_bytes"), SQLDataType.BIGINT, this, "");
+
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot_device.observed_encoder_utilization_ratio</code>.
+     */
+    public final TableField<WfHostResourceSnapshotDeviceRecord, Double> OBSERVED_ENCODER_UTILIZATION_RATIO = createField(DSL.name("observed_encoder_utilization_ratio"), SQLDataType.DOUBLE, this, "");
+
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot_device.observed_decoder_utilization_ratio</code>.
+     */
+    public final TableField<WfHostResourceSnapshotDeviceRecord, Double> OBSERVED_DECODER_UTILIZATION_RATIO = createField(DSL.name("observed_decoder_utilization_ratio"), SQLDataType.DOUBLE, this, "");
+
     private WfHostResourceSnapshotDevice(Name alias, Table<WfHostResourceSnapshotDeviceRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -227,6 +251,9 @@ public class WfHostResourceSnapshotDevice extends TableImpl<WfHostResourceSnapsh
     @Override
     public List<Check<WfHostResourceSnapshotDeviceRecord>> getChecks() {
         return Arrays.asList(
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_de_observed_compute_utilization_check"), "(((observed_compute_utilization_ratio >= (0)::double precision) AND (observed_compute_utilization_ratio <= (1)::double precision)))", true),
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_de_observed_decoder_utilization_check"), "(((observed_decoder_utilization_ratio >= (0)::double precision) AND (observed_decoder_utilization_ratio <= (1)::double precision)))", true),
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_de_observed_encoder_utilization_check"), "(((observed_encoder_utilization_ratio >= (0)::double precision) AND (observed_encoder_utilization_ratio <= (1)::double precision)))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_de_safety_headroom_compute_unit_check"), "((safety_headroom_compute_units >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_de_safety_headroom_decoder_engi_check"), "((safety_headroom_decoder_engines >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_de_safety_headroom_encoder_engi_check"), "((safety_headroom_encoder_engines >= 0))", true),
@@ -238,6 +265,7 @@ public class WfHostResourceSnapshotDevice extends TableImpl<WfHostResourceSnapsh
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_device_compute_units_check"), "((compute_units >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_device_decoder_engines_check"), "((decoder_engines >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_device_encoder_engines_check"), "((encoder_engines >= 0))", true),
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_device_observed_vram_used_bytes_check"), "((observed_vram_used_bytes >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_device_vram_bytes_check"), "((vram_bytes >= 0))", true)
         );
     }

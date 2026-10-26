@@ -44,7 +44,7 @@ for f in "$@"; do
 
   # Flyway V1 baseline protection
   case "$f" in
-    */flyway/sql/V1*)
+    platform-app/src/main/resources/db/migration/V1__baseline.sql)
       log_fail "Flyway V1 baseline must not be modified: $f"
       continue
       ;;

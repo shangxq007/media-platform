@@ -19,27 +19,19 @@ public class InMemoryArtifactCommitService implements ArtifactCommitService {
     private final Map<String, Artifact> artifacts = new ConcurrentHashMap<>();
     private final Map<String, ArtifactReplicaBinding> replicaBindings = new ConcurrentHashMap<>();
     private final Map<String, ProvenanceEdge> edges = new ConcurrentHashMap<>();
+    private final Map<String, ArtifactCommitRequest> acceptedRequests = new ConcurrentHashMap<>();
     private final Map<String, ArtifactCommitResult> idempotencyIndex = new ConcurrentHashMap<>();
     private final Map<String, String> artifactTenants = new ConcurrentHashMap<>();
 
     @Override
-    public ArtifactCommitResult commit(ArtifactCommitRequest request) {
+    public synchronized ArtifactCommitResult commit(ArtifactCommitRequest request) {
         Objects.requireNonNull(request, "request");
 
         // Idempotency check: same tenant + idempotencyKey
         String idemKey = request.tenantId() + ":" + request.idempotencyKey();
         ArtifactCommitResult previous = idempotencyIndex.get(idemKey);
         if (previous != null) {
-            // Verify canonical request matches (compare request fields, not artifact fields)
-            String previousRequestDigest = CanonicalSerializer.sha256Hex(
-                    previous.artifact().tenantId() +
-                    previous.artifact().contentDigest().canonicalValue() +
-                    previous.artifact().byteLength());
-            String currentRequestDigest = CanonicalSerializer.sha256Hex(
-                    request.tenantId() +
-                    request.contentDigest().canonicalValue() +
-                    request.byteLength());
-            if (!previousRequestDigest.equals(currentRequestDigest)) {
+            if (!ArtifactCommitIdentity.sameIntent(acceptedRequests.get(idemKey),request)) {
                 throw new ArtifactErrorCode.ArtifactDomainException(
                         ArtifactErrorCode.Error.builder(ArtifactErrorCode.Code.ARTIFACT_IDEMPOTENCY_CONFLICT)
                                 .tenantId(request.tenantId())
@@ -182,6 +174,7 @@ public class InMemoryArtifactCommitService implements ArtifactCommitService {
         ArtifactCommitResult result = new ArtifactCommitResult(
                 artifact, binding, edgeResults, request.idempotencyKey()
         );
+        acceptedRequests.put(idemKey,request);
         idempotencyIndex.put(idemKey, result);
         return result;
     }

@@ -191,7 +191,7 @@ def main() -> int:
         without_comments(path.read_text(encoding="utf-8"))
         for path in ROOT.rglob("src/test/**/*.java") if "/build/" not in path.as_posix()
     )
-    schema = without_comments((ROOT / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+    schema = without_comments((ROOT / "platform-app/src/main/resources/db/migration/V1__baseline.sql")
                               .read_text(encoding="utf-8"))
 
     revision_writer_occurrences = 0

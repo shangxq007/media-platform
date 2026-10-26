@@ -1,3 +1,5 @@
+> Current database-test entry: [PostgreSQL 18 test infrastructure](../../../scripts/testinfra/README.md). Older container/H2 test instructions below are superseded for database tests and do not authorize them. Application startup remains a separate contract.
+
 ---
 status: current
 last_verified: 2026-06-18
@@ -133,7 +135,7 @@ SPRING_PROFILES_ACTIVE=prod
 | Local dev (no Docker) | `dev` |
 | Local dev (with PostgreSQL) | `dev-postgres` |
 | Manual QA / demo | `dev-postgres,preview` |
-| Integration testing | `dev-postgres` + Testcontainers |
+| Integration testing | controlled Job handoff; no development profile/container fallback |
 | Conservative staging | `prod,safe-mode` |
 | Full staging | `prod,r2` |
 | Production | `prod,r2,temporal` + env vars |

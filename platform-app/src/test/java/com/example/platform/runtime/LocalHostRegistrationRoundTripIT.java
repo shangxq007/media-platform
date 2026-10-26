@@ -1,5 +1,8 @@
 package com.example.platform.runtime;
 
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
+import com.example.platform.shared.test.TestDatabaseSchema;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,10 +27,6 @@ import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * P2-5b-2a-1-2-R9: bounded local host/runtime registration round-trip against real PostgreSQL.
@@ -36,11 +35,9 @@ import org.testcontainers.utility.MountableFile;
  * exactly one durable host registration row exists, the incarnation identity is stable, and the
  * validity window is the owner-decided 30 s.
  */
-@Testcontainers
 class LocalHostRegistrationRoundTripIT {
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static TestDatabaseSchema database;
 
     private static final String HOST_ID = WorkerRegistrationConfiguration.LOCAL_HOST_ID;
 
@@ -50,36 +47,22 @@ class LocalHostRegistrationRoundTripIT {
     @TempDir
     static Path workRoot;
 
+    @org.junit.jupiter.api.AfterAll
+    static void closeDatabase() throws Exception {
+        if (database!=null) database.close();
+    }
+
     @BeforeAll
     static void setup() throws Exception {
-        PG.start();
+        database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         Path migrationDir = locateMigrationDir();
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V1__initial_schema.sql")),
-                "/migrations/V1.sql");
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V2__render_binding_inputs.sql")),
-                "/migrations/V2.sql");
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(
-                        migrationDir.resolve("V3__worker_fabric_admission_evidence.sql")),
-                "/migrations/V3.sql");
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(
-                        migrationDir.resolve("V4__worker_readiness_evidence.sql")),
-                "/migrations/V4.sql");
-        applyMigration("/migrations/V1.sql");
-        applyMigration("/migrations/V2.sql");
-        applyMigration("/migrations/V3.sql");
-        applyMigration("/migrations/V4.sql");
-        dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        dsl = database.dsl();
         boundary = new JooqWorkerFabricRegistrationBoundary(dsl);
     }
 
-    private static void applyMigration(String path) throws Exception {
-        var result = PG.execInContainer("psql", "-U", PG.getUsername(), "-d", PG.getDatabaseName(),
-                "-v", "ON_ERROR_STOP=1", "-f", path);
-        assertEquals(0, result.getExitCode(), "migration " + path + " failed: " + result.getStderr());
+    private static void applyMigration(Path path) throws Exception {
+        database.executeScript(Files.readString(path));
     }
 
     private static Path locateMigrationDir() {

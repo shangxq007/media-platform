@@ -133,7 +133,7 @@ class ArtifactCommitMigratedSchemaIntegrationTest extends PostgresTestContainerS
                 workingDirectory.resolve("../platform-app/src/main/resources/db/migration"),
                 workingDirectory.resolve("platform-app/src/main/resources/db/migration")}) {
             Path normalized = candidate.normalize();
-            if (Files.isRegularFile(normalized.resolve("V1__initial_schema.sql"))) {
+            if (Files.isRegularFile(normalized.resolve("V1__baseline.sql"))) {
                 return normalized;
             }
         }

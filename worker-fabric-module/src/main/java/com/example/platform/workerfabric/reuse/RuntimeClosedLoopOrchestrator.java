@@ -76,6 +76,13 @@ public final class RuntimeClosedLoopOrchestrator {
                     request.tenantId(),
                     keys.get(task.id()),
                     request.cacheability().getOrDefault(task.id(), Cacheability.NOT_CACHEABLE));
+            // A reuse hint is not permission to substitute another job/attempt's immutable publication.
+            var target=request.taskExecutions().get(task.id());
+            if(decision.outcome()==ValidatedReuseDecision.Outcome.VALIDATED_HIT && target!=null && target.artifactCommitMetadata().renderJobId()!=null
+                    && !target.artifactCommitMetadata().artifactId().equals(decision.record().orElseThrow().artifactPin().artifactId())) {
+                decision=ValidatedReuseDecision.reject(ValidatedReuseDecision.Outcome.MISS,
+                        "reuse publication does not match this execution's exact output identity");
+            }
             decisions.put(task.id(), decision);
             metrics.reuseLookup(decision.outcome());
             if (decision.outcome() == ValidatedReuseDecision.Outcome.VALIDATED_HIT) {
@@ -140,8 +147,7 @@ public final class RuntimeClosedLoopOrchestrator {
                             taskExecution.runtimeContext().platformOwnershipGeneration(),
                             committed.artifactCommitResult().artifact().createdAt()));
             ArtifactCommitEvidence commitEvidence = new ArtifactCommitEvidence(
-                    committed.artifactCommitResult().idempotencyKey(),
-                    committed.artifactCommitResult().artifact().createdAt());
+                    committed.artifactCommitResult().artifact().artifactId());
             FencedReuseCompletionResult fenced = completionOrchestrator.complete(
                     publication, taskExecution.completionEvidence(), commitEvidence);
             metrics.reusePublication(fenced.publicationResult());
@@ -259,7 +265,8 @@ public final class RuntimeClosedLoopOrchestrator {
         return (result.completionDecision() == CompletionDecision.COMPLETED
                         || result.completionDecision() == CompletionDecision.DUPLICATE_NOOP)
                 && (result.publicationResult() == ReusePublicationResult.ACTIVATED_WINNER
-                        || result.publicationResult() == ReusePublicationResult.WINNER_IDEMPOTENT);
+                        || result.publicationResult() == ReusePublicationResult.WINNER_IDEMPOTENT
+                        || result.publicationResult() == ReusePublicationResult.COMPLETED_WITHOUT_CACHE);
     }
 
     private static void validateAuthoritativeOutputCardinality(

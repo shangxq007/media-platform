@@ -77,7 +77,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     excludeFilters = @ComponentScan.Filter(
             type = FilterType.CUSTOM, classes = org.springframework.boot.context.TypeExcludeFilter.class))
 @EnableScheduling
-@Import({BuiltinDataBootstrapRunner.class,
+@Import({com.example.platform.runtime.PlatformRuntimeRoleGuard.class,com.example.platform.persistence.binding.JooqBoundGraphInputStore.class,BuiltinDataBootstrapRunner.class,
     com.example.platform.lifecycle.PlatformGracefulShutdownCoordinator.class,
     com.example.platform.lifecycle.TemporalWorkerHealthIndicator.class,
     com.example.platform.analytics.AnalyticsConfiguration.class, com.example.platform.cloudresource.CloudResourceConfiguration.class, com.example.platform.marketplace.MarketplaceConfiguration.class, DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})

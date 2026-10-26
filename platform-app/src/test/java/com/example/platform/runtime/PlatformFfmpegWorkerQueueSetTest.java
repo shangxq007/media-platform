@@ -41,13 +41,12 @@ class PlatformFfmpegWorkerQueueSetTest {
     }
 
     @Test
-    void baseTemporalProfileAloneRegistersTheWorkflowEngineQueue() {
+    void baseTemporalProfileIsClientOnly() {
         runner("temporal").run(context -> {
             assertThat(context).hasNotFailed();
-            WorkerFactory factory = context.getBean(WorkerFactory.class);
-            // Negative control: without the worker profile the base list owns two queues, so the
-            // single-queue assertion below is a real narrowing and not a vacuous one.
-            assertThat(registeredQueues(factory)).contains("workflow-process", "media-platform-tasks");
+            // API/client profile must never create a worker factory or claim execution queues.
+            assertThat(context).doesNotHaveBean(WorkerFactory.class);
+            assertThat(context).hasSingleBean(io.temporal.client.WorkflowClient.class);
         });
     }
 
@@ -65,14 +64,12 @@ class PlatformFfmpegWorkerQueueSetTest {
     }
 
     @Test
-    void workerProfileAppliedBeforeTemporalDoesNotNarrowTheBaseList() {
-        // Locks the last-wins precedence: with the worker profile first, the base temporal list wins
-        // and the poller set widens back to the workflow engine queue. This is the exact hazard that
-        // makes the deployed worker-last order load-bearing (and is pinned so a reorder is caught).
+    void workerProfileOrderCannotBroadenTheQueueSet() {
+        // Reordering profiles cannot restore the old broad workflow discovery scope.
         runner("ffmpeg-worker,temporal").run(context -> {
             assertThat(context).hasNotFailed();
             WorkerFactory factory = context.getBean(WorkerFactory.class);
-            assertThat(registeredQueues(factory)).contains("workflow-process", "media-platform-tasks");
+            assertThat(registeredQueues(factory)).containsExactly("media-platform-tasks");
         });
     }
 
@@ -87,7 +84,8 @@ class PlatformFfmpegWorkerQueueSetTest {
                 .withPropertyValues(
                         "spring.profiles.active=" + profiles,
                         "spring.temporal.connection.target=127.0.0.1:7233",
-                        "spring.temporal.namespace=media-platform-dev");
+                        "spring.temporal.namespace=media-platform-dev",
+                        "spring.temporal.start-workers=false");
     }
 
     /** Reflects the real {@code WorkerFactory.workers} registration map — no proxy, no fake. */

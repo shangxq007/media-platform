@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.artifact.infrastructure.ArtifactRepository;
+import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.config.providerinteroperability.ProviderInteroperabilityAuthority;
 import com.example.platform.render.api.request.RenderInitiator;
@@ -67,16 +67,16 @@ class FirstRenderPlanningApplicationServiceTest {
     private final RenderJobService renderJobService = mock(RenderJobService.class);
     private final TimelineRevisionSaveService revisionSaveService = mock(TimelineRevisionSaveService.class);
     private final TimelineRevisionQueryService revisionQueryService = mock(TimelineRevisionQueryService.class);
-    private final ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+    private final ArtifactQueryService artifactQueries = mock(ArtifactQueryService.class);
     private final ProviderInteroperabilityAuthority authority = mock(ProviderInteroperabilityAuthority.class);
 
     private final FirstRenderPlanningApplicationService service = new FirstRenderPlanningApplicationService(
-            renderJobService, revisionSaveService, revisionQueryService, artifactRepository, authority);
+            renderJobService, revisionSaveService, revisionQueryService, artifactQueries, authority);
 
     @Test
     void preparesIndependentIdsBoundedCapabilitiesAndAuthorityDeclarations() {
         stubRevision("art-1");
-        when(artifactRepository.exists(TENANT, new ArtifactId("art-1"))).thenReturn(true);
+        when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-1"))).thenReturn(java.util.Optional.of(mock(com.example.platform.artifact.domain.Artifact.class)));
         when(authority.declarations()).thenReturn(List.of());
         when(renderJobService.createForProject(any(), any(), any(), any()))
                 .thenReturn(new RenderJobResponse(JOB_ID, PROJECT, SNAPSHOT_ID, PROFILE, "QUEUED"));
@@ -109,8 +109,8 @@ class FirstRenderPlanningApplicationServiceTest {
     void resolvesExistingArtifactAndFailsMissingOne() {
         // P3-F
         stubRevision("art-present", "art-missing");
-        when(artifactRepository.exists(TENANT, new ArtifactId("art-present"))).thenReturn(true);
-        when(artifactRepository.exists(TENANT, new ArtifactId("art-missing"))).thenReturn(false);
+        when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-present"))).thenReturn(java.util.Optional.of(mock(com.example.platform.artifact.domain.Artifact.class)));
+        when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-missing"))).thenReturn(java.util.Optional.empty());
         when(authority.declarations()).thenReturn(List.of());
         when(renderJobService.createForProject(any(), any(), any(), any()))
                 .thenReturn(new RenderJobResponse(JOB_ID, PROJECT, SNAPSHOT_ID, PROFILE, "QUEUED"));
@@ -126,7 +126,7 @@ class FirstRenderPlanningApplicationServiceTest {
     void existenceExceptionYieldsFailed() {
         // P3-G: an exception while confirming existence is FAILED (no PENDING/UNAVAILABLE).
         stubRevision("art-error");
-        when(artifactRepository.exists(TENANT, new ArtifactId("art-error")))
+        when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-error")))
                 .thenThrow(new IllegalStateException("existence check timed out"));
         when(authority.declarations()).thenReturn(List.of());
         when(renderJobService.createForProject(any(), any(), any(), any()))

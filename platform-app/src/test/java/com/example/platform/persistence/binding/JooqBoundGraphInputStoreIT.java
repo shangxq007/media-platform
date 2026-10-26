@@ -1,5 +1,8 @@
 package com.example.platform.persistence.binding;
 
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
+import com.example.platform.shared.test.TestDatabaseSchema;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,10 +62,6 @@ import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * P2-5a2c: real-PostgreSQL proof for the {@code render_binding_inputs} migration and the jOOQ
@@ -70,11 +69,9 @@ import org.testcontainers.utility.MountableFile;
  * and fail-closed digest verification. The plan/candidate fixture mirrors the bounded V1 codec
  * fixture in media-execution-plan-module.
  */
-@Testcontainers
 class JooqBoundGraphInputStoreIT {
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static TestDatabaseSchema database;
 
     private static final MediaTime ZERO = MediaTime.ofRational(0, 1);
     private static final MediaTime TWO = MediaTime.ofRational(2, 1);
@@ -83,26 +80,22 @@ class JooqBoundGraphInputStoreIT {
     private static DSLContext dsl;
     private static JooqBoundGraphInputStore store;
 
+    @org.junit.jupiter.api.AfterAll
+    static void closeDatabase() throws Exception {
+        if (database!=null) database.close();
+    }
+
     @BeforeAll
     static void setup() throws Exception {
-        PG.start();
+        database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         Path migrationDir = locateMigrationDir();
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V1__initial_schema.sql")),
-                "/migrations/V1.sql");
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V2__render_binding_inputs.sql")),
-                "/migrations/V2.sql");
-        applyMigration("/migrations/V1.sql");
-        applyMigration("/migrations/V2.sql");
-        dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        dsl = database.dsl();
         store = new JooqBoundGraphInputStore(dsl);
     }
 
-    private static void applyMigration(String path) throws Exception {
-        var result = PG.execInContainer("psql", "-U", PG.getUsername(), "-d", PG.getDatabaseName(),
-                "-v", "ON_ERROR_STOP=1", "-f", path);
-        assertEquals(0, result.getExitCode(), "migration " + path + " failed: " + result.getStderr());
+    private static void applyMigration(Path path) throws Exception {
+        database.executeScript(Files.readString(path));
     }
 
     private static Path locateMigrationDir() {
@@ -189,11 +182,11 @@ class JooqBoundGraphInputStoreIT {
 
     private boolean columnExists(String table, String column) {
         return dsl.fetchCount(DSL.table("information_schema.columns"),
-                DSL.field("table_name").eq(table).and(DSL.field("column_name").eq(column))) > 0;
+                DSL.field("table_schema").eq(database.name()).and(DSL.field("table_name").eq(table)).and(DSL.field("column_name").eq(column))) > 0;
     }
 
     private boolean indexExists(String indexName) {
-        return dsl.fetchCount(DSL.table("pg_indexes"), DSL.field("indexname").eq(indexName)) > 0;
+        return dsl.fetchCount(DSL.table("pg_indexes"), DSL.field("schemaname").eq(database.name()).and(DSL.field("indexname").eq(indexName))) > 0;
     }
 
     // ---------- fixture (mirrors media-execution-plan bounded V1 codec fixture) ----------

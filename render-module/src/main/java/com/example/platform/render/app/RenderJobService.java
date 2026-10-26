@@ -165,11 +165,11 @@ public class RenderJobService {
     public RenderJobResponse cancel(String jobId, String tenantId) {
         assertTenantAccess(tenantId);
         RenderJobResponse job = authorizeJobMutation(jobId, tenantId);
-        RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
+        var locked=renderJobRepository.requireScopedJobForUpdate(tenantId,jobId);
+        RenderJobStatus currentStatus = RenderJobStatus.valueOf(locked.get("status",String.class));
+        if(currentStatus==RenderJobStatus.CANCELLED)return mutationJob(jobId);
         stateMachine.validateTransition(currentStatus, RenderJobStatus.CANCELLED);
-
-        renderJobRepository.updateStatus(jobId, RenderJobStatus.CANCELLED.name());
-        historyRepository.record(jobId, job.status(), RenderJobStatus.CANCELLED.name(), "User cancelled", null);
+        new RenderStateTransitions(renderJobRepository,historyRepository,publisher).transition(jobId,job.projectId(),currentStatus,RenderJobStatus.CANCELLED,"USER_CANCELLED");
         // W1-GAP-006 (frozen contract TEPHV1 CONTRACT_V1): propagate the
         // application cancellation to the durable execution mechanism
         // (Temporal workflow cancel in temporal mode; no-op in local mode).

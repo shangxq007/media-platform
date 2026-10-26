@@ -16,7 +16,7 @@ class I6PaymentAuthorityArchitectureTest {
     @Test
     void schemaDefinesCanonicalAuthorityWithoutRawPayloadColumns() throws Exception {
         String schema = Files.readString(ROOT.resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         assertTrue(schema.contains("create table payment_transaction"));
         assertTrue(schema.contains("create table payment_command"));
         assertTrue(schema.contains("create table provider_webhook_receipt"));

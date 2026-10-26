@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "phase": "synthetic",
+  "control_uid": 61001,
+  "control_gid": 61001,
+  "test_uid": 61003,
+  "test_gid": 61003,
+  "socket": "/run/media-platform-executor/broker.sock",
+  "records_directory": "/var/lib/media-platform-executor",
+  "launch_policy": "/etc/media-platform/testinfra/launch.json",
+  "cgroup_parent": "/sys/fs/cgroup/media-platform-jobs.slice"
+}

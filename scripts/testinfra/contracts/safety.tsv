@@ -1,0 +1,33 @@
+id	contract	synthetic_stimulus	required_result	observation
+A01	Fixed project and credential scope	Caller Project override or API-reported scope unknown/mismatched	No create/start/delete; identify blocked policy	fake API trace must be empty of mutations
+A02	Production/default/baseline protection	Provide real-ID-shaped protected/default/existing object	No use/delete even if name looks run-owned	Assert exact protected-ID guard before mutation
+A03	Fresh branch vs template0 DB	Branch cloned with user rows; DB template1 or observer reports object exists	No READY/no context; quarantine resource	Observer must be called; hardcoded initially_empty is insufficient
+A04	Run/attempt identity	Use runA spec with independently supervised runB/attemptB	Reject before any JDBC connection	assert exact mismatch stage, not any exception
+A05	Resource tuple	Replace endpoint, port, DB, role or API project/parent/branch	Reject before child start/connect/delete	Parameterize each field; compare against controller record
+A06	Duplicate/reuse allocation	Attempt same run/attempt resource or old closed spec	No new job and no adopting existing object	No fallback to shared test credentials
+A07	One-shot launch handoff	Missing/extra/duplicate fields; arbitrary descriptor path/env overrides	Fail closed; consume exactly one controller context	No old HMAC loading or env-self-approval
+A08	Role effective privilege	Set superuser/CREATEDB/CREATEROLE/member owner/PUBLIC CONNECT to other DB	Refuse READY	Inspect fake privilege observer results incl memberships
+A09	Child secrets boundary	Parent contains management API/BWS/HMAC/prod credentials and cache paths	Child receives only run credentials/context and approved nonsecrets	Inspect fake spawn full env/FD/path ACL boundary; no secret logging
+A10	Active lease cleanup race	RUNNING; second cleanup controller or job start	Zero deletion and no second job admission	Controlled interleaving, same lock domain
+A11	Expired heartbeat	Heartbeat TTL expires but worker still live/unreachable	QUARANTINED; zero delete	Time alone cannot imply job ended
+A12	Supervisor crash	Supervisor exits; local lock releases; worker alive	Recovery blocks cleanup; quarantine	Fake stable job identity and child-survival trace
+A13	Job identity reuse	Same numeric PID with different boot/start/job identity	No signal/no deletion; investigate	Do not kill unrelated process
+A14	Ordered happy cleanup	Job exits normally; fence, session count0, ownership matches	stop admission -> job ended -> NOLOGIN/CONNECT fence -> drain -> identity GET -> exact delete -> confirm absence	Exact ordered calls, no wildcard/list-and-delete
+A15	Stop timeout	Worker will not stop	No SQL revoke/delete until permitted stop conditions; retain	No force delete shortcut
+A16	Fence failure	NOLOGIN/revoke/credential invalidation fails	No delete; quarantine	No assumed password expiry success
+A17	Established session	NOLOGIN succeeds but old backend still active	Exact DB+role backend termination and zero-count recheck or quarantine	Assert no claim NOLOGIN killed session
+A18	Drain/observation unavailable	Cannot read/terminate sessions	No delete; retain reason	No broad backend termination
+A19	Resource changed protection	Run branch becomes default/protected or parent/project mismatches	No delete despite old ledger ownership	Fresh read before destructive request
+A20	Exact ID immutable	Test supplies cleanup-target/project/branch/name	Input cannot alter controller deletion tuple	Only fixed policy Project + stored branch ID
+A21	Create reply lost	API may create but no trusted ID response/operation recovery	Record unknown outcome; no name/tag-based adoption or deletion	Fake idempotency-supported and unsupported variants
+A22	Delete reply lost and retry	Delete uncertain; later exact GET404 or still present	Confirm absent -> CLOSED; else safely retry after all gates	No success on request submission alone
+A23	Missing/rolled-back journal	Old CLEANING/READY record restored; actual process state unknown	Quarantine/no reissue/no automatic delete	Actual job/resource reconciliation always required
+A24	Network/JDBC interruption	Run connection drops	Fail run; stop/fence/drain; fresh attempt only	No production/local/shared DB fallback
+A25	Uniform TLS outputs	Mixed-case/duplicate params, factories, URL/env CA conflict, scoped URL host override	Reject or canonicalize per fixed contract across Hikari/Flyway/JDBC	Capture actual factory inputs; no network
+A26	PostgreSQL real identity	Fake major!=18, wrong current_database/user, recovery or SSLfalse	Reject and close handles	Specific query/result/resource-close assertions
+A27	Schema isolation retained	Two class schemas and generated public tables	JDBC/Flyway/jOOQ same owned DB/schema; migration assertion unchanged	Render SQL/factory inspection only; live freshness remains pending
+A28	28 target protection	Compare frozen six target classes	28 method identities and business assertions retained; no disabling	Static scope inventory; do not relabel as executed
+A29	Protocol retirement	Old valid HMAC/ACTIVE file supplied or replayed	No consumer; cannot start job/create authority; historical failure preserved	Scan imports/env/fixtures/entrypoints; no compatibility mode
+A30	Orphan observability	Any partial failure	Report run/known IDs/state/reason/last operation without credential values	Reconciliation created/deleted/retained arithmetic
+A31	Controller concurrency topology	A second independent host attempts same resources	Unsupported and blocked, no independent local-lock success claims	No silently adding distributed mode
+A32	API read scope and BWS allowlist	Control credential broader than test account; child uses control Machine Account	Reject deployment readiness; child never calls real BWS in offline tests	Project-name/allowlist is not API permission proof

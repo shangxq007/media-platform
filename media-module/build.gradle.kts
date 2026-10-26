@@ -40,9 +40,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testImplementation("org.assertj:assertj-core:3.27.7")
-    testImplementation("org.testcontainers:testcontainers:2.0.4")
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.4")
-    testRuntimeOnly("org.postgresql:postgresql:42.7.4")
+    testImplementation(testFixtures(project(":shared-kernel")))
+    testRuntimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.3")
 }
 

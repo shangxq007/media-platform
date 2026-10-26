@@ -69,7 +69,7 @@ class ArtifactApplicationControllerTest {
         ArtifactScope scope = new ArtifactScope("tenant-a", "project-a", "job-a");
         ArtifactId artifactId = new ArtifactId("artifact-a");
         service.access = new ArtifactAccess(
-                artifactId, URI.create("https://access.example/artifact-a"),
+                artifactId, URI.create("/api/tenants/tenant-a/projects/project-a/render-jobs/job-a/artifacts/artifact-a/content"),
                 Instant.parse("2026-08-29T01:00:00Z"));
 
         ResponseEntity<?> result = controller.access(
@@ -78,14 +78,14 @@ class ArtifactApplicationControllerTest {
         assertEquals(200, result.getStatusCode().value());
         var body = (ArtifactApplicationController.ArtifactAccessResponse) result.getBody();
         assertEquals("artifact-a", body.access().artifactId());
-        assertEquals("https://access.example/artifact-a", body.access().accessUrl());
+        assertEquals("/api/tenants/tenant-a/projects/project-a/render-jobs/job-a/artifacts/artifact-a/content", body.access().accessUrl());
         assertFalse(body.toString().contains("bucket"));
     }
 
     @Test
     void listAndAccessAuthorizeProjectReadBeforeServiceAccess() {
         service.access = new ArtifactAccess(
-                new ArtifactId("artifact-a"), URI.create("https://access.example/artifact-a"),
+                new ArtifactId("artifact-a"), URI.create("/api/tenants/tenant-a/projects/project-a/render-jobs/job-a/artifacts/artifact-a/content"),
                 Instant.parse("2026-08-29T01:00:00Z"));
 
         controller.list("tenant-a", "project-a", "job-a", 25);
@@ -110,7 +110,7 @@ class ArtifactApplicationControllerTest {
         private ArtifactAccess access;
 
         private FakeArtifactApplicationService() {
-            super(new ArtifactApplicationQueryStub(), new ArtifactQueryServiceStub(), List.of());
+            super(new ArtifactApplicationQueryStub(), new ArtifactQueryServiceStub());
         }
 
         @Override

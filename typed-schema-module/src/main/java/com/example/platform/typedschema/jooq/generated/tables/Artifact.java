@@ -21,6 +21,7 @@ import com.example.platform.typedschema.jooq.generated.tables.SearchProjection.S
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot.SourceVisualDescriptionSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
+import com.example.platform.typedschema.jooq.generated.tables.WfCompletionEvent.WfCompletionEventPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
 import java.time.Instant;
@@ -460,6 +461,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _wfArtifactReuseIndex = new WfArtifactReuseIndexPath(this, null, Keys.WF_ARTIFACT_REUSE_INDEX__WF_ARTIFACT_REUSE_INDEX_ARTIFACT_ID_FKEY.getInverseKey());
 
         return _wfArtifactReuseIndex;
+    }
+
+    private transient WfCompletionEventPath _wfCompletionEvent;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.wf_completion_event</code> table
+     */
+    public WfCompletionEventPath wfCompletionEvent() {
+        if (_wfCompletionEvent == null)
+            _wfCompletionEvent = new WfCompletionEventPath(this, null, Keys.WF_COMPLETION_EVENT__WF_COMPLETION_EVENT_ARTIFACT_ID_FKEY.getInverseKey());
+
+        return _wfCompletionEvent;
     }
 
     @Override

@@ -50,7 +50,7 @@ public final class PlatformRuntimeRoleGuard {
             // P0-5 D2: the worker/COMBINED process must also discover the platform workflow package
             // so that the existing MediaTaskWorkflowImpl is registered on the canonical queue. This
             // is a discovery-scope allowance only; it adds no new workflow, queue or runtime authority.
-            "com.example.platform.workflow");
+            "com.example.platform.workflow.temporal.mediatask");
 
     /** Unified ffmpeg-worker sandbox configuration keys. */
     static final String SANDBOX_BWRAP_KEY = "platform.ffmpeg-worker.sandbox.bwrap";

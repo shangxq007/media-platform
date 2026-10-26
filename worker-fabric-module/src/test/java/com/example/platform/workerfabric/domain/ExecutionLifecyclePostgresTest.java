@@ -262,7 +262,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
                         "output-r2-stale", ExpectedOutputValidation.Status.VALID));
         assertThat(authority.completeIfCurrent(
                         staleCompletion,
-                        new ArtifactCommitEvidence("artifact-r2-stale", HEARTBEAT_AT)))
+                        new ArtifactCommitEvidence(new com.example.platform.shared.identity.ArtifactId("artifact-r2-stale"))))
                 .isEqualTo(CompletionDecision.STALE_ATTEMPT_REJECTED);
         assertThat(count("wf_completion_event")).isZero();
     }
@@ -377,8 +377,9 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
                 ObservedExecutionState.SUCCEEDED,
                 new ExpectedOutputValidation(
                         "output-r2-current", ExpectedOutputValidation.Status.VALID));
+        dsl.execute("insert into artifact(id,tenant_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('artifact-r2-current','lifecycle-test','legacy',?,0,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())", "a".repeat(64));
         ArtifactCommitEvidence commit =
-                new ArtifactCommitEvidence("artifact-r2-current", HEARTBEAT_AT);
+                new ArtifactCommitEvidence(new com.example.platform.shared.identity.ArtifactId("artifact-r2-current"));
 
         assertThat(authority.ingest(observation))
                 .isEqualTo(ExecutionObservationIngestionPort.IngestionResult.RECORDED_CURRENT_EVIDENCE);

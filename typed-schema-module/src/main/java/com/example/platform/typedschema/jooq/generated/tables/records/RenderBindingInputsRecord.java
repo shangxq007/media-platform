@@ -160,6 +160,22 @@ public class RenderBindingInputsRecord extends UpdatableRecordImpl<RenderBinding
         return (Instant) get(9);
     }
 
+    /**
+     * Setter for
+     * <code>public.render_binding_inputs.candidate_set_digest</code>.
+     */
+    public void setCandidateSetDigest(String value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.render_binding_inputs.candidate_set_digest</code>.
+     */
+    public String getCandidateSetDigest() {
+        return (String) get(10);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -183,7 +199,7 @@ public class RenderBindingInputsRecord extends UpdatableRecordImpl<RenderBinding
     /**
      * Create a detached, initialised RenderBindingInputsRecord
      */
-    public RenderBindingInputsRecord(Long id, String tenantId, String renderJobId, String planRef, String planDigest, String expectedEtgDigest, byte[] planJson, byte[] candidatesJson, byte[] declarationsJson, Instant createdAt) {
+    public RenderBindingInputsRecord(Long id, String tenantId, String renderJobId, String planRef, String planDigest, String expectedEtgDigest, byte[] planJson, byte[] candidatesJson, byte[] declarationsJson, Instant createdAt, String candidateSetDigest) {
         super(RenderBindingInputs.RENDER_BINDING_INPUTS);
 
         setId(id);
@@ -196,6 +212,7 @@ public class RenderBindingInputsRecord extends UpdatableRecordImpl<RenderBinding
         setCandidatesJson(candidatesJson);
         setDeclarationsJson(declarationsJson);
         setCreatedAt(createdAt);
+        setCandidateSetDigest(candidateSetDigest);
         resetChangedOnNotNull();
     }
 }

@@ -7,14 +7,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
- * Base class for integration tests using PostgreSQL Testcontainers.
+ * Base fixture for integration tests using an external PostgreSQL 18 database.
  *
- * <p>Uses a shared singleton PostgreSQL container to avoid resource contention
- * when multiple test classes run in the same JVM. The container is started once
- * and reused across all test classes.
+ * <p>The provider is the single connection authority. There is no container,
+ * no localhost fallback, and no branch-management credential in the test JVM.
  *
  * <p>Tests that need clean-migration semantics (a pristine schema per class, so
  * Flyway state never leaks between classes) obtain a unique logical SCHEMA inside
@@ -34,7 +32,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 public abstract class PostgresTestContainerSupport {
 
-    protected static final PostgreSQLContainer<?> POSTGRES;
+    protected static final TestDatabaseConnectionProvider PROVIDER;
 
     /**
      * Frozen lazy-Hikari ceiling for the Spring-managed test datasource (Contract V4).
@@ -100,26 +98,26 @@ public abstract class PostgresTestContainerSupport {
     private static final AtomicInteger ISOLATED_SCHEMA_COUNTER = new AtomicInteger();
 
     static {
-        POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
-                .withDatabaseName("media_platform_test")
-                .withUsername("test")
-                .withPassword("test")
-                .withStartupTimeoutSeconds(120)
-                .withReuse(false);
-        POSTGRES.start();
+        PROVIDER = TestDatabaseConnectionProvider.fromControlledLaunch();
+        try {
+            PROVIDER.validateConnection();
+        } catch (java.sql.SQLException e) {
+            throw new IllegalStateException("test database preflight failed", e);
+        }
     }
 
     /**
      * Returns a unique logical schema name for an isolation-needing test class.
      *
      * <p>The name contains only {@code [a-z0-9_]} (a valid, short PostgreSQL
-     * identifier), is unique per call, and reuses the shared {@link #POSTGRES}
+     * identifier), is unique per call, and reuses the shared {@link #PROVIDER}
      * runtime — never a second container.
      */
     protected static String isolatedSchemaName() {
         int seq = ISOLATED_SCHEMA_COUNTER.getAndIncrement();
         int suffix = ThreadLocalRandom.current().nextInt(0, 0xffff);
-        return "ts_" + Integer.toHexString(seq) + "_" + Integer.toHexString(suffix);
+        String run = PROVIDER.runId().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+        return "ts_" + run + "_" + Integer.toHexString(seq) + "_" + Integer.toHexString(suffix);
     }
 
     /**
@@ -129,20 +127,20 @@ public abstract class PostgresTestContainerSupport {
      * (fresh Flyway baseline per class, no cross-class state leakage).
      *
      * <p>The schema is created and owned by Flyway ({@code create-schemas=true});
-     * the container is never started a second time.
+     * the provider connection is shared for the run.
      */
     protected static void registerIsolatedSchemaProperties(DynamicPropertyRegistry registry, String schema) {
-        registry.add("spring.datasource.url", () -> POSTGRES.getJdbcUrl());
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
+        registry.add("spring.datasource.url", () -> PROVIDER.scopedJdbcUrl(schema));
+        registry.add("spring.datasource.username", PROVIDER::username);
+        registry.add("spring.datasource.password", PROVIDER::secret);
+        registry.add("spring.datasource.driver-class-name", PROVIDER::driverClassName);
         // Capacity contract: lazy pool for the Spring-managed datasource (capacity, not preallocated).
         registry.add("spring.datasource.hikari.maximum-pool-size", () -> Integer.toString(SPRING_MAX_POOL_SIZE));
         registry.add("spring.datasource.hikari.minimum-idle", () -> Integer.toString(SPRING_MIN_IDLE));
         registry.add("spring.flyway.enabled", () -> "true");
-        registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.flyway.user", POSTGRES::getUsername);
-        registry.add("spring.flyway.password", POSTGRES::getPassword);
+        registry.add("spring.flyway.url", () -> PROVIDER.scopedJdbcUrl(schema));
+        registry.add("spring.flyway.user", PROVIDER::username);
+        registry.add("spring.flyway.password", PROVIDER::secret);
         registry.add("spring.flyway.schemas", () -> schema);
         registry.add("spring.flyway.default-schema", () -> schema);
         registry.add("spring.flyway.create-schemas", () -> "true");
@@ -152,42 +150,62 @@ public abstract class PostgresTestContainerSupport {
 
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
+        registry.add("spring.datasource.url", PostgresTestContainerSupport::registeredUrl);
+        registry.add("spring.datasource.username", PROVIDER::username);
+        registry.add("spring.datasource.password", PROVIDER::secret);
+        registry.add("spring.datasource.driver-class-name", PROVIDER::driverClassName);
         // Capacity contract: lazy pool for the Spring-managed datasource (capacity, not preallocated).
         registry.add("spring.datasource.hikari.maximum-pool-size", () -> Integer.toString(SPRING_MAX_POOL_SIZE));
         registry.add("spring.datasource.hikari.minimum-idle", () -> Integer.toString(SPRING_MIN_IDLE));
 
         // Enable Flyway for all tests
         registry.add("spring.flyway.enabled", () -> "true");
-        registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.flyway.user", POSTGRES::getUsername);
-        registry.add("spring.flyway.password", POSTGRES::getPassword);
+        registry.add("spring.flyway.url", PostgresTestContainerSupport::registeredUrl);
+        registry.add("spring.flyway.user", PROVIDER::username);
+        registry.add("spring.flyway.password", PROVIDER::secret);
 
         // Disable H2-specific configurations
         registry.add("spring.sql.init.mode", () -> "never");
     }
 
     protected static String jdbcUrl() {
-        return POSTGRES.getJdbcUrl();
+        return PROVIDER.jdbcUrl();
     }
 
     protected static String username() {
-        return POSTGRES.getUsername();
+        return PROVIDER.username();
     }
 
     protected static String password() {
-        return POSTGRES.getPassword();
+        return PROVIDER.secret();
     }
 
     protected static String driverClassName() {
-        return POSTGRES.getDriverClassName();
+        return PROVIDER.driverClassName();
+    }
+
+    protected static java.sql.Connection openConnection() throws java.sql.SQLException {
+        return PROVIDER.openConnection();
+    }
+
+    protected static java.sql.Connection openConnection(String schema) throws java.sql.SQLException {
+        return PROVIDER.openConnectionForSchema(schema);
+    }
+
+    private static String registeredUrl() {
+        return PROVIDER.jdbcUrl();
+    }
+
+    protected static String scopedJdbcUrl(String schema) {
+        return PROVIDER.scopedJdbcUrl(schema);
+    }
+
+    protected static java.util.Properties connectionProperties() {
+        return PROVIDER.connectionProperties();
     }
 
     /**
-     * Create a lazily-initialized DataSource using the Testcontainers PostgreSQL URL.
+     * Create a lazily-initialized DataSource using the external PostgreSQL 18 URL.
      *
      * <p>ORDINARY profile: {@code maximumPoolSize = 2, minimumIdle = 0}. This is the default
      * for tests whose transaction topology never needs more than two concurrent connections.
@@ -210,14 +228,7 @@ public abstract class PostgresTestContainerSupport {
      * @param maxPoolSize the pool ceiling; must not exceed {@link #TX_HEAVY_MAX_POOL_SIZE}
      */
     protected static DataSource createDataSource(int maxPoolSize) {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(jdbcUrl());
-        config.setUsername(username());
-        config.setPassword(password());
-        config.setDriverClassName(driverClassName());
-        config.setMaximumPoolSize(maxPoolSize);
-        config.setMinimumIdle(MANUAL_MIN_IDLE);
-        return new HikariDataSource(config);
+        return PROVIDER.dataSource(maxPoolSize, MANUAL_MIN_IDLE);
     }
 
     /**

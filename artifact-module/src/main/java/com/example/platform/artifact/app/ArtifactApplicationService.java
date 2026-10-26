@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
  * Canonical application boundary for Artifact discovery and explicit access.
  * Authorization remains owned by the platform identity/access boundary; this
  * service enforces the established request tenant and database scope before any
- * storage grant provider is called.
+ * authenticated relative content route is returned.
  */
 @Service
 public class ArtifactApplicationService {
@@ -21,15 +21,12 @@ public class ArtifactApplicationService {
 
     private final ArtifactApplicationQuery applicationQuery;
     private final ArtifactQueryService artifactQueryService;
-    private final List<ArtifactAccessGrantProvider> grantProviders;
 
     public ArtifactApplicationService(
             ArtifactApplicationQuery applicationQuery,
-            ArtifactQueryService artifactQueryService,
-            List<ArtifactAccessGrantProvider> grantProviders) {
+            ArtifactQueryService artifactQueryService) {
         this.applicationQuery = applicationQuery;
         this.artifactQueryService = artifactQueryService;
-        this.grantProviders = grantProviders == null ? List.of() : List.copyOf(grantProviders);
     }
 
     public List<ArtifactSummary> listArtifacts(ArtifactScope scope, int requestedLimit) {
@@ -60,21 +57,12 @@ public class ArtifactApplicationService {
             throw new ArtifactAccessException(
                     ArtifactAccessFailure.NOT_AVAILABLE, "Artifact has no usable replica");
         }
-        for (var replica : replicas) {
-            for (var provider : grantProviders) {
-                try {
-                    var grant = provider.grant(artifact, replica);
-                    if (grant.isPresent()) {
-                        return new ArtifactAccess(artifactId, grant.get().accessUrl(), grant.get().expiresAt());
-                    }
-                } catch (RuntimeException failure) {
-                    throw new ArtifactAccessException(
-                            ArtifactAccessFailure.ACCESS_FAILED, "Artifact access grant generation failed");
-                }
-            }
-        }
-        throw new ArtifactAccessException(
-                ArtifactAccessFailure.UNSUPPORTED, "No configured storage access mechanism supports this Artifact");
+        String path="/api/tenants/"+segment(scope.tenantId())+"/projects/"+segment(scope.projectId())+"/render-jobs/"+segment(scope.renderJobId())+"/artifacts/"+segment(artifactId.value())+"/content";
+        return new ArtifactAccess(artifactId,java.net.URI.create(path),null);
+    }
+
+    private static String segment(String id) {
+        return org.springframework.web.util.UriUtils.encodePathSegment(id,java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static void requireScope(ArtifactScope scope) {

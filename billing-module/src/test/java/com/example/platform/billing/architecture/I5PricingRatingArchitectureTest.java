@@ -40,7 +40,7 @@ class I5PricingRatingArchitectureTest {
     @Test
     void schemaUsesVersionedExactPricingAndDurableRatedUsage() throws IOException {
         String schema = Files.readString(ROOT.resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         assertTrue(schema.contains("rule_version bigint not null"));
         assertTrue(schema.contains("discount_numerator bigint"));
         assertTrue(schema.contains("discount_denominator bigint"));

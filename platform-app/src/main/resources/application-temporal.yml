@@ -12,8 +12,9 @@ app:
     enabled: true
     environment: ${PLATFORM_ENV:dev}
     namespace-prefix: media-platform
+    namespace: ${TEMPORAL_NAMESPACE:}
     task-queue: media-platform-tasks
-    worker-required: true
+    worker-required: false
     fail-on-missing-worker: ${TEMPORAL_FAIL_ON_MISSING_WORKER:false}
     shutdown-await-seconds: ${TEMPORAL_SHUTDOWN_AWAIT_SECONDS:25}
 
@@ -32,11 +33,5 @@ delivery:
 spring.temporal:
   connection:
     target: ${TEMPORAL_TARGET:127.0.0.1:7233}
-  workers-auto-discovery:
-    packages:
-      - com.example.platform.workflow
-  workers:
-    - task-queue: media-platform-tasks
-      name: render-worker
-    - task-queue: workflow-process
-      name: workflow-process-worker
+  # API/client profile. Execution queues belong to the explicit worker profile.
+  start-workers: false

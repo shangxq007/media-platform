@@ -1,0 +1,38 @@
+# Isolated integration runtime, never a production admission profile.
+# Uses the formal OIDC security chain. No dev tokens, HMAC fallback, AI or payment calls.
+# Datasource credentials and the local issuer must be supplied explicitly by the owned runner.
+app:
+  storage:
+    local-object-store:
+      enabled: true
+  security:
+    enabled: true
+    dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
+    oauth2:
+      enabled: true
+      legacy-hmac-jwt-enabled: false
+    cors:
+      allowed-origin-patterns: ["http://127.0.0.1:18080"]
+  ai:
+    providers:
+      openai:
+        enabled: false
+platform:
+  environment: integration
+  payment:
+    stripe:
+      enabled: false
+    hyperswitch:
+      enabled: false
+spring:
+  h2:
+    console:
+      enabled: false
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,platformReadiness

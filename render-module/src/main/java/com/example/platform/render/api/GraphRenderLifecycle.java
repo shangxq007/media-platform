@@ -1,0 +1,21 @@
+package com.example.platform.render.api;
+
+import com.example.platform.artifact.app.ArtifactOutputReference;
+import java.util.Optional;
+
+/** Render-owned fenced lifecycle for one immutable bound-graph execution. Not an HTTP authority. */
+public interface GraphRenderLifecycle {
+    record Execution(String tenantId, String projectId, String jobId, String planRef,
+            String planDigest, String graphDigest, String attemptId, long generation,
+            String finalTaskId) {}
+    record Output(String taskId, String taskAttemptId, long taskGeneration, String artifactId) {}
+    record Status(Execution execution, String status, String finalArtifactId, String failureCode, Output boundOutput) {}
+
+    Execution begin(String tenantId, String jobId, String planRef, String planDigest,
+            String graphDigest, String finalTaskId);
+    void bindOutput(Execution execution, Output output);
+    ArtifactOutputReference complete(Execution execution, Output output);
+    void fail(String tenantId, String jobId, String planRef, String planDigest,
+            String graphDigest, boolean cancelled);
+    Optional<Status> find(String tenantId, String projectId, String jobId);
+}

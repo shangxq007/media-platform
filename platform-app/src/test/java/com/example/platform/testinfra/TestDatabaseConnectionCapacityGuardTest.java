@@ -30,11 +30,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p><b>Global invariants</b> (asserted exactly; drift fails):
  * <ul>
- *   <li>Testcontainers authority: core / junit-jupiter / postgresql / jdbc all resolve to 2.0.4
- *       (skew 0), docker-java resolves to 3.7.1 — the single BOM authority.</li>
+ *   <li>JDBC42.7.14, Flyway11.20.3 and jOOQ3.21.9 use one dependency authority.</li>
  *   <li>minimum-idle = 0 everywhere (lazy pools; capacity, never preallocated).</li>
  *   <li>No persistent localhost:5432 test database is referenced by the test configuration.</li>
- *   <li>The hermetic Podman launcher runs {@code podman system service --time=0} (no idle churn).</li>
+ *   <li>Only the controlled Job handoff creates connection authority.</li>
  *   <li>PostgreSQL server capacity: max_connections = 100, superuser_reserved = 3, usable = 97,
  *       ceiling = usable * 0.8 = 77.6 (DO NOT raise server capacity).</li>
  * </ul>
@@ -52,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@link PostgresTestContainerSupport} (via the protected accessors and the real
  * {@code @DynamicPropertySource} registration), so it FAILS if the frozen config drifts.
  * AR-PTEH-CAP-03 (peak observation) is sampled separately by
- * {@code scripts/test/observe-connections.sh} during the full module run.
+ * the future owned-run PG18 capacity observation; retired container samplers are unavailable.
  *
  * <p><b>Drift-fail assertions</b> (these MUST fail — never warn — on regression):
  * <ul>
@@ -79,10 +78,7 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
     private static final double CEILING = EXPECTED_USABLE * HEADROOM_FRACTION; // 77.6
 
     // ======================================================================
-    // Frozen Testcontainers authority (the single BOM authority, skew 0).
-    // ======================================================================
-    private static final String EXPECTED_TESTCONTAINERS_VERSION = "2.0.4";
-    private static final String EXPECTED_DOCKER_JAVA_VERSION = "3.7.1";
+    // Target dependency authority is checked below.
 
     // ======================================================================
     // Module profile capacity terms (Contract V4).
@@ -170,33 +166,11 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
     // ======================================================================
 
     @Test
-    @DisplayName("Testcontainers authority is exact: core/junit/postgresql/jdbc = 2.0.4, docker-java = 3.7.1, skew 0")
-    void testcontainersAuthorityIsExact() {
-        // All four testcontainers modules must resolve to the SAME version (skew 0) — the BOM
-        // is the single authority. Reading each loaded module's package Implementation-Version.
-        // Core: GenericContainer lives only in testcontainers-core. The package-version manifest
-        // attribute is unreliable for a package split across several jars, so assert ALL modules
-        // (core included) via their jar path — every one must equal 2.0.4 (skew 0).
-        String core = jarVersion(org.testcontainers.containers.GenericContainer.class, "testcontainers");
-        String junit = jarVersion(org.testcontainers.junit.jupiter.Testcontainers.class, "testcontainers-junit-jupiter");
-        String pg = jarVersion(org.testcontainers.containers.PostgreSQLContainer.class, "testcontainers-postgresql");
-        String jdbc = jarVersion(org.testcontainers.containers.JdbcDatabaseContainer.class, "testcontainers-jdbc");
-
-        assertEquals(EXPECTED_TESTCONTAINERS_VERSION, core, "testcontainers core must be 2.0.4");
-        assertEquals(EXPECTED_TESTCONTAINERS_VERSION, junit, "testcontainers junit-jupiter must be 2.0.4");
-        assertEquals(EXPECTED_TESTCONTAINERS_VERSION, pg, "testcontainers postgresql must be 2.0.4");
-        assertEquals(EXPECTED_TESTCONTAINERS_VERSION, jdbc, "testcontainers jdbc must be 2.0.4");
-        assertEquals(core, junit, "skew: junit-jupiter must equal core");
-        assertEquals(core, jdbc, "skew: jdbc must equal core");
-
-        // docker-java (no manifest Implementation-Version) — assert via jar path.
-        String dockerApi = jarVersion(
-                com.github.dockerjava.api.DockerClient.class, "docker-java-api");
-        String dockerTransport = jarVersion(
-                com.github.dockerjava.zerodep.ZerodepDockerHttpClient.class, "docker-java-transport-zerodep");
-        assertEquals(EXPECTED_DOCKER_JAVA_VERSION, dockerApi, "docker-java-api must be 3.7.1");
-        assertEquals(EXPECTED_DOCKER_JAVA_VERSION, dockerTransport,
-                "docker-java-transport must be 3.7.1 (skew 0 within docker-java)");
+    @DisplayName("PG18 target JDBC/Flyway/jOOQ dependency authority is exact")
+    void postgresDependencyAuthorityIsExact() {
+        assertEquals("42.7.14", jarVersion(org.postgresql.Driver.class,"postgresql"));
+        assertEquals("11.20.3", jarVersion(org.flywaydb.core.Flyway.class,"flyway-core"));
+        assertEquals("3.21.9", jarVersion(org.jooq.DSLContext.class,"jooq"));
     }
 
     @Test
@@ -230,8 +204,12 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
         assertNotNull(url, "spring.datasource.url must be registered");
         // Testcontainers legitimately binds to localhost:<random-port>; what must NOT appear is the
         // persistent localhost:5432 database (a fixed, pre-provisioned DB). Assert against :5432 only.
-        assertFalse(url.contains("localhost:5432") || url.contains("127.0.0.1:5432"),
-                "test datasource must not point at a persistent localhost:5432 DB: " + url);
+        if (PROVIDER.isIsolatedLocalResource()) {
+            assertTrue(url.startsWith("jdbc:postgresql://127.0.0.1:5432/"),"local PG18 is bound to its owned namespace");
+            assertTrue(PROVIDER.branchId().matches("ct_[a-f0-9]{64}"),"local identity must be an exact container ID");
+            assertTrue(url.contains("sslmode=verify-full"),"even isolated local resources require TLS identity");
+        } else assertFalse(url.contains("localhost:5432") || url.contains("127.0.0.1:5432"),
+                "unscoped host localhost database must never be used: " + url);
 
         // The committed application-test.yml must likewise carry no persistent localhost:5432 datasource.
         String yml = resourceText("application-test.yml");
@@ -256,32 +234,14 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
     }
 
     @Test
-    @DisplayName("hermetic Podman launcher runs podman system service --time=0 (no idle churn)")
-    void hermeticLauncherRunsTimeZero() {
-        Path launcher = repoRoot().resolve("scripts").resolve("test").resolve("podman-hermetic.sh");
-        assertTrue(Files.isRegularFile(launcher), "hermetic launcher must exist at " + launcher);
-        String body;
-        try {
-            body = Files.readString(launcher, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            fail("Failed to read hermetic launcher: " + e.getMessage());
-            return;
-        }
-        assertTrue(body.contains("podman system service"),
-                "launcher must invoke 'podman system service'");
-        assertTrue(body.contains("--time=0"),
-                "launcher must run with --time=0 (no idle-exit churn)");
-        // And the contract must disable Ryuk (rootless podman, repo-owned cleanup).
-        // testcontainers.properties lives at the repo root (not on the test classpath).
-        String props;
-        try {
-            props = Files.readString(repoRoot().resolve("testcontainers.properties"), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            fail("Failed to read testcontainers.properties: " + e.getMessage());
-            return;
-        }
-        assertTrue(props.contains("ryuk.disabled=true"),
-                "testcontainers.properties must disable Ryuk (DISABLED_BY_CONTRACT)");
+    @DisplayName("connection authority comes only from the controlled Job with verify-full TLS")
+    void controlledJobOwnsConnectionAuthority() {
+        var provider=com.example.platform.shared.test.TestDatabaseConnectionProvider.fromControlledLaunch();
+        assertSame(PROVIDER,provider);
+        assertTrue(provider.jdbcUrl().contains("sslmode=verify-full"));
+        assertTrue(provider.jdbcUrl().contains("sslrootcert="));
+        assertFalse(provider.runId().isBlank());
+        assertThrows(IllegalArgumentException.class,()->provider.scopedJdbcUrl("public&sslmode=disable"));
     }
 
     @Test

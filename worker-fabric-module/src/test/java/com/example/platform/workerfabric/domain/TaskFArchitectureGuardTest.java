@@ -160,16 +160,16 @@ class TaskFArchitectureGuardTest {
     }
 
     @Test
-    void backendHandleTaskIdentityAndFakeArtifactIdCountsAreZero() {
+    void backendHandlesExcludeTaskIdentityAndCommitEvidenceCarriesCanonicalArtifactId() {
         List<Class<?>> handles = List.of(
                 NativeWorkerBackendExecutionHandle.class,
                 OpenCueBackendExecutionHandle.class,
                 RemoteProviderExecutionHandle.class);
         handles.forEach(type -> assertRecordComponentsExclude(type, ExecutableTaskId.class));
-        assertRecordComponentsExclude(ArtifactCommitEvidence.class, ArtifactId.class);
+        assertThat(ArtifactCommitEvidence.class.getRecordComponents()[0].getType()).isEqualTo(ArtifactId.class);
         assertThat(ArtifactCommitEvidence.class.getRecordComponents())
                 .extracting(RecordComponent::getName)
-                .containsExactly("authorityEvidenceReference", "committedAt");
+                .containsExactly("artifactId");
     }
 
     @Test

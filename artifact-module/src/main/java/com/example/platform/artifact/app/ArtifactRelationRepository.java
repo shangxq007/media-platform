@@ -57,6 +57,18 @@ public class ArtifactRelationRepository {
                 .fetch(this::mapRecord);
     }
 
+    /** Complete canonical outgoing set for an owned root, including anomalous parent relations.
+     * Receipt reconciliation must detect those rather than filtering a corrupt peer away. */
+    public List<ArtifactRelation> findOutgoingForOwnedArtifact(String tenantId,String artifactId) {
+        requireTenantId(tenantId);
+        var root=ARTIFACT.as("root");
+        return dsl.select(ARTIFACT_RELATION.ID,ARTIFACT_RELATION.SOURCE_ARTIFACT_ID,
+                        ARTIFACT_RELATION.TARGET_ARTIFACT_ID,ARTIFACT_RELATION.RELATION_TYPE)
+                .from(ARTIFACT_RELATION).join(root).on(root.ID.eq(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID))
+                .where(root.TENANT_ID.eq(tenantId)).and(root.ID.eq(artifactId))
+                .fetch(this::mapRecord);
+    }
+
     /** Whether a relation exists for the artifact with BOTH peers in the tenant. */
     public boolean hasRelationInTenant(String tenantId, String artifactId) {
         requireTenantId(tenantId);

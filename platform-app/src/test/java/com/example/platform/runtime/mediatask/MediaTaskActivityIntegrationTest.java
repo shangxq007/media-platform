@@ -1,5 +1,8 @@
 package com.example.platform.runtime.mediatask;
 
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
+import com.example.platform.shared.test.TestDatabaseSchema;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -44,10 +47,6 @@ import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 import static org.mockito.Mockito.mock;
 
 import com.example.platform.artifact.domain.ArtifactKind;
@@ -57,18 +56,16 @@ import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
 import java.time.Clock;
 
 /**
- * P2-5b-1-R2 integration: bound-graph canonical persistence (V1 + V2 migrations on real PostgreSQL)
+ * P2-5b-1-R2 integration: bound-graph canonical persistence (single V1 baseline on real PostgreSQL)
  * followed by the preparation half of the media task activity.
  *
  * <p>Chain exercised: P2-3 binding → {@code JooqBoundGraphInputStore.save} → {@code load} →
  * {@code BoundGraphRederivation.rederive} → digest verification. No Temporal and no whole-graph
  * execution (P2-5b-2).
  */
-@Testcontainers
 class MediaTaskActivityIntegrationTest {
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static TestDatabaseSchema database;
 
     private static final String TENANT = "tenant-a";
     private static final String JOB = "job-approved";
@@ -79,19 +76,17 @@ class MediaTaskActivityIntegrationTest {
     private static JooqBoundGraphInputStore store;
     private static MediaTaskActivity activity;
 
+    @org.junit.jupiter.api.AfterAll
+    static void closeDatabase() throws Exception {
+        if (database!=null) database.close();
+    }
+
     @BeforeAll
     static void setup() throws Exception {
-        PG.start();
+        database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         Path migrationDir = locateMigrationDir();
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V1__initial_schema.sql")),
-                "/migrations/V1.sql");
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V2__render_binding_inputs.sql")),
-                "/migrations/V2.sql");
-        applyMigration("/migrations/V1.sql");
-        applyMigration("/migrations/V2.sql");
-        DSLContext dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        DSLContext dsl = database.dsl();
         store = new JooqBoundGraphInputStore(dsl);
         // Preparation-only test: the execution collaborators stay unused doubles.
         activity = new MediaTaskActivity(
@@ -103,10 +98,8 @@ class MediaTaskActivityIntegrationTest {
                         ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()));
     }
 
-    private static void applyMigration(String path) throws Exception {
-        var result = PG.execInContainer("psql", "-U", PG.getUsername(), "-d", PG.getDatabaseName(),
-                "-v", "ON_ERROR_STOP=1", "-f", path);
-        assertEquals(0, result.getExitCode(), "migration " + path + " failed: " + result.getStderr());
+    private static void applyMigration(Path path) throws Exception {
+        database.executeScript(Files.readString(path));
     }
 
     private static Path locateMigrationDir() {

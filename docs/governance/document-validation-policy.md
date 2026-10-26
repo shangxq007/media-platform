@@ -12,7 +12,7 @@ The following code artifacts are the **ground truth** for documentation validati
 | `settings.gradle.kts` | Module count, module names | Root |
 | `build.gradle.kts` | Versions (Java, Spring Boot, Spring Modulith, jOOQ) | Root |
 | `frontend/package.json` | Frontend framework, dependencies | `frontend/` |
-| `platform-app/src/main/resources/db/migration/V1__initial_schema.sql` | Database schema, table count | `platform-app/src/main/resources/db/migration/` |
+| `platform-app/src/main/resources/db/migration/V1__baseline.sql` | Database schema, table count | `platform-app/src/main/resources/db/migration/` |
 | `ModularityTest.java` | Allowed module boundary violations | `platform-app/src/test/java/` |
 | `ProductionSafetyValidator.java` | Production safety checks | `platform-app/src/main/java/` |
 | `package-info.java` | Module boundaries, NamedInterfaces, allowedDependencies | Each module root |
@@ -66,7 +66,7 @@ grep -c 'include(' settings.gradle.kts
 find platform-app/src/main/resources/db/migration -maxdepth 1 -type f -name 'V*.sql' -printf '%f\n' | sort -V
 
 # Table count
-grep -ci 'CREATE TABLE' platform-app/src/main/resources/db/migration/V1__initial_schema.sql
+grep -ci 'CREATE TABLE' platform-app/src/main/resources/db/migration/V1__baseline.sql
 
 # Frontend framework
 grep '"react"' frontend/package.json

@@ -15,7 +15,7 @@ class I5InvoiceLedgerArchitectureTest {
     @Test
     void invoiceAndLedgerSchemaAreTenantScopedVersionedExactAndIdempotent() throws IOException {
         String schema = Files.readString(ROOT.resolve(
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         String invoice = table(schema, "billing_invoice");
         String lines = table(schema, "invoice_line_item");
         String ledger = table(schema, "billing_ledger_entry");

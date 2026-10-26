@@ -194,13 +194,17 @@ import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionBackendSelection;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionObservation;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionOwnershipGeneration;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostReadiness;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostRegistration;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshotDevice;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostSnapshotGenerationAuthority;
 import com.example.platform.typedschema.jooq.generated.tables.WfLocalAdmission;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostConnection;
+import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptor;
+import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptorDevice;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalReleaseConfirmation;
+import com.example.platform.typedschema.jooq.generated.tables.WfProviderCandidateSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservationDevice;
@@ -1179,6 +1183,11 @@ public class Tables {
     public static final WfExecutionOwnershipGeneration WF_EXECUTION_OWNERSHIP_GENERATION = WfExecutionOwnershipGeneration.WF_EXECUTION_OWNERSHIP_GENERATION;
 
     /**
+     * The table <code>public.wf_host_readiness</code>.
+     */
+    public static final WfHostReadiness WF_HOST_READINESS = WfHostReadiness.WF_HOST_READINESS;
+
+    /**
      * The table <code>public.wf_host_registration</code>.
      */
     public static final WfHostRegistration WF_HOST_REGISTRATION = WfHostRegistration.WF_HOST_REGISTRATION;
@@ -1209,9 +1218,24 @@ public class Tables {
     public static final WfPhysicalHostConnection WF_PHYSICAL_HOST_CONNECTION = WfPhysicalHostConnection.WF_PHYSICAL_HOST_CONNECTION;
 
     /**
+     * The table <code>public.wf_physical_host_descriptor</code>.
+     */
+    public static final WfPhysicalHostDescriptor WF_PHYSICAL_HOST_DESCRIPTOR = WfPhysicalHostDescriptor.WF_PHYSICAL_HOST_DESCRIPTOR;
+
+    /**
+     * The table <code>public.wf_physical_host_descriptor_device</code>.
+     */
+    public static final WfPhysicalHostDescriptorDevice WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE = WfPhysicalHostDescriptorDevice.WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE;
+
+    /**
      * The table <code>public.wf_physical_release_confirmation</code>.
      */
     public static final WfPhysicalReleaseConfirmation WF_PHYSICAL_RELEASE_CONFIRMATION = WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION;
+
+    /**
+     * The table <code>public.wf_provider_candidate_snapshot</code>.
+     */
+    public static final WfProviderCandidateSnapshot WF_PROVIDER_CANDIDATE_SNAPSHOT = WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT;
 
     /**
      * The table <code>public.wf_request_work_resolution</code>.

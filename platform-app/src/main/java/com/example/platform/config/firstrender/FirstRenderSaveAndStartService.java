@@ -18,12 +18,14 @@ public class FirstRenderSaveAndStartService {
 
     private final BoundGraphInputStore boundGraphInputStore;
     private final FirstRenderWorkflowStarter workflowStarter;
+    private final com.example.platform.render.api.GraphRenderLifecycle lifecycle;
 
     public FirstRenderSaveAndStartService(
             BoundGraphInputStore boundGraphInputStore,
-            FirstRenderWorkflowStarter workflowStarter) {
+            FirstRenderWorkflowStarter workflowStarter, com.example.platform.render.api.GraphRenderLifecycle lifecycle) {
         this.boundGraphInputStore = Objects.requireNonNull(boundGraphInputStore, "boundGraphInputStore");
         this.workflowStarter = Objects.requireNonNull(workflowStarter, "workflowStarter");
+        this.lifecycle=Objects.requireNonNull(lifecycle);
     }
 
     /**
@@ -37,14 +39,20 @@ public class FirstRenderSaveAndStartService {
         String tenantId = planningAndBindingResult.tenantId();
         String renderJobId = planningAndBindingResult.renderJobId();
         // Frozen A6 workflow identity.
-        String workflowId = "render:" + tenantId + ":" + renderJobId;
+        String workflowId = com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenantId,renderJobId);
 
         // 1. save first — a failure here propagates before any start.
         BoundGraphReference reference = boundGraphInputStore.save(
                 planningAndBindingResult.boundGraphInputs(), tenantId, renderJobId);
 
         // 2. start only after the save returned the durable reference, used unmodified.
-        boolean workflowStarted = workflowStarter.start(reference, tenantId, workflowId);
+        boolean workflowStarted;
+        try { workflowStarted = workflowStarter.start(reference, tenantId, workflowId); }
+        catch(RuntimeException dispatchFailure) {
+            try { lifecycle.fail(tenantId,renderJobId,reference.planRef(),reference.planDigest(),reference.expectedExecutableTaskGraphDigest(),false); }
+            catch(RuntimeException projectionFailure) { dispatchFailure.addSuppressed(projectionFailure); }
+            throw dispatchFailure;
+        }
 
         return new FirstRenderStartResult(workflowId, workflowStarted);
     }

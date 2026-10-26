@@ -1,5 +1,8 @@
 package com.example.platform.runtime.mediatask;
 
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
+import com.example.platform.shared.test.TestDatabaseSchema;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -90,14 +93,10 @@ import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * P2-5b-2b-2b-1: DB-backed {@code executeTask} coverage over the real canonical bound-graph store
- * (V1 + V2 migrations on PostgreSQL 16).
+ * (single V1 baseline on PostgreSQL 16).
  *
  * <p>Chain exercised: {@code JooqBoundGraphInputStore.save} → {@code executeTask} → load/re-derive/
  * digest verification → per-task grant resolution, with the fail-closed paths asserted (missing
@@ -116,7 +115,6 @@ import org.testcontainers.utility.MountableFile;
  * by {@code RuntimeClosedLoopConformanceTest} and {@code FfmpegClosedLoopIntegrationTest}. Loading a
  * real provider plugin JAR is 2b-2b-2.
  */
-@Testcontainers
 class MediaTaskExecuteTaskIntegrationTest {
 
     private static final String TENANT = "tenant-exec";
@@ -126,24 +124,21 @@ class MediaTaskExecuteTaskIntegrationTest {
     private static final MediaTime TWO = MediaTime.ofRational(2, 1);
     private static final FrameRate FPS = FrameRate.of(30, 1);
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static TestDatabaseSchema database;
 
     private static JooqBoundGraphInputStore store;
 
+    @org.junit.jupiter.api.AfterAll
+    static void closeDatabase() throws Exception {
+        if (database!=null) database.close();
+    }
+
     @BeforeAll
     static void setup() throws Exception {
-        PG.start();
+        database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         Path migrationDir = locateMigrationDir();
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V1__initial_schema.sql")),
-                "/migrations/V1.sql");
-        PG.copyFileToContainer(
-                MountableFile.forHostPath(migrationDir.resolve("V2__render_binding_inputs.sql")),
-                "/migrations/V2.sql");
-        applyMigration("/migrations/V1.sql");
-        applyMigration("/migrations/V2.sql");
-        DSLContext dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        DSLContext dsl = database.dsl();
         store = new JooqBoundGraphInputStore(dsl);
     }
 
@@ -168,10 +163,12 @@ class MediaTaskExecuteTaskIntegrationTest {
         assertThat(request.requestedTasks()).containsExactly(fixture.taskId());
         assertThat(request.taskExecutions()).containsOnlyKeys(fixture.taskId());
         var execution = request.taskExecutions().get(fixture.taskId());
+        String publicationIdentity=TENANT+"\u0000"+execution.artifactCommitMetadata().projectId()+"\u0000"+JOB+"\u0000"+fixture.taskId().sha256Hex()+"\u0000attempt-exec\u0000"+execution.runtimeContext().platformOwnershipGeneration().value();
+        String publicationKey=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(publicationIdentity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         assertThat(execution.durableOutputTarget().writeSessionId())
-                .isEqualTo("task-output-" + fixture.taskId().sha256Hex());
+                .isEqualTo("task-output-" + publicationKey);
         assertThat(execution.artifactCommitMetadata().artifactId().value())
-                .isEqualTo("render-task-" + fixture.taskId().sha256Hex().substring(0, 52));
+                .isEqualTo("render-task-" + publicationKey.substring(0, 52));
         assertThat(execution.artifactCommitMetadata().tenantId()).isEqualTo(TENANT);
         assertThat(execution.artifactCommitMetadata().renderJobId()).isEqualTo(JOB);
         assertThat(execution.runtimeContext().platformExecutionAttemptId())
@@ -387,9 +384,7 @@ class MediaTaskExecuteTaskIntegrationTest {
         return current.resolve("platform-app/src/main/resources/db/migration");
     }
 
-    private static void applyMigration(String path) throws Exception {
-        var result = PG.execInContainer("psql", "-U", PG.getUsername(), "-d", PG.getDatabaseName(),
-                "-v", "ON_ERROR_STOP=1", "-f", path);
-        assertEquals(0, result.getExitCode(), "migration " + path + " failed: " + result.getStderr());
+    private static void applyMigration(Path path) throws Exception {
+        database.executeScript(Files.readString(path));
     }
 }

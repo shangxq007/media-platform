@@ -1,12 +1,39 @@
 package com.example.platform.runtime;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
 class PlatformRuntimeRoleGuardTest {
+    @Test
+    void canonicalApiProfileDefaultsToApiWithoutForwardedRoleEnvironment() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withInitializer(new org.springframework.boot.test.context.ConfigDataApplicationContextInitializer())
+                .withUserConfiguration(PlatformRuntimeRoleGuard.class)
+                .withPropertyValues("spring.profiles.active=temporal")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getEnvironment().getProperty("platform.runtime.role")).isEqualTo("API");
+                    assertThat(context).hasSingleBean(PlatformRuntimeRoleGuard.class);
+                });
+    }
+
+    @Test
+    void canonicalWorkerProfileOverridesTheApiDefault() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withInitializer(new org.springframework.boot.test.context.ConfigDataApplicationContextInitializer())
+                .withUserConfiguration(PlatformRuntimeRoleGuard.class)
+                .withPropertyValues("spring.profiles.active=temporal,ffmpeg-worker")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getEnvironment().getProperty("platform.runtime.role")).isEqualTo("WORKER");
+                    assertThat(context).hasSingleBean(PlatformRuntimeRoleGuard.class);
+                });
+    }
+
     @Test
     void apiRoleRetainsClientButCannotStartWorkers() {
         MockEnvironment env = base("API")

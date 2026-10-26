@@ -26,7 +26,7 @@ class I7ProductCatalogArchitectureTest {
     }
 
     @Test void v1AndSnapshotsExposeVersionedAuthorityFields() throws Exception {
-        String schema = Files.readString(ROOT.resolve("platform-app/src/main/resources/db/migration/V1__initial_schema.sql"));
+        String schema = Files.readString(ROOT.resolve("platform-app/src/main/resources/db/migration/V1__baseline.sql"));
         for (String token : new String[]{"create table commercial_offering", "create table product_catalog_command",
                 "offering_version", "commercial_price_ref", "amount_minor_snapshot", "currency_code_snapshot",
                 "tenant_scope", "market_scope", "payload_fingerprint"}) assertTrue(schema.contains(token), token);

@@ -1,0 +1,9 @@
+[Unit]
+Description=Media Platform protected synthetic Job domains
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+CPUQuota=200%
+MemoryMax=2G
+TasksMax=64

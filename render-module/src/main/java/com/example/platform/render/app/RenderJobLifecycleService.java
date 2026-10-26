@@ -28,13 +28,7 @@ public class RenderJobLifecycleService {
  }
  @Transactional
  public void transition(String jobId,String projectId,RenderJobStatus from,RenderJobStatus to,String errorCode){
-    stateMachine.validateTransition(from,to);
-    var job=jobs.requireJobRecord(jobId);var initiator=RenderJobRepository.initiatorFrom(job);
-    if(!projectId.equals(job.get("project_id",String.class)))throw new IllegalArgumentException("Render project mismatch");
-    if(jobs.compareAndSetStatus(jobId,projectId,initiator.tenantId(),from.name(),to.name())!=1)
-        throw new IllegalStateException("stale Render transition");
-    history.record(jobId,from.name(),to.name(),null,errorCode);
-    events.publishEvent(new RenderJobStatusChangedEvent(jobId,projectId,from,to,Instant.now(),initiator));
+    new RenderStateTransitions(jobs,history,events).transition(jobId,projectId,from,to,errorCode);
  }
  @Transactional
  public ArtifactOutputReference complete(String tenantId,String jobId,String relativePath,String contentType){

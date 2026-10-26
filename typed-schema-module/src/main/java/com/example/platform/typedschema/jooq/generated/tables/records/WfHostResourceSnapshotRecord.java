@@ -220,6 +220,54 @@ public class WfHostResourceSnapshotRecord extends UpdatableRecordImpl<WfHostReso
         return (Long) get(12);
     }
 
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot.observed_cpu_utilization_ratio</code>.
+     */
+    public void setObservedCpuUtilizationRatio(Double value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot.observed_cpu_utilization_ratio</code>.
+     */
+    public Double getObservedCpuUtilizationRatio() {
+        return (Double) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot.observed_memory_used_bytes</code>.
+     */
+    public void setObservedMemoryUsedBytes(Long value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot.observed_memory_used_bytes</code>.
+     */
+    public Long getObservedMemoryUsedBytes() {
+        return (Long) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>public.wf_host_resource_snapshot.observed_temporary_storage_used_bytes</code>.
+     */
+    public void setObservedTemporaryStorageUsedBytes(Long value) {
+        set(15, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.wf_host_resource_snapshot.observed_temporary_storage_used_bytes</code>.
+     */
+    public Long getObservedTemporaryStorageUsedBytes() {
+        return (Long) get(15);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -243,7 +291,7 @@ public class WfHostResourceSnapshotRecord extends UpdatableRecordImpl<WfHostReso
     /**
      * Create a detached, initialised WfHostResourceSnapshotRecord
      */
-    public WfHostResourceSnapshotRecord(String physicalHostId, String physicalHostIncarnationId, Long snapshotGeneration, String snapshotFingerprint, Instant capturedAt, Integer schemaVersion, Long cpuMillicores, Long memoryBytes, Long temporaryStorageBytes, Long safetyHeadroomCpuMillicores, Long safetyHeadroomMemoryBytes, Long safetyHeadroomTemporaryStorageBytes, Long publicationTransactionId) {
+    public WfHostResourceSnapshotRecord(String physicalHostId, String physicalHostIncarnationId, Long snapshotGeneration, String snapshotFingerprint, Instant capturedAt, Integer schemaVersion, Long cpuMillicores, Long memoryBytes, Long temporaryStorageBytes, Long safetyHeadroomCpuMillicores, Long safetyHeadroomMemoryBytes, Long safetyHeadroomTemporaryStorageBytes, Long publicationTransactionId, Double observedCpuUtilizationRatio, Long observedMemoryUsedBytes, Long observedTemporaryStorageUsedBytes) {
         super(WfHostResourceSnapshot.WF_HOST_RESOURCE_SNAPSHOT);
 
         setPhysicalHostId(physicalHostId);
@@ -259,6 +307,9 @@ public class WfHostResourceSnapshotRecord extends UpdatableRecordImpl<WfHostReso
         setSafetyHeadroomMemoryBytes(safetyHeadroomMemoryBytes);
         setSafetyHeadroomTemporaryStorageBytes(safetyHeadroomTemporaryStorageBytes);
         setPublicationTransactionId(publicationTransactionId);
+        setObservedCpuUtilizationRatio(observedCpuUtilizationRatio);
+        setObservedMemoryUsedBytes(observedMemoryUsedBytes);
+        setObservedTemporaryStorageUsedBytes(observedTemporaryStorageUsedBytes);
         resetChangedOnNotNull();
     }
 }

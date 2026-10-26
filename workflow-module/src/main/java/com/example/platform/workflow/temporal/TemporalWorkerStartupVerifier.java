@@ -33,6 +33,10 @@ public class TemporalWorkerStartupVerifier {
     public void verifyOnStartup() {
         String namespace = properties.resolveNamespace();
         String taskQueue = properties.getTaskQueue();
+        if (!properties.isWorkerRequired()) {
+            log.info("Temporal client ready: namespace={} taskQueue={}; no local worker required", namespace, taskQueue);
+            return;
+        }
         if (workerFactory.isPresent()) {
             WorkerFactory factory = workerFactory.get();
             log.info(

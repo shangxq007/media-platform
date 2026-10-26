@@ -31,19 +31,18 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
 
     @BeforeAll
     static void createSchema() throws Exception {
-        dataSource = createDataSource();
+        schemaName = isolatedSchemaName();
+        dataSource = PROVIDER.dataSourceForSchema(schemaName,MANUAL_MAX_POOL_SIZE,MANUAL_MIN_IDLE);
         jdbc = new JdbcTemplate(dataSource);
         // Apply the canonical V1 schema directly (single source of truth).
         var sql = new String(
                 Gcr5Gcr6DatabaseStructuralIntegrityTest.class.getClassLoader()
-                        .getResourceAsStream("db/migration/V1__initial_schema.sql")
+                        .getResourceAsStream("db/migration/V1__baseline.sql")
                         .readAllBytes());
         // GCR5/GCR6: run the canonical V1 inside a UNIQUE isolated logical schema
         // (never DROP the shared public schema — that would destroy the shared
         // runtime's flyway history and break sibling tests).
-        schemaName = isolatedSchemaName();
         jdbc.execute("CREATE SCHEMA " + schemaName);
-        jdbc.execute("SET search_path TO " + schemaName);
         // Split on ';\n' but treat plpgsql $$ ... $$ bodies as atomic.
         var buffer = new StringBuilder();
         for (String stmt : sql.split(";\\s*\n")) {
@@ -74,13 +73,17 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
     }
 
     private static void assertForeignKeyViolation(Executable executable, String message) {
+        assertSqlState(executable,message,"23503");
+    }
+
+    private static void assertSqlState(Executable executable,String message,String state) {
         var failure = assertThrows(DataIntegrityViolationException.class, executable, message);
         Throwable cause = failure;
         while (cause != null && !(cause instanceof SQLException)) {
             cause = cause.getCause();
         }
         var postgresFailure = assertInstanceOf(SQLException.class, cause, message);
-        assertEquals("23503", postgresFailure.getSQLState(), message);
+        assertEquals(state, postgresFailure.getSQLState(), message);
     }
 
     @AfterAll
@@ -97,10 +100,11 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
         jdbc.update("DELETE FROM timeline_snapshot");
         jdbc.update("DELETE FROM artifact_relation");
         jdbc.update("DELETE FROM artifact_replica");
+        jdbc.update("DELETE FROM source_visual_description_snapshot");
+        jdbc.update("DELETE FROM media_stream");
         jdbc.update("DELETE FROM artifact");
         jdbc.update("DELETE FROM render_job");
         jdbc.update("DELETE FROM media_stream");
-        jdbc.update("DELETE FROM media_asset");
         jdbc.update("DELETE FROM project");
         jdbc.update("DELETE FROM tenant");
     }
@@ -177,22 +181,22 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
     void mediaAssetDeleteRejectedWhenStreamExists() {
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO media_asset (id, tenant_id, project_id, storage_key, media_type, created_at) "
-                + "VALUES ('ma-1','ten-1','proj-1','k','VIDEO',now())");
-        jdbc.update("INSERT INTO media_stream (id, media_asset_id, stream_index, stream_kind, timebase_num, timebase_den) "
+        jdbc.update("INSERT INTO artifact (id, tenant_id, project_id, content_digest, byte_length, media_type, artifact_kind, state, created_at) "
+                + "VALUES ('ma-1','ten-1','proj-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',now())");
+        jdbc.update("INSERT INTO media_stream (id, artifact_id, stream_index, stream_kind, timebase_num, timebase_den) "
                 + "VALUES ('ms-1','ma-1',0,'video',1,1)");
-        assertThrows(Exception.class,
-                () -> jdbc.update("DELETE FROM media_asset WHERE id='ma-1'"),
-                "media_asset delete must be REJECTED while canonical media_stream rows exist (C9)");
+        assertSqlState(
+                () -> jdbc.update("DELETE FROM artifact WHERE id='ma-1'"),
+                "canonical Artifact deletion is restricted while a media_stream exists (PG18 RESTRICT)","23001");
     }
 
     @Test
     void mediaAssetDeleteAllowedWhenNoStream() {
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO media_asset (id, tenant_id, project_id, storage_key, media_type, created_at) "
-                + "VALUES ('ma-1','ten-1','proj-1','k','VIDEO',now())");
-        assertDoesNotThrow(() -> jdbc.update("DELETE FROM media_asset WHERE id='ma-1'"));
+        jdbc.update("INSERT INTO artifact (id, tenant_id, project_id, content_digest, byte_length, media_type, artifact_kind, state, created_at) "
+                + "VALUES ('ma-1','ten-1','proj-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',now())");
+        assertDoesNotThrow(() -> jdbc.update("DELETE FROM artifact WHERE id='ma-1'"));
     }
 
     // ── render_job FK (execution state same-context) ──

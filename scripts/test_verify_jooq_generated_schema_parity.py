@@ -175,7 +175,7 @@ class RepositoryIntegrationTest(unittest.TestCase):
         self.repo = Path(__file__).resolve().parents[1]
         self.schema = (
             self.repo
-            / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+            / "platform-app/src/main/resources/db/migration/V1__baseline.sql"
         )
         self.generated = (
             self.repo
@@ -284,7 +284,7 @@ class RepositoryIntegrationTest(unittest.TestCase):
             for migration in self.schema.parent.glob("V*__*.sql"):
                 if migration != self.schema:
                     shutil.copy2(migration, Path(temporary_directory) / migration.name)
-            schema_path = Path(temporary_directory) / "V1__initial_schema.sql"
+            schema_path = Path(temporary_directory) / "V1__baseline.sql"
             schema_path.write_text("".join(schema_lines), encoding="utf-8")
             with self.assertRaisesRegex(
                 verifier.VerificationError,
@@ -292,10 +292,18 @@ class RepositoryIntegrationTest(unittest.TestCase):
             ):
                 verifier.verify(schema_path, self.generated)
 
-    def test_missing_followup_migration_cannot_match_current_generated_tree(self) -> None:
+    def test_incomplete_canonical_schema_cannot_match_current_generated_tree(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            baseline = Path(directory) / self.schema.name
-            shutil.copy2(self.schema, baseline)
+            # The single baseline is the complete canonical schema. A synthetic
+            # incomplete schema must still fail closed rather than silently matching.
+            baseline = Path(directory) / "V1__baseline.sql"
+            baseline.write_text(
+                "create table project (\n"
+                "    id varchar(64) primary key,\n"
+                "    tenant_id varchar(64) not null\n"
+                ");\n",
+                encoding="utf-8",
+            )
             with self.assertRaisesRegex(verifier.VerificationError, "UNEXPECTED_GENERATED_TABLE"):
                 verifier.verify(baseline, self.generated)
 

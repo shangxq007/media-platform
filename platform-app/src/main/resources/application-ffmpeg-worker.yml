@@ -58,7 +58,7 @@ spring:
         - com.example.platform.runtime.mediatask
         # P0-5 D2: register the existing MediaTaskWorkflowImpl on the canonical queue. Discovery
         # scope only — no new workflow, queue or runtime authority.
-        - com.example.platform.workflow
+        - com.example.platform.workflow.temporal.mediatask
     workers:
       - task-queue: media-platform-tasks
         name: ffmpeg-worker

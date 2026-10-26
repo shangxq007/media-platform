@@ -39,10 +39,15 @@ public record MediaTaskPublicationSettings(
      * @throws IllegalArgumentException when the configured publication scope is blank (fail closed)
      */
     public TaskOutputPublicationContext contextFor(String tenantId, String renderJobId) {
+        return contextFor(tenantId,renderJobId,projectId);
+    }
+
+    /** Production scope comes from Render's immutable execution identity, never worker environment. */
+    public TaskOutputPublicationContext contextFor(String tenantId,String renderJobId,String owningProjectId) {
         return new TaskOutputPublicationContext(
                 tenantId,
                 renderJobId,
-                projectId,
+                owningProjectId,
                 new StorageProviderId(storageProvider),
                 region,
                 mediaType,

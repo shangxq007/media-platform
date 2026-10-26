@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.artifact.infrastructure.ArtifactRepository;
+import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.config.providerinteroperability.ProviderInteroperabilityAuthority;
 import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
@@ -116,18 +116,18 @@ class FirstRenderPlanningApplicationServicePersistenceIT extends PostgresTestCon
 
         TimelineRevisionSaveService revisionSaveService = mock(TimelineRevisionSaveService.class);
         TimelineRevisionQueryService revisionQueryService = mock(TimelineRevisionQueryService.class);
-        ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+        ArtifactQueryService artifactQueries = mock(ArtifactQueryService.class);
         ProviderInteroperabilityAuthority authority = mock(ProviderInteroperabilityAuthority.class);
 
         when(revisionSaveService.findById(TENANT, REVISION)).thenReturn(revision());
         String json = TimelineDocumentJsonSerializer.serialize(document());
         when(revisionQueryService.getRevisionSnapshotPayload(PROJECT, TENANT, REVISION))
                 .thenReturn(Optional.of(new RevisionSnapshotPayload(SNAPSHOT_ID, json, "timeline-1.0")));
-        when(artifactRepository.exists(TENANT, new ArtifactId(ARTIFACT_ID))).thenReturn(true);
+        when(artifactQueries.getArtifact(TENANT, new ArtifactId(ARTIFACT_ID))).thenReturn(Optional.of(mock(com.example.platform.artifact.domain.Artifact.class)));
         when(authority.declarations()).thenReturn(List.of());
 
         FirstRenderPlanningApplicationService service = new FirstRenderPlanningApplicationService(
-                renderJobService, revisionSaveService, revisionQueryService, artifactRepository, authority);
+                renderJobService, revisionSaveService, revisionQueryService, artifactQueries, authority);
 
         FirstRenderPlanningResult result = service.prepare(new FirstRenderPlanningRequest(
                 TENANT, REVISION,

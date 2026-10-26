@@ -1,5 +1,8 @@
 package com.example.platform.media.infrastructure.persistence;
 
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
+import com.example.platform.shared.test.TestDatabaseSchema;
+
 import com.example.platform.colorimage.AlphaDescription;
 import com.example.platform.colorimage.ChromaSubsampling;
 import com.example.platform.colorimage.ColorDescription;
@@ -21,9 +24,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Optional;
 
@@ -35,11 +35,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * cross-stream / nonexistent bindings via direct SQL (bypassing any application
  * validation), so no retired media authority is needed to prove ownership.
  */
-@Testcontainers
 class SourceVisualOwnershipIntegrityIT {
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static TestDatabaseSchema database;
 
     private static DSLContext dsl;
     private static final ArtifactId ARTIFACT_X = new ArtifactId("artifact-X");
@@ -48,9 +46,9 @@ class SourceVisualOwnershipIntegrityIT {
     private static final MediaStreamId STREAM_B = new MediaStreamId("stream-B");
 
     @BeforeAll
-    static void setup() {
-        PG.start();
-        dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+    static void setup() throws Exception {
+        database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
+        dsl = database.dsl();
         // production-equivalent Artifact-keyed DDL (consolidated V1 shape)
         dsl.execute("create table artifact (id varchar(64) primary key)");
         dsl.execute("create table media_stream (id varchar(64) primary key, "
@@ -86,10 +84,8 @@ class SourceVisualOwnershipIntegrityIT {
     }
 
     @AfterAll
-    static void teardown() {
-        if (PG != null) {
-            PG.stop();
-        }
+    static void teardown() throws Exception {
+        if (database!=null) database.close();
     }
 
     @BeforeEach

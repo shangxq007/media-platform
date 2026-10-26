@@ -44,7 +44,6 @@ class ArtifactApplicationServiceTest {
 
     private FakeApplicationQuery query;
     private FakeArtifactQuery artifactQuery;
-    private RecordingGrantProvider grantProvider;
     private ArtifactApplicationService service;
 
     @BeforeEach
@@ -52,8 +51,7 @@ class ArtifactApplicationServiceTest {
         TenantContext.set("tenant-a");
         query = new FakeApplicationQuery();
         artifactQuery = new FakeArtifactQuery();
-        grantProvider = new RecordingGrantProvider();
-        service = new ArtifactApplicationService(query, artifactQuery, List.of(grantProvider));
+        service = new ArtifactApplicationService(query, artifactQuery);
     }
 
     @AfterEach
@@ -93,19 +91,20 @@ class ArtifactApplicationServiceTest {
                 ArtifactAccessException.class, () -> service.requestAccess(SCOPE, ARTIFACT_ID));
 
         assertEquals(ArtifactAccessFailure.NOT_AVAILABLE, error.failure());
-        assertEquals(0, grantProvider.calls);
+        assertEquals(0, artifactQuery.replicaCalls);
     }
 
     @Test
-    void explicitAccessReturnsEphemeralGrantWithoutCoordinates() {
+    void explicitAccessReturnsAuthenticatedRelativeRouteWithoutCoordinates() {
         query.artifact = Optional.of(ARTIFACT);
         artifactQuery.replicas = List.of(REPLICA);
 
         ArtifactAccess result = service.requestAccess(SCOPE, ARTIFACT_ID);
 
         assertEquals(ARTIFACT_ID, result.artifactId());
-        assertEquals(URI.create("https://access.example/artifact-a"), result.accessUrl());
-        assertEquals(1, grantProvider.calls);
+        assertEquals(URI.create("/api/tenants/tenant-a/projects/project-a/render-jobs/job-a/artifacts/artifact-a/content"), result.accessUrl());
+        assertEquals(1, artifactQuery.replicaCalls);
+        org.junit.jupiter.api.Assertions.assertNull(result.expiresAt());
         assertFalse(result.toString().contains("bucket/key"));
     }
 
@@ -118,19 +117,18 @@ class ArtifactApplicationServiceTest {
 
         assertEquals(ArtifactAccessFailure.NOT_FOUND, error.failure());
         assertEquals(0, artifactQuery.replicaCalls);
-        assertEquals(0, grantProvider.calls);
+        assertEquals(0, artifactQuery.replicaCalls);
     }
 
     @Test
-    void storageGrantFailureIsRedactedAndFailsClosed() {
+    void noReplicaIsUnavailableAndNeverCreatesAccessGrant() {
         query.artifact = Optional.of(ARTIFACT);
-        artifactQuery.replicas = List.of(REPLICA);
-        grantProvider.failure = new IllegalStateException("bucket secret must not escape");
+        artifactQuery.replicas = List.of();
 
         ArtifactAccessException error = assertThrows(
                 ArtifactAccessException.class, () -> service.requestAccess(SCOPE, ARTIFACT_ID));
 
-        assertEquals(ArtifactAccessFailure.ACCESS_FAILED, error.failure());
+        assertEquals(ArtifactAccessFailure.NOT_AVAILABLE, error.failure());
         assertFalse(error.getMessage().contains("bucket secret"));
     }
 
@@ -157,22 +155,6 @@ class ArtifactApplicationServiceTest {
         public Optional<Artifact> findArtifact(ArtifactScope scope, ArtifactId artifactId) {
             calls++;
             return artifact;
-        }
-    }
-
-    private static final class RecordingGrantProvider implements ArtifactAccessGrantProvider {
-        private int calls;
-        private RuntimeException failure;
-
-        @Override
-        public Optional<Grant> grant(Artifact artifact, ArtifactReplicaBinding replica) {
-            calls++;
-            if (failure != null) {
-                throw failure;
-            }
-            return Optional.of(new Grant(
-                    URI.create("https://access.example/artifact-a"),
-                    Instant.parse("2026-08-29T01:00:00Z")));
         }
     }
 

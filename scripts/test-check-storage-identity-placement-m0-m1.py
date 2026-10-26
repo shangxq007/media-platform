@@ -26,7 +26,7 @@ def baseline(root: Path) -> None:
     write(root, "storage-module/src/main/java/com/example/platform/storage/domain/identity/Allocator.java", "// CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY\n")
     write(
         root,
-        "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+        "platform-app/src/main/resources/db/migration/V1__baseline.sql",
         """create table storage_logical_object (
     object_id varchar(64), tenant_id varchar(64), project_id varchar(64),
     issuance_idempotency_key varchar(255),
@@ -122,7 +122,7 @@ def main() -> int:
                 "storage-module/src/main/java/com/example/platform/storage/app/identity/BadOwner.java",
                 "class BadOwner { Object x(Object placement) { return new StorageOwnershipScope(placement.namespace().tenantId(), null); } }\n"),
             "GENERIC_JSON_PLACEMENT_AUTHORITY_COUNT": (
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql",
                 "create table storage_object_placement (replica_id varchar(64), placement_json jsonb);\n"),
             "ARTIFACT_PHYSICAL_PLACEMENT_AUTHORITY_COUNT": (
                 "artifact-module/src/main/java/BadArtifactAuthority.java",
@@ -149,7 +149,7 @@ def main() -> int:
                 "storage-module/src/main/java/com/example/platform/storage/app/migration/TimeIdentity.java",
                 "class TimeIdentity { Object x(Object observedAt) { return fingerprint(observedAt); } }\n"),
             "TENANT_ONLY_STORAGE_LOGICAL_OBJECT_UNIQUENESS_COUNT": (
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql",
                 """create table storage_logical_object (
     object_id varchar(64), tenant_id varchar(64), project_id varchar(64),
     issuance_idempotency_key varchar(255),
@@ -163,7 +163,7 @@ create table storage_write_intent (
 );
 """),
             "TENANT_ONLY_STORAGE_WRITE_INTENT_UNIQUENESS_COUNT": (
-                "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+                "platform-app/src/main/resources/db/migration/V1__baseline.sql",
                 """create table storage_logical_object (
     object_id varchar(64), tenant_id varchar(64), project_id varchar(64),
     issuance_idempotency_key varchar(255),

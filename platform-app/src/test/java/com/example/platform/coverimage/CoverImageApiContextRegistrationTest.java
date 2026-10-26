@@ -1,4 +1,5 @@
 package com.example.platform.coverimage;
+import com.example.platform.storage.infrastructure.LocalObjectStoreStorageProvider;
 
 import com.example.platform.contract.media.CoverImageContracts;
 

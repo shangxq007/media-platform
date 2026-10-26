@@ -44,10 +44,16 @@ subprojects {
             mavenBom("org.springframework.boot:spring-boot-dependencies:4.0.4")
             // Spring AI 尚无面向 Boot 4 的 GA BOM；2.0.0-Mx 与 Boot 4 对齐（见官方 Getting Started / Release Notes）。
             mavenBom("org.springframework.ai:spring-ai-bom:2.0.0-M3")
-            // Testcontainers version authority is spring-boot-dependencies:4.0.4 (testcontainers 2.0.4).
-            // The explicit import documents the single authority; the new 2.x module coordinates
-            // (testcontainers-postgresql, testcontainers-junit-jupiter) are managed only by this BOM.
-            mavenBom("org.testcontainers:testcontainers-bom:2.0.4")
+        }
+    }
+
+    // One version authority for PG18 runtime/test/codegen. Explicit constraints win over
+    // the older Spring Boot BOM values; no module may drift independently.
+    configurations.configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.postgresql" && requested.name == "postgresql") useVersion("42.7.14")
+            if (requested.group == "org.flywaydb") useVersion("11.20.3")
+            if (requested.group == "org.jooq") useVersion("3.21.9")
         }
     }
 
@@ -60,12 +66,7 @@ subprojects {
     dependencies {
         // Annotation-only; aligns all Gradle modules with Spring Modulith metadata in package-info.
         add("compileOnly", "org.springframework.modulith:spring-modulith-api:2.0.4")
-        
-        // Test dependencies for all modules (version governed by testcontainers-bom:2.0.4).
-        // Testcontainers 2.x renamed these artifacts: the old coordinates
-        // (org.testcontainers:postgresql, :junit-jupiter) do not exist at 2.0.4.
-        add("testImplementation", "org.testcontainers:testcontainers-postgresql")
-        add("testImplementation", "org.testcontainers:testcontainers-junit-jupiter")
+
 
         // ByteBuddy agent for Mockito inline mock maker on Java 25+.
         // Declared as a resolvable configuration so Gradle resolves the exact JAR path
@@ -277,7 +278,7 @@ tasks.register("testExecutionSchedulingCensus") {
 // ZD-A1: Typed Schema Foundation verification and codegen pipeline.
 
 val jooqVersionProperty = "jooq.codegen.version"
-val jooqExpectedVersion = "3.19.30"
+val jooqExpectedVersion = "3.21.9"
 
 tasks.register("verifyJooqVersionAlignment") {
     group = "verification"
@@ -312,9 +313,9 @@ tasks.register<Exec>("verifyJooqRegenerationFailClosed") {
 
 tasks.register("regenerateJooqSchema") {
     group = "jooq"
-    description = "Regenerate jOOQ schema from ephemeral PostgreSQL 16. Delegates to regenerate-jooq-schema.sh"
+    description = "Regenerate jOOQ schema from the approved ephemeral PostgreSQL 18 image. Delegates to regenerate-jooq-schema.sh"
     doLast {
-        val schemaFile = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+        val schemaFile = file("platform-app/src/main/resources/db/migration/V1__baseline.sql")
         require(schemaFile.exists()) { "Schema file not found: ${'$'}{schemaFile.absolutePath}" }
 
         val script = file("typed-schema-module/regenerate-jooq-schema.sh")
@@ -335,7 +336,7 @@ tasks.register("verifyJooqGeneratedSources") {
     group = "verification"
     description = "Verify canonical V1 identities and exact GenerationTool inventory match committed jOOQ sources"
     doLast {
-        val schemaFile = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+        val schemaFile = file("platform-app/src/main/resources/db/migration/V1__baseline.sql")
         val committedDir = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated")
         val verifier = file("scripts/verify-jooq-generated-schema-parity.py")
 
@@ -569,7 +570,7 @@ tasks.register("verifyP1ProductLayerRetirement") {
     description = "P1-RED: product-layer retired (module, production types, ownerless schema, no compatibility bridge)"
     doLast {
         val retiredTables = listOf("timeline_template", "render_preset", "asset_library", "render_history", "ai_suggestion")
-        val v1 = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+        val v1 = file("platform-app/src/main/resources/db/migration/V1__baseline.sql")
         require(v1.exists()) { "FAIL: V1 schema not found" }
         val v1Text = v1.readText()
 
@@ -596,7 +597,15 @@ tasks.register("verifyP1ProductLayerRetirement") {
         for (t in retiredTables) {
             require(!v1Text.contains(t)) { "FAIL: retired ownerless table still in V1: ${'$'}t" }
         }
-        require(!v1Text.contains("V2__") && !v1Text.contains("V3__")) { "FAIL: P1 introduced V2/V3 migration" }
+        // The migration-marker test below evaluates EXECUTABLE SQL only. The consolidated
+        // baseline's provenance header legitimately names the former migrations
+        // (e.g. "V2__…") in comments, and comments cannot alter DDL, so stripping SQL
+        // comments keeps the original protection (a real V2/V3 statement is still
+        // rejected) without misreading provenance text as a migration.
+        val v1Sql = v1Text
+            .replace(Regex("(?s)/\\*.*?\\*/"), " ")
+            .lineSequence().joinToString("\n") { it.substringBefore("--") }
+        require(!v1Sql.contains("V2__") && !v1Sql.contains("V3__")) { "FAIL: P1 introduced V2/V3 migration" }
         // identity-owned tables retained
         for (t in listOf("workspace", "project", "workspace_member")) {
             require(Regex("create table " + t + "\\b", RegexOption.IGNORE_CASE).containsMatchIn(v1Text)) {
@@ -1577,21 +1586,21 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         // ── 8. Owner-adopted V1 + prerequisite migration; applied V1 stays immutable ──
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val migrations = migrationDir.listFiles { f -> f.name.endsWith(".sql") } ?: emptyArray()
-        require(migrations.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql", "V5__workflow_durable_runs.sql", "V6__marketplace_owner.sql", "V7__marketplace_event_retirement.sql", "V8__social_publication_ownership.sql", "V9__social_credential_fence.sql", "V10__media_thumbnail_tasks.sql", "V11__composition_foundation.sql", "V12__composition_versions.sql", "V13__feature_flag_evaluation_snapshots.sql", "V14__platform_execution_admission_results.sql", "V15__composition_admission_authority_facts.sql", "V16__quota_quantity_precision.sql", "V17__typed_conversion_specifications.sql", "V18__artifact_media_authority_convergence.sql", "V19__artifact_media_convergence_completion.sql", "V20__artifact_convergence_fail_closed.sql", "V21__marketplace_artifact_subject.sql", "V22__cover_image_tasks.sql")) {
+        require(migrations.map { it.name }.toSet() == setOf("V1__baseline.sql")) {
             "FAIL: unexpected Flyway migration inventory: ${migrations.map { it.name }}"
         }
         val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
-            .digest(file(migrationDir.resolve("V1__initial_schema.sql")).readBytes())
+            .digest(file(migrationDir.resolve("V1__baseline.sql")).readBytes())
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        require(appliedV1Hash == "99154a87de34f89619b37ecf570bdd820bf1e752c3cdcf133d4b10ae82539d82") {
-            "FAIL: delivered V1 migration changed; use the adopted incremental migration"
+        require(appliedV1Hash == "49c79810db8e928626402b10f102613a5ffe8f6073b265458c0c09a964c58795") {
+            "FAIL: delivered V1 baseline changed; after acceptance the V1 baseline is immutable (later schema changes start at V2__*.sql)"
         }
-        require(file(migrationDir.resolve("V1__initial_schema.sql")).exists()) {
-            "FAIL: V1__initial_schema.sql missing"
+        require(file(migrationDir.resolve("V1__baseline.sql")).exists()) {
+            "FAIL: V1__baseline.sql missing"
         }
 
         // ── 9. artifact table has no storage_uri identity column; has canonical columns ──
-        val v1 = file(migrationDir.resolve("V1__initial_schema.sql")).readText()
+        val v1 = file(migrationDir.resolve("V1__baseline.sql")).readText()
         val artifactDdl = v1.substringAfter("create table artifact (").substringBefore(");")
         require(!artifactDdl.contains("storage_uri")) {
             "FAIL: artifact table still carries storage_uri (STORAGE_URI_AS_ARTIFACT_IDENTITY_COUNT != 0)"
@@ -1674,12 +1683,12 @@ tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
     group = "verification"
     description = "GCR5/GCR6: approved migration inventory; structural FK integrity (timeline_revision/pin/snapshot/render_job); media_stream RESTRICT; no legacy migration residue; operational time contract; jOOQ parity prerequisites"
     doLast {
-        val v1 = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql").readText()
+        val v1 = file("platform-app/src/main/resources/db/migration/V1__baseline.sql").readText()
 
         // 1. Exact adopted migration inventory, with no backup/unclassified migrations.
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val scripts = migrationDir.listFiles().orEmpty().filter { it.name.startsWith("V") && it.name.endsWith(".sql") }
-        require(scripts.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql", "V5__workflow_durable_runs.sql", "V6__marketplace_owner.sql", "V7__marketplace_event_retirement.sql", "V8__social_publication_ownership.sql", "V9__social_credential_fence.sql", "V10__media_thumbnail_tasks.sql", "V11__composition_foundation.sql", "V12__composition_versions.sql", "V13__feature_flag_evaluation_snapshots.sql", "V14__platform_execution_admission_results.sql", "V15__composition_admission_authority_facts.sql", "V16__quota_quantity_precision.sql", "V17__typed_conversion_specifications.sql", "V18__artifact_media_authority_convergence.sql", "V19__artifact_media_convergence_completion.sql", "V20__artifact_convergence_fail_closed.sql", "V21__marketplace_artifact_subject.sql", "V22__cover_image_tasks.sql")) {
+        require(scripts.map { it.name }.toSet() == setOf("V1__baseline.sql")) {
             "FAIL: unexpected Flyway migration inventory: ${scripts.map { it.name }}"
         }
         val legacyMigrationDir = file("platform-app/src/main/resources/db/artifact-migration")
@@ -1699,8 +1708,8 @@ tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
         require(v1.contains("fk_timeline_snapshot_project")) { "FAIL: timeline_snapshot project FK missing" }
 
         // 3. media_stream RESTRICT (C9 — no implicit canonical history destruction).
-        require(v1.contains("constraint fk_ms_media_asset foreign key (media_asset_id) references media_asset(id) on delete restrict")) {
-            "FAIL: media_stream cascade not converted to RESTRICT (HISTORICAL_DELETE_SAFETY != 1)"
+        require(v1.contains("constraint fk_ms_artifact foreign key (artifact_id) references artifact(id) on delete restrict")) {
+            "FAIL: media_stream Artifact FK must use ON DELETE RESTRICT (HISTORICAL_DELETE_SAFETY != 1)"
         }
 
         // 4. render_job id type consistency (varchar(64) matching project.id / timeline_snapshot.id).

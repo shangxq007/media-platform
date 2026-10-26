@@ -149,6 +149,28 @@ class BubblewrapSandboxProcessLauncherTest {
     }
 
     @Test
+    void approved_system_executable_keeps_its_origin_without_extra_runtime_mounts() throws Exception {
+        Path workspace = Files.createDirectory(temp.resolve("system-tool-workspace"));
+        Path temporary = Files.createDirectory(workspace.resolve("tmp"));
+        Path output = Files.createDirectory(workspace.resolve("out"));
+        Path executable = Path.of("/usr/bin/true");
+        var requirement = new SandboxExecutionRequirement(
+                ProcessRequirement.of(Set.of(executable.toString()), executable.toString(),
+                        List.of("--version"), Duration.ofSeconds(5)),
+                FilesystemPolicy.exact(Set.of(executable), workspace, temporary, output, workspace),
+                NetworkPolicy.none(), EnvironmentPolicy.exact(Map.of()), SecretExposure.none(),
+                PrivilegePolicy.unprivileged(), ResourceEnforcementLimits.captureOnly(4096),
+                DeviceExposurePolicy.none());
+        var spec = EffectiveSandboxExecutionSpecification.resolved(requirement,
+                SandboxRuntimeCapabilities.unavailable("argv-test"));
+        var command = BubblewrapSandboxProcessLauncher.buildCommand(BWRAP, spec);
+        assertThat(command).endsWith("/usr/bin/true", "--version");
+        assertThat(command).containsSubsequence("--ro-bind", Path.of("/usr").toRealPath().toString(), "/usr");
+        assertThat(command).doesNotContain("--share-net", "/home", "/run");
+        assertThat(command).doesNotContainSubsequence("--bind", "/", "/");
+    }
+
+    @Test
     void approved_external_static_executable_is_mounted_read_only_and_translated() throws Exception {
         Path workspace = Files.createDirectory(temp.resolve("external-executable-workspace"));
         Path temporary = Files.createDirectory(workspace.resolve(".sandbox-tmp"));

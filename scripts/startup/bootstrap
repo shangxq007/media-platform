@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""Bitwarden Secrets Manager bootstrap with a fixed profile-to-allowlist authority.
+
+The call site chooses a profile name only. It cannot supply an arbitrary allowlist
+path or target entry point. The launcher invokes the pinned bws CLI without a
+shell, parses JSON in memory, injects only profile-approved secrets, preserves a
+small non-secret runtime configuration set, removes the bootstrap token, and
+execve's the approved target.
+
+Usage:
+  bootstrap --profile api -- java -jar platform.jar
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+TOKEN_ENV = "BWS_ACCESS_TOKEN"
+PROJECT_ENV = "BWS_PROJECT_ID"
+SERVER_ENV = "BWS_SERVER_URL"
+BIN_ENV = "BWS_BIN"
+TIMEOUT_ENV = "BWS_TIMEOUT_SECONDS"
+NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+DENIED_NAMES = {
+    "PATH", "HOME", "SHELL", "USER", "LOGNAME",
+    "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+    "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH",
+    TOKEN_ENV, SERVER_ENV, PROJECT_ENV, BIN_ENV, "NEON_API_KEY",
+}
+BASE_ENV_KEYS = (
+    "PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR", "JAVA_HOME",
+    "SPRING_PROFILES_ACTIVE", "PLATFORM_ENV", "HOSTNAME", "USER", "LOGNAME", "SHELL",
+    "JOOQ_PG_IMAGE", "FLYWAY_LIB_DIR", "JOOQ_FLYWAY_LIB_DIR", "JOOQ_LIB_DIR",
+    "JOOQ_GENERATOR_LIB_DIR", "JOOQ_VERSION", "JOOQ_STAGING_DIR", "JOOQ_ALLOW_TRUST",
+    "JOOQ_JAVA_IMAGE", "JOOQ_EXPECTED_MANIFEST", "JOOQ_DB_NAME",
+)
+
+# profile -> (fixed allowlist basename, protected executable relative path, required non-secret keys)
+PROFILES = {
+    "api": ("api.allowlist", "bin/media-platform-api", set()),
+    "worker": ("worker.allowlist", "bin/media-platform-worker", set()),
+    "combined": ("combined.allowlist", "bin/media-platform-combined", set()),
+    "flyway": ("flyway.allowlist", "bin/media-platform-flyway", set()),
+    "jooq": ("jooq.allowlist", "bin/media-platform-jooq", {"JOOQ_PG_IMAGE", "JOOQ_FLYWAY_LIB_DIR", "JOOQ_GENERATOR_LIB_DIR", "JOOQ_ALLOW_TRUST"}),
+}
+DEPLOY_ROOT_ENV = "MEDIA_PLATFORM_DEPLOY_ROOT"
+
+
+def die(message: str) -> None:
+    print(f"secret-bootstrap: {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def check_dir_chain(path: Path) -> None:
+    for parent in [path, *path.parents]:
+        try:
+            st = parent.lstat()
+        except OSError:
+            die("protected path missing")
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+            die("protected path contains a symlink or non-directory")
+    if path.stat().st_uid != os.geteuid() or path.stat().st_mode & 0o022:
+        die("protected directory owner/mode mismatch")
+
+
+def protected_root() -> Path:
+    raw = os.environ.get(DEPLOY_ROOT_ENV, "")
+    if not raw:
+        die("missing protected deploy root")
+    root = Path(raw)
+    if not root.is_absolute():
+        die("deploy root must be absolute")
+    try:
+        real = root.resolve(strict=True)
+    except OSError:
+        die("deploy root cannot be resolved")
+    check_dir_chain(real)
+    return real
+
+
+def read_allowlist(path: Path) -> list[str]:
+    try:
+        st = path.lstat()
+    except OSError:
+        die("allowlist is missing")
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        die("allowlist must be a regular non-symlink file")
+    if st.st_uid != os.geteuid():
+        die("allowlist owner mismatch")
+    if st.st_mode & 0o022:
+        die("allowlist is group/world writable")
+    try:
+        real = path.resolve(strict=True)
+    except OSError:
+        die("allowlist cannot be resolved")
+    check_dir_chain(path.parent)
+    if path.parent.resolve(strict=True) != real.parent:
+        die("allowlist escaped its profile directory")
+    try:
+        lines = real.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        die("allowlist cannot be read")
+    names = []
+    for line in lines:
+        name = line.strip()
+        if not name or name.startswith("#"):
+            continue
+        if not NAME_RE.fullmatch(name):
+            die("invalid allowlist name")
+        names.append(name)
+    if not names or len(names) != len(set(names)):
+        die("allowlist must be non-empty and unique")
+    return names
+
+
+def base_env() -> dict[str, str]:
+    env = {k: os.environ[k] for k in BASE_ENV_KEYS if k in os.environ}
+    for key in (TOKEN_ENV, PROJECT_ENV, SERVER_ENV, BIN_ENV, "NEON_API_KEY"):
+        env.pop(key, None)
+    return env
+
+
+def timeout_seconds() -> int:
+    raw = os.environ.get(TIMEOUT_ENV, "30")
+    try:
+        value = int(raw)
+    except ValueError:
+        die("timeout must be an integer")
+    if value < 1 or value > 60:
+        die("timeout out of range")
+    return value
+
+
+def run_bws(binary: str, project_id: str, token: str) -> list[dict]:
+    env = base_env()
+    env[TOKEN_ENV] = token
+    if os.environ.get(SERVER_ENV):
+        env[SERVER_ENV] = os.environ[SERVER_ENV]
+    env.setdefault("NO_COLOR", "1")
+    try:
+        proc = subprocess.run(
+            [binary, "secret", "list", project_id, "--output", "json"],
+            env=env, capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout_seconds(), stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        die("bws invocation failed or timed out")
+    if proc.returncode != 0:
+        die("bws returned a non-zero status")
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        die("bws returned invalid JSON")
+    if not isinstance(payload, list):
+        die("bws returned an unexpected payload shape")
+    return payload
+
+
+def selected_env(payload: list[dict], names: list[str]) -> dict[str, str]:
+    allowed = set(names)
+    selected: dict[str, str] = {}
+    seen: set[str] = set()
+    for item in payload:
+        if not isinstance(item, dict):
+            die("bws returned a non-object item")
+        key, value = item.get("key"), item.get("value")
+        if not isinstance(key, str) or not isinstance(value, str):
+            die("bws returned an invalid item")
+        if key not in allowed:
+            continue
+        if key in seen:
+            die("duplicate required secret")
+        if key in DENIED_NAMES:
+            die("dangerous secret name rejected")
+        if value == "":
+            die("empty required secret")
+        seen.add(key)
+        selected[key] = value
+    missing = [n for n in names if n not in seen]
+    if missing:
+        die("missing required secret(s): " + ",".join(missing))
+    return selected
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--profile", required=True, choices=sorted(PROFILES))
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    allow_name, relative_target, required = PROFILES[args.profile]
+    if "--" not in sys.argv:
+        die("missing target after --")
+    target = sys.argv[sys.argv.index("--") + 1:]
+    root = protected_root()
+    approved = root / relative_target
+    try:
+        st = approved.lstat()
+    except OSError:
+        die("approved entry point missing")
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode) or not (st.st_mode & stat.S_IXUSR):
+        die("approved entry point is not an executable regular file")
+    if not target or Path(target[0]).resolve(strict=False) != approved.resolve(strict=True):
+        die("target entry point is not approved for this profile")
+    for key in required:
+        if not os.environ.get(key):
+            die(f"missing non-secret runtime setting: {key}")
+    token = os.environ.get(TOKEN_ENV, "")
+    project_id = os.environ.get(PROJECT_ENV, "")
+    if not token:
+        die("missing bootstrap token")
+    if not project_id:
+        die("missing project id")
+    script_dir = Path(__file__).resolve().parent
+    allow_path = script_dir / "profiles" / allow_name
+    names = read_allowlist(allow_path)
+    binary = os.environ.get(BIN_ENV) or shutil.which("bws")
+    if not binary:
+        die("bws binary not available")
+    payload = run_bws(binary, project_id, token)
+    selected = selected_env(payload, names)
+    env = base_env()
+    env.update(selected)
+    os.execvpe(target[0], target, env)
+
+
+if __name__ == "__main__":
+    main()

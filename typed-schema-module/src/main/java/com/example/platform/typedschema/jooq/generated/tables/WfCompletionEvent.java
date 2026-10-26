@@ -5,8 +5,10 @@ package com.example.platform.typedschema.jooq.generated.tables;
 
 
 import com.example.platform.typedschema.contract.InstantConverter;
+import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt.WfExecutionAttemptPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfCompletionEventRecord;
@@ -19,6 +21,7 @@ import java.util.List;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -80,15 +83,9 @@ public class WfCompletionEvent extends TableImpl<WfCompletionEventRecord> {
     public final TableField<WfCompletionEventRecord, Long> GENERATION = createField(DSL.name("generation"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
-     * The column
-     * <code>public.wf_completion_event.artifact_commit_reference</code>.
+     * The column <code>public.wf_completion_event.artifact_id</code>.
      */
-    public final TableField<WfCompletionEventRecord, String> ARTIFACT_COMMIT_REFERENCE = createField(DSL.name("artifact_commit_reference"), SQLDataType.VARCHAR(512).nullable(false), this, "");
-
-    /**
-     * The column <code>public.wf_completion_event.artifact_committed_at</code>.
-     */
-    public final TableField<WfCompletionEventRecord, Instant> ARTIFACT_COMMITTED_AT = createField(DSL.name("artifact_committed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+    public final TableField<WfCompletionEventRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.wf_completion_event.completed_at</code>.
@@ -163,13 +160,30 @@ public class WfCompletionEvent extends TableImpl<WfCompletionEventRecord> {
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IX_WF_COMPLETION_EVENT_ARTIFACT_ID);
+    }
+
+    @Override
     public UniqueKey<WfCompletionEventRecord> getPrimaryKey() {
         return Keys.WF_COMPLETION_EVENT_PKEY;
     }
 
     @Override
     public List<ForeignKey<WfCompletionEventRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.WF_COMPLETION_EVENT__WF_COMPLETION_EVENT_ATTEMPT_ID_TASK_ID_GENERATION_FKEY);
+        return Arrays.asList(Keys.WF_COMPLETION_EVENT__WF_COMPLETION_EVENT_ARTIFACT_ID_FKEY, Keys.WF_COMPLETION_EVENT__WF_COMPLETION_EVENT_ATTEMPT_ID_TASK_ID_GENERATION_FKEY);
+    }
+
+    private transient ArtifactPath _artifact;
+
+    /**
+     * Get the implicit join path to the <code>public.artifact</code> table.
+     */
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.WF_COMPLETION_EVENT__WF_COMPLETION_EVENT_ARTIFACT_ID_FKEY, null);
+
+        return _artifact;
     }
 
     private transient WfExecutionAttemptPath _wfExecutionAttempt;

@@ -135,6 +135,24 @@ public class WfHostResourceSnapshot extends TableImpl<WfHostResourceSnapshotReco
      */
     public final TableField<WfHostResourceSnapshotRecord, Long> PUBLICATION_TRANSACTION_ID = createField(DSL.name("publication_transaction_id"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("txid_current()"), SQLDataType.BIGINT)), this, "");
 
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot.observed_cpu_utilization_ratio</code>.
+     */
+    public final TableField<WfHostResourceSnapshotRecord, Double> OBSERVED_CPU_UTILIZATION_RATIO = createField(DSL.name("observed_cpu_utilization_ratio"), SQLDataType.DOUBLE, this, "");
+
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot.observed_memory_used_bytes</code>.
+     */
+    public final TableField<WfHostResourceSnapshotRecord, Long> OBSERVED_MEMORY_USED_BYTES = createField(DSL.name("observed_memory_used_bytes"), SQLDataType.BIGINT, this, "");
+
+    /**
+     * The column
+     * <code>public.wf_host_resource_snapshot.observed_temporary_storage_used_bytes</code>.
+     */
+    public final TableField<WfHostResourceSnapshotRecord, Long> OBSERVED_TEMPORARY_STORAGE_USED_BYTES = createField(DSL.name("observed_temporary_storage_used_bytes"), SQLDataType.BIGINT, this, "");
+
     private WfHostResourceSnapshot(Name alias, Table<WfHostResourceSnapshotRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -248,6 +266,9 @@ public class WfHostResourceSnapshot extends TableImpl<WfHostResourceSnapshotReco
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_check2"), "((safety_headroom_temporary_storage_bytes <= temporary_storage_bytes))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_cpu_millicores_check"), "((cpu_millicores >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_memory_bytes_check"), "((memory_bytes >= 0))", true),
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_observed_cpu_utilization_ratio_check"), "(((observed_cpu_utilization_ratio >= (0)::double precision) AND (observed_cpu_utilization_ratio <= (1)::double precision)))", true),
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_observed_memory_used_bytes_check"), "((observed_memory_used_bytes >= 0))", true),
+            Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_observed_temporary_storage_used_check"), "((observed_temporary_storage_used_bytes >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_safety_headroom_cpu_millicores_check"), "((safety_headroom_cpu_millicores >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_safety_headroom_memory_bytes_check"), "((safety_headroom_memory_bytes >= 0))", true),
             Internal.createCheck(this, DSL.name("wf_host_resource_snapshot_safety_headroom_temporary_stora_check"), "((safety_headroom_temporary_storage_bytes >= 0))", true),

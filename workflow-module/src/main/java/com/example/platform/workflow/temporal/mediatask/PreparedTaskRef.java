@@ -16,7 +16,11 @@ public record PreparedTaskRef(
         String planRef,
         String planDigest,
         String expectedExecutableTaskGraphDigest,
-        List<String> executableTaskIds) {
+        List<String> executableTaskIds, com.example.platform.render.api.GraphRenderLifecycle.Execution execution) {
+
+    public PreparedTaskRef(String tenantId,String renderJobId,String planRef,String planDigest,String expectedExecutableTaskGraphDigest,List<String> executableTaskIds) {
+        this(tenantId,renderJobId,planRef,planDigest,expectedExecutableTaskGraphDigest,executableTaskIds,null);
+    }
 
     public PreparedTaskRef {
         Objects.requireNonNull(tenantId, "tenantId");

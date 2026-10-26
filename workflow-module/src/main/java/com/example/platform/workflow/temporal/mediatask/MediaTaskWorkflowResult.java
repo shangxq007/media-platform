@@ -15,7 +15,11 @@ public record MediaTaskWorkflowResult(
         String planDigest,
         String expectedExecutableTaskGraphDigest,
         List<String> executableTaskIds,
-        String status) {
+        String status, com.example.platform.render.api.GraphRenderLifecycle.Output finalOutput) {
+
+    public MediaTaskWorkflowResult(String tenantId,String renderJobId,String planDigest,String expectedExecutableTaskGraphDigest,List<String> executableTaskIds,String status) {
+        this(tenantId,renderJobId,planDigest,expectedExecutableTaskGraphDigest,executableTaskIds,status,null);
+    }
 
     /** The graph was loaded and re-derived, but execution was not requested. */
     public static final String STATUS_PREPARED = "PREPARED";

@@ -1,3 +1,5 @@
+> Current database-test entry: [PostgreSQL 18 test infrastructure](../../scripts/testinfra/README.md). Older container/H2 test instructions below are superseded for database tests and do not authorize them. Application startup remains a separate contract.
+
 # CI Verification Guide
 
 > **Last Updated:** 2026-06-22

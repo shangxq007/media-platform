@@ -73,7 +73,7 @@ public class TemporalRenderExecutionAdapter implements RenderExecutionPort {
      * @param projectId   the project identifier
      * @param prompt      the AI prompt/script
      * @param profile     the render profile
-     * @return the render job ID (same as workflow ID)
+     * @return the logical render job ID
      * @throws IllegalStateException if Temporal Server is unavailable or workflow start fails
      */
     @Override
@@ -91,7 +91,7 @@ public class TemporalRenderExecutionAdapter implements RenderExecutionPort {
             RenderWorkflow workflow = workflowClient.newWorkflowStub(
                     RenderWorkflow.class,
                     WorkflowOptions.newBuilder()
-                            .setWorkflowId(renderJobId)
+                            .setWorkflowId(com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenantId,renderJobId))
                             .setTaskQueue(RenderTaskQueue.NAME)
                             // W1-GAP-005: execution >= run >= max activity S2C (2h)
                             .setWorkflowExecutionTimeout(Duration.ofHours(3))
