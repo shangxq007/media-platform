@@ -46,7 +46,8 @@ public final class ControlledJUnitMain {
                     DiscoverySelectors.selectClass("com.example.platform.runtime.mediatask.MediaTaskExecuteTaskIntegrationTest"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.TestDatabaseConnectionCapacityGuardTest"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.ArtifactCommitRecoveryIT"),
-                    DiscoverySelectors.selectClass("com.example.platform.testinfra.GraphRenderLifecycleIT"));
+                    DiscoverySelectors.selectClass("com.example.platform.testinfra.GraphRenderLifecycleIT"),
+                    DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.AtomicAssignmentGrantValidityPostgresTest"));
             } else throw new IllegalArgumentException("JOB_MODE");
             var listener=new SummaryGeneratingListener();
             var launcher=LauncherFactory.create();

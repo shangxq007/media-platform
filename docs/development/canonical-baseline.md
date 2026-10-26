@@ -33,7 +33,7 @@ python3 -I -B scripts/dev/first-render --output /tmp/media-platform-first-render
 The output path must not exist and must be outside the repository. The entry builds API/Worker,
 pulls official PostgreSQL18/Temporal images into its own container store, creates a network-isolated
 new PG18 database/role/volume and a dedicated Temporal namespace, migrates the empty database,
-executes83 PG scenarios, starts separate API and WORKER through the existing Bootstrap profiles,
+executes91 PG scenarios, starts separate API and WORKER through the existing Bootstrap profiles,
 submits authenticated formal HTTP requests, verifies terminal state/final output/download/hash/media,
 and tests authorization and cancellation. Synthetic OIDC/accounts/media/credentials are fixtures,
 never cloud credentials. It does not publish a host database port or inspect other container stores.

@@ -191,7 +191,7 @@ def render_job_schema_block(text: str) -> str:
 
 def event_field_count(root: Path, event_name: str) -> int:
     path = root / (
-        "shared-kernel/src/main/java/com/example/platform/shared/events/"
+        "render-module/src/main/java/com/example/platform/render/api/event/"
         f"{event_name}.java"
     )
     if not path.is_file():
@@ -267,7 +267,7 @@ def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]
     )
     details["SYSTEM_RENDER_FAKE_PRINCIPAL_COUNT"] = findings_for(
         render,
-        r"CanonicalActor\.user\s*\(|RenderInitiator\.restore\s*\(\s*ActorType\.SYSTEM|RenderInitiator\.principal\s*\([^\n]*(?:projectId|tenantId|@example\.)|new\s+Principal\s*\([^\n]*(?:projectId|tenantId|@example\.)",
+        r"CanonicalActor\.user\s*\(|RenderInitiator\.restore\s*\(\s*ActorType\.SYSTEM|RenderInitiator\.principal\s*\([^\n]*(?:projectId|tenantId|@example\.)|new\s+Principal\s*\(\s*(?:projectId|tenantId)\b|new\s+Principal\s*\(\s*\"[^\"]*@example\.",
     )
     details["PROJECT_ID_AS_NOTIFICATION_AUDIENCE_COUNT"] = findings_for(
         production_java,
@@ -279,7 +279,7 @@ def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]
     )
     details["ARBITRARY_TENANT_USER_FALLBACK_COUNT"] = findings_for(
         production_java,
-        r"(?:find|select|load|get)[A-Za-z0-9_]*(?:Tenant)?(?:User|Member)[A-Za-z0-9_]*(?:First|Any)|(?:tenant|member)[^\n]{0,80}findFirst\s*\(",
+        r"(?:find|select|load|get)[A-Za-z0-9_]*(?:Tenant)?(?:User|Member)[A-Za-z0-9_]*(?:First|Any)|(?:tenants|members)\b[^\n]{0,80}findFirst\s*\(",
     )
     details["RENDER_NOVU_REFERENCE_COUNT"] = findings_for(render, r"\bnovu")
     details["IDENTITY_NOVU_REFERENCE_COUNT"] = findings_for(identity, r"\bnovu")

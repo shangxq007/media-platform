@@ -202,15 +202,50 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
     /** Reloads the current non-claimable Native Pull ownership for one task. */
     public Optional<AssignmentGrant> findCurrentGrant(ExecutableTaskId taskId) {
         Objects.requireNonNull(taskId, "taskId");
+        // G2 grant validity: a still-current grant must be backed by a live lease and by the
+        // registrations the admission contract required when it was minted. Only persisted columns
+        // are used; no new field or table is introduced. An invalid grant is reported as absent so
+        // the caller re-enters the existing admission path (re-mint or GRANT_ABSENT) instead of
+        // executing on a stale authorization.
+        OffsetDateTime evaluatedAt = databaseTime(clock.instant());
         Record row = dsl.fetchOne(
                 """
                 select r.request_work_id, o.active_assignment_id
                   from wf_task_ownership o
                   join wf_request_work_resolution r
                     on r.assignment_id = o.active_assignment_id
+                  join wf_execution_assignment a
+                    on a.assignment_id = o.active_assignment_id
                  where o.task_id = ? and not o.claimable and r.result_kind = 'GRANTED'
+                   and exists (
+                       select 1 from wf_task_lease l
+                        where l.assignment_id = a.assignment_id
+                          and l.active
+                          and l.expires_at > cast(? as timestamptz))
+                   and exists (
+                       select 1 from wf_host_registration hr
+                        where hr.physical_host_id = a.physical_host_id
+                          and hr.physical_host_incarnation_id = a.physical_host_incarnation_id
+                          and hr.active
+                          and hr.valid_until > cast(? as timestamptz))
+                   and exists (
+                       select 1 from wf_runtime_registration rr
+                        where rr.worker_runtime_id = a.worker_runtime_id
+                          and rr.worker_runtime_incarnation_id = a.worker_runtime_incarnation_id
+                          and rr.physical_host_id = a.physical_host_id
+                          and rr.physical_host_incarnation_id = a.physical_host_incarnation_id
+                          and rr.active
+                          and rr.valid_until > cast(? as timestamptz))
+                   and exists (
+                       select 1 from wf_worker_runtime_connection c
+                        where c.worker_runtime_id = a.worker_runtime_id
+                          and c.connected
+                          and c.current_incarnation_id = a.worker_runtime_incarnation_id)
                 """,
-                taskId.sha256Hex());
+                taskId.sha256Hex(),
+                evaluatedAt,
+                evaluatedAt,
+                evaluatedAt);
         if (row == null) {
             return Optional.empty();
         }

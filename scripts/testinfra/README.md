@@ -44,7 +44,7 @@ network and mounts readonly code, jars and CA plus its writable scratch root. It
 join an existing database or historical container. Resource creation and exact cleanup remain
 controller operations; the CLI neither discovers nor deletes arbitrary containers.
 
-The fixed real selection runs 83 methods: the 28 business targets, 30 migrated test methods, 6 graph lifecycle cases and 13
+The fixed real selection runs 91 methods: the 28 business targets, 30 migrated test methods, 6 graph lifecycle cases, 8 grant-validity cases and 13
 connection-capacity checks, plus six Artifact commit recovery scenarios. Before tests it validates PG18/DB/role/TLS, runs canonical classpath
 Flyway migrations, executes jOOQ GenerationTool against the real schema, and compiles every
 generated Java source in scratch. `CONTROLLED_TEST` records each actual JUnit outcome.

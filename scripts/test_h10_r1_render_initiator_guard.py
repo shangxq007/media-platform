@@ -77,8 +77,8 @@ final class DeliveryJobService {
 
     def write_event(self, name: str, field: str = "RenderInitiator initiator") -> None:
         self.write(
-            f"shared-kernel/src/main/java/com/example/platform/shared/events/{name}.java",
-            f"package com.example.platform.shared.events; public record {name}({field}) {{}}\n",
+            f"render-module/src/main/java/com/example/platform/render/api/event/{name}.java",
+            f"package com.example.platform.render.api.event; public record {name}({field}) {{}}\n",
         )
 
     def run_guard(self) -> subprocess.CompletedProcess[str]:
@@ -240,6 +240,28 @@ final class DeliveryJobService {
             )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("ERROR=EMPTY_SCAN_UNIVERSE", result.stdout)
+
+    def test_accepts_persisted_actor_with_separate_tenant_scope(self):
+        self.write("render-module/src/main/java/example/RenderSubmission.java",
+                   "var actor = new Principal(actorId, actorType, tenantId);\n")
+        result=self.run_guard()
+        self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+
+    def test_accepts_scoped_artifact_replica_selection(self):
+        self.write("platform-app/src/main/java/example/PlatformApp.java",
+                   "var replica = artifacts.listReplicas(tenant, artifactId).stream().findFirst();\n")
+        result=self.run_guard()
+        self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+
+    def test_still_rejects_tenant_substitution_for_actor_identity(self):
+        self.write("render-module/src/main/java/example/RenderSubmission.java",
+                   "var actor = new Principal(tenantId, actorType, tenantId);\n")
+        self.assert_red("SYSTEM_RENDER_FAKE_PRINCIPAL_COUNT")
+
+    def test_still_rejects_arbitrary_member_selection(self):
+        self.write("platform-app/src/main/java/example/PlatformApp.java",
+                   "var actor = members.stream().findFirst();\n")
+        self.assert_red("ARBITRARY_TENANT_USER_FALLBACK_COUNT")
 
 
 if __name__ == "__main__":
