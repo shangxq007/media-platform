@@ -1,0 +1,105 @@
+"""Synthetic local validation fixture; never a production runtime entry."""
+import os
+from pathlib import Path
+import json,os,sys,time,subprocess,secrets,hashlib,shutil,ctypes,signal
+R=Path(os.environ['MEDIA_PLATFORM_VALIDATION_OUTPUT']);RUN_ID=json.loads((R/'07-runtime/run.json').read_text())['id'];W=Path(__file__).resolve().parents[3];sys.path.insert(0,str(W/'scripts/testinfra'))
+from controlled_launch import birth
+from local_runtime import sandbox_prefix
+prior=Path((R/'07-runtime/current-apps.txt').read_text().strip()) if (R/'07-runtime/current-apps.txt').exists() else None
+out=R/'07-runtime'/('apps-'+str(time.time_ns()));out.mkdir(mode=0o700)
+c=json.loads((R/'07-runtime/local-context.json').read_text()); old=json.loads((Path((R/'07-runtime/final-db-job.txt').read_text().strip())/'binding.json').read_text());old.update(scratch=str(out),identity=birth(c['pid']),container_id=c['container_id'],network_namespace=c['network_namespace'],user_namespace=c['user_namespace'],ca=c['ca'],run=c['run'],attempt=c['attempt'])
+b=out/'binding.json';b.write_text(json.dumps(old));b.chmod(0o600)
+for n in ['plugins','workspace','staging','work','object-store','local-storage','cover-work','materialized','oidc']:(out/n).mkdir()
+shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.0.0.jar',out/'plugins')
+if prior and (prior/'source-metadata.json').exists() and '--fresh' not in sys.argv:
+ assert not any(p.is_symlink() for p in (prior/'object-store').rglob('*'))
+ shutil.copytree(prior/'object-store',out/'object-store',dirs_exist_ok=True,symlinks=True)
+ for name in ['source.mp4','source-metadata.json','timeline.json','http-results.json','retry.py','token']:
+  if (prior/name).exists():shutil.copy(prior/name,out/name)
+ (out/'fixture-source.json').write_text(json.dumps({'owned_run':''+RUN_ID+'','previous_application_root':str(prior),'preparation_only':True}))
+if '--missing-source' in sys.argv:
+ source=out/'object-store/objects/obj-4af14655-9c95-3d8f-9fb1-f7cf85161905'
+ assert source.is_file() and not source.is_symlink()
+ held=out/'source-withheld-for-failure';source.rename(held)
+ (out/'missing-source-fixture.json').write_text(json.dumps({'original':str(source),'held':str(held),'sha256':hashlib.sha256(held.read_bytes()).hexdigest(),'task_owned_synthetic_fixture':True,'purpose':'real failed source materialization; no fake HTTP or status SQL'}))
+priv=R/'07-runtime/private';key=priv/'oidc-private.pem'
+env={'PATH':'/usr/bin:/bin','HOME':str(out),'LANG':'C.UTF-8','PYTHONDONTWRITEBYTECODE':'1'}
+if not key.exists():subprocess.run(['openssl','genpkey','-algorithm','RSA','-pkeyopt','rsa_keygen_bits:2048','-out',str(key)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True);key.chmod(0o600)
+import base64
+n=int(subprocess.check_output(['openssl','rsa','-in',str(key),'-noout','-modulus'],env=env,stderr=subprocess.DEVNULL).decode().split('=')[1],16)
+b64=lambda x:base64.urlsafe_b64encode(x).decode().rstrip('=')
+jwk={'keys':[dict(kty='RSA',kid='f8-local',use='sig',alg='RS256',n=b64(n.to_bytes((n.bit_length()+7)//8,'big')),e='AQAB')]}
+(out/'oidc/jwks.json').write_text(json.dumps(jwk))
+issuer='http://127.0.0.1:18081'
+(out/'oidc/.well-known').mkdir();(out/'oidc/.well-known/openid-configuration').write_text(json.dumps(dict(issuer=issuer,jwks_uri=issuer+'/jwks.json',authorization_endpoint=issuer+'/authorize',token_endpoint=issuer+'/token',response_types_supported=['id_token'],subject_types_supported=['public'],id_token_signing_alg_values_supported=['RS256'])))
+pwd=Path(c.get('password_file',str(priv/'test-password'))).read_text();url='jdbc:postgresql://127.0.0.1:5432/'+c['database']+'?sslmode=verify-full&sslrootcert='+c['ca']
+base=dict(PATH='/usr/bin:/bin',HOME=str(out),LANG='C.UTF-8',LC_ALL='C.UTF-8',SPRING_DATASOURCE_URL=url,SPRING_DATASOURCE_USERNAME=c['role'],SPRING_DATASOURCE_PASSWORD=pwd,SPRING_FLYWAY_URL=url,SPRING_FLYWAY_USER=c['role'],SPRING_FLYWAY_PASSWORD=pwd,SPRING_PROFILES_ACTIVE='pg18-integration,temporal',PLATFORM_ENV='integration',APP_JWT_SECRET=secrets.token_hex(48),SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=issuer,APP_SECURITY_OAUTH2_AUDIENCE='f8-local',APP_SECURITY_OAUTH2_ENABLED='true',TEMPORAL_TARGET='127.0.0.1:7233',TEMPORAL_NAMESPACE='f8-pg18-'+RUN_ID+'',PLATFORM_PAYMENT_STRIPE_ENABLED='false',APP_AI_OPENAI_ENABLED='false',APP_AI_DEFAULT_PROVIDER='stubChatProvider',FFMPEG_WORKER_FFMPEG_PATH='/usr/local/lib/media-platform/ffmpeg/ffmpeg',FFMPEG_WORKER_FFPROBE_PATH='/usr/local/lib/media-platform/ffmpeg/ffprobe',FFMPEG_WORKER_PLUGINS_DIRECTORY=str(out/'plugins'),FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT=str(out/'workspace'),FFMPEG_WORKER_STAGING_ROOT=str(out/'staging'),FFMPEG_WORKER_WORK_ROOT=str(out/'work'),FFMPEG_WORKER_PUBLICATION_PROJECT_ID='untrusted-project-override',FFMPEG_WORKER_PUBLICATION_STORAGE_PROVIDER='local-object-store',APP_COVER_IMAGE_STORAGE_ROOT=str(out/'object-store'),APP_STORAGE_LOCAL_ROOT=str(out/'local-storage'),APP_COVER_IMAGE_WORK_ROOT=str(out/'cover-work'),APP_COVER_IMAGE_MATERIALIZATION_ROOT=str(out/'materialized'),APP_EXTENSIONS_PLUGINS_DIR=str(out/'plugins'),SERVER_PORT='18080',SERVER_ADDRESS='127.0.0.1',MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED='false',MANAGEMENT_TRACING_ENABLED='false',IDENTITY_BUILTIN_DATA_ENABLED='true')
+# Secret-containing environment file is private, passed by pathname, never command line values.
+for role in ['api','worker']:
+ e={**base,'PLATFORM_RUNTIME_ROLE':role.upper()};p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
+launcher=out/'launch.py';launcher.write_text("import json,os,sys\ne=json.load(open(sys.argv[1]));os.execve('/usr/bin/java',['/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',sys.argv[2]],e)\n")
+ctypes.CDLL(None,use_errno=True).prctl(36,1,0,0,0) # subreaper; retain all reparented descendants
+prefix=sandbox_prefix(b);prefix=prefix[:-1]+['--tmpfs','/usr/local','--ro-bind',str(R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl'),'/usr/local/lib/media-platform/ffmpeg','--'];processes={};logs=[]
+oidc=out/'oidc.py';oidc.write_text("from http.server import HTTPServer,SimpleHTTPRequestHandler\nimport os\nos.chdir("+repr(str(out/'oidc'))+")\nclass JsonHandler(SimpleHTTPRequestHandler):\n def guess_type(self,path):return 'application/json'\nHTTPServer(('127.0.0.1',18081),JsonHandler).serve_forever()\n")
+commands={'oidc':prefix+['/usr/bin/python3','-B',str(oidc)]}
+libs=R/'03-build/outputs/_platform-app/libs'
+commands['api']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-env.json'),str(next(p for p in libs.glob('*.jar') if p.name not in ['platform-ffmpeg-worker.jar'] and not p.name.endswith('-plain.jar')))]
+commands['worker']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'worker-env.json'),str(libs/'platform-ffmpeg-worker.jar')]
+if '--bootstrap' in sys.argv:
+ control=out/'bootstrap-control';control.mkdir(mode=0o700)
+ secret_names=set()
+ for profile in ['api','worker','combined','flyway','jooq']:
+  secret_names.update(line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#'))
+ for role in ['api','worker']:
+  e=json.loads((out/(role+'-env.json')).read_text());e.pop('PLATFORM_RUNTIME_ROLE',None)
+  deploy=control/role;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
+  names=[line.strip() for line in (W/'scripts/startup/profiles'/(role+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#')]
+  payload=deploy/'synthetic-payload.json';payload.write_text(json.dumps([{'key':name,'value':e.get(name) or secrets.token_hex(32)} for name in names]+[{'key':'PLATFORM_RUNTIME_ROLE','value':'COMBINED'},{'key':'NEON_API_KEY','value':'synthetic-not-authorized'}]));payload.chmod(0o600)
+  stub=deploy/'bws-synthetic';stub.write_text('#!/usr/bin/python3\nfrom pathlib import Path\nprint(Path('+repr(str(payload))+').read_text())\n');stub.chmod(0o700)
+  runtime=deploy/'runtime.json';runtime.write_text(json.dumps({k:v for k,v in e.items() if k not in secret_names}));runtime.chmod(0o600)
+  jar=commands[role][-1];target=deploy/'bin'/('media-platform-'+role)
+  nested=['/usr/bin/bwrap','--unshare-user','--unshare-pid','--unshare-ipc','--unshare-uts','--unshare-cgroup','--uid','1000','--gid','1000','--cap-drop','ALL','--die-with-parent','--new-session',
+          '--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib',
+          '--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/etc','--ro-bind','/etc/ld.so.cache','/etc/ld.so.cache',
+          '--ro-bind','/var/lib/ca-certificates/java-cacerts','/var/lib/ca-certificates/java-cacerts',
+          '--ro-bind',str(R/'03-build/outputs'),str(R/'03-build/outputs'),'--ro-bind',c['ca'],c['ca'],
+          '--bind',str(out),str(out),'--tmpfs',str(control),'--chdir',str(out),'--',
+          '/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',jar]
+  wrapper="#!/usr/bin/python3\nimport os,json\nfrom pathlib import Path\ne=dict(os.environ)\nassert not any(k in e for k in ['BWS_ACCESS_TOKEN','BWS_BIN','BWS_PROJECT_ID','NEON_API_KEY','PLATFORM_RUNTIME_ROLE'])\ne.update(json.loads(Path("+repr(str(runtime))+").read_text()))\nPath("+repr(str(out/(role+'-bootstrap-env.json')))+").write_text(json.dumps({'keys':sorted(e),'role_environment_absent':'PLATFORM_RUNTIME_ROLE' not in e,'synthetic_bws':True}))\nos.execve('/usr/bin/bwrap',"+repr(nested)+",e)\n"
+  target.write_text(wrapper);target.chmod(0o700)
+  driver=deploy/'driver.py';driver.write_text("import os\ne="+repr({k:v for k,v in e.items() if k in ['PATH','HOME','LANG','LC_ALL','SPRING_PROFILES_ACTIVE','PLATFORM_ENV']})+"\ne.update("+repr({'BWS_ACCESS_TOKEN':'synthetic-bootstrap-correction','BWS_PROJECT_ID':'00000000-0000-0000-0000-000000000000','BWS_BIN':str(stub),'MEDIA_PLATFORM_DEPLOY_ROOT':str(deploy)})+")\nos.execve('/usr/bin/python3',['/usr/bin/python3','-B',"+repr(str(W/'scripts/startup/bootstrap'))+",'--profile',"+repr(role)+",'--',"+repr(str(target))+"],e)\n");driver.chmod(0o600)
+  commands[role]=prefix+['/usr/bin/python3','-B',str(driver)]
+from cli import manifest
+manifest_bytes=manifest()
+(out/'candidate-identity.json').write_text(json.dumps({'path':str(W),'manifest_sha256':hashlib.sha256(manifest_bytes).hexdigest(),'files':len(manifest_bytes.splitlines())-1}))
+(out/'commands.json').write_text(json.dumps({name:{'argv':command,'cwd':str(out),'fresh_environment_keys':sorted(env),'jar_sha256':hashlib.sha256((libs/('platform-app.jar' if name=='api' else 'platform-ffmpeg-worker.jar')).read_bytes()).hexdigest() if name in ['api','worker'] else None} for name,command in commands.items()},indent=2))
+(R/'07-runtime/current-apps.txt').write_text(str(out)+'\n')
+try:
+ for name,cmd in commands.items():
+  log=open(out/(name+'.log'),'w');logs.append(log);p=subprocess.Popen(cmd,env=env,stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT);processes[name]=p
+  (out/(name+'-identity.json')).write_text(json.dumps(birth(p.pid)));time.sleep(1)
+ deadline=time.monotonic()+900
+ while time.monotonic()<deadline:
+  status={n:p.poll() for n,p in processes.items()};(out/'status.json').write_text(json.dumps(status))
+  if (out/'STOP').exists() or all(status[n] is not None for n in ['api','worker']):break
+  time.sleep(1)
+finally:
+ for p in processes.values():
+  if p.poll() is None:p.terminate()
+ for p in processes.values():
+  try:p.wait(timeout=40)
+  except subprocess.TimeoutExpired:p.kill();p.wait(timeout=10)
+ # All children in unprivileged PID namespaces; bwrap die-with-parent bounds descendants.
+ deadline=time.monotonic()+10
+ while True:
+  try:
+   pid,status=os.waitpid(-1,os.WNOHANG)
+   if pid==0:
+    if time.monotonic()>deadline:raise RuntimeError('descendants not proven stopped')
+    time.sleep(.05)
+  except ChildProcessError:break
+ (out/'complete.json').write_text(json.dumps({'all_children_reaped':True,'status':{n:p.returncode for n,p in processes.items()}}))
+ for log in logs:log.close()
+ for name in commands:
+  assert pwd not in (out/(name+'.log')).read_text()
+ print(out,flush=True)

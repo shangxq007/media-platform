@@ -74,10 +74,11 @@ path, signed-URL or default-credential fallback exists. Current validated downlo
 
 ## Migration and deployment boundary
 
-V1 remains byte-identical to the accepted input. V2 adds graph execution bindings and scoped foreign
-keys/indexes. This unreleased project may later consolidate V2 into V1 only after Owner review of
-actual schema and complete E2E evidence. Never edit an applied task database's Flyway history:
-validation after a development migration change uses a new empty owned database/role.
+The canonical greenfield migration is now a single V1, containing the accepted graph execution
+bindings and scope/native constraints previously validated as V1+V2. The historical accepted
+snapshot remains immutable outside this Git workspace. Old two-step and new one-step empty-PG18
+schemas and all447 generated jOOQ sources were compared. Never point this baseline at a historical
+populated database or rewrite an applied Flyway history. See ../development/canonical-baseline.md.
 
 Dedicated protected runner, cross-UID/executor/cgroup containment and real Neon/BWS scopes remain
 separate deployment gates (DEPLOYMENT_ISOLATION_NOT_VERIFIED). This local PG18/FFmpeg product test

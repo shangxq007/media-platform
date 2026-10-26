@@ -1,10 +1,12 @@
+Current development baseline: [build, PostgreSQL18 and First Render guide](docs/development/canonical-baseline.md).
+
 PostgreSQL test infrastructure: [offline/Fake commands and deployment gates](scripts/testinfra/README.md).
 
 # Media Platform
 
 Media Build Platform — low-level reusable media capabilities for AI video production, rendering orchestration, and media asset management.
 
-**Status:** Platform Kernel Baseline 1.0 is FROZEN. See [Platform Constitution](docs/architecture/platform-constitution-v1.md).
+**Architecture contracts:** See [Platform Constitution](docs/architecture/platform-constitution-v1.md).
 
 ## Architecture Overview
 

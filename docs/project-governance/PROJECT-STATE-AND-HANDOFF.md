@@ -1,3 +1,5 @@
+> Historical status record. The current accepted development baseline and migration policy are in [canonical baseline](../development/canonical-baseline.md); old hashes/statuses below are historical evidence, not current release gates.
+
 ---
 metadata_schema_version: 1
 document_id: "project-governance-state-and-handoff"

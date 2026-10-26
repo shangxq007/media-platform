@@ -1,6 +1,6 @@
 # AGENTS.md — Canonical Repository Instruction Authority
 
-This is the canonical repository instruction source for `/home/user/Documents/workspace/projects/media-platform` and all descendants. It defines durable repository governance for coding agents. Task-specific commands, acceptance gates, branch names, worktree paths, commit SHAs, queues, evidence locations, and runtime session details belong in the current owner task record and external evidence package, not here.
+This is the canonical repository instruction source for this repository root and all descendants. It defines durable repository governance for coding agents. Task-specific commands, acceptance gates, branch names, worktree paths, commit SHAs, queues, evidence locations, and runtime session details belong in the current owner task record and external evidence package, not here.
 
 ## Authority and precedence
 

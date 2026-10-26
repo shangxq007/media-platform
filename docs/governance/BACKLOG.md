@@ -1,3 +1,5 @@
+> Historical status record. The current accepted development baseline and migration policy are in [canonical baseline](../development/canonical-baseline.md); old hashes/statuses below are historical evidence, not current release gates.
+
 # Backlog Registry
 
 > **Canonical source of truth** for all pending / deferred / blocked work items.
