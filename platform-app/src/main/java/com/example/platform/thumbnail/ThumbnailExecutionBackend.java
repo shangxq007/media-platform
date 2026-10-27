@@ -18,6 +18,7 @@ public final class ThumbnailExecutionBackend implements CancellableExecutionBack
         java.util.Objects.requireNonNull(cancelled, "cancelled");
         if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted())
             return ExecutionResult.failure(-1, "", 0, "CANCELLED", "execution cancelled");
+        boolean launchAttempted = false;
         try {
             Path work = Path.of(request.workingDirectory()).toAbsolutePath().normalize();
             Path executable = Path.of(request.payload().get("executable")).toAbsolutePath().normalize();
@@ -30,6 +31,7 @@ public final class ThumbnailExecutionBackend implements CancellableExecutionBack
                     NetworkPolicy.none(), EnvironmentPolicy.exact(Map.of("PATH", "/usr/bin:/bin", "LANG", "C", "LC_ALL", "C")),
                     SecretExposure.none(), PrivilegePolicy.unprivileged(), ResourceEnforcementLimits.captureOnly(64L * 1024L * 1024L), DeviceExposurePolicy.none());
             var cancellationObserved = new java.util.concurrent.atomic.AtomicBoolean();
+            launchAttempted = true;
             var result = detection.launcher().orElseThrow().launchResolved(requirement, () -> {
                 boolean requested = cancelled.getAsBoolean() || Thread.currentThread().isInterrupted();
                 if (requested) cancellationObserved.set(true);
@@ -45,6 +47,11 @@ public final class ThumbnailExecutionBackend implements CancellableExecutionBack
                 return ExecutionResult.failure(result.exitCode().orElse(-1), result.stderr().utf8(), elapsed,
                         result.failure().get().code().name(), result.failure().get().message());
             return ExecutionResult.success(0, result.stdout().utf8(), result.stderr().utf8(), elapsed);
-        } catch (Exception e) { return ExecutionResult.failure(-1, e.getMessage(), 0, "BACKEND_FAILED", e.getMessage()); }
+        } catch (Exception e) {
+            // An exception after entering the launcher supplies no trustworthy exit observation.
+            return ExecutionResult.failure(-1, "", 0,
+                    launchAttempted ? "SANDBOX_CLEANUP_FAILED" : "BACKEND_FAILED",
+                    launchAttempted ? "execution cleanup is uncertain" : "execution setup failed");
+        }
     }
 }

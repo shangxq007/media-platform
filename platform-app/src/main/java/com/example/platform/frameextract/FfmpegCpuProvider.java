@@ -251,6 +251,8 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
             }
             return renderThumbnail(profile, input, output, imageFormat, width, quality,
                     timestampSeconds, cancelled);
+        } catch (BackendFailure failure) {
+            return FrameExtractResult.failure(failure.code);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return FrameExtractResult.failure("CANCELLED");
@@ -293,6 +295,9 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
                 TaskCapability.COVER_IMAGE,
                 arguments,
                 profile.timeoutSeconds()));
+        if ("SANDBOX_CLEANUP_FAILED".equals(execution.errorCode())) {
+            return FrameExtractResult.failure("SANDBOX_CLEANUP_FAILED");
+        }
         if (cancelled.getAsBoolean()) {
             return FrameExtractResult.failure("CANCELLED");
         }
@@ -354,10 +359,16 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
                 Map.of("executable", Path.of(ffmpeg).toString(),
                         "input", input.toString(),
                         "providerId", PROVIDER_ID)), cancelled);
+        if ("SANDBOX_CLEANUP_FAILED".equals(execution.errorCode())) {
+            return FrameExtractResult.failure("SANDBOX_CLEANUP_FAILED");
+        }
         if (cancelled.getAsBoolean()) {
             return FrameExtractResult.failure("CANCELLED");
         }
-        if (!execution.success() || !Files.isRegularFile(output) || Files.size(output) == 0) {
+        if (!execution.success()) {
+            return FrameExtractResult.failure(execution.errorCode() == null ? "PROVIDER_FAILED" : execution.errorCode());
+        }
+        if (!Files.isRegularFile(output) || Files.size(output) == 0) {
             return FrameExtractResult.failure("PROVIDER_FAILED");
         }
         return read(output, imageFormat);
@@ -386,11 +397,14 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
                 Map.of("executable", Path.of(ffprobe).toString(),
                         "input", input.toString(),
                         "providerId", PROVIDER_ID)), cancelled);
+        if ("SANDBOX_CLEANUP_FAILED".equals(execution.errorCode())) {
+            throw new BackendFailure("SANDBOX_CLEANUP_FAILED");
+        }
         if (cancelled.getAsBoolean() || "CANCELLED".equals(execution.errorCode())) {
             throw new InterruptedException("cancelled during probe");
         }
         if (!execution.success()) {
-            throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
+            throw new BackendFailure("UNSUPPORTED_MEDIA");
         }
         if (cancelled.getAsBoolean()) {
             throw new InterruptedException("cancelled during probe");
@@ -398,8 +412,14 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
         try {
             return Double.parseDouble(execution.stdout().trim());
         } catch (NumberFormatException failure) {
-            throw new IllegalArgumentException("UNSUPPORTED_MEDIA", failure);
+            throw new BackendFailure("UNSUPPORTED_MEDIA");
         }
+    }
+
+    /** Internal outcome transport; it does not define another lifecycle or expose diagnostics. */
+    private static final class BackendFailure extends RuntimeException {
+        final String code;
+        BackendFailure(String code) { super(code); this.code = code; }
     }
 
     private static FrameExtractResult read(Path output, String imageFormat) throws IOException {

@@ -122,14 +122,18 @@ public final class FrameExtractExecutionAdapter
             Path inputPath,
             BooleanSupplier cancelled) {
         Path work = null;
+        boolean cleanupSafe = true;
         try {
             work = newWorkDirectory();
-            return execute(capabilityId, inputPath, work, request.imageFormat(), request.width(),
+            cleanupSafe = false; // An unclassified provider exception is not an exit proof.
+            var result = execute(capabilityId, inputPath, work, request.imageFormat(), request.width(),
                     request.quality(), request.timestampSeconds(), cancelled);
+            cleanupSafe = !"SANDBOX_CLEANUP_FAILED".equals(result.failureCode());
+            return result;
         } catch (IOException failure) {
             return FrameExtractResult.failure("PROVIDER_IO_FAILED");
         } finally {
-            deleteRecursively(work);
+            if (cleanupSafe) deleteRecursively(work);
         }
     }
 
@@ -141,16 +145,20 @@ public final class FrameExtractExecutionAdapter
             BooleanSupplier cancelled) {
         Objects.requireNonNull(input, "input");
         Path work = null;
+        boolean cleanupSafe = true;
         try {
             work = newWorkDirectory();
             Path source = work.resolve("input");
             Files.write(source, input);
-            return execute(capabilityId, source, work, request.imageFormat(), request.width(),
+            cleanupSafe = false;
+            var result = execute(capabilityId, source, work, request.imageFormat(), request.width(),
                     request.quality(), request.timestampSeconds(), cancelled);
+            cleanupSafe = !"SANDBOX_CLEANUP_FAILED".equals(result.failureCode());
+            return result;
         } catch (IOException failure) {
             return FrameExtractResult.failure("PROVIDER_IO_FAILED");
         } finally {
-            deleteRecursively(work);
+            if (cleanupSafe) deleteRecursively(work);
         }
     }
 

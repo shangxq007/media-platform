@@ -109,13 +109,16 @@ public final class CoverImageExecutionBackend implements ExecutionBackend {
                     command, outputRoot, Duration.ofSeconds(request.timeoutSeconds()), CAPTURE_BYTES,
                     SandboxCancellation.never());
         } catch (IOException | IllegalArgumentException failure) {
-            return failed(started, "EXECUTION_FAILED", "cover-image sandbox launch failed");
+            return failed(started, "SANDBOX_CLEANUP_FAILED", "execution cleanup is uncertain");
         }
 
         long duration = (System.nanoTime() - started) / 1_000_000L;
         String stdout = result.stdout().utf8();
         String stderr = result.stderr().utf8();
         int exit = result.exitCode().orElse(-1);
+        if (!result.observation().cleanup().completed()) {
+            return failed(started, "SANDBOX_CLEANUP_FAILED", "execution cleanup is uncertain");
+        }
         List<String> outputs = outputFiles(request);
         if (result.failure().isPresent() || exit != 0) {
             boolean timedOut = result.failure()
