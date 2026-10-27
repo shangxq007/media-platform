@@ -54,6 +54,7 @@ public final class ControlledJUnitMain {
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.ExecutionLifecyclePostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.JooqReservationFeasibilityQueryPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.WorkerFabricRegistrationPostgresTest"),
+                    DiscoverySelectors.selectClass("com.example.platform.coverimage.CoverImageCommitServiceIdempotencyTest"),
                     DiscoverySelectors.selectClass("com.example.platform.thumbnail.ThumbnailLifecyclePostgresTest"));
             } else throw new IllegalArgumentException("JOB_MODE");
             var listener=new SummaryGeneratingListener();

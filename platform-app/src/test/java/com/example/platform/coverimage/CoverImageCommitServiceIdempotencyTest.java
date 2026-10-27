@@ -59,6 +59,7 @@ class CoverImageCommitServiceIdempotencyTest extends PostgresTestContainerSuppor
     private static final String CONTENT_TYPE = "image/png";
     private static final Instant NOW = Instant.parse("2026-09-25T00:00:00Z");
 
+    private static com.example.platform.shared.test.TestDatabaseSchema schema;
     private static DataSource dataSource;
     private static JdbcTemplate jdbc;
 
@@ -68,35 +69,20 @@ class CoverImageCommitServiceIdempotencyTest extends PostgresTestContainerSuppor
     private CoverImageCommitService service;
 
     @BeforeAll
-    static void setUpDatabase() {
-        dataSource = createDataSource();
+    static void setUpDatabase() throws Exception {
+        schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
+        try (var input = CoverImageCommitServiceIdempotencyTest.class.getResourceAsStream("/db/migration/V1__baseline.sql")) {
+            if (input == null) throw new IllegalStateException("canonical V1 missing");
+            schema.executeScript(new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        dataSource = createDataSourceForSchema(schema.name());
         jdbc = new JdbcTemplate(dataSource);
-        jdbc.execute("""
-                create table if not exists cover_image_task (
-                    id varchar(64) primary key,
-                    tenant_id varchar(64) not null,
-                    project_id varchar(128) not null,
-                    subject_artifact_id varchar(128) not null,
-                    timestamp_seconds double precision not null,
-                    image_format varchar(16) not null,
-                    width integer,
-                    quality integer,
-                    idempotency_key varchar(256) not null,
-                    provider_id varchar(128) not null,
-                    provider_version varchar(32) not null,
-                    status varchar(32) not null,
-                    artifact_id varchar(128),
-                    failure_code varchar(64),
-                    created_at timestamp not null default current_timestamp,
-                    updated_at timestamp not null default current_timestamp,
-                    constraint uq_cover_image_task_idempotency
-                        unique (tenant_id, project_id, idempotency_key))
-                """);
     }
 
     @AfterAll
-    static void tearDownDatabase() {
+    static void tearDownDatabase() throws Exception {
         closeDataSource(dataSource);
+        if (schema != null) schema.close();
     }
 
     @BeforeEach
