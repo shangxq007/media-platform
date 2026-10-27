@@ -260,17 +260,56 @@ public class JooqWorkerFabricRegistrationBoundary
                 throw new IllegalStateException(
                         "runtime registration requires a current host registration covering its validity");
             }
-            Record currentRuntime = tx.fetchOne(
+            // A permanent row for the stable runtime is the mutex, including first registration.
+            // Locking only an active registration cannot serialize the absent-row/takeover case.
+            tx.execute(
                     """
-                    select worker_runtime_incarnation_id from wf_runtime_registration
-                     where worker_runtime_id = ? and active
+                    insert into wf_worker_runtime_connection (
+                        worker_runtime_id, current_incarnation_id, connected, updated_at)
+                    values (?, ?, false, cast(? as timestamptz))
+                    on conflict (worker_runtime_id) do nothing
+                    """,
+                    registration.workerRuntimeId().value(),
+                    registration.workerRuntimeIncarnationId().value(),
+                    databaseTime(registration.registeredAt()));
+            Record connection = tx.fetchOne(
+                    "select * from wf_worker_runtime_connection where worker_runtime_id = ? for update",
+                    registration.workerRuntimeId().value());
+            String incoming = registration.workerRuntimeIncarnationId().value();
+            String current = connection.get("current_incarnation_id", String.class);
+            Record previous = tx.fetchOne(
+                    """
+                    select * from wf_runtime_registration
+                     where worker_runtime_id = ? and worker_runtime_incarnation_id = ?
                      for update
                     """,
-                    registration.workerRuntimeId().value());
+                    registration.workerRuntimeId().value(), incoming);
+            if (previous != null) {
+                if (!incoming.equals(current)) {
+                    throw new IllegalStateException("superseded runtime incarnation cannot register again");
+                }
+                if (!registration.physicalHostId().value().equals(previous.get("physical_host_id", String.class))
+                        || !registration.physicalHostIncarnationId().value().equals(
+                                previous.get("physical_host_incarnation_id", String.class))) {
+                    throw new IllegalStateException("runtime incarnation cannot change host identity");
+                }
+                if (registration.registeredAt().isBefore(instant(previous, "registered_at"))) {
+                    throw new IllegalStateException("runtime registration tick is older than current evidence");
+                }
+            }
+            Record currentRuntime = tx.fetchOne(
+                    """
+                    select worker_runtime_incarnation_id, valid_until from wf_runtime_registration
+                     where worker_runtime_id = ? and worker_runtime_incarnation_id = ?
+                     for update
+                    """,
+                    registration.workerRuntimeId().value(), current);
             if (currentRuntime != null) {
                 String currentIncarnationId =
                         currentRuntime.get("worker_runtime_incarnation_id", String.class);
-                if (!registration.workerRuntimeIncarnationId().value().equals(currentIncarnationId)) {
+                if (!incoming.equals(currentIncarnationId)
+                        || !connection.get("connected", Boolean.class)
+                        || !instant(currentRuntime, "valid_until").isAfter(registration.registeredAt())) {
                     JooqOwnershipFencing.fenceRuntimeIncarnation(
                             tx,
                             registration.workerRuntimeId().value(),

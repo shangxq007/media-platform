@@ -129,7 +129,7 @@ class LocalHostRegistrationRoundTripIT {
                 "readiness host incarnation matches the host registration row");
         assertEquals(LocalHostRegistrationLoop.WORKER_RUNTIME_ID, readiness.workerRuntimeId().value(),
                 "readiness worker runtime id");
-        assertEquals(LocalHostRegistrationLoop.WORKER_RUNTIME_INCARNATION_ID,
+        assertEquals(loop.workerRuntimeIncarnationId().value(),
                 readiness.workerRuntimeIncarnationId().value(), "readiness runtime incarnation id");
         assertEquals(RuntimeEnvironmentAvailability.AVAILABLE, readiness.environmentReadiness(),
                 "environment readiness persisted from this tick's probe");

@@ -642,6 +642,13 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             return Optional.of(RequestWorkFailureReason.REGISTRATION_STALE);
         }
 
+        Record runtimeConnection = tx.fetchOne(
+                """
+                select current_incarnation_id, connected
+                  from wf_worker_runtime_connection
+                 where worker_runtime_id = ? for update
+                """,
+                request.workerRuntimeId().value());
         Record runtimeRegistration = tx.fetchOne(
                 """
                 select physical_host_id, physical_host_incarnation_id, valid_until
@@ -672,13 +679,6 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             return Optional.of(RequestWorkFailureReason.REGISTRATION_STALE);
         }
 
-        Record runtimeConnection = tx.fetchOne(
-                """
-                select current_incarnation_id, connected
-                  from wf_worker_runtime_connection
-                 where worker_runtime_id = ? for update
-                """,
-                request.workerRuntimeId().value());
         if (runtimeConnection == null) {
             return Optional.of(RequestWorkFailureReason.WORKER_RUNTIME_UNHEALTHY);
         }

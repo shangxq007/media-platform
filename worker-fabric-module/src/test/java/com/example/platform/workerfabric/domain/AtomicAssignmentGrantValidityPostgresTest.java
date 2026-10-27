@@ -1,6 +1,7 @@
 package com.example.platform.workerfabric.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
@@ -173,6 +174,133 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    void sameIncarnationRenewalKeepsItsGrantAndOneRegistration() {
+        var runtime = TaskCTestFixture.runtime("inc-renew");
+        register(runtime, FIXED_CLOCK.instant().plusSeconds(3600));
+        var granted = granted(runtime, TaskCTestFixture.candidate(601));
+        runtimeRegistration(runtime, runtime.requestWork().workerRuntimeIncarnationId().value(),
+                FIXED_CLOCK.instant());
+        assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).contains(granted.grant());
+        assertThat(count("wf_runtime_registration")).isOne();
+    }
+
+    @Test
+    void replacementFencesOldGrantAndPermanentlyRejectsLateRegistration() {
+        var runtime = TaskCTestFixture.runtime("inc-replaced");
+        register(runtime, FIXED_CLOCK.instant().plusSeconds(3600));
+        var granted = granted(runtime, TaskCTestFixture.candidate(602));
+        runtimeRegistration(runtime, "replacement", FIXED_CLOCK.instant());
+        assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
+        assertThat(dsl.fetchOne("select active from wf_task_lease where lease_id = ?",
+                granted.grant().lease().id().value()).get(0, Boolean.class)).isFalse();
+        assertThat(count("wf_runtime_registration")).isEqualTo(2);
+        assertThatThrownBy(() -> runtimeRegistration(runtime,
+                runtime.requestWork().workerRuntimeIncarnationId().value(), FIXED_CLOCK.instant().plusSeconds(1)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("superseded");
+        assertThat(currentIncarnation(runtime)).isEqualTo("replacement");
+        assertThat(count("wf_runtime_registration")).isEqualTo(2);
+    }
+
+    @Test
+    void concurrentReplacementAndOldTickCannotRestoreRetiredOwnership() throws Exception {
+        var runtime = TaskCTestFixture.runtime("inc-race");
+        register(runtime, FIXED_CLOCK.instant().plusSeconds(3600));
+        var granted = granted(runtime, TaskCTestFixture.candidate(603));
+        var start = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var old = pool.submit(() -> {
+                start.await();
+                try {
+                    runtimeRegistration(runtime, runtime.requestWork().workerRuntimeIncarnationId().value(),
+                            FIXED_CLOCK.instant());
+                } catch (IllegalStateException retired) {
+                    assertThat(retired).hasMessageContaining("superseded");
+                }
+                return true;
+            });
+            var replacement = pool.submit(() -> {
+                start.await();
+                runtimeRegistration(runtime, "race-replacement", FIXED_CLOCK.instant());
+                return true;
+            });
+            start.countDown();
+            assertThat(old.get(15, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            assertThat(replacement.get(15, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        }
+        for (int i = 1; i <= 3; i++) {
+            Instant time = FIXED_CLOCK.instant().plusSeconds(i);
+            assertThatThrownBy(() -> runtimeRegistration(runtime,
+                    runtime.requestWork().workerRuntimeIncarnationId().value(), time))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("superseded");
+        }
+        assertThat(currentIncarnation(runtime)).isEqualTo("race-replacement");
+        assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
+        assertThat(count("wf_execution_assignment")).isOne();
+    }
+
+    @Test
+    void outOfOrderCurrentTickCannotRollBackRegistrationValidity() {
+        var runtime = TaskCTestFixture.runtime("inc-late");
+        register(runtime, FIXED_CLOCK.instant().plusSeconds(3600));
+        String incarnation = runtime.requestWork().workerRuntimeIncarnationId().value();
+        runtimeRegistration(runtime, incarnation, FIXED_CLOCK.instant().plusSeconds(2));
+        assertThatThrownBy(() -> runtimeRegistration(runtime, incarnation, FIXED_CLOCK.instant()))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("older");
+        assertThat(dsl.fetchOne("select registered_at from wf_runtime_registration where active")
+                .get(0, java.time.OffsetDateTime.class).toInstant())
+                .isEqualTo(FIXED_CLOCK.instant().plusSeconds(2));
+    }
+
+    @Test
+    void renewalAfterExpiryCannotRevivePreExpiryGrant() {
+        var runtime = TaskCTestFixture.runtime("inc-expiry");
+        register(runtime, FIXED_CLOCK.instant().plusSeconds(3600));
+        var granted = granted(runtime, TaskCTestFixture.candidate(604));
+        staleRuntimeRegistration(granted.grant());
+        runtimeRegistration(runtime, runtime.requestWork().workerRuntimeIncarnationId().value(),
+                FIXED_CLOCK.instant());
+        assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
+        assertThat(dsl.fetchOne("select active from wf_task_lease").get(0, Boolean.class)).isFalse();
+        assertThat(count("wf_runtime_registration")).isOne();
+    }
+
+    @Test
+    void disconnectAndReplacementKeepRetiredInstanceAndItsMessagesFenced() {
+        var runtime = TaskCTestFixture.runtime("inc-disconnect");
+        register(runtime, FIXED_CLOCK.instant().plusSeconds(3600));
+        var granted = granted(runtime, TaskCTestFixture.candidate(605));
+        var lifecycle = new com.example.platform.workerfabric.infrastructure.JooqExecutionLifecycleBoundary(dsl);
+        var disconnect = new ExecutionLifecycleBoundary.WorkerDisconnect(
+                runtime.requestWork().workerRuntimeId(), runtime.requestWork().workerRuntimeIncarnationId(),
+                FIXED_CLOCK.instant());
+        lifecycle.disconnectWorker(disconnect);
+        runtimeRegistration(runtime, "after-disconnect", FIXED_CLOCK.instant().plusSeconds(1));
+        assertThat(lifecycle.disconnectWorker(disconnect).status())
+                .isEqualTo(ExecutionLifecycleBoundary.DisconnectStatus.STALE_INCARNATION_NOOP);
+        assertThatThrownBy(() -> runtimeRegistration(runtime,
+                runtime.requestWork().workerRuntimeIncarnationId().value(), FIXED_CLOCK.instant().plusSeconds(2)))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("superseded");
+        assertThat(currentIncarnation(runtime)).isEqualTo("after-disconnect");
+        assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
+        assertThat(count("wf_runtime_registration")).isEqualTo(2);
+    }
+
+    private static String currentIncarnation(TaskCTestFixture.RuntimeFixture runtime) {
+        return dsl.fetchOne("select current_incarnation_id from wf_worker_runtime_connection where worker_runtime_id = ?",
+                runtime.requestWork().workerRuntimeId().value()).get(0, String.class);
+    }
+
+    private static void runtimeRegistration(TaskCTestFixture.RuntimeFixture runtime, String incarnation, Instant time) {
+        var request = runtime.requestWork();
+        new JooqWorkerFabricRegistrationBoundary(dsl).registerRuntime(
+                new WorkerFabricRegistrationBoundary.RuntimeRegistration(
+                        request.workerRuntimeId(), WorkerRuntimeIncarnationId.of(incarnation),
+                        request.physicalHostId(), request.physicalHostIncarnationId(),
+                        time, FIXED_CLOCK.instant().plusSeconds(3599)));
     }
 
     // ---------- helpers ----------

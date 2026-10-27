@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * P2-5b-2a-1-2-R3a: bounded V1 host/runtime registration loop for the local single host.
@@ -22,14 +23,14 @@ import java.util.Optional;
  *
  * <p>Owner decisions applied: validity 30 s with a 10 s cadence and a worker-local timer; safety
  * headroom = CPU {@code max(1 core, 10%)}, memory 10 %, temporary storage 10 % with **floor**
- * rounding; identities {@code local} / {@code local} / {@code local-ffmpeg} / {@code local-ffmpeg-v1};
+ * rounding; stable identities {@code local} / {@code local} / {@code local-ffmpeg};
  * snapshot generation advances by one on every registration tick (bounded V1): the first tick for a new
  * incarnation starts at {@code first()}, each later tick at {@code current.value() + 1}, because the
  * durable {@code wf_host_snapshot_generation_authority} requires strictly increasing generations.
  *
- * <p><b>Idempotent</b>: the incarnation identity is a stable fingerprint of the host identity and its
- * static capacity, so repeated ticks update the same durable registration row instead of minting new
- * incarnations.
+ * <p>The host incarnation fingerprints static capacity. A runtime incarnation identifies this loop
+ * instance, is generated once, and remains stable across ticks. A restarted process receives a new
+ * identity; the registration authority permanently rejects a superseded runtime incarnation.
  *
  * <p><b>Fail closed</b>: an observation failure propagates
  * ({@link HostObservationUnavailableException}) and the tick registers nothing; the previous
@@ -46,7 +47,6 @@ public final class LocalHostRegistrationLoop {
     public static final String HOST_LOCATION = "local";
     public static final String TRUST_ZONE = "local";
     public static final String WORKER_RUNTIME_ID = "local-ffmpeg";
-    public static final String WORKER_RUNTIME_INCARNATION_ID = "local-ffmpeg-v1";
 
     public static final Duration REGISTRATION_VALIDITY = Duration.ofSeconds(30);
     public static final Duration TICK_CADENCE = Duration.ofSeconds(10);
@@ -63,8 +63,7 @@ public final class LocalHostRegistrationLoop {
     private final HostLocation location = HostLocation.of(HOST_LOCATION);
     private final TrustZoneId trustZone = TrustZoneId.of(TRUST_ZONE);
     private final WorkerRuntimeId workerRuntimeId = WorkerRuntimeId.of(WORKER_RUNTIME_ID);
-    private final WorkerRuntimeIncarnationId workerRuntimeIncarnationId =
-            WorkerRuntimeIncarnationId.of(WORKER_RUNTIME_INCARNATION_ID);
+    private final WorkerRuntimeIncarnationId workerRuntimeIncarnationId;
     private final HostResourceSnapshotFreshnessPolicy freshnessPolicy =
             new HostResourceSnapshotFreshnessPolicy(
                     REGISTRATION_VALIDITY, HostResourceSnapshotSchemaVersion.CURRENT);
@@ -78,11 +77,29 @@ public final class LocalHostRegistrationLoop {
             WorkerFabricRegistrationBoundary registrationBoundary,
             Clock clock,
             PhysicalHostId physicalHostId) {
+        this(probe, readinessProbe, registrationBoundary, clock, physicalHostId,
+                WorkerRuntimeIncarnationId.of(UUID.randomUUID().toString()));
+    }
+
+    /** Explicit identity injection for deterministic tests; production uses the per-instance UUID. */
+    public LocalHostRegistrationLoop(
+            HostResourceAgent.ResourceProbe probe,
+            WorkerReadinessProbe readinessProbe,
+            WorkerFabricRegistrationBoundary registrationBoundary,
+            Clock clock,
+            PhysicalHostId physicalHostId,
+            WorkerRuntimeIncarnationId workerRuntimeIncarnationId) {
+        this.workerRuntimeIncarnationId = Objects.requireNonNull(
+                workerRuntimeIncarnationId, "workerRuntimeIncarnationId");
         this.probe = Objects.requireNonNull(probe, "probe");
         this.readinessProbe = Objects.requireNonNull(readinessProbe, "readinessProbe");
         this.registrationBoundary = Objects.requireNonNull(registrationBoundary, "registrationBoundary");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.physicalHostId = Objects.requireNonNull(physicalHostId, "physicalHostId");
+    }
+
+    public WorkerRuntimeIncarnationId workerRuntimeIncarnationId() {
+        return workerRuntimeIncarnationId;
     }
 
     /** One registration tick: observe, publish, derive capacity, register host + runtime. */

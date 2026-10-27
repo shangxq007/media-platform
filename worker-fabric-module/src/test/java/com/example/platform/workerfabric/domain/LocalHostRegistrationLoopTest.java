@@ -22,7 +22,8 @@ class LocalHostRegistrationLoopTest {
     @Test
     void registersHostAndRuntimeWithBoundedValidity() {
         RecordingBoundary boundary = new RecordingBoundary();
-        new LocalHostRegistrationLoop(probe(), readinessProbe(), boundary, CLOCK, HOST_ID)
+        new LocalHostRegistrationLoop(probe(), readinessProbe(), boundary, CLOCK, HOST_ID,
+                WorkerRuntimeIncarnationId.of("test-runtime-incarnation"))
                 .registerOnce();
 
         assertThat(boundary.hosts).hasSize(1);
@@ -42,7 +43,7 @@ class LocalHostRegistrationLoopTest {
         assertThat(runtime.workerRuntimeId().value())
                 .isEqualTo(LocalHostRegistrationLoop.WORKER_RUNTIME_ID);
         assertThat(runtime.workerRuntimeIncarnationId().value())
-                .isEqualTo(LocalHostRegistrationLoop.WORKER_RUNTIME_INCARNATION_ID);
+                .isEqualTo("test-runtime-incarnation");
         assertThat(runtime.physicalHostIncarnationId())
                 .isEqualTo(host.physicalHostIncarnationId());
     }
@@ -80,6 +81,21 @@ class LocalHostRegistrationLoopTest {
         // Different static capacity → different incarnation fingerprint.
         assertThat(loop.stableIncarnationFingerprint(capacity(2000L, 1000L, 1000L)))
                 .isNotEqualTo(loop.stableIncarnationFingerprint(capacity(4000L, 1000L, 1000L)));
+    }
+
+    @Test
+    void runtimeIdentityIsStableWithinAnInstanceAndUniqueAcrossInstances() {
+        RecordingBoundary first = new RecordingBoundary();
+        LocalHostRegistrationLoop a = new LocalHostRegistrationLoop(
+                probe(), readinessProbe(), first, CLOCK, HOST_ID);
+        LocalHostRegistrationLoop b = new LocalHostRegistrationLoop(
+                probe(), readinessProbe(), new RecordingBoundary(), CLOCK, HOST_ID);
+        a.registerOnce();
+        a.registerOnce();
+        assertThat(first.runtimes.get(0).workerRuntimeIncarnationId())
+                .isEqualTo(first.runtimes.get(1).workerRuntimeIncarnationId())
+                .isEqualTo(a.workerRuntimeIncarnationId())
+                .isNotEqualTo(b.workerRuntimeIncarnationId());
     }
 
     @Test
@@ -165,7 +181,8 @@ class LocalHostRegistrationLoopTest {
             }
         };
 
-        new LocalHostRegistrationLoop(probe(), probe, boundary, CLOCK, HOST_ID).registerOnce();
+        new LocalHostRegistrationLoop(probe(), probe, boundary, CLOCK, HOST_ID,
+                WorkerRuntimeIncarnationId.of("test-runtime-incarnation")).registerOnce();
 
         assertThat(boundary.readiness).hasSize(1);
         WorkerReadinessEvidence evidence = boundary.readiness.getFirst();
@@ -176,7 +193,7 @@ class LocalHostRegistrationLoopTest {
         assertThat(evidence.workerRuntimeId().value())
                 .isEqualTo(LocalHostRegistrationLoop.WORKER_RUNTIME_ID);
         assertThat(evidence.workerRuntimeIncarnationId().value())
-                .isEqualTo(LocalHostRegistrationLoop.WORKER_RUNTIME_INCARNATION_ID);
+                .isEqualTo("test-runtime-incarnation");
         // The two signals are independent: the sandbox verdict is stored unchanged, never inferred
         // from the environment verdict.
         assertThat(evidence.environmentReadiness())
