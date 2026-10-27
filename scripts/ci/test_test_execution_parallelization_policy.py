@@ -142,7 +142,7 @@ def test_repository_policy() -> None:
     report = validate_repository(ROOT)
     require(report.task_count == 57, f"expected Phase A 51 plus Marketplace, Usage and Audit active Test task, got {report.task_count}")
     require(report.serial_task_count > 0, "serial-only ledger must contain explicit tasks")
-    require(report.pure_task_count == 20, "the changed Worker Fabric database scope must not retain pure promotion")
+    require(report.pure_task_count == 12, "database/Spring scopes must not retain historical pure promotion")
     require(POLICY_LEVELS == ("V0_PRE_COMMIT", "V1_IMPLEMENTATION", "V2_CANDIDATE_FCV", "V3_CHECKPOINT"),
             "validation levels changed")
 
@@ -172,7 +172,7 @@ def test_candidate_enrollment_is_the_complete_sealed_pure_census() -> None:
                 "candidate benchmark receipt reference drifted")
         require(row["WINNER_REPLAY_EVIDENCE_REFERENCE"] == policy.PROMOTION_RECEIPT_PATH.as_posix(),
                 "candidate replay receipt reference drifted")
-        if row["PROJECT"] == ":worker-fabric-module":
+        if row["PROJECT"] in {':payment-module', ':timeline-module', ':worker-fabric-module', ':federation-query-module', ':artifact-module', ':identity-access-module', ':outbox-event-module', ':audit-compliance-module', ':entitlement-module'}:
             require(row["PROMOTION_STATUS"] == "SUSPENDED_SOURCE_CHANGED", "changed database scope must remain suspended")
         else:
             require(row["PROMOTION_STATUS"] == "SEALED_PROMOTION", "unchanged candidate lost its sealed evidence")
@@ -469,15 +469,19 @@ def test_suspended_database_scope_cannot_be_silently_promoted() -> None:
     topology = policy.read_tsv(ROOT / policy.TOPOLOGY_LEDGER, policy.REQUIRED_LEDGER_COLUMNS)
     enrollment = policy.read_tsv(ROOT / policy.CANDIDATE_ENROLLMENT, policy.REQUIRED_CANDIDATE_ENROLLMENT_COLUMNS)
     by_key = {(row["PROJECT"], row["TEST_TASK"]): row for row in topology}
-    for field, value in (("CURRENT_MAX_PARALLEL_FORKS", "2"), ("CLASSIFICATION", "PURE_PARALLEL_SAFE")):
-        changed = copy.deepcopy(by_key)
-        changed[(":worker-fabric-module", "test")][field] = value
-        try:
-            policy.validate_candidate_enrollment(changed, enrollment)
-        except ValueError as failure:
-            require("suspended source" in str(failure), str(failure))
-        else:
-            raise AssertionError("changed database scope incorrectly regained parallel promotion")
+    suspended = [row["PROJECT"] for row in enrollment if row["PROMOTION_STATUS"] == "SUSPENDED_SOURCE_CHANGED"]
+    require({":worker-fabric-module", ":artifact-module", ":entitlement-module"}.issubset(suspended),
+            "actual database tasks cannot retain historical pure promotion")
+    for project in suspended:
+        for field, value in (("CURRENT_MAX_PARALLEL_FORKS", "2"), ("CLASSIFICATION", "PURE_PARALLEL_SAFE")):
+            changed = copy.deepcopy(by_key)
+            changed[(project, "test")][field] = value
+            try:
+                policy.validate_candidate_enrollment(changed, enrollment)
+            except ValueError as failure:
+                require("suspended source" in str(failure), str(failure))
+            else:
+                raise AssertionError("changed database scope incorrectly regained parallel promotion")
 
 
 def main() -> None:

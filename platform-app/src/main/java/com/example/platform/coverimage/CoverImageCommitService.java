@@ -89,10 +89,18 @@ public class CoverImageCommitService {
         if (!tasks.lockForCommit(tenant, project, taskId)) {
             return null;
         }
+        boolean ownsStaging = false;
         try {
             try {
-                Files.createDirectories(output.getParent());
-                Files.write(output, bytes);
+                Path trustedRoot=Path.of(root).toAbsolutePath().normalize();
+                Files.createDirectories(trustedRoot);
+                if (!trustedRoot.toRealPath().equals(trustedRoot)
+                        || !output.isAbsolute() || !output.normalize().equals(output)
+                        || !trustedRoot.equals(output.getParent().getParent()))
+                    throw new IOException("invalid cover staging boundary");
+                Files.createDirectory(output.getParent());
+                ownsStaging = true;
+                Files.write(output, bytes, java.nio.file.StandardOpenOption.CREATE_NEW);
             } catch (IOException failure) {
                 throw new IllegalStateException("cover-image output staging failed", failure);
             }
@@ -134,14 +142,15 @@ public class CoverImageCommitService {
                     Instant.now(),
                     taskId,
                     project));
-            return tasks.completeLocked(tenant, project, taskId,
-                    accepted.artifact().artifactId().value())
-                    ? accepted.artifact().artifactId().value()
-                    : null;
+            if (!tasks.completeLocked(tenant, project, taskId, accepted.artifact().artifactId().value()))
+                throw new IllegalStateException("cover commit lost its locked task ownership");
+            return accepted.artifact().artifactId().value();
         } finally {
             try {
-                Files.deleteIfExists(output);
-                Files.deleteIfExists(output.getParent());
+                if (ownsStaging) {
+                    Files.deleteIfExists(output);
+                    Files.deleteIfExists(output.getParent());
+                }
             } catch (Exception ignored) {
                 // staging cleanup is best effort; the committed Artifact is the durable record
             }

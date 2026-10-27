@@ -121,9 +121,16 @@ public final class FrameExtractExecutionAdapter
             CoverImageContracts.Request request,
             Path inputPath,
             BooleanSupplier cancelled) {
-        return execute(capabilityId, inputPath, workDirectory(request.idempotencyKey()),
-                request.imageFormat(), request.width(), request.quality(),
-                request.timestampSeconds(), cancelled);
+        Path work = null;
+        try {
+            work = newWorkDirectory();
+            return execute(capabilityId, inputPath, work, request.imageFormat(), request.width(),
+                    request.quality(), request.timestampSeconds(), cancelled);
+        } catch (IOException failure) {
+            return FrameExtractResult.failure("PROVIDER_IO_FAILED");
+        } finally {
+            deleteRecursively(work);
+        }
     }
 
     @Override
@@ -133,9 +140,9 @@ public final class FrameExtractExecutionAdapter
             byte[] input,
             BooleanSupplier cancelled) {
         Objects.requireNonNull(input, "input");
-        Path work = workDirectory(request.idempotencyKey());
+        Path work = null;
         try {
-            Files.createDirectories(work);
+            work = newWorkDirectory();
             Path source = work.resolve("input");
             Files.write(source, input);
             return execute(capabilityId, source, work, request.imageFormat(), request.width(),
@@ -224,12 +231,14 @@ public final class FrameExtractExecutionAdapter
                         result.failureCode() == null ? "PROVIDER_FAILED" : result.failureCode());
     }
 
-    private Path workDirectory(String idempotencyKey) {
-        Path work = workRoot.resolve(idempotencyKey).normalize();
-        if (!work.startsWith(workRoot)) {
-            throw new IllegalArgumentException("invalid frame-extract scratch directory");
+    private Path newWorkDirectory() throws IOException {
+        // Request keys are a scoped database identity, never a filesystem namespace. Each actual
+        // invocation (including overlapping retries) exclusively owns the directory it removes.
+        Files.createDirectories(workRoot);
+        if (!workRoot.toRealPath().equals(workRoot)) {
+            throw new IOException("symbolic frame-extract scratch root refused");
         }
-        return work;
+        return Files.createTempDirectory(workRoot, "frame-");
     }
 
     private static void deleteRecursively(Path root) {

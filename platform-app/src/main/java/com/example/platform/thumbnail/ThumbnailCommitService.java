@@ -25,8 +25,21 @@ public class ThumbnailCommitService {
     public String commit(String tenant, String project, String taskId, String subjectArtifactId,
             String contentType, byte[] bytes, Path output, String root) {
         if (!tasks.lockForCommit(tenant, project, taskId)) return null;
+        boolean ownsStaging = false;
         try {
-            try { Files.createDirectories(output.getParent()); Files.write(output, bytes); }
+            try {
+                Path trustedRoot=Path.of(root).toAbsolutePath().normalize();
+                Files.createDirectories(trustedRoot);
+                if (!trustedRoot.toRealPath().equals(trustedRoot)
+                        || !output.isAbsolute() || !output.normalize().equals(output)
+                        || !trustedRoot.equals(output.getParent().getParent()))
+                    throw new java.io.IOException("invalid thumbnail staging boundary");
+                // CREATE_DIRECTORY and CREATE_NEW establish exclusive ownership; never reuse a
+                // directory or follow an attacker-created file, including on activity retries.
+                Files.createDirectory(output.getParent());
+                ownsStaging = true;
+                Files.write(output, bytes, java.nio.file.StandardOpenOption.CREATE_NEW);
+            }
             catch (java.io.IOException failure) { throw new IllegalStateException("thumbnail output staging failed", failure); }
             String relative=Path.of(root).toAbsolutePath().normalize().relativize(output).toString().replace(java.io.File.separatorChar,'/');
             var written=outputs.write(new StorageOutputPort.OutputCommand(new StorageOwnershipScope(tenant,project),new IssuanceIdempotencyKey("thumbnail:"+taskId),relative,contentType));
@@ -39,6 +52,9 @@ public class ThumbnailCommitService {
             if (!tasks.completeLocked(tenant, project, taskId, accepted.artifact().artifactId().value()))
                 throw new IllegalStateException("thumbnail commit lost its locked task ownership");
             return accepted.artifact().artifactId().value();
-        } finally { try { Files.deleteIfExists(output); Files.deleteIfExists(output.getParent()); } catch (Exception ignored) {} }
+        } finally {
+            if (ownsStaging) try { Files.deleteIfExists(output); Files.deleteIfExists(output.getParent()); }
+            catch (java.io.IOException ignored) { /* Only this invocation's bounded staging. */ }
+        }
     }
 }

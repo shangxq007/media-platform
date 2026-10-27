@@ -50,8 +50,8 @@ public class ThumbnailActivitiesImpl implements ThumbnailActivities {
         }
     }
     private String extractAndCommitScoped(String taskId, String tenant, String project) {
-        if (!tasks.statusIfActive(taskId, ThumbnailContracts.Status.RUNNING, null, null)) return null;
         var req=tasks.request(tenant,project,taskId).orElseThrow(()->new IllegalArgumentException("thumbnail task not found"));
+        if (!tasks.statusIfActive(taskId, ThumbnailContracts.Status.RUNNING, null, null)) return null;
         // Retired media authority replaced by the owner-published Artifact contract: the
         // project-bound catalog lookup is fail-closed for a cross-project or out-of-tenant id
         // (AUTH-ARTIFACT-BOUNDARY-FIX-002), which is exactly what the previous owner-side read scope
@@ -76,7 +76,7 @@ public class ThumbnailActivitiesImpl implements ThumbnailActivities {
             throw new IllegalArgumentException("thumbnail provider rejected output: "+result.failureCode());
         }
         if (!tasks.statusIfActive(taskId, ThumbnailContracts.Status.COMMITTING, null, null)) return null;
-        Path output=root.resolve("thumbnail-work").resolve(req.idempotencyKey()).resolve("provider-output").normalize();
+        Path output=root.resolve("thumbnail-"+java.util.UUID.randomUUID()).resolve("provider-output");
         try { return commitService.commit(tenant, project, taskId, req.sourceAssetId(), result.contentType(), result.bytes(), output, root.toString()); }
         catch (Exception failure) { tasks.statusIfActive(taskId, ThumbnailContracts.Status.FAILED, null, "OUTPUT_COMMIT_FAILED"); throw new IllegalStateException(failure); }
     }

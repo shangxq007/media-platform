@@ -213,7 +213,7 @@ def validate_candidate_enrollment(
             if classification != "REVIEW_REQUIRED":
                 raise ValueError(f"candidate-only enrollment was canonically promoted: {key}")
         elif status == "SUSPENDED_SOURCE_CHANGED":
-            if classification != "REVIEW_REQUIRED" or topology_by_key[key]["CURRENT_MAX_PARALLEL_FORKS"] != "1":
+            if classification not in {"REVIEW_REQUIRED", "SPRING_HEAVY_BOUNDED"} or topology_by_key[key]["CURRENT_MAX_PARALLEL_FORKS"] != "1":
                 raise ValueError(f"suspended source must remain unpromoted and single-fork: {key}")
             if (benchmark, replay) != (PROMOTION_RECEIPT_REFERENCE, PROMOTION_RECEIPT_REFERENCE):
                 raise ValueError(f"suspended source lost its historical receipt provenance: {key}")

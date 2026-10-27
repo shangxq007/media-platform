@@ -74,11 +74,11 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
     }
 
     private String renderAndCommitScoped(String taskId, String tenant, String project) {
+        var task = tasks.find(tenant, project, taskId)
+                .orElseThrow(() -> new IllegalArgumentException("cover-image task not found"));
         if (!tasks.statusIfActive(taskId, CoverImageContracts.Status.RUNNING, null, null)) {
             return null;
         }
-        var task = tasks.find(tenant, project, taskId)
-                .orElseThrow(() -> new IllegalArgumentException("cover-image task not found"));
         ArtifactId subjectId = new ArtifactId(task.subjectArtifactId());
         var subject = artifacts.getArtifact(tenant, subjectId)
                 .orElseThrow(() -> fail(taskId, "SUBJECT_ARTIFACT_UNAVAILABLE",
@@ -119,8 +119,7 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
         if (!tasks.statusIfActive(taskId, CoverImageContracts.Status.COMMITTING, null, null)) {
             return null;
         }
-        Path output = commitStagingRoot.resolve(task.idempotencyKey())
-                .resolve("provider-output").normalize();
+        Path output = commitStagingRoot.resolve("cover-"+java.util.UUID.randomUUID());
         try {
             return commitService.commit(tenant, project, taskId, task.subjectArtifactId(),
                     produced.contentType(), produced.bytes(),

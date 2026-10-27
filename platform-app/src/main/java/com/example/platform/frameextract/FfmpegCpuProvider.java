@@ -238,10 +238,13 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
                 return FrameExtractResult.failure("INPUT_UNAVAILABLE");
             }
             Files.createDirectories(workDirectory);
-            Path output = workDirectory.resolve("frame." + imageFormat).normalize();
+            Path output = (ThumbnailContracts.CAPABILITY.equals(capabilityId)
+                    ? workDirectory.resolve(".sandbox-output") : workDirectory)
+                    .resolve("frame." + imageFormat).normalize();
             if (!output.startsWith(workDirectory)) {
                 return FrameExtractResult.failure("INVALID_OUTPUT_PATH");
             }
+            Files.createDirectories(output.getParent());
             if (CoverImageContracts.CAPABILITY.equals(capabilityId)) {
                 return renderCover(profile, input, output, imageFormat, width, quality,
                         timestampSeconds, cancelled);
@@ -333,10 +336,10 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
             throw new IllegalStateException("thumbnail execution backend must support bounded cancellation");
         }
         var execution = cancellable.execute(new ExecutionRequest(
-                "frame-extract:thumbnail:" + output.getParent().getFileName(),
-                output.getParent().getFileName().toString(),
+                "frame-extract:thumbnail:" + input.getParent().getFileName(),
+                input.getParent().getFileName().toString(),
                 TaskCapability.THUMBNAIL,
-                output.getParent().toString(),
+                input.getParent().toString(),
                 Map.of(),
                 arguments,
                 profile.timeoutSeconds(),

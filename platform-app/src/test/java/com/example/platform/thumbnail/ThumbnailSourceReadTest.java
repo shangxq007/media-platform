@@ -23,6 +23,14 @@ class ThumbnailSourceReadTest {
     @Test void failedNativeReadCannotFallBackToReceiptProtocol() throws Exception {run(true,true);}
     @Test void registeredNativeSourceDoesNotRequireAnUnrelatedLegacyReceipt() throws Exception {run(true,false);}
     @Test void activeReceiptProviderStillUsesItsOwnScopedProtocol() throws Exception {run(false,false);}
+    @Test void mismatchedTaskScopeCannotChangeStatusOrReadAnySource() {
+        var tasks=mock(ThumbnailTaskStore.class);var query=mock(ArtifactQueryService.class);var catalog=mock(ArtifactCatalogService.class);
+        var receipts=mock(StoragePlacementQuery.class);var nativeRead=mock(VerifiedStorageRead.class);var commits=mock(ThumbnailCommitService.class);var provider=mock(FrameExtractExecutionAdapter.class);
+        var service=new ThumbnailActivitiesImpl(tasks,query,catalog,receipts,nativeRead,commits,provider,root.toString());
+        assertThrows(IllegalArgumentException.class,()->service.extractAndCommit("other-task","tenant","wrong-project"));
+        verify(tasks).request("tenant","wrong-project","other-task");
+        verifyNoMoreInteractions(tasks);verifyNoInteractions(query,catalog,receipts,nativeRead,commits,provider);
+    }
     void run(boolean registered,boolean fail) throws Exception {
         var tasks=mock(ThumbnailTaskStore.class);var query=mock(ArtifactQueryService.class);var catalog=mock(ArtifactCatalogService.class);
         var receipts=mock(StoragePlacementQuery.class);var nativeRead=mock(VerifiedStorageRead.class);var commits=mock(ThumbnailCommitService.class);var provider=mock(FrameExtractExecutionAdapter.class);
