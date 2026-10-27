@@ -51,7 +51,7 @@ try:
  affinity=','.join(map(str,sorted(os.sched_getaffinity(0))[:2]));prefix=['/usr/bin/taskset','--cpu-list',affinity]
  cid=command('create-pg',prefix+B+['run','-d','--pull=never','--name','f8-pg18-'+run,'--label','media-platform.f8-run='+run,'--network=none','--pids-limit=128','--ulimit=nofile=1024:1024','--ulimit=fsize=1073741824:1073741824','--ulimit=core=0:0','--volume',volume+':/var/lib/postgresql','--volume',str(pf)+':/run/secrets/password:ro,Z','--env','POSTGRES_PASSWORD_FILE=/run/secrets/password','--env','POSTGRES_USER=mp_owner','--env','POSTGRES_DB=mp_f8','--entrypoint','/bin/sh','docker.io/library/postgres:18','-c','ulimit -v 2097152; exec /usr/local/bin/docker-entrypoint.sh postgres "$@"','mp-pg','-c','shared_buffers=64MB','-c','work_mem=4MB','-c','max_connections=100','-c','temp_file_limit=256MB','-c','statement_timeout=180s'],environment=E)
  for _ in range(80):
-  if subprocess.run(B+['exec','--user','postgres',cid,'pg_isready','-U','mp_owner','-d','mp_f8'],env=E,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+  if subprocess.run(B+['exec','--user','postgres',cid,'pg_isready','-h','127.0.0.1','-U','mp_owner','-d','mp_f8'],env=E,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
   time.sleep(.2)
  else:raise RuntimeError('PostgreSQL readiness timeout')
  inspect(cid);(priv/'server.ext').write_text('subjectAltName=IP:127.0.0.1,DNS:localhost\nextendedKeyUsage=serverAuth\n')
@@ -62,7 +62,14 @@ try:
  admin=B+['exec','-i','--user','postgres',cid,'psql','-X','-v','ON_ERROR_STOP=1','-U','mp_owner','-d','mp_f8'];pw=secrets.token_urlsafe(32);pwf=priv/'test-password-a2';pwf.write_text(pw);pwf.chmod(0o600)
  statements=["ALTER SYSTEM SET ssl='on'","ALTER SYSTEM SET ssl_cert_file='/var/lib/postgresql/server.crt'","ALTER SYSTEM SET ssl_key_file='/var/lib/postgresql/server.key'","CREATE ROLE mp_test_canon_a2 LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '"+pw+"'","CREATE DATABASE mp_f8_canon_a2 OWNER mp_owner TEMPLATE template0","REVOKE ALL ON DATABASE mp_f8_canon_a2 FROM PUBLIC","GRANT CONNECT,CREATE,TEMP ON DATABASE mp_f8_canon_a2 TO mp_test_canon_a2"]
  for i,sql in enumerate(statements):command('db-init-'+str(i),admin,input=sql+';',environment=E)
- command('schema-grant',admin[:-1]+['mp_f8_canon_a2'],input='GRANT USAGE,CREATE ON SCHEMA public TO mp_test_canon_a2;',environment=E);command('restart-pg',B+['restart',cid],environment=E);d=inspect(cid);pid=d['State']['Pid'];sys.path.insert(0,str(W/'scripts/testinfra'));from controlled_launch import birth
+ command('schema-grant',admin[:-1]+['mp_f8_canon_a2'],input='GRANT USAGE,CREATE ON SCHEMA public TO mp_test_canon_a2;',environment=E);command('restart-pg',B+['restart',cid],environment=E)
+ # The image's initialization-only server has a Unix socket but no TCP listener. Require the
+ # final server, and repeat the same readiness condition after the explicit TLS restart.
+ for _ in range(80):
+  if subprocess.run(B+['exec','--user','postgres',cid,'pg_isready','-h','127.0.0.1','-U','mp_owner','-d','mp_f8'],env=E,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+  time.sleep(.2)
+ else:raise RuntimeError('PostgreSQL TLS restart readiness timeout')
+ d=inspect(cid);pid=d['State']['Pid'];sys.path.insert(0,str(W/'scripts/testinfra'));from controlled_launch import birth
  c={'container_id':cid,'run':'canon','attempt':'a2','database':'mp_f8_canon_a2','role':'mp_test_canon_a2','pid':pid,'network_namespace':os.readlink('/proc/'+str(pid)+'/ns/net'),'user_namespace':os.readlink('/proc/'+str(pid)+'/ns/user'),'ca':str(priv/'ca.crt'),'password_file':str(pwf),'volume':volume};(R/'07-runtime/local-context.json').write_text(json.dumps(c));binding={k:c[k] for k in ['container_id','network_namespace','user_namespace','ca','run','attempt']};binding.update(identity=birth(pid),source=str(W),runtime_dirs=[str(R/'03-build/outputs'),str(R/'03-build/gradle-home/caches/modules-2/files-2.1')],scratch=str(R/'04-tests'),launch='local-validation');bf=R/'07-runtime/binding.json';bf.write_text(json.dumps(binding));bf.chmod(0o600)
  tid=command('create-temporal',prefix+B+['run','-d','--pull=never','--name','f8-temporal-'+run,'--label','media-platform.f8-run='+run,'--network=container:'+cid,'--pids-limit=128','--ulimit=core=0:0','--env','GOMEMLIMIT=512MiB','--env','GOMAXPROCS=2','docker.io/temporalio/temporal:latest','server','start-dev','--ip','127.0.0.1','--namespace','f8-pg18-'+run,'--db-filename','/tmp/temporal.sqlite'],environment=E);(R/'07-runtime/temporal-id').write_text(tid)
  command('pg18', ['python3','-I','-B',str(W/'scripts/test-infra'),'pg18-local','--binding',str(bf),'--password-file',str(pwf),'--classpath-file',str(R/'03-build/platform-app-test-classpath.txt'),'--output',str(R/'04-tests/pg18')],timeout=360);(R/'07-runtime/final-db-job.txt').write_text(str(R/'04-tests/pg18'))
