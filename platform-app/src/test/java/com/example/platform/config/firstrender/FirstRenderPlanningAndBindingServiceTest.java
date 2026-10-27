@@ -108,7 +108,7 @@ class FirstRenderPlanningAndBindingServiceTest {
         ArtifactQueryService artifactQueries = mock(ArtifactQueryService.class);
         ProviderInteroperabilityAuthority authority = mock(ProviderInteroperabilityAuthority.class);
         EffectSemanticSnapshotStore effectStore = mock(EffectSemanticSnapshotStore.class);
-        ProviderPluginCatalog catalog = catalog();
+        ProviderPluginCatalog catalog = FirstRenderPlanningFixture.catalog();
 
         FirstRenderPlanningApplicationService phase3 =
                 spy(new FirstRenderPlanningApplicationService(
@@ -126,7 +126,7 @@ class FirstRenderPlanningAndBindingServiceTest {
 
         FirstRenderPlanningAndBindingService service = new FirstRenderPlanningAndBindingService(
                 phase3, revisionSaveService, revisionQueryService, effectStore, catalog,
-                render20, plan21, bind22);
+                render20, plan21, bind22, mock(com.example.platform.render.api.GraphRenderLifecycle.class));
 
         // --- stubs ---------------------------------------------------------
         String json = TimelineDocumentJsonSerializer.serialize(document());
@@ -137,7 +137,7 @@ class FirstRenderPlanningAndBindingServiceTest {
         when(authority.declarations()).thenReturn(List.of());
         when(effectStore.findById(PROJECT, TENANT, PINNED_EMPTY.reference().snapshotId()))
                 .thenReturn(Optional.of(PINNED_EMPTY));
-        when(renderJobService.createForProject(any(), any(), any(), any()))
+        when(renderJobService.createForGraphPreparation(any(), any(), any(), any()))
                 .thenReturn(new RenderJobResponse(JOB_ID, PROJECT, SNAPSHOT_ID, PROFILE, "QUEUED"));
 
         // --- act -----------------------------------------------------------
@@ -226,58 +226,6 @@ class FirstRenderPlanningAndBindingServiceTest {
                 new RenderInitiator.System("actor-sys", ActorType.SYSTEM, TENANT),
                 new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(2000), FrameRate.of(30, 1)),
                 PROFILE);
-    }
-
-    /** A production-shaped provider catalog contribution (mirrors the bounded FFmpeg declarations). */
-    private static ProviderPluginCatalog catalog() {
-        ContractVersionRange range = ContractVersionRange.exactly(ContractVersion.of(1, 0));
-        ProviderId providerId = ProviderId.of("ffmpeg");
-        ProviderImplementationId implementationId = ProviderImplementationId.of("ffmpeg.cpu.native-pull.v1");
-        ProviderVersion version = ProviderVersion.of("1.0.0");
-        ProviderExecutionContractVersion contractVersion = ProviderExecutionContractVersion.of(1, 0);
-        ProviderCapabilityProfileVersionOrDigest profileRef =
-                ProviderCapabilityProfileVersionOrDigest.version(ProviderCapabilityProfileVersion.of(1, 0));
-        CapabilityId decode = CapabilityId.of("video.decode");
-        CapabilityId composite = CapabilityId.of("render.composite");
-        CapabilityId output = CapabilityId.of("render.output");
-
-        ProviderBindingPin binding = new ProviderBindingPin(
-                providerId, implementationId, version, contractVersion, profileRef, List.of());
-        ProviderDescriptor descriptor =
-                new ProviderDescriptor(providerId, implementationId, version, contractVersion, profileRef);
-        ProviderExecutionContract contract = new ProviderExecutionContract(
-                ProviderExecutionContractSchemaVersion.of(1), contractVersion,
-                List.of(new ProviderCapabilityContractReference(decode, range),
-                        new ProviderCapabilityContractReference(composite, range),
-                        new ProviderCapabilityContractReference(output, range)));
-        ProviderCapabilityProfile profile = new ProviderCapabilityProfile(profileRef,
-                List.of(ProviderCapabilitySupport.unpinned(decode, range),
-                        ProviderCapabilitySupport.unpinned(composite, range),
-                        ProviderCapabilitySupport.unpinned(output, range)));
-        ProviderStaticCompatibility compatibility = new ProviderStaticCompatibility(
-                ProviderStaticCompatibility.Knowledge.DECLARED,
-                List.of(ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
-                        ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
-                        ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT),
-                List.of(StaticCompatibilityConstraint.CodecId.of("h264")),
-                List.of(StaticCompatibilityConstraint.ProviderDeviceKind.CPU),
-                List.of(StaticCompatibilityConstraint.ProviderRuntimeClass.NATIVE_PROCESS,
-                        StaticCompatibilityConstraint.ProviderRuntimeClass.ISOLATED_PROCESS),
-                List.of(ProviderStaticCompatibility.SandboxMode.SANDBOXED),
-                List.of(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC),
-                List.of(),
-                ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
-
-        ProviderPluginContribution contribution = mock(ProviderPluginContribution.class);
-        when(contribution.providerBindingPin()).thenReturn(binding);
-        when(contribution.providerDescriptor()).thenReturn(descriptor);
-        when(contribution.providerExecutionContract()).thenReturn(contract);
-        when(contribution.providerCapabilityProfile()).thenReturn(profile);
-        when(contribution.providerStaticCompatibility()).thenReturn(compatibility);
-
-        ProviderPluginCatalog catalog = mock(ProviderPluginCatalog.class);
-        when(catalog.contributions()).thenReturn(List.of(contribution));
-        return catalog;
     }
 
     private static TimelineRevision revision(String canonicalJson) {

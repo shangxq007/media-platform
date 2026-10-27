@@ -5,6 +5,11 @@ import java.util.Optional;
 
 /** Render-owned fenced lifecycle for one immutable bound-graph execution. Not an HTTP authority. */
 public interface GraphRenderLifecycle {
+    /** Diagnostic progress, not a second job status or completion authority. */
+    enum PreparationStage { INPUTS, SNAPSHOT, PLANNING, BINDING, BOUND_GRAPH_SAVE, DISPATCH }
+    void preparationStage(String tenantId, String jobId, PreparationStage stage);
+    void failPreparation(String tenantId, String jobId, PreparationStage stage);
+
     record Execution(String tenantId, String projectId, String jobId, String planRef,
             String planDigest, String graphDigest, String attemptId, long generation,
             String finalTaskId) {}

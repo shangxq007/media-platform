@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -127,6 +128,16 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      * The column <code>public.render_job.pipeline_execution_json</code>.
      */
     public final TableField<RenderJobRecord, String> PIPELINE_EXECUTION_JSON = createField(DSL.name("pipeline_execution_json"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>public.render_job.graph_preparation_stage</code>.
+     */
+    public final TableField<RenderJobRecord, String> GRAPH_PREPARATION_STAGE = createField(DSL.name("graph_preparation_stage"), SQLDataType.VARCHAR(32), this, "");
+
+    /**
+     * The column <code>public.render_job.graph_preparation_deadline</code>.
+     */
+    public final TableField<RenderJobRecord, Instant> GRAPH_PREPARATION_DEADLINE = createField(DSL.name("graph_preparation_deadline"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.render_job.base_job_id</code>.
@@ -343,6 +354,13 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
             _renderGraphExecution = new RenderGraphExecutionPath(this, null, Keys.RENDER_GRAPH_EXECUTION__RENDER_GRAPH_EXECUTION_TENANT_ID_PROJECT_ID_JOB_ID_FKEY.getInverseKey());
 
         return _renderGraphExecution;
+    }
+
+    @Override
+    public List<Check<RenderJobRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("ck_render_graph_preparation_pair"), "((((graph_preparation_stage IS NULL) AND (graph_preparation_deadline IS NULL)) OR (((graph_preparation_stage)::text = ANY ((ARRAY['INPUTS'::character varying, 'SNAPSHOT'::character varying, 'PLANNING'::character varying, 'BINDING'::character varying, 'BOUND_GRAPH_SAVE'::character varying, 'DISPATCH'::character varying])::text[])) AND (graph_preparation_deadline IS NOT NULL))))", true)
+        );
     }
 
     @Override

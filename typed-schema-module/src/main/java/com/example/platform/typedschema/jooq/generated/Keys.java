@@ -204,7 +204,6 @@ import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostConn
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptor;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptorDevice;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalReleaseConfirmation;
-import com.example.platform.typedschema.jooq.generated.tables.WfProviderCandidateSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservationDevice;
@@ -425,7 +424,6 @@ import com.example.platform.typedschema.jooq.generated.tables.records.WfPhysical
 import com.example.platform.typedschema.jooq.generated.tables.records.WfPhysicalHostDescriptorDeviceRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfPhysicalHostDescriptorRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfPhysicalReleaseConfirmationRecord;
-import com.example.platform.typedschema.jooq.generated.tables.records.WfProviderCandidateSnapshotRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfRequestWorkResolutionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfReservationDeviceRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfReservationRecord;
@@ -775,7 +773,6 @@ public class Keys {
     public static final UniqueKey<WfPhysicalHostDescriptorRecord> WF_PHYSICAL_HOST_DESCRIPTOR_PKEY = Internal.createUniqueKey(WfPhysicalHostDescriptor.WF_PHYSICAL_HOST_DESCRIPTOR, DSL.name("wf_physical_host_descriptor_pkey"), new TableField[] { WfPhysicalHostDescriptor.WF_PHYSICAL_HOST_DESCRIPTOR.PHYSICAL_HOST_ID }, true);
     public static final UniqueKey<WfPhysicalHostDescriptorDeviceRecord> WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE_PKEY = Internal.createUniqueKey(WfPhysicalHostDescriptorDevice.WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE, DSL.name("wf_physical_host_descriptor_device_pkey"), new TableField[] { WfPhysicalHostDescriptorDevice.WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE.PHYSICAL_HOST_ID, WfPhysicalHostDescriptorDevice.WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE.DEVICE_ID }, true);
     public static final UniqueKey<WfPhysicalReleaseConfirmationRecord> WF_PHYSICAL_RELEASE_CONFIRMATION_PKEY = Internal.createUniqueKey(WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION, DSL.name("wf_physical_release_confirmation_pkey"), new TableField[] { WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION.CONFIRMATION_ID }, true);
-    public static final UniqueKey<WfProviderCandidateSnapshotRecord> WF_PROVIDER_CANDIDATE_SNAPSHOT_PKEY = Internal.createUniqueKey(WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT, DSL.name("wf_provider_candidate_snapshot_pkey"), new TableField[] { WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT.PHYSICAL_HOST_ID, WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT.PHYSICAL_HOST_INCARNATION_ID, WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT.CANDIDATE_SET_DIGEST }, true);
     public static final UniqueKey<WfRequestWorkResolutionRecord> WF_REQUEST_WORK_RESOLUTION_ASSIGNMENT_ID_KEY = Internal.createUniqueKey(WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION, DSL.name("wf_request_work_resolution_assignment_id_key"), new TableField[] { WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION.ASSIGNMENT_ID }, true);
     public static final UniqueKey<WfRequestWorkResolutionRecord> WF_REQUEST_WORK_RESOLUTION_PKEY = Internal.createUniqueKey(WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION, DSL.name("wf_request_work_resolution_pkey"), new TableField[] { WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION.REQUEST_WORK_ID }, true);
     public static final UniqueKey<WfReservationRecord> WF_RESERVATION_PKEY = Internal.createUniqueKey(WfReservation.WF_RESERVATION, DSL.name("wf_reservation_pkey"), new TableField[] { WfReservation.WF_RESERVATION.RESERVATION_ID }, true);

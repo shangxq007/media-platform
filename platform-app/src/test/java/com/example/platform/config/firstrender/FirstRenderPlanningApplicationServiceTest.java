@@ -78,7 +78,7 @@ class FirstRenderPlanningApplicationServiceTest {
         stubRevision("art-1");
         when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-1"))).thenReturn(java.util.Optional.of(mock(com.example.platform.artifact.domain.Artifact.class)));
         when(authority.declarations()).thenReturn(List.of());
-        when(renderJobService.createForProject(any(), any(), any(), any()))
+        when(renderJobService.createForGraphPreparation(any(), any(), any(), any()))
                 .thenReturn(new RenderJobResponse(JOB_ID, PROJECT, SNAPSHOT_ID, PROFILE, "QUEUED"));
 
         FirstRenderPlanningResult result = service.prepare(request());
@@ -112,7 +112,7 @@ class FirstRenderPlanningApplicationServiceTest {
         when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-present"))).thenReturn(java.util.Optional.of(mock(com.example.platform.artifact.domain.Artifact.class)));
         when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-missing"))).thenReturn(java.util.Optional.empty());
         when(authority.declarations()).thenReturn(List.of());
-        when(renderJobService.createForProject(any(), any(), any(), any()))
+        when(renderJobService.createForGraphPreparation(any(), any(), any(), any()))
                 .thenReturn(new RenderJobResponse(JOB_ID, PROJECT, SNAPSHOT_ID, PROFILE, "QUEUED"));
 
         FirstRenderPlanningResult result = service.prepare(request());
@@ -129,7 +129,7 @@ class FirstRenderPlanningApplicationServiceTest {
         when(artifactQueries.getArtifact(TENANT, new ArtifactId("art-error")))
                 .thenThrow(new IllegalStateException("existence check timed out"));
         when(authority.declarations()).thenReturn(List.of());
-        when(renderJobService.createForProject(any(), any(), any(), any()))
+        when(renderJobService.createForGraphPreparation(any(), any(), any(), any()))
                 .thenReturn(new RenderJobResponse(JOB_ID, PROJECT, SNAPSHOT_ID, PROFILE, "QUEUED"));
 
         FirstRenderPlanningResult result = service.prepare(request());

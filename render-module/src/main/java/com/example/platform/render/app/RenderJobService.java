@@ -78,6 +78,15 @@ public class RenderJobService {
         return new RenderJobResponse(id, projectId, request.timelineSnapshotId(), request.profile(), "QUEUED");
     }
 
+    /** Accepts a graph execution with a durable, bounded preparation window owned by Render. */
+    @Transactional
+    public RenderJobResponse createForGraphPreparation(String tenantId, String projectId,
+            CreateRenderJobRequest request, RenderInitiator initiator) {
+        var job = createForProject(tenantId, projectId, request, initiator);
+        renderJobRepository.markGraphPreparation(tenantId, job.id());
+        return job;
+    }
+
     public RenderJobResponse getById(String jobId) {
         String tenantId = TenantContext.get();
         CanonicalActor actor = requireReadActor(tenantId);

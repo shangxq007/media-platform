@@ -190,9 +190,25 @@ public class RenderJobRepository {
 
     
     public Record requireScopedJobForUpdate(String tenantId,String jobId) {
-        return dsl.select(RENDER_JOB.ID,RENDER_JOB.PROJECT_ID,RENDER_JOB.TENANT_ID,RENDER_JOB.STATUS,RENDER_JOB.INITIATOR_TYPE,RENDER_JOB.INITIATOR_ID,RENDER_JOB.INITIATOR_TENANT_ID)
-            .from(RENDER_JOB).where(RENDER_JOB.ID.eq(jobId)).and(RENDER_JOB.TENANT_ID.eq(tenantId))
-            .forUpdate().fetchOptional().orElseThrow(()->new IllegalArgumentException("Render job not found for tenant"));
+        return dsl.fetchOptional("select * from render_job where id=? and tenant_id=? for update", jobId, tenantId)
+                .orElseThrow(()->new IllegalArgumentException("Render job not found for tenant"));
+    }
+
+    /** Same transaction as job creation: a crash cannot leave an unmarked graph preparation. */
+    public void markGraphPreparation(String tenantId, String jobId) {
+        if (dsl.execute("""
+                update render_job set graph_preparation_stage='INPUTS',
+                    graph_preparation_deadline=clock_timestamp()+interval '10 minutes'
+                 where tenant_id=? and id=? and status='QUEUED' and graph_preparation_stage is null
+                """, tenantId, jobId) != 1) throw new IllegalStateException("graph preparation could not be recorded");
+    }
+    public void graphPreparationStage(String tenantId, String jobId, String stage) {
+        if (dsl.execute("update render_job set graph_preparation_stage=? where tenant_id=? and id=? and status='QUEUED' and graph_preparation_deadline is not null",
+                stage, tenantId, jobId) != 1) throw new IllegalStateException("graph preparation no longer current");
+    }
+    public void closeGraphPreparation(String tenantId, String jobId, String failureCode) {
+        dsl.execute("update render_job set graph_preparation_stage=null, graph_preparation_deadline=null, error_message=? where tenant_id=? and id=?",
+                failureCode, tenantId, jobId);
     }
 
     public int compareAndSetStatus(String jobId,String projectId,String tenantId,String from,String to) {

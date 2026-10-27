@@ -205,7 +205,6 @@ import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostConn
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptor;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptorDevice;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalReleaseConfirmation;
-import com.example.platform.typedschema.jooq.generated.tables.WfProviderCandidateSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservationDevice;
@@ -1237,11 +1236,6 @@ public class Tables {
      * The table <code>public.wf_physical_release_confirmation</code>.
      */
     public static final WfPhysicalReleaseConfirmation WF_PHYSICAL_RELEASE_CONFIRMATION = WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION;
-
-    /**
-     * The table <code>public.wf_provider_candidate_snapshot</code>.
-     */
-    public static final WfProviderCandidateSnapshot WF_PROVIDER_CANDIDATE_SNAPSHOT = WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT;
 
     /**
      * The table <code>public.wf_request_work_resolution</code>.

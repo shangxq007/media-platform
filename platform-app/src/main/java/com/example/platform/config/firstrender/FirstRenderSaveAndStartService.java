@@ -43,15 +43,26 @@ public class FirstRenderSaveAndStartService {
         // Frozen A6 workflow identity.
         String workflowId = com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenantId,renderJobId);
 
-        // 1. save first — a failure here propagates before any start.
-        BoundGraphReference reference = boundGraphInputStore.save(
-                planningAndBindingResult.boundGraphInputs(), tenantId, renderJobId);
+        // Render's persisted preparation window covers save, dispatch and a crash before begin.
+        var stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BOUND_GRAPH_SAVE;
+        BoundGraphReference reference;
+        try {
+            lifecycle.preparationStage(tenantId, renderJobId, stage);
+            reference = boundGraphInputStore.save(
+                    planningAndBindingResult.boundGraphInputs(), tenantId, renderJobId);
+        } catch (RuntimeException saveFailure) {
+            try { lifecycle.failPreparation(tenantId, renderJobId, stage); }
+            catch (RuntimeException projectionFailure) { saveFailure.addSuppressed(projectionFailure); }
+            throw saveFailure;
+        }
+        lifecycle.preparationStage(tenantId, renderJobId,
+                com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.DISPATCH);
 
         // 2. start only after the save returned the durable reference, used unmodified.
         boolean workflowStarted;
         try { workflowStarted = workflowStarter.start(reference, tenantId, workflowId); }
         catch(RuntimeException dispatchFailure) {
-            try { lifecycle.fail(tenantId,renderJobId,reference.planRef(),reference.planDigest(),reference.expectedExecutableTaskGraphDigest(),false); }
+            try { lifecycle.failPreparation(tenantId,renderJobId,com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.DISPATCH); }
             catch(RuntimeException projectionFailure) { dispatchFailure.addSuppressed(projectionFailure); }
             throw dispatchFailure;
         }

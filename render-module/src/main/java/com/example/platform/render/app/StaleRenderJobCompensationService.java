@@ -57,11 +57,18 @@ public class StaleRenderJobCompensationService {
             condition = condition.and(RENDER_JOB.CREATED_AT.lessThan(request.cutoff().toLocalDateTime()));
         }
 
+        // Prepared graph jobs have an explicit durable deadline. A process restart must not
+        // guess from queue age or invalidate another process's still-live preparation window.
+        condition = condition.and(org.jooq.impl.DSL.field("graph_preparation_deadline").isNull())
+                .or(RENDER_JOB.STATUS.eq(RenderJobStatus.QUEUED.name())
+                        .and(org.jooq.impl.DSL.condition("graph_preparation_deadline <= current_timestamp")));
         var staleJobs = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.STATUS, RENDER_JOB.UPDATED_AT,
                         RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID,
-                        RENDER_JOB.INITIATOR_TENANT_ID)
+                        RENDER_JOB.INITIATOR_TENANT_ID,
+                        org.jooq.impl.DSL.field("graph_preparation_stage", String.class))
                 .from(RENDER_JOB)
                 .where(condition)
+                .forUpdate().skipLocked()
                 .fetch();
 
         int compensated = 0;
@@ -74,6 +81,20 @@ public class StaleRenderJobCompensationService {
             String statusStr = job.get(RENDER_JOB.STATUS, String.class);
             RenderJobStatus currentStatus = RenderJobStatus.valueOf(statusStr);
             try {
+                String preparationStage = job.get("graph_preparation_stage", String.class);
+                if (preparationStage != null) {
+                    var jobs = new RenderJobRepository(dsl);
+                    String tenant = job.get(RENDER_JOB.INITIATOR_TENANT_ID);
+                    String code = "GRAPH_PREPARATION_" + preparationStage + "_TIMEOUT";
+                    new RenderStateTransitions(jobs, historyRepository, eventPublisher).transition(
+                            jobId, projectId, currentStatus, RenderJobStatus.FAILED, code);
+                    jobs.closeGraphPreparation(tenant, jobId, code);
+                    eventPublisher.publishEvent(new RenderJobFailedEvent(jobId, projectId,
+                            com.example.platform.render.api.event.RenderFailureReason.STALE_TIMEOUT,
+                            Instant.now(), RenderJobRepository.initiatorFrom(job), RenderJobStatus.FAILED));
+                    compensated++;
+                    continue;
+                }
                 stateMachine.validateTransition(currentStatus, RenderJobStatus.FAILED);
                 int changed=dsl.update(RENDER_JOB)
                         .set(RENDER_JOB.STATUS, RenderJobStatus.FAILED.name())

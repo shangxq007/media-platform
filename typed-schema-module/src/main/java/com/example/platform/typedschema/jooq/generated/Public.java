@@ -205,7 +205,6 @@ import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostConn
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptor;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostDescriptorDevice;
 import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalReleaseConfirmation;
-import com.example.platform.typedschema.jooq.generated.tables.WfProviderCandidateSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservationDevice;
@@ -1254,11 +1253,6 @@ public class Public extends SchemaImpl {
     public final WfPhysicalReleaseConfirmation WF_PHYSICAL_RELEASE_CONFIRMATION = WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION;
 
     /**
-     * The table <code>public.wf_provider_candidate_snapshot</code>.
-     */
-    public final WfProviderCandidateSnapshot WF_PROVIDER_CANDIDATE_SNAPSHOT = WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT;
-
-    /**
      * The table <code>public.wf_request_work_resolution</code>.
      */
     public final WfRequestWorkResolution WF_REQUEST_WORK_RESOLUTION = WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION;
@@ -1570,7 +1564,6 @@ public class Public extends SchemaImpl {
             WfPhysicalHostDescriptor.WF_PHYSICAL_HOST_DESCRIPTOR,
             WfPhysicalHostDescriptorDevice.WF_PHYSICAL_HOST_DESCRIPTOR_DEVICE,
             WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION,
-            WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT,
             WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION,
             WfReservation.WF_RESERVATION,
             WfReservationDevice.WF_RESERVATION_DEVICE,

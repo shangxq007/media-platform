@@ -48,6 +48,12 @@ create table render_job (
     tenant_id varchar(64),
     pipeline_plan_json text,
     pipeline_execution_json text,
+    graph_preparation_stage varchar(32),
+    graph_preparation_deadline timestamptz,
+    constraint ck_render_graph_preparation_pair check (
+        (graph_preparation_stage is null and graph_preparation_deadline is null)
+        or (graph_preparation_stage in ('INPUTS','SNAPSHOT','PLANNING','BINDING','BOUND_GRAPH_SAVE','DISPATCH')
+            and graph_preparation_deadline is not null)),
     base_job_id varchar(64),
     trace_id varchar(128),
     initiator_type varchar(32) not null,
@@ -4858,25 +4864,6 @@ create table wf_host_readiness (
         references wf_host_registration (physical_host_id, physical_host_incarnation_id),
     check (valid_until > captured_at)
 );
-
--- (former V5) worker-owned provider candidate snapshot.
-create table wf_provider_candidate_snapshot (
-    physical_host_id             varchar(128) not null,
-    physical_host_incarnation_id varchar(128) not null,
-    worker_runtime_id            varchar(128) not null,
-    worker_runtime_incarnation_id varchar(128) not null,
-    registration_generation      bigint       not null check (registration_generation > 0),
-    snapshot_version             bigint       not null check (snapshot_version > 0),
-    candidate_set_digest         varchar(64)  not null,
-    content                      bytea        not null,
-    captured_at                  timestamptz  not null,
-    valid_until                  timestamptz  not null,
-    primary key (physical_host_id, physical_host_incarnation_id, candidate_set_digest),
-    check (valid_until > captured_at)
-);
-
-create index ix_wf_provider_candidate_snapshot_current
-    on wf_provider_candidate_snapshot(physical_host_id, physical_host_incarnation_id, valid_until);
 
 -- ============================================================
 -- ===== SEED DATA =====

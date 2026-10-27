@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class FirstRenderPlanningAndBindingService {
 
+    private final com.example.platform.render.api.GraphRenderLifecycle lifecycle;
     private final FirstRenderPlanningApplicationService planningApplicationService;
     private final TimelineRevisionCommands timelineRevisionCommands;
     private final TimelineRevisionQueries timelineRevisionQueries;
@@ -63,7 +64,9 @@ public class FirstRenderPlanningAndBindingService {
             ProviderPluginCatalog providerPluginCatalog,
             RenderPlanningEntryService renderPlanningEntryService,
             PhysicalPlanningEntryService physicalPlanningEntryService,
-            ProviderBindingEntryService providerBindingEntryService) {
+            ProviderBindingEntryService providerBindingEntryService,
+            com.example.platform.render.api.GraphRenderLifecycle lifecycle) {
+        this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.planningApplicationService = Objects.requireNonNull(
                 planningApplicationService, "planningApplicationService");
         this.timelineRevisionCommands = Objects.requireNonNull(
@@ -94,6 +97,9 @@ public class FirstRenderPlanningAndBindingService {
         // Phase 3: input + context construction (unchanged API).
         FirstRenderPlanningResult planning = planningApplicationService.prepare(request);
 
+        var stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.SNAPSHOT;
+        try {
+        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
         // Complete hydration for #20.
         TimelineRevision revision = timelineRevisionCommands.findById(tenantId, revisionId);
         if (revision == null) {
@@ -114,6 +120,8 @@ public class FirstRenderPlanningAndBindingService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Pinned effect semantic snapshot unavailable: " + pin.snapshotId()));
 
+        stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.PLANNING;
+        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
         // #20 logical render planning.
         RenderPlanningResult renderPlanningResult = renderPlanningEntryService.plan(
                 hydratedRevision,
@@ -127,6 +135,8 @@ public class FirstRenderPlanningAndBindingService {
                 renderPlanningResult, planning.executionPlanId());
         PhysicalExecutionPlan physicalPlan = planningResult.physicalExecutionPlan();
 
+        stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BINDING;
+        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
         // Declared provider candidates from the catalog projection.
         List<ProviderCandidate> candidates = ProviderCandidateProjection.project(providerPluginCatalog);
 
@@ -139,5 +149,10 @@ public class FirstRenderPlanningAndBindingService {
                 physicalPlan, candidates, planning.declarations(), expectedDigest);
         return new FirstRenderPlanningAndBindingResult(
                 tenantId, planning.renderJobId(), planning.renderRequest().id(), boundGraphInputs);
+        } catch (RuntimeException preparationFailure) {
+            try { lifecycle.failPreparation(tenantId, planning.renderJobId(), stage); }
+            catch (RuntimeException projectionFailure) { preparationFailure.addSuppressed(projectionFailure); }
+            throw preparationFailure;
+        }
     }
 }

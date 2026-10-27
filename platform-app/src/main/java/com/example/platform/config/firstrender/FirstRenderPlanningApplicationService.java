@@ -97,15 +97,6 @@ public class FirstRenderPlanningApplicationService {
                 TimelineDocumentJsonSerializer.deserialize(payload.canonicalTimelineJson());
         List<ArtifactId> sourceArtifacts = FirstRenderSourceArtifacts.artifactIds(document);
 
-        // 2. renderJobId via the existing render-job creation boundary (D1).
-        RenderInitiator initiator = request.initiator();
-        RenderJobResponse job = renderJobService.createForProject(
-                tenantId,
-                projectId,
-                new CreateRenderJobRequest(projectId, payload.snapshotId(), request.profile()),
-                initiator);
-        String renderJobId = job.id();
-
         // 3. RenderRequest with an INDEPENDENT correlation id (D2) and a real RENDER_MASTER output.
         RenderRequest renderRequest = new RenderRequest(
                 new RenderRequestId(UUID.randomUUID().toString()),
@@ -126,6 +117,16 @@ public class FirstRenderPlanningApplicationService {
         // 7. Declarations come from the Provider Interoperability Authority (OD5/R5).
         List<ProviderBoundaryCompatibilityDeclaration> declarations =
                 providerInteroperabilityAuthority.declarations();
+
+        // 2. renderJobId via the existing render-job creation boundary (D1).
+        RenderInitiator initiator = request.initiator();
+        RenderJobResponse job = renderJobService.createForGraphPreparation(
+                tenantId,
+                projectId,
+                new CreateRenderJobRequest(projectId, payload.snapshotId(), request.profile()),
+                initiator);
+        String renderJobId = job.id();
+
 
         return new FirstRenderPlanningResult(
                 renderJobId, renderRequest, executionPlanId, sourceResolution, capabilityContext,

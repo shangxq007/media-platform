@@ -32,10 +32,44 @@ public class GraphRenderLifecycleService implements GraphRenderLifecycle {
         this.jobs=jobs;this.executions=executions;this.lifecycle=lifecycle;this.events=events;this.artifacts=artifacts;this.quota=quota;
     }
     @Override @Transactional
+    public void preparationStage(String tenant, String jobId, PreparationStage stage) {
+        TenantGuard.assertSameTenant(tenant);
+        var job = jobs.requireScopedJobForUpdate(tenant, jobId);
+        String current = job.get("graph_preparation_stage", String.class);
+        if (!"QUEUED".equals(job.get("status", String.class)) || current == null) {
+            throw new IllegalStateException("graph preparation no longer current");
+        }
+        if (stage.ordinal() < PreparationStage.valueOf(current).ordinal()) {
+            throw new IllegalArgumentException("graph preparation cannot move backwards");
+        }
+        jobs.graphPreparationStage(tenant, jobId, stage.name());
+    }
+    @Override @Transactional
+    public void failPreparation(String tenant, String jobId, PreparationStage stage) {
+        TenantGuard.assertSameTenant(tenant);
+        var job = jobs.requireScopedJobForUpdate(tenant, jobId);
+        if (!"QUEUED".equals(job.get("status", String.class))) return;
+        String current = job.get("graph_preparation_stage", String.class);
+        if (current == null || !current.equals(stage.name())) return;
+        String project = job.get("project_id", String.class);
+        if (executions.find(tenant, project, jobId).isPresent()) {
+            throw new IllegalStateException("started graph must use its fenced execution lifecycle");
+        }
+        String code = "GRAPH_PREPARATION_" + stage.name() + "_FAILED";
+        lifecycle.transition(jobId, project, RenderJobStatus.QUEUED, RenderJobStatus.FAILED, code);
+        jobs.closeGraphPreparation(tenant, jobId, code);
+        events.publishEvent(new RenderJobFailedEvent(jobId, project, RenderFailureReason.EXECUTION_FAILED,
+                Instant.now(), RenderJobRepository.initiatorFrom(job), RenderJobStatus.FAILED));
+    }
+    @Override @Transactional
     public Execution begin(String tenant,String jobId,String planRef,String plan,String graph,String finalTask) {
         TenantGuard.assertSameTenant(tenant);
         for(String value:List.of(planRef,plan,graph,finalTask)) if(value.isBlank()) throw new IllegalArgumentException("execution pin required");
         Record job=jobs.requireScopedJobForUpdate(tenant,jobId);String project=job.get("project_id",String.class);
+        var deadline=job.get("graph_preparation_deadline",OffsetDateTime.class);
+        if (deadline != null && !deadline.toInstant().isAfter(Instant.now())) {
+            throw new IllegalStateException("graph preparation window expired");
+        }
         var old=executions.find(tenant,project,jobId);
         Execution e=old.map(GraphRenderExecutionRepository::execution).orElseGet(()->new Execution(tenant,project,jobId,planRef,plan,graph,UUID.randomUUID().toString(),1,finalTask));
         if(!e.planRef().equals(planRef)||!e.planDigest().equals(plan)||!e.graphDigest().equals(graph)||!e.finalTaskId().equals(finalTask)) throw new IllegalArgumentException("bound execution identity conflict");
@@ -45,6 +79,7 @@ public class GraphRenderLifecycleService implements GraphRenderLifecycle {
             lifecycle.transition(jobId,project,state,RenderJobStatus.SELECTING_PROVIDER,null);
             lifecycle.transition(jobId,project,RenderJobStatus.SELECTING_PROVIDER,RenderJobStatus.PROVIDER_SELECTED,null);
             lifecycle.transition(jobId,project,RenderJobStatus.PROVIDER_SELECTED,RenderJobStatus.EXECUTING,null);
+            jobs.closeGraphPreparation(tenant,jobId,null);
         } else if(state!=RenderJobStatus.EXECUTING&&state!=RenderJobStatus.COMPLETING&&state!=RenderJobStatus.COMPLETED) {
             throw new IllegalStateException("graph execution cannot begin in terminal state");
         }
