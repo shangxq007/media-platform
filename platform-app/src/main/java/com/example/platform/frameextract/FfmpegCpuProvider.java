@@ -280,8 +280,11 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
         if (width != null) {
             arguments.addAll(List.of("-vf", "scale=" + width + ":-2"));
         }
-        if ("jpeg".equals(imageFormat) && quality != null) {
-            arguments.addAll(List.of("-q:v", Integer.toString(jpegQuality(quality))));
+        if ("jpeg".equals(imageFormat)) {
+            // MJPEG requires full-range YUV. Do not relax standards compliance for a limited-range
+            // video source; request the actual JPEG pixel representation explicitly.
+            arguments.addAll(List.of("-pix_fmt", "yuvj420p"));
+            if (quality != null) arguments.addAll(List.of("-q:v", Integer.toString(jpegQuality(quality))));
         }
         arguments.add(output.toString());
         var execution = backend.execute(ExecutionRequest.of(
@@ -328,8 +331,11 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
         if (width != null) {
             arguments.addAll(List.of("-vf", "scale=" + width + ":-2"));
         }
-        if ("jpeg".equals(imageFormat) && quality != null) {
-            arguments.addAll(List.of("-q:v", Integer.toString(jpegQuality(quality))));
+        if ("jpeg".equals(imageFormat)) {
+            // MJPEG requires full-range YUV. Do not relax standards compliance for a limited-range
+            // video source; request the actual JPEG pixel representation explicitly.
+            arguments.addAll(List.of("-pix_fmt", "yuvj420p"));
+            if (quality != null) arguments.addAll(List.of("-q:v", Integer.toString(jpegQuality(quality))));
         }
         arguments.add(output.toString());
         if (!(backend instanceof CancellableExecutionBackend cancellable)) {

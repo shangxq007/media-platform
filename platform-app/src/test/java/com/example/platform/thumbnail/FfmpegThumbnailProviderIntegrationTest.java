@@ -24,7 +24,18 @@ class FfmpegThumbnailProviderIntegrationTest {
         Assumptions.assumeTrue(Files.isExecutable(Path.of("/usr/bin/ffprobe")));
         Assumptions.assumeTrue(Files.isExecutable(Path.of("/usr/bin/bwrap")));
         Path source = temp.resolve("source.mp4");
-        new ProcessBuilder("/usr/bin/ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x180:d=1", "-pix_fmt", "yuv420p", source.toString()).redirectErrorStream(true).start().waitFor();
+        var process = new ProcessBuilder("/usr/bin/ffmpeg", "-nostdin", "-y", "-f", "lavfi", "-i",
+                "color=c=blue:s=320x180:d=1", "-threads", "1", "-pix_fmt", "yuv420p", source.toString())
+                .redirectErrorStream(true).redirectOutput(temp.resolve("fixture.log").toFile()).start();
+        try {
+            assertThat(process.waitFor(15, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            assertThat(process.exitValue()).isZero();
+        } finally {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+                assertThat(process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            }
+        }
         var request = new ThumbnailContracts.Request("tenant", "project", "asset", .25, "jpeg", 160, 80, "real-provider");
         var provider = new FfmpegCpuProvider("/usr/bin/ffmpeg", "/usr/bin/ffprobe");
         var result = FrameExtractExecutionAdapter.of(provider, temp)
