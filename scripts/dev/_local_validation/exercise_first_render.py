@@ -8,7 +8,7 @@ def run(name,cmd,input=None):
  p=subprocess.run(cmd,env=env,input=input,capture_output=True,text=True,timeout=60);(a/(name+'.stdout')).write_text(p.stdout);(a/(name+'.stderr')).write_text(p.stderr)
  if p.returncode:raise RuntimeError(name+' exit '+str(p.returncode))
  return p.stdout
-run('source-video',prefix+['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi','-i','color=c=red:s=320x240:r=1','-t','1','-c:v','libopenh264','-pix_fmt','yuv420p',str(a/'source.mp4')])
+run('source-video',prefix+['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi','-i','color=c=red:s=320x240:r=30','-t','1','-c:v','libopenh264','-pix_fmt','yuv420p',str(a/'source.mp4')])
 cp=(R/'03-build/platform-app-test-classpath.txt').read_text().strip();classes=a/'fixture-classes';classes.mkdir(exist_ok=True)
 src=a/'Fixture.java';src.write_text('''import java.nio.file.*;import java.util.*;
 import com.example.platform.timeline.canonical.*;
