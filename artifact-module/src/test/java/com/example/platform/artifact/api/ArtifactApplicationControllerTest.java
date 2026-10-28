@@ -134,6 +134,12 @@ class ArtifactApplicationControllerTest {
     private static final class ArtifactApplicationQueryStub
             implements com.example.platform.artifact.app.ArtifactApplicationQuery {
         @Override
+        public java.util.Optional<com.example.platform.artifact.domain.Artifact> findProjectArtifact(
+                com.example.platform.artifact.app.ArtifactProjectScope scope, ArtifactId id) {
+            return java.util.Optional.empty();
+        }
+
+        @Override
         public List<com.example.platform.artifact.domain.Artifact> findArtifacts(
                 ArtifactScope scope, int limit) { return List.of(); }
 

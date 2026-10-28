@@ -7,36 +7,15 @@ import com.example.platform.shared.capability.RasterImageEncoding;
 import java.math.BigDecimal;
 import java.util.Locale;
 
-/** Canonical media.thumbnail request and provider contract; FFmpeg is not exposed here. */
+/** Provider-neutral media request intent. Its output is committed by the canonical Artifact owner;
+ * provider choice and execution state are deliberately absent from this transport vocabulary. */
 public final class ThumbnailContracts {
     public static final String CAPABILITY = "media.thumbnail";
 
     /** Capability contract version declared alongside {@link #CAPABILITY}. */
     public static final String CAPABILITY_VERSION = "1.0";
 
-    /**
-     * Provider/backend <em>family</em> identity — capability-independent and never a capability id,
-     * mirroring {@link com.example.platform.contract.media.CoverImageContracts#PROVIDER}. The family
-     * declares the capabilities it serves through its manifest; the registry and the worker pin the
-     * family, never a single implementation.
-     */
-    public static final String PROVIDER = "platform.ffmpeg";
-
-    /**
-     * One provider runtime/adapter implementation of {@link #PROVIDER}. Implementation identity is
-     * separate from both the family identity and any capability identity; it belongs in the
-     * manifest's {@code providerImplementationId} slot, never in the {@code providerId} slot.
-     */
-    public static final String PROVIDER_IMPLEMENTATION = "ffmpeg.cpu.frame-extract.v1";
-
-    /** Provider version, aligned with the platform registration contribution version. */
-    public static final String PROVIDER_VERSION = "1.0.0";
-
-    /**
-     * Provenance operation tag carried on the single {@code THUMBNAIL_OF} edge — a
-     * capability-independent semantic label, never a capability id and never a canonical
-     * {@code OperationDefinitionId} (mirrors {@code CoverImageContracts.OPERATION_ID}).
-     */
+    /** Provenance operation label; not a second execution or Operation authority. */
     public static final String OPERATION_ID = "thumbnail";
 
     private ThumbnailContracts() {}
@@ -93,6 +72,4 @@ public final class ThumbnailContracts {
         private static void require(String value, String name) { if (value == null || value.isBlank()) throw new IllegalArgumentException(name + " required"); }
     }
 
-    public enum Status { ADMITTED, RUNNING, COMMITTING, COMPLETED, FAILED, CANCELLED }
-    public record Result(String taskId, Status status, String artifactId, String failureCode) {}
 }

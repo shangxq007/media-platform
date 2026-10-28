@@ -16,25 +16,24 @@
 不得将旧 V1 的历史验收证据冒充新 V1 的验收，也不得未经授权改写已执行过迁移的数据库历史。
 正式上线并需保留生产数据后，必须重新确定迁移治理政策，保护已发布迁移的不可变性。
 
-## 当前已验收身份
+## 当前开发基线
 
 路径：`platform-app/src/main/resources/db/migration/V1__baseline.sql`。
-SHA-256：`1af0089e27dafe8df2def9ed255cab18ba78073827ee7888dc9e542909e932d9`。
-该身份已经通过与旧 V1+V2 的业务 Schema 等价验证；此为既有基线事实，不表示原则整理任务重新执行了验收。
+完整 SHA-256：`ddaaab7dd6c5aaa4c9cbc262405227d814b26d800cbedef3101247473fdfeb47`。
 
-The active migration directory contains only `V1__baseline.sql`. It consolidates the accepted
-V1+graph-execution V2 semantics for this unreleased project. New databases must start empty; no
-historical production-data compatibility or fake upgrade path is maintained. Historical frozen
-migration bytes and prior checksums remain untouched in external audit snapshots.
+Owner OD1–OD3 授权在未上线单一 V1 内移除无消费者的 Provider Candidate Snapshot 表和
+Cover/Thumbnail 专用任务表，并由现有 Execution admission/result 持久化承接能力请求。
+该基线也包含 Render preparation 的阶段/截止时间、既有补偿恢复，以及逻辑 Execution 与
+原生 task/attempt/generation 的复合关联约束。它没有创建第二套 Artifact 或 Render 完成权威。
 
-The baseline includes `render_graph_execution`, composite Render/Artifact scope constraints,
-platform attempt/generation binding, native task/attempt/generation FK and final-output equality
-checks. It adds no duplicate job status, Artifact commit authority or native execution completion.
+这是有意的 Schema 演进，不能声称与首次集成的旧 V1 结构完全相同。
+历史 `1af0089e…` 曾完成旧 V1+V2 等价验收；该事实只属于其当时的冻结源码。
+当前源码必须重新通过真实空 PG18 的单 V1、完整约束检查、jOOQ3.21.9 生成/编译和对应回归，
+以本次源码身份和执行日志为依据，不沿用旧 PASS 或固定生成文件数量。
 
-The Gradle canonical baseline guard pins the current full V1 SHA-256. Exact one-V1 Flyway inventory,
-full fresh-PG18 business DDL comparison with the accepted V1+V2, jOOQ3.21.9 byte parity and real database
-business tests verify consolidation. Only Flyway bookkeeping, dump random delimiters and distinct
-synthetic owner/ACL metadata are excluded; no business Schema difference is ignored.
+jOOQ 生成源码按仓库策略版本化；只从真实 PG18 introspection 输出更新，必须逐字节对账，
+不得手写补齐生成类。Gradle Schema Guard 绑定当前完整 V1 摘要，迁移清单只允许单一 V1。
+现有数据库历史、历史快照和审计包不随本任务改写。
 
 See [development and regeneration](../development/canonical-baseline.md) and
 [First Render ownership](../testing/first-render.md). Never rewrite an applied database's history.

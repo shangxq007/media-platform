@@ -42,6 +42,7 @@ public final class RuntimeClosedLoopOrchestrator {
     private final FencedReuseCompletionOrchestrator completionOrchestrator;
     private final Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> runtimeBindings;
     private final Phase16RuntimeMetrics metrics;
+    private final RuntimePublicationTransaction nativePublicationTransaction;
 
     public RuntimeClosedLoopOrchestrator(
             ArtifactReuseResolver reuseResolver,
@@ -50,7 +51,7 @@ public final class RuntimeClosedLoopOrchestrator {
             ArtifactOutputCommitOrchestrator outputCommitOrchestrator,
             FencedReuseCompletionOrchestrator completionOrchestrator,
             Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> runtimeBindings,
-            Phase16RuntimeMetrics metrics) {
+            Phase16RuntimeMetrics metrics, RuntimePublicationTransaction nativePublicationTransaction) {
         this.reuseResolver = Objects.requireNonNull(reuseResolver, "reuseResolver");
         this.artifactMaterializer = Objects.requireNonNull(
                 artifactMaterializer, "artifactMaterializer");
@@ -62,9 +63,16 @@ public final class RuntimeClosedLoopOrchestrator {
         Objects.requireNonNull(runtimeBindings, "runtimeBindings");
         this.runtimeBindings = Map.copyOf(runtimeBindings);
         this.metrics = Objects.requireNonNull(metrics, "metrics");
+        this.nativePublicationTransaction=Objects.requireNonNull(nativePublicationTransaction,"nativePublicationTransaction");
     }
 
     public RuntimeClosedLoopResult execute(RuntimeClosedLoopRequest request) throws IOException {
+        return execute(request,(task,execution,action)->action.commit(),null);
+    }
+    public RuntimeClosedLoopResult execute(RuntimeClosedLoopRequest request,
+            RuntimePublicationTransaction publicationTransaction,
+            com.example.platform.sandbox.SandboxCancellation cancellation) throws IOException {
+        Objects.requireNonNull(publicationTransaction,"publicationTransaction");
         Objects.requireNonNull(request, "request");
         ProviderBoundExecutableTaskGraph graph = request.graph();
         validateAuthoritativeOutputCardinality(graph);
@@ -78,7 +86,7 @@ public final class RuntimeClosedLoopOrchestrator {
                     request.cacheability().getOrDefault(task.id(), Cacheability.NOT_CACHEABLE));
             // A reuse hint is not permission to substitute another job/attempt's immutable publication.
             var target=request.taskExecutions().get(task.id());
-            if(decision.outcome()==ValidatedReuseDecision.Outcome.VALIDATED_HIT && target!=null && target.artifactCommitMetadata().renderJobId()!=null
+            if(decision.outcome()==ValidatedReuseDecision.Outcome.VALIDATED_HIT && target!=null && target.artifactCommitMetadata().projectId()!=null
                     && !target.artifactCommitMetadata().artifactId().equals(decision.record().orElseThrow().artifactPin().artifactId())) {
                 decision=ValidatedReuseDecision.reject(ValidatedReuseDecision.Outcome.MISS,
                         "reuse publication does not match this execution's exact output identity");
@@ -123,39 +131,39 @@ public final class RuntimeClosedLoopOrchestrator {
             }
 
             StagedExecutionOutput staged = stageProviderOutput(
-                    runtimeBinding, task, taskExecution, inputs);
-            DurableArtifactCommitResult committed;
+                    cancellation == null ? runtimeBinding : runtimeBinding.withCancellation(cancellation), task, taskExecution, inputs);
+            RuntimeClosedLoopTaskResult published;
             try {
                 if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Runtime output cancelled before commitment");
-                committed = outputCommitOrchestrator.commit(
-                        staged,
-                        taskExecution.durableOutputTarget(),
-                        taskExecution.artifactCommitMetadata());
+                published=publicationTransaction.commit(taskId,taskExecution,
+                        ()->nativePublicationTransaction.commit(taskId,taskExecution,()-> {
+                    var metadata=taskExecution.artifactCommitMetadata();
+                    if(!taskExecution.derivations().isEmpty()) {
+                        var provenance=new ArrayList<>(metadata.provenanceDeclarations());
+                        taskExecution.derivations().forEach(intent->provenance.add(intent.declaration(
+                                taskExecution.runtimeContext().platformExecutionAttemptId().value(),staged.contentDigest())));
+                        metadata=new ArtifactCommitMetadata(metadata.artifactId(),metadata.tenantId(),metadata.mediaType(),
+                                metadata.artifactKind(),metadata.schemaVersion(),metadata.replicaRole(),metadata.region(),provenance,
+                                metadata.evaluatedAt(),metadata.createdAt(),metadata.renderJobId(),metadata.projectId());
+                    }
+                    DurableArtifactCommitResult committed=outputCommitOrchestrator.commit(staged,taskExecution.durableOutputTarget(),metadata);
+                    ArtifactPin outputPin=new ArtifactPin(committed.artifactCommitResult().artifact().artifactId(),
+                            committed.artifactCommitResult().artifact().contentDigest());
+                    var publication=new ReusableArtifactPublication(new ReusableArtifactRecord(request.tenantId(),keys.get(taskId),
+                            outputPin,taskId,taskExecution.runtimeContext().platformExecutionAttemptId(),
+                            taskExecution.runtimeContext().platformOwnershipGeneration(),committed.artifactCommitResult().artifact().createdAt()));
+                    var commitEvidence=new ArtifactCommitEvidence(committed.artifactCommitResult().artifact().artifactId());
+                    var fenced=completionOrchestrator.complete(publication,taskExecution.completionEvidence(),commitEvidence);
+                    metrics.reusePublication(fenced.publicationResult());
+                    if(!authoritative(fenced))throw new NonAuthoritativeRuntimeCompletionException(committed,fenced);
+                    return new RuntimeClosedLoopTaskResult(committed,fenced);
+                }));
             } finally {
                 deleteStagedBestEffort(staged);
             }
-            ArtifactPin outputPin = new ArtifactPin(
-                    committed.artifactCommitResult().artifact().artifactId(),
-                    committed.artifactCommitResult().artifact().contentDigest());
-            ReusableArtifactPublication publication = new ReusableArtifactPublication(
-                    new ReusableArtifactRecord(
-                            request.tenantId(),
-                            keys.get(taskId),
-                            outputPin,
-                            taskId,
-                            taskExecution.runtimeContext().platformExecutionAttemptId(),
-                            taskExecution.runtimeContext().platformOwnershipGeneration(),
-                            committed.artifactCommitResult().artifact().createdAt()));
-            ArtifactCommitEvidence commitEvidence = new ArtifactCommitEvidence(
-                    committed.artifactCommitResult().artifact().artifactId());
-            FencedReuseCompletionResult fenced = completionOrchestrator.complete(
-                    publication, taskExecution.completionEvidence(), commitEvidence);
-            metrics.reusePublication(fenced.publicationResult());
-            if (!authoritative(fenced)) {
-                throw new NonAuthoritativeRuntimeCompletionException(committed, fenced);
-            }
-            outputPins.put(taskId, outputPin);
-            executed.put(taskId, new RuntimeClosedLoopTaskResult(committed, fenced));
+            var artifact=published.durableArtifactCommit().artifactCommitResult().artifact();
+            outputPins.put(taskId,new ArtifactPin(artifact.artifactId(),artifact.contentDigest()));
+            executed.put(taskId,published);
         }
         return new RuntimeClosedLoopResult(keys, decisions, pruning, outputPins, executed);
     }

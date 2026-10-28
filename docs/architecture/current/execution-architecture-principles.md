@@ -24,6 +24,12 @@ TimelineRevision
 这是职责和依赖方向，不表示每个入口或历史路径均已完整收敛。规划从平台版本和计划派生，
 外部执行后端不能反过来定义平台的编辑或规划模型。
 
+Operation 是跨领域的类型化操作意图，可面向 Timeline、Media Asset、Project 等对象；
+它表达语义、目标、参数和约束，不取代各领域的数据、不变量和状态权威。
+“Timeline 只能通过 Operation 修改”不表示 Operation 只能作用于 Timeline。
+封面/缩略图生成可作为未来 Media Asset Operation；生成与选择正式封面是不同业务行为。
+当前未增加这些正式 Operation 类型，也不以此启动统一 DSL 或万能 OperationService。
+
 ## Capability、Provider 与执行分区
 
 - 平台负责 Capability 合法性、Provider 候选匹配、选择及绑定。

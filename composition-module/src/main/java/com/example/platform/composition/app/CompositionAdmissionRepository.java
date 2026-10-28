@@ -10,7 +10,6 @@ public interface CompositionAdmissionRepository {
     Optional<AdmissionRecord> findByExecutionId(String executionId);
     boolean claimQuotaCharge(String executionId);
     void markQuotaCharged(String executionId, BigDecimal chargedUnits);
-    void releaseQuotaCharge(String executionId);
     void deleteUncharged(String executionId);
     boolean transition(String executionId, long expectedGeneration, String fromState, String toState);
 

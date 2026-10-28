@@ -48,15 +48,15 @@ public final class ControlledJUnitMain {
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.ArtifactCommitRecoveryIT"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.GraphRenderLifecycleIT"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.FirstRenderPreparationPostgresTest"),
+                    DiscoverySelectors.selectClass("com.example.platform.testinfra.PlatformCapabilityExecutionPostgresTest"),
+                    DiscoverySelectors.selectClass("com.example.platform.testinfra.CompositionAdmissionCoexistencePostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.AtomicAssignmentGrantValidityPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.ArtifactReuseIndexPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.AtomicAssignmentGrantPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.ExecutionBackendSelectionPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.ExecutionLifecyclePostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.JooqReservationFeasibilityQueryPostgresTest"),
-                    DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.WorkerFabricRegistrationPostgresTest"),
-                    DiscoverySelectors.selectClass("com.example.platform.coverimage.CoverImageCommitServiceIdempotencyTest"),
-                    DiscoverySelectors.selectClass("com.example.platform.thumbnail.ThumbnailLifecyclePostgresTest"));
+                    DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.WorkerFabricRegistrationPostgresTest"));
             } else throw new IllegalArgumentException("JOB_MODE");
             var listener=new SummaryGeneratingListener();
             var launcher=LauncherFactory.create();

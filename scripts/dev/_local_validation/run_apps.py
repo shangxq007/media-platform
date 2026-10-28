@@ -10,7 +10,7 @@ out=R/'07-runtime'/('apps-'+str(time.time_ns()));out.mkdir(mode=0o700)
 c=json.loads((R/'07-runtime/local-context.json').read_text()); old=json.loads((Path((R/'07-runtime/final-db-job.txt').read_text().strip())/'binding.json').read_text());old.update(scratch=str(out),identity=birth(c['pid']),container_id=c['container_id'],network_namespace=c['network_namespace'],user_namespace=c['user_namespace'],ca=c['ca'],run=c['run'],attempt=c['attempt'])
 b=out/'binding.json';b.write_text(json.dumps(old));b.chmod(0o600)
 for n in ['plugins','workspace','staging','work','object-store','local-storage','cover-work','materialized','oidc']:(out/n).mkdir()
-shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.0.0.jar',out/'plugins')
+shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.1.0.jar',out/'plugins')
 if prior and (prior/'source-metadata.json').exists() and '--fresh' not in sys.argv:
  assert not any(p.is_symlink() for p in (prior/'object-store').rglob('*'))
  shutil.copytree(prior/'object-store',out/'object-store',dirs_exist_ok=True,symlinks=True)
@@ -33,10 +33,17 @@ jwk={'keys':[dict(kty='RSA',kid='f8-local',use='sig',alg='RS256',n=b64(n.to_byte
 issuer='http://127.0.0.1:18081'
 (out/'oidc/.well-known').mkdir();(out/'oidc/.well-known/openid-configuration').write_text(json.dumps(dict(issuer=issuer,jwks_uri=issuer+'/jwks.json',authorization_endpoint=issuer+'/authorize',token_endpoint=issuer+'/token',response_types_supported=['id_token'],subject_types_supported=['public'],id_token_signing_alg_values_supported=['RS256'])))
 pwd=Path(c.get('password_file',str(priv/'test-password'))).read_text();url='jdbc:postgresql://127.0.0.1:5432/'+c['database']+'?sslmode=verify-full&sslrootcert='+c['ca']
-base=dict(PATH='/usr/bin:/bin',HOME=str(out),LANG='C.UTF-8',LC_ALL='C.UTF-8',SPRING_DATASOURCE_URL=url,SPRING_DATASOURCE_USERNAME=c['role'],SPRING_DATASOURCE_PASSWORD=pwd,SPRING_FLYWAY_URL=url,SPRING_FLYWAY_USER=c['role'],SPRING_FLYWAY_PASSWORD=pwd,SPRING_PROFILES_ACTIVE='pg18-integration,temporal',PLATFORM_ENV='integration',APP_JWT_SECRET=secrets.token_hex(48),SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=issuer,APP_SECURITY_OAUTH2_AUDIENCE='f8-local',APP_SECURITY_OAUTH2_ENABLED='true',TEMPORAL_TARGET='127.0.0.1:7233',TEMPORAL_NAMESPACE='f8-pg18-'+RUN_ID+'',PLATFORM_PAYMENT_STRIPE_ENABLED='false',APP_AI_OPENAI_ENABLED='false',APP_AI_DEFAULT_PROVIDER='stubChatProvider',FFMPEG_WORKER_FFMPEG_PATH='/usr/local/lib/media-platform/ffmpeg/ffmpeg',FFMPEG_WORKER_FFPROBE_PATH='/usr/local/lib/media-platform/ffmpeg/ffprobe',FFMPEG_WORKER_PLUGINS_DIRECTORY=str(out/'plugins'),FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT=str(out/'workspace'),FFMPEG_WORKER_STAGING_ROOT=str(out/'staging'),FFMPEG_WORKER_WORK_ROOT=str(out/'work'),FFMPEG_WORKER_PUBLICATION_PROJECT_ID='untrusted-project-override',FFMPEG_WORKER_PUBLICATION_STORAGE_PROVIDER='local-object-store',APP_COVER_IMAGE_STORAGE_ROOT=str(out/'object-store'),APP_STORAGE_LOCAL_ROOT=str(out/'local-storage'),APP_COVER_IMAGE_WORK_ROOT=str(out/'cover-work'),APP_COVER_IMAGE_MATERIALIZATION_ROOT=str(out/'materialized'),APP_EXTENSIONS_PLUGINS_DIR=str(out/'plugins'),SERVER_PORT='18080',SERVER_ADDRESS='127.0.0.1',MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED='false',MANAGEMENT_TRACING_ENABLED='false',IDENTITY_BUILTIN_DATA_ENABLED='true')
+base=dict(PATH='/usr/bin:/bin',HOME=str(out),LANG='C.UTF-8',LC_ALL='C.UTF-8',SPRING_DATASOURCE_URL=url,SPRING_DATASOURCE_USERNAME=c['role'],SPRING_DATASOURCE_PASSWORD=pwd,SPRING_FLYWAY_URL=url,SPRING_FLYWAY_USER=c['role'],SPRING_FLYWAY_PASSWORD=pwd,SPRING_PROFILES_ACTIVE='pg18-integration,temporal',PLATFORM_ENV='integration',APP_JWT_SECRET=secrets.token_hex(48),SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=issuer,APP_SECURITY_OAUTH2_AUDIENCE='f8-local',APP_SECURITY_OAUTH2_ENABLED='true',TEMPORAL_TARGET='127.0.0.1:7233',TEMPORAL_NAMESPACE='f8-pg18-'+RUN_ID+'',PLATFORM_PAYMENT_STRIPE_ENABLED='false',APP_AI_OPENAI_ENABLED='false',APP_AI_DEFAULT_PROVIDER='stubChatProvider',FFMPEG_WORKER_FFMPEG_PATH='/usr/local/lib/media-platform/ffmpeg/ffmpeg',FFMPEG_WORKER_FFPROBE_PATH='/usr/local/lib/media-platform/ffmpeg/ffprobe',FFMPEG_WORKER_PLUGINS_DIRECTORY=str(out/'plugins'),FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT=str(out/'workspace'),FFMPEG_WORKER_STAGING_ROOT=str(out/'staging'),FFMPEG_WORKER_WORK_ROOT=str(out/'work'),FFMPEG_WORKER_PUBLICATION_PROJECT_ID='untrusted-project-override',FFMPEG_WORKER_PUBLICATION_STORAGE_PROVIDER='local-object-store',APP_COVER_IMAGE_STORAGE_ROOT=str(out/'object-store'),APP_STORAGE_LOCAL_ROOT=str(out/'local-storage'),APP_COVER_IMAGE_WORK_ROOT=str(out/'cover-work'),PLATFORM_FFMPEG_WORKER_MATERIALIZATION_ROOT=str(out/'materialized'),APP_EXTENSIONS_PLUGINS_DIR=str(out/'plugins'),SERVER_PORT='18080',SERVER_ADDRESS='127.0.0.1',MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED='false',MANAGEMENT_TRACING_ENABLED='false',IDENTITY_BUILTIN_DATA_ENABLED='true')
+# COMBINED is an optional validation shape; the default remains two independent processes.
+combined = '--combined' in sys.argv
+roles = ['api'] if combined else ['api', 'worker']
+if combined:
+ base['SPRING_PROFILES_ACTIVE'] = 'pg18-integration,temporal,ffmpeg-worker'
+ base['SPRING_MAIN_WEB_APPLICATION_TYPE'] = 'servlet'
+(out/'runtime-shape.json').write_text(json.dumps({'mode':'COMBINED' if combined else 'API_WORKER', 'processes':roles}))
 # Secret-containing environment file is private, passed by pathname, never command line values.
-for role in ['api','worker']:
- e={**base,'PLATFORM_RUNTIME_ROLE':role.upper()};p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
+for role in roles:
+ e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else role.upper()};p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
 launcher=out/'launch.py';launcher.write_text("import json,os,sys\ne=json.load(open(sys.argv[1]));os.execve('/usr/bin/java',['/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',sys.argv[2]],e)\n")
 ctypes.CDLL(None,use_errno=True).prctl(36,1,0,0,0) # subreaper; retain all reparented descendants
 prefix=sandbox_prefix(b);prefix=prefix[:-1]+['--tmpfs','/usr/local','--ro-bind',str(R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl'),'/usr/local/lib/media-platform/ffmpeg','--'];processes={};logs=[]
@@ -44,20 +51,22 @@ oidc=out/'oidc.py';oidc.write_text("from http.server import HTTPServer,SimpleHTT
 commands={'oidc':prefix+['/usr/bin/python3','-B',str(oidc)]}
 libs=R/'03-build/outputs/_platform-app/libs'
 commands['api']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-env.json'),str(next(p for p in libs.glob('*.jar') if p.name not in ['platform-ffmpeg-worker.jar'] and not p.name.endswith('-plain.jar')))]
-commands['worker']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'worker-env.json'),str(libs/'platform-ffmpeg-worker.jar')]
+if not combined:
+ commands['worker']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'worker-env.json'),str(libs/'platform-ffmpeg-worker.jar')]
 if '--bootstrap' in sys.argv:
  control=out/'bootstrap-control';control.mkdir(mode=0o700)
  secret_names=set()
  for profile in ['api','worker','combined','flyway','jooq']:
   secret_names.update(line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#'))
- for role in ['api','worker']:
+ for role in roles:
+  profile = 'combined' if combined else role
   e=json.loads((out/(role+'-env.json')).read_text());e.pop('PLATFORM_RUNTIME_ROLE',None)
-  deploy=control/role;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
-  names=[line.strip() for line in (W/'scripts/startup/profiles'/(role+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#')]
+  deploy=control/profile;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
+  names=[line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#')]
   payload=deploy/'synthetic-payload.json';payload.write_text(json.dumps([{'key':name,'value':e.get(name) or secrets.token_hex(32)} for name in names]+[{'key':'PLATFORM_RUNTIME_ROLE','value':'COMBINED'},{'key':'NEON_API_KEY','value':'synthetic-not-authorized'}]));payload.chmod(0o600)
   stub=deploy/'bws-synthetic';stub.write_text('#!/usr/bin/python3\nfrom pathlib import Path\nprint(Path('+repr(str(payload))+').read_text())\n');stub.chmod(0o700)
   runtime=deploy/'runtime.json';runtime.write_text(json.dumps({k:v for k,v in e.items() if k not in secret_names}));runtime.chmod(0o600)
-  jar=commands[role][-1];target=deploy/'bin'/('media-platform-'+role)
+  jar=commands[role][-1];target=deploy/'bin'/('media-platform-'+profile)
   nested=['/usr/bin/bwrap','--unshare-user','--unshare-pid','--unshare-ipc','--unshare-uts','--unshare-cgroup','--uid','1000','--gid','1000','--cap-drop','ALL','--die-with-parent','--new-session',
           '--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib',
           '--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/etc','--ro-bind','/etc/ld.so.cache','/etc/ld.so.cache',
@@ -67,7 +76,7 @@ if '--bootstrap' in sys.argv:
           '/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',jar]
   wrapper="#!/usr/bin/python3\nimport os,json\nfrom pathlib import Path\ne=dict(os.environ)\nassert not any(k in e for k in ['BWS_ACCESS_TOKEN','BWS_BIN','BWS_PROJECT_ID','NEON_API_KEY','PLATFORM_RUNTIME_ROLE'])\ne.update(json.loads(Path("+repr(str(runtime))+").read_text()))\nPath("+repr(str(out/(role+'-bootstrap-env.json')))+").write_text(json.dumps({'keys':sorted(e),'role_environment_absent':'PLATFORM_RUNTIME_ROLE' not in e,'synthetic_bws':True}))\nos.execve('/usr/bin/bwrap',"+repr(nested)+",e)\n"
   target.write_text(wrapper);target.chmod(0o700)
-  driver=deploy/'driver.py';driver.write_text("import os\ne="+repr({k:v for k,v in e.items() if k in ['PATH','HOME','LANG','LC_ALL','SPRING_PROFILES_ACTIVE','PLATFORM_ENV']})+"\ne.update("+repr({'BWS_ACCESS_TOKEN':'synthetic-bootstrap-correction','BWS_PROJECT_ID':'00000000-0000-0000-0000-000000000000','BWS_BIN':str(stub),'MEDIA_PLATFORM_DEPLOY_ROOT':str(deploy)})+")\nos.execve('/usr/bin/python3',['/usr/bin/python3','-B',"+repr(str(W/'scripts/startup/bootstrap'))+",'--profile',"+repr(role)+",'--',"+repr(str(target))+"],e)\n");driver.chmod(0o600)
+  driver=deploy/'driver.py';driver.write_text("import os\ne="+repr({k:v for k,v in e.items() if k in ['PATH','HOME','LANG','LC_ALL','SPRING_PROFILES_ACTIVE','PLATFORM_ENV']})+"\ne.update("+repr({'BWS_ACCESS_TOKEN':'synthetic-bootstrap-correction','BWS_PROJECT_ID':'00000000-0000-0000-0000-000000000000','BWS_BIN':str(stub),'MEDIA_PLATFORM_DEPLOY_ROOT':str(deploy)})+")\nos.execve('/usr/bin/python3',['/usr/bin/python3','-B',"+repr(str(W/'scripts/startup/bootstrap'))+",'--profile',"+repr(profile)+",'--',"+repr(str(target))+"],e)\n");driver.chmod(0o600)
   commands[role]=prefix+['/usr/bin/python3','-B',str(driver)]
 from cli import manifest
 manifest_bytes=manifest()
@@ -81,7 +90,7 @@ try:
  deadline=time.monotonic()+900
  while time.monotonic()<deadline:
   status={n:p.poll() for n,p in processes.items()};(out/'status.json').write_text(json.dumps(status))
-  if (out/'STOP').exists() or all(status[n] is not None for n in ['api','worker']):break
+  if (out/'STOP').exists() or all(status[n] is not None for n in roles):break
   time.sleep(1)
 finally:
  for p in processes.values():

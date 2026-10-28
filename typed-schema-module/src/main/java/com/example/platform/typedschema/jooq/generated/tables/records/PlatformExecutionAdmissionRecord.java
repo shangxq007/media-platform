@@ -79,11 +79,55 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
     }
 
     /**
+     * Setter for <code>public.platform_execution_admission.project_id</code>.
+     */
+    public void setProjectId(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.platform_execution_admission.project_id</code>.
+     */
+    public String getProjectId() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.platform_execution_admission.failure_code</code>.
+     */
+    public void setFailureCode(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.platform_execution_admission.failure_code</code>.
+     */
+    public String getFailureCode() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for
+     * <code>public.platform_execution_admission.retry_blocked</code>.
+     */
+    public void setRetryBlocked(Boolean value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.platform_execution_admission.retry_blocked</code>.
+     */
+    public Boolean getRetryBlocked() {
+        return (Boolean) get(6);
+    }
+
+    /**
      * Setter for
      * <code>public.platform_execution_admission.source_domain</code>.
      */
     public void setSourceDomain(String value) {
-        set(4, value);
+        set(7, value);
     }
 
     /**
@@ -91,53 +135,51 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.source_domain</code>.
      */
     public String getSourceDomain() {
-        return (String) get(4);
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>public.platform_execution_admission.source_id</code>.
+     */
+    public void setSourceId(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.platform_execution_admission.source_id</code>.
+     */
+    public String getSourceId() {
+        return (String) get(8);
     }
 
     /**
      * Setter for
-     * <code>public.platform_execution_admission.composition_id</code>.
+     * <code>public.platform_execution_admission.source_revision</code>.
      */
-    public void setCompositionId(String value) {
-        set(5, value);
+    public void setSourceRevision(Long value) {
+        set(9, value);
     }
 
     /**
      * Getter for
-     * <code>public.platform_execution_admission.composition_id</code>.
+     * <code>public.platform_execution_admission.source_revision</code>.
      */
-    public String getCompositionId() {
-        return (String) get(5);
-    }
-
-    /**
-     * Setter for
-     * <code>public.platform_execution_admission.composition_revision</code>.
-     */
-    public void setCompositionRevision(Long value) {
-        set(6, value);
-    }
-
-    /**
-     * Getter for
-     * <code>public.platform_execution_admission.composition_revision</code>.
-     */
-    public Long getCompositionRevision() {
-        return (Long) get(6);
+    public Long getSourceRevision() {
+        return (Long) get(9);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.plan_id</code>.
      */
     public void setPlanId(String value) {
-        set(7, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.plan_id</code>.
      */
     public String getPlanId() {
-        return (String) get(7);
+        return (String) get(10);
     }
 
     /**
@@ -145,7 +187,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.idempotency_key</code>.
      */
     public void setIdempotencyKey(String value) {
-        set(8, value);
+        set(11, value);
     }
 
     /**
@@ -153,21 +195,21 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.idempotency_key</code>.
      */
     public String getIdempotencyKey() {
-        return (String) get(8);
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.request_hash</code>.
      */
     public void setRequestHash(String value) {
-        set(9, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.request_hash</code>.
      */
     public String getRequestHash() {
-        return (String) get(9);
+        return (String) get(12);
     }
 
     /**
@@ -175,7 +217,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.plan_fingerprint</code>.
      */
     public void setPlanFingerprint(String value) {
-        set(10, value);
+        set(13, value);
     }
 
     /**
@@ -183,21 +225,21 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.plan_fingerprint</code>.
      */
     public String getPlanFingerprint() {
-        return (String) get(10);
+        return (String) get(13);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.plan_facts</code>.
      */
     public void setPlanFacts(JSONB value) {
-        set(11, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.plan_facts</code>.
      */
     public JSONB getPlanFacts() {
-        return (JSONB) get(11);
+        return (JSONB) get(14);
     }
 
     /**
@@ -205,7 +247,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.ownership_generation</code>.
      */
     public void setOwnershipGeneration(Long value) {
-        set(12, value);
+        set(15, value);
     }
 
     /**
@@ -213,49 +255,49 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.ownership_generation</code>.
      */
     public Long getOwnershipGeneration() {
-        return (Long) get(12);
+        return (Long) get(15);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.state</code>.
      */
     public void setState(String value) {
-        set(13, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.state</code>.
      */
     public String getState() {
-        return (String) get(13);
+        return (String) get(16);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.quota_units</code>.
      */
     public void setQuotaUnits(BigDecimal value) {
-        set(14, value);
+        set(17, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.quota_units</code>.
      */
     public BigDecimal getQuotaUnits() {
-        return (BigDecimal) get(14);
+        return (BigDecimal) get(17);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.quota_unit</code>.
      */
     public void setQuotaUnit(String value) {
-        set(15, value);
+        set(18, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.quota_unit</code>.
      */
     public String getQuotaUnit() {
-        return (String) get(15);
+        return (String) get(18);
     }
 
     /**
@@ -263,7 +305,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.quota_charged</code>.
      */
     public void setQuotaCharged(Boolean value) {
-        set(16, value);
+        set(19, value);
     }
 
     /**
@@ -271,7 +313,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.quota_charged</code>.
      */
     public Boolean getQuotaCharged() {
-        return (Boolean) get(16);
+        return (Boolean) get(19);
     }
 
     /**
@@ -279,7 +321,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.quota_claimed</code>.
      */
     public void setQuotaClaimed(Boolean value) {
-        set(17, value);
+        set(20, value);
     }
 
     /**
@@ -287,7 +329,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.quota_claimed</code>.
      */
     public Boolean getQuotaClaimed() {
-        return (Boolean) get(17);
+        return (Boolean) get(20);
     }
 
     /**
@@ -295,7 +337,7 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.quota_charged_units</code>.
      */
     public void setQuotaChargedUnits(BigDecimal value) {
-        set(18, value);
+        set(21, value);
     }
 
     /**
@@ -303,35 +345,35 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
      * <code>public.platform_execution_admission.quota_charged_units</code>.
      */
     public BigDecimal getQuotaChargedUnits() {
-        return (BigDecimal) get(18);
+        return (BigDecimal) get(21);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.created_at</code>.
      */
     public void setCreatedAt(Instant value) {
-        set(19, value);
+        set(22, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.created_at</code>.
      */
     public Instant getCreatedAt() {
-        return (Instant) get(19);
+        return (Instant) get(22);
     }
 
     /**
      * Setter for <code>public.platform_execution_admission.updated_at</code>.
      */
     public void setUpdatedAt(Instant value) {
-        set(20, value);
+        set(23, value);
     }
 
     /**
      * Getter for <code>public.platform_execution_admission.updated_at</code>.
      */
     public Instant getUpdatedAt() {
-        return (Instant) get(20);
+        return (Instant) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -357,16 +399,19 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
     /**
      * Create a detached, initialised PlatformExecutionAdmissionRecord
      */
-    public PlatformExecutionAdmissionRecord(String executionId, String tenantId, String workspaceId, String actorId, String sourceDomain, String compositionId, Long compositionRevision, String planId, String idempotencyKey, String requestHash, String planFingerprint, JSONB planFacts, Long ownershipGeneration, String state, BigDecimal quotaUnits, String quotaUnit, Boolean quotaCharged, Boolean quotaClaimed, BigDecimal quotaChargedUnits, Instant createdAt, Instant updatedAt) {
+    public PlatformExecutionAdmissionRecord(String executionId, String tenantId, String workspaceId, String actorId, String projectId, String failureCode, Boolean retryBlocked, String sourceDomain, String sourceId, Long sourceRevision, String planId, String idempotencyKey, String requestHash, String planFingerprint, JSONB planFacts, Long ownershipGeneration, String state, BigDecimal quotaUnits, String quotaUnit, Boolean quotaCharged, Boolean quotaClaimed, BigDecimal quotaChargedUnits, Instant createdAt, Instant updatedAt) {
         super(PlatformExecutionAdmission.PLATFORM_EXECUTION_ADMISSION);
 
         setExecutionId(executionId);
         setTenantId(tenantId);
         setWorkspaceId(workspaceId);
         setActorId(actorId);
+        setProjectId(projectId);
+        setFailureCode(failureCode);
+        setRetryBlocked(retryBlocked);
         setSourceDomain(sourceDomain);
-        setCompositionId(compositionId);
-        setCompositionRevision(compositionRevision);
+        setSourceId(sourceId);
+        setSourceRevision(sourceRevision);
         setPlanId(planId);
         setIdempotencyKey(idempotencyKey);
         setRequestHash(requestHash);

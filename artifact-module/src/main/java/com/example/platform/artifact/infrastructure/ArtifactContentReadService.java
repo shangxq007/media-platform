@@ -17,18 +17,32 @@ public class ArtifactContentReadService implements ArtifactContentRead {
     public Content read(ArtifactScope scope,ArtifactId id) {
         TenantGuard.assertSameTenant(scope.tenantId());
         var artifact=scoped.findArtifact(scope,id).orElseThrow(()->failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_FOUND));
+        return readVerified(scope.tenantId(), id, artifact);
+    }
+    public Content readProjectArtifact(ArtifactProjectScope scope, ArtifactId id) {
+        TenantGuard.assertSameTenant(scope.tenantId());
+        var artifact=scoped.findProjectArtifact(scope,id)
+                .orElseThrow(()->failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_FOUND));
+        return readVerified(scope.tenantId(), id, artifact);
+    }
+    private Content readVerified(String tenantId, ArtifactId id, Artifact artifact) {
         if(artifact.state()!=ArtifactState.AVAILABLE)throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
         if(artifact.byteLength()>64L*1024*1024)throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
-        var replicas=artifacts.listReplicas(scope.tenantId(),id);
+        var replicas=artifacts.listReplicas(tenantId,id);
         for(var replica:replicas) {
             try {
                 byte[] bytes=storage.read(replica.providerId(),replica.storageObjectId(),artifact.contentDigest(),artifact.byteLength(),64L*1024*1024);
+                var actual = com.example.platform.shared.digest.ContentDigest.sha256(
+                        java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes)));
+                if (bytes.length != artifact.byteLength() || !actual.matches(artifact.contentDigest())) {
+                    throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
+                }
                 // Typed artifact category is not MIME authority: recognize a supported container from verified bytes.
                 for(var format:ArtifactOutputFormat.values())if(format.mediaType()==artifact.mediaType()) {
                     try{format.validate(bytes);return new Content(bytes,format.mimeType(),format.fileName(),artifact.contentDigest());}
                     catch(IllegalArgumentException unsupportedFormat){}
                 }
-            }catch(RuntimeException unavailable){ /* bounded alternate replica; no internal failure leaks */ }
+            }catch(RuntimeException | java.security.NoSuchAlgorithmException unavailable){ /* bounded alternate replica; no internal failure leaks */ }
         }
         throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
     }

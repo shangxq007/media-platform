@@ -1,66 +1,36 @@
-# Legacy work: current disposition and boundaries
+# Legacy work disposition and current owners
 
-This record describes the bounded OWN01–OWN07 consolidation from main509e6aca. It is not another
-engineering policy or a new domain authority. Historical sources remain read-only; names and old
-commits alone do not authorize restoring them. Exact source hashes, per-commit diffs, test identities,
-commands and media are retained in the external task evidence.
+This bounded OWN01–OWN07 task starts from main509e6aca. It adopts the Owner's OD1–OD3 decisions;
+historical archives, G2, the seven thumbnail commits and evidence remain read-only. The task branch
+and its final source-bound acceptance/review determine integration; this document grants no merge
+permission and does not declare production readiness.
 
-| Group / requirement | Disposition | Current implementation / reason |
+| Work | Disposition | Current owner / evidence obligation |
 | --- | --- | --- |
-| OWN01 authoritative commit identity, digest/length/replica/scope | COVERED | ArtifactOutputCommitOrchestrator validates the actual Artifact commit result before RuntimeClosedLoop emits native evidence; GraphRenderLifecycle and immutable DB scope/attempt/generation constraints own final acceptance. Actual receipt recovery and wrong-scope/replay PG cases remain required. |
-| OWN01 exact completion replay and stale attempts | COVERED | JooqExecutionAuthorityBoundary compares persisted task/attempt/generation/Artifact before duplicate no-op and fences new completion against current lease/owner. Exact duplicate replay does not reopen ownership. |
-| OWN01 old parallel Comparator/PersistedCompletionIdentity/richer shadow-evidence protocol | REJECTED | Existing Artifact-owned durable receipt and native/Render owners remain authoritative; no second commit or terminal model is restored. The internal artifact-id value is not authentication for arbitrary callers. |
-| OWN02 complete immutable candidates, canonical ordering and Binding pin | COVERED | Catalog projection supplies all typed values; #22 binds once, immutable BoundGraphInputs and exact graph digest support deterministic worker re-derivation. |
-| OWN02 worker-source snapshot TTL/version, binary digest and multi-worker association | DEFERRED_BY_DEPENDENCY | OD1 requires Owner disposition: source uniqueness, multiple-runtime table identity, freshness-at-admission policy and supplemental evidence associated with BoundGraphReference. Existing wf_provider_candidate_snapshot is unused persistence, not proof this behavior is implemented. Restore only after that specific contract is approved; do not turn worker availability into a competing Provider selector. |
-| OWN03 authoritative execution project publication | COVERED | MediaTaskPublicationSettings binds the execution project rather than an untrusted deployment default; old mismatch-reject behavior is not restored. |
-| OWN03 unused CapabilityDefinition and old kernel/constitution authority edits | REJECTED | No current consumer requires that unused abstraction; retain current typed capability vocabulary and canonical Capability/Provider owners. |
-| OWN04 typed cancellation to actual child | ADOPTED | A cancellation-capable backend contract extends the existing execution SPI; the frame-extract provider uses it for probe/render and the sandbox observes cancellation until the bounded child is reaped. No concrete backend-class cast or second runtime registry. |
-| OWN04 nonzero native exit | COVERED | Canonical sandbox already reports PROCESS_CRASHED. The new real-process regression retains that behavior; it is not presented as a newly fixed defect. |
-| OWN04 task admission/cancel/commit races | ADOPTED | Real PG uniqueness/CAS/row-lock scenarios replace the old AtomicBoolean-only concurrency model. Scope, conflict and terminal winner assertions exercise production SQL. |
-| OWN04 Artifact/Storage publication failure | COVERED | Storage owns durable write intent and exact retry; Artifact/task commit share the existing transaction. Old default-noop discard and blind backend deletion are rejected because they can erase still-referenced bytes and destroy retry evidence. |
-| OWN04 obsolete thumbnail-kind shortcut | REJECTED | Current output is DERIVED_MEDIA with THUMBNAIL_OF provenance; the reader no longer accepts a legacy kind without the current relation model. The generic public ArtifactKind enum is not rewritten by this task. |
-| OWN04 uncertain process cleanup | ADOPTED | Sandbox cleanup uncertainty takes priority over cancellation and remains visible through probe/render. The adapter retains this invocation's scratch on unknown cleanup or unclassified provider exceptions; known reaped failure paths may clean only owned scratch. Fault tests include a real still-alive bounded child and exact test-owned termination. No domain success or Artifact commit is permitted by this error. |
-| OWN04 physical work and publication isolation | ADOPTED | Request idempotency keys never select physical directories. Each adapter invocation owns fresh scratch; Cover/Thumbnail commit staging uses a generated directory, exclusive creation and a non-symlink root. Existing paths are never overwritten or cleaned as if owned. The Thumbnail output is written only inside the canonical sandbox output mount. |
-| OWN04 canonical quota admission | ADOPTED | The real HTTP regression found that ThumbnailService used an unregistered quota key. The existing QuotaPolicyService now supplies a bounded monthly media.thumbnail policy; the sole transactional QuotaUsageAuthority still owns consumption and idempotency. |
-| OWN04 current Render-produced source interoperability | ADOPTED | Scoped Artifact catalog lookup precedes a registered StorageProvider verified read. Active receipt-based producers retain their own scoped read protocol. Failed native reads never fall back to another protocol. Both are active infrastructure adapters, not restored historical domain authorities. |
-| OWN04 backend/worker/capability duplicates and five evidence-only commits | COVERED | Unified FrameExtractExecutionAdapter/FfmpegCpuProvider and fail-closed RuntimeExecutionBackends already replace old slice registry/runtime wrappers. Evidence-only commits remain history, not active product code. No BMF farm integration is introduced. |
-| OWN05 expiry, disconnect, generation, host/runtime registration and current grants | COVERED | Existing registration authority, readiness freshness/generation checks, grant filters and real PG regressions remain authoritative. |
-| OWN05 readiness observation failure before refresh | ADOPTED | Both independent existing readiness probes are observed before any durable registration write; failure cannot partially refresh host/runtime state. The old G2 five-fact HostReadiness replacement model is not reintroduced. |
-| OWN05 fixed process incarnation and overlapping restart | DEFERRED_BY_DEPENDENCY | OD2 requires an explicit Registration decision. Existing bounded-V1 constant does not establish separate process identity; no claim of overlapping-process restart isolation until approved instance identity/retirement fencing or an enforced no-overlap executor gate is verified. |
-| OWN06 ledger column semantics | ADOPTED | Existing test policy now defines actual task scope, database access, daemon dependency and evidence-backed shared resources. The Worker Fabric task and eight historically promoted tasks whose present sources contain controlled-PG tests or Spring Boot contexts lose their unproven pure promotion and remain single-fork. This bounded check of the21 enrolled tasks is not a new full repository census. |
-| OWN06 old PG15/public-schema/topology and historical count claims | REJECTED | The six remaining worker-fabric PostgreSQL classes now migrate and truncate only their own generated schema; all seven run through the controlled real-PG18 entry. Old ledger instance values are not copied as current facts. Historical receipt/counts remain historical; current acceptance uses fresh source-bound JUnit identities. Suspended source cannot regain canonical parallel promotion or the benchmark overlay silently. |
-| OWN07 thin architecture probe | COVERED | Formal /api/first-render delegates to #20/#21/#22, immutable BoundGraphInputStore, Temporal and the generic runtime; Render/Artifact/Execution remain separate owners. Request/response/admission adapters have no new state/cache or direct internal Repository access. |
-| OWN07 actual Timeline implementation coupling and stale lifecycle comment | ADOPTED | The two existing coordinators now depend on already-published TimelineRevisionCommands/Queries, use only immutable revision reads, and do not mutate Timeline or bypass Operation. No new facade/port/plan engine was added. Dispatch failure documentation now matches the public Render lifecycle call and preserved suppressed error. |
+| OWN01 commit scope, durable exact replay, digest/replica and completion fencing | COVERED / ADOPTED | ArtifactCommitService and its durable receipt remain sole commit authority; native completion and GraphRenderLifecycle remain native/Render terminal authorities. NativeOutputPublicationTransaction now encloses Artifact/native completion and exact release under native ownership, nested inside the logical Execution cancellation fence for capability requests. PG rollback/stale-runtime and real HTTP publication verify the boundaries. |
+| OWN01 old Comparator/PersistedCompletionIdentity/shadow commit/terminal protocol | REJECTED | No second commit evidence store, terminal state machine or completion authority is restored. Existing receipt and typed native output facts are authoritative. |
+| OWN02 catalog, complete canonical candidates, immutable graph inputs and Binding pin | COVERED / ADOPTED | ProviderPluginCatalog → #22 Binding → immutable BoundGraphInputs. Worker rejects absent exact pins and changed contribution metadata; canonical planning/binding negative tests cover ambiguity, identity drift and malformed inputs. |
+| OWN02 old Worker Snapshot selection authority/store/DTO/table | REJECTED | No formal consumer/FK depended on wf_provider_candidate_snapshot. It is removed from the pre-release V1; no compatibility DTO or replacement snapshot table is retained. |
+| OWN02 distributed candidate source/version/TTL/plugin-binary evidence | DEFERRED_BY_DEPENDENCY | Resume only with a concrete multi-worker source-uniqueness and Runtime/Registration lifecycle contract, snapshot key/version/expiry policy, immutable plugin-binary evidence and an approved Binding evidence attachment. Extend catalog/#22 facts rather than introducing another selector. Single-worker E2E proves none of these distributed properties. |
+| OWN03 execution-project publication | COVERED | The authoritative execution project determines publication and access. Deployment overrides and old mismatch semantics cannot replace it. |
+| OWN03 unused CapabilityDefinition/old constitution authority changes | REJECTED | No current consumer needs those abstractions. Typed capability requests and existing Capability/Provider owners remain. |
+| OWN04 lightweight cover/thumbnail generation | ADOPTED | Two thin HTTP intents share #21/#22, native worker runtime, existing platform_execution_admission/result and Artifact commit. cover_image_task/media_thumbnail_task, dedicated stores/services/workflows/commit scaffolding, duplicate provider registration/SPIs and obsolete task DTOs are retired after real replacement generation/download/retry/cancel proof. No media_task or fake RenderJob is introduced. |
+| OWN04 source, provenance, output identity, quota and download | ADOPTED | AVAILABLE source Artifact/digest pins; IMAGE/DERIVED_MEDIA output with COVER_OF/THUMBNAIL_OF child→source edges; scoped idempotency and logical/native generation association. Thumbnail uses the existing quota owner exactly once; Cover does not incur Thumbnail quota. Project Artifact access verifies scope, commit, replica and actual bytes. Existing Render access remains. |
+| OWN04 cancellation, uncertain process cleanup and filesystem isolation | ADOPTED | The native sandbox consumes per-execution cancellation without mutable shared bindings. Incomplete cleanup overrides cancellation/timeout and blocks retry/publication while retaining recovery hold. Tests include a real bounded surviving child, exact termination, native staging root/symlink/exclusive-file guards, scoped reuse rejection, and real HTTP cancel/failure/retry. Old wrapper tests are mapped to the replacement owners, not counted as current runtime evidence. |
+| OWN05 registration/lease/grant/expiry/readiness invariants | COVERED / ADOPTED | Existing persisted Registration/connection authority serializes takeover. Each production loop has one fresh stable-per-instance UUID; a retired row cannot regain the runtime through a late tick. Old grants are fenced; a local process cannot consume another incarnation's grant. Concurrent/late/expired/disconnected PG cases verify this. The old G2 five-fact readiness model is not imported. |
+| OWN06 test scope and ledger semantics | ADOPTED / REJECTED | Class-owned PG18 schemas, fixed controlled test entry, exact owned resources, XML/arithmetic/source identities and truthful ledger meanings remain. PG15/public-schema assumptions, repeated policies and unsupported shared-resource claims are rejected. Existing outbox/claim repair stays with its owner. |
+| OWN07 First Render architecture probe | COVERED / ADOPTED | `/api/first-render` remains a thin planning/binding/dispatch adapter. Render creates job plus preparation stage/deadline atomically; synchronous Snapshot/Planning/Binding/save failure uses Render's public lifecycle, and its existing compensation recovers expired preparation after process loss. Begin disarms recovery; late failure cannot overwrite accepted execution. Real service-chain PG failures and actual independent API/WORKER video E2E verify this. No probe-specific status, store, completion authority or cleaner is added. |
 
-OD1 and OD2 are explicit Owner decision dependencies, not unspecified future work. Their exact
-alternatives, affected contracts and costs are in the external consolidated decision report. Those
-items must not be reported complete or silently implemented while approval is pending.
+Operation is cross-domain intent, including possible Media Asset operations, while Timeline changes
+still require Operation. No cross-domain Operation framework or new formal operation type is added.
+Generating an image is distinct from selecting an official cover.
 
-## Seven thumbnail commits
+Current code and tests supersede the old slice implementation; historical review results are retained
+as evidence of those exact earlier sources. In particular, old Cover503 and fixed local-ffmpeg-v1
+incarnation are not accepted final behavior. Use the final task report for exact fresh PG/jOOQ/build,
+image/video HTTP, failure/cancel/retry, guard, source identity and independent review results. Old
+counts157/297/447 do not describe the new code automatically.
 
-015eb121 contains the original runtime/cancellation/compensation patch: typed cancellation is adapted,
-current fail-closed backend registration is covered, and unsafe/no-op discard plus hardcoded library
-path policy are rejected. b09e476c's cancelled-admission-before-quota rule is already in current
-ThumbnailService. 2731d8df,3537787e,aecfb4db,734ca94e,0a1995aa are evidence/boundary/identity publications,
-not five additional functional changes. All seven exact original IDs remain archived; no cherry-pick
-or whole-branch merge is used.
-
-## Verification and retention
-
-Required regression is real PG18, full target-stack compilation/packaging, selected source-bound
-non-database and safety suites, independent API/Worker First Render, actual thumbnail publication and
-HTTP download, failure/cancel/authorization cases, and exact owned resource cleanup. A method name,
-source keyword, Boolean-only race model or old log is not runtime evidence. The native test fixture
-uses an actual executable, not a symlink, and asserts a started child marker before cancellation.
-
-The current task does not delete original archive/G2/integration/Candidate/bundle. After final
-ownership closure, Owner may authorize retiring redundant working copies; preserve content-addressed
-history and the minimal accepted evidence. Concrete retention recommendations belong in the final
-task report, not a perpetual alternative development branch.
-
-The thin probe still has an existing failure limitation: a planning/binding or BoundGraph save failure after RenderJob creation can leave the created job queued. This task does not add that behavior and does not claim its full failure path is closed; direct Render-owner failure tests are not evidence of pre-binding recovery. A subsequent bounded fix must use the existing Render transaction/failure contract, with a real failure-injection regression, rather than another First Render status authority.
-
-[Default principles](../engineering/functional-development-and-module-principles.md),
-[execution supplement](../architecture/current/execution-architecture-principles.md) and
-[Flyway policy](../database/flyway-migration-baseline.md) remain the instruction hierarchy.
-`DEPLOYMENT_ISOLATION_NOT_VERIFIED`: local behavior does not certify a protected runner or cloud scope.
+Archives/G2/thumbnail history remain preservation material. Their physical deletion requires separate
+Owner approval. Multi-worker source evidence and protected runner/UID/cgroup/Neon/BWS deployment
+remain explicit dependencies; `DEPLOYMENT_ISOLATION_NOT_VERIFIED` continues.

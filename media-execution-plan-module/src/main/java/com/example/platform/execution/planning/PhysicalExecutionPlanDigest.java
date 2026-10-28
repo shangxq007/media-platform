@@ -119,6 +119,8 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
             uw.list(CanonicalWriter.sorted(u.executionIntentRefs().stream()
                     .map(e -> Canonical.executionIntent(e.declaration())).toList()));
             uw.field("cacheable", Boolean.toString(u.deterministicallyCacheable()));
+            uw.optional(u.artifactCapabilityRequest() != null,
+                    u.artifactCapabilityRequest() == null ? null : u.artifactCapabilityRequest().canonical());
             unitCanonicals.add(uw.build());
         }
         w.list(unitCanonicals);

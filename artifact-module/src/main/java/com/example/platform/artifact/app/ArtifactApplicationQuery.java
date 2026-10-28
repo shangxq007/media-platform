@@ -7,6 +7,8 @@ import java.util.Optional;
 
 /** Persistence-neutral scoped query port for application Artifact discovery. */
 public interface ArtifactApplicationQuery {
+    Optional<Artifact> findProjectArtifact(ArtifactProjectScope scope, ArtifactId artifactId);
+
     List<Artifact> findArtifacts(ArtifactScope scope, int limit);
 
     long countArtifacts(ArtifactScope scope);

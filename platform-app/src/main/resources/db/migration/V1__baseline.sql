@@ -4599,27 +4599,6 @@ create trigger social_connected_platform_credential_revision
     before update on social_connected_platform
     for each row execute function advance_social_credential_revision();
 
--- (former V10) thumbnail task queue keyed to source asset identity.
-create table media_thumbnail_task (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    project_id varchar(128) not null,
-    source_asset_id varchar(64) not null,
-    timestamp_seconds double precision not null,
-    image_format varchar(16) not null,
-    width integer,
-    quality integer,
-    idempotency_key varchar(256) not null,
-    provider_id varchar(128) not null,
-    provider_version varchar(32) not null,
-    status varchar(32) not null,
-    artifact_id varchar(128),
-    failure_code varchar(64),
-    created_at timestamp not null default current_timestamp,
-    updated_at timestamp not null default current_timestamp,
-    constraint uq_media_thumbnail_task_idempotency unique (tenant_id, project_id, idempotency_key)
-);
-create index ix_media_thumbnail_task_scope on media_thumbnail_task(tenant_id, project_id, created_at desc);
 
 -- (former V11/V12) composition drafts + immutable published versions.
 create table composition_template_workflow_draft (
@@ -4683,9 +4662,12 @@ create table platform_execution_admission (
     tenant_id varchar(128) not null,
     workspace_id varchar(128) not null,
     actor_id varchar(128) not null,
+    project_id varchar(128),
+    failure_code varchar(64),
+    retry_blocked boolean not null default false,
     source_domain varchar(64) not null,
-    composition_id varchar(128) not null,
-    composition_revision bigint not null check (composition_revision >= 0),
+    source_id varchar(128) not null,
+    source_revision bigint not null check (source_revision >= 0),
     plan_id varchar(256) not null,
     idempotency_key varchar(256) not null,
     request_hash varchar(128) not null,
@@ -4700,6 +4682,10 @@ create table platform_execution_admission (
     quota_charged_units numeric(38,18),
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
+    constraint fk_platform_execution_project_scope
+        foreign key (project_id, tenant_id, workspace_id) references project(id, tenant_id, workspace_id),
+    constraint ck_artifact_execution_project_required
+        check (source_domain <> 'artifact-capability' or project_id is not null),
     constraint uq_platform_execution_admission_idempotency unique (tenant_id, workspace_id, idempotency_key),
     constraint uq_platform_execution_admission_plan unique (tenant_id, workspace_id, plan_id),
     constraint chk_platform_execution_admission_plan_fingerprint
@@ -4714,6 +4700,14 @@ create table platform_execution_result (
     attempt_id varchar(128) not null,
     ownership_generation bigint not null check (ownership_generation >= 0),
     result_id varchar(256) not null,
+    native_task_id varchar(128),
+    native_generation bigint,
+    constraint fk_platform_result_native_attempt
+        foreign key (attempt_id, native_task_id, native_generation)
+        references wf_execution_attempt(attempt_id, task_id, generation),
+    constraint ck_platform_result_native_scope
+        check ((native_task_id is null and native_generation is null)
+            or (native_task_id is not null and native_generation > 0)),
     storage_receipt varchar(256) not null,
     artifact_id varchar(256) not null,
     output_digest varchar(256),
@@ -4735,6 +4729,7 @@ begin
     if old.state = 'FAILED' and new.state not in ('FAILED','RETRYING') then raise exception 'invalid admission transition'; end if;
     if old.state = 'ADMITTED' and new.state not in ('ADMITTED','RUNNING','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
     if old.state = 'RETRYING' and new.state not in ('RETRYING','RUNNING','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
+    if old.state = 'RUNNING' and new.state not in ('RUNNING','COMPLETED','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
     return new;
 end $$;
 create trigger platform_execution_admission_state_guard before update of state on platform_execution_admission
@@ -4778,27 +4773,6 @@ begin raise exception 'conversion_specification is immutable'; end; $$;
 create trigger conversion_specification_immutable before update or delete on conversion_specification
 for each row execute function reject_conversion_specification_mutation();
 
--- (former V22) cover image task queue keyed to the subject artifact.
-create table cover_image_task (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    project_id varchar(128) not null,
-    subject_artifact_id varchar(128) not null,
-    timestamp_seconds double precision not null,
-    image_format varchar(16) not null,
-    width integer,
-    quality integer,
-    idempotency_key varchar(256) not null,
-    provider_id varchar(128) not null,
-    provider_version varchar(32) not null,
-    status varchar(32) not null,
-    artifact_id varchar(128),
-    failure_code varchar(64),
-    created_at timestamp not null default current_timestamp,
-    updated_at timestamp not null default current_timestamp,
-    constraint uq_cover_image_task_idempotency unique (tenant_id, project_id, idempotency_key)
-);
-create index ix_cover_image_task_scope on cover_image_task(tenant_id, project_id, created_at desc);
 
 -- ============================================================
 -- ===== ABSORBED INCREMENTAL MIGRATIONS (former V2-V5) =====

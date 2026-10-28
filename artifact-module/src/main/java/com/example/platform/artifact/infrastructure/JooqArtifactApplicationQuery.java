@@ -4,6 +4,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Artifact.AR
 
 import com.example.platform.artifact.app.ArtifactApplicationQuery;
 import com.example.platform.artifact.app.ArtifactScope;
+import com.example.platform.artifact.app.ArtifactProjectScope;
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.artifact.domain.ArtifactMediaType;
@@ -54,6 +55,15 @@ public class JooqArtifactApplicationQuery implements ArtifactApplicationQuery {
                         .and(ARTIFACT.RENDER_JOB_ID.eq(scope.renderJobId())))
                 .fetchOptional()
                 .map(this::toArtifact);
+    }
+
+    @Override
+    public Optional<Artifact> findProjectArtifact(ArtifactProjectScope scope, ArtifactId id) {
+        return dsl.selectFrom(ARTIFACT)
+                .where(ARTIFACT.ID.eq(id.value()))
+                .and(ARTIFACT.TENANT_ID.eq(scope.tenantId()))
+                .and(ARTIFACT.PROJECT_ID.eq(scope.projectId()))
+                .fetchOptional().map(this::toArtifact);
     }
 
     private Artifact toArtifact(Record record) {

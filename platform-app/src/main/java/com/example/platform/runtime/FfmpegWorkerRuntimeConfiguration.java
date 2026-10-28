@@ -133,7 +133,8 @@ public class FfmpegWorkerRuntimeConfiguration {
             // The binding map is one worker-scoped bean, not a map-of-beans injection.
             @Qualifier("providerNativeRuntimeBindings")
             Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> providerNativeRuntimeBindings,
-            Phase16RuntimeMetrics phase16RuntimeMetrics) {
+            Phase16RuntimeMetrics phase16RuntimeMetrics,
+            com.example.platform.workerfabric.reuse.RuntimePublicationTransaction nativePublicationTransaction) {
         if (providerNativeRuntimeBindings.isEmpty()) {
             throw new IllegalStateException(
                     "the ffmpeg worker requires at least one provider runtime binding: the provider "
@@ -146,7 +147,7 @@ public class FfmpegWorkerRuntimeConfiguration {
                 artifactOutputCommitOrchestrator,
                 fencedReuseCompletionOrchestrator,
                 providerNativeRuntimeBindings,
-                phase16RuntimeMetrics);
+                phase16RuntimeMetrics,nativePublicationTransaction);
     }
 
     @Bean
@@ -205,14 +206,15 @@ public class FfmpegWorkerRuntimeConfiguration {
             NativePullAdmissionPort nativePullAdmissionPort,
             FirstRenderAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory,
             ReservationFeasibilityQuery reservationFeasibilityQuery,
-            Clock clock) {
+            Clock clock,
+            com.example.platform.workerfabric.domain.LocalHostRegistrationLoop localHostRegistrationLoop) {
         return new FirstRenderGrantMinter(
                 workerFabricRegistrationBoundary,
                 atomicAssignmentGrantBoundary,
                 nativePullAdmissionPort,
                 firstRenderAdmissionEvidenceFactory,
                 reservationFeasibilityQuery,
-                clock);
+                clock,localHostRegistrationLoop.workerRuntimeIncarnationId());
     }
 
     @Bean

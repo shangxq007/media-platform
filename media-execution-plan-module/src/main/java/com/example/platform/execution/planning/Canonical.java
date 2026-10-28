@@ -282,6 +282,18 @@ public final class Canonical {
         if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Source) {
             return "SOURCE";
         }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Transform) {
+            return "TRANSFORM";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Transition) {
+            return "TRANSITION";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.ColorTransform) {
+            return "COLOR_TRANSFORM";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Mux) {
+            return "MUX";
+        }
         throw new IllegalStateException("unknown RenderNodeKind variant — FAIL CLOSED: " + k.getClass());
     }
 

@@ -87,7 +87,7 @@ import java.util.Optional;
  */
 public final class FirstRenderGrantMinter {
 
-    /** G1 identity prefix; the full value is {@code rw:<renderJobId>:<execTaskId>}. */
+    /** Native admission namespace; the framed digest keeps arbitrary owner identities bounded. */
     public static final String REQUEST_WORK_ID_PREFIX = "rw:";
 
     /**
@@ -105,6 +105,7 @@ public final class FirstRenderGrantMinter {
     private final AdmissionEvidenceProducer evidenceProducer;
     private final ReservationFeasibilityQuery reservationFeasibilityQuery;
     private final Clock clock;
+    private final WorkerRuntimeIncarnationId localIncarnation;
 
     public FirstRenderGrantMinter(
             WorkerFabricRegistrationBoundary registrationBoundary,
@@ -112,7 +113,7 @@ public final class FirstRenderGrantMinter {
             NativePullAdmissionPort admissionPort,
             AdmissionEvidenceProducer evidenceProducer,
             ReservationFeasibilityQuery reservationFeasibilityQuery,
-            Clock clock) {
+            Clock clock, WorkerRuntimeIncarnationId localIncarnation) {
         this.registrationBoundary = Objects.requireNonNull(
                 registrationBoundary, "registrationBoundary");
         this.grantBoundary = Objects.requireNonNull(grantBoundary, "grantBoundary");
@@ -121,14 +122,35 @@ public final class FirstRenderGrantMinter {
         this.reservationFeasibilityQuery = Objects.requireNonNull(
                 reservationFeasibilityQuery, "reservationFeasibilityQuery");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.localIncarnation = Objects.requireNonNull(localIncarnation,"localIncarnation");
     }
 
-    /** G1 candidate identity rule: {@code rw:<renderJobId>:<execTaskId>}. */
-    public static RequestWorkId requestWorkId(String renderJobId, ExecutableTaskId taskId) {
-        Objects.requireNonNull(renderJobId, "renderJobId");
+    /** Never consume another process's grant merely because it is current in the shared database. */
+    public void requireLocalGrant(AssignmentGrant grant) {
+        var runtime=registrationBoundary.findActiveRuntimeRegistration()
+                .orElseThrow(()->new IllegalStateException("local runtime registration absent"));
+        if(!localIncarnation.equals(grant.assignment().workerRuntimeIncarnationId())
+                || !localIncarnation.equals(runtime.workerRuntimeIncarnationId())
+                || !runtime.validUntil().isAfter(clock.instant())) {
+            throw new IllegalStateException("grant does not belong to the current local runtime incarnation");
+        }
+    }
+
+    /** Bind the logical owner and exact task without exceeding the persisted 128-character limit. */
+    public static RequestWorkId requestWorkId(String ownerIdentity, ExecutableTaskId taskId) {
+        Objects.requireNonNull(ownerIdentity, "ownerIdentity");
         Objects.requireNonNull(taskId, "taskId");
-        return RequestWorkId.of(
-                REQUEST_WORK_ID_PREFIX + renderJobId + ":" + taskId.sha256Hex());
+        if (ownerIdentity.isBlank()) throw new IllegalArgumentException("ownerIdentity must not be blank");
+        byte[] owner = ownerIdentity.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] task = taskId.sha256Hex().getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        var framed = java.nio.ByteBuffer.allocate(8 + owner.length + task.length);
+        framed.putInt(owner.length).put(owner).putInt(task.length).put(task);
+        try {
+            return RequestWorkId.of(REQUEST_WORK_ID_PREFIX + java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(framed.array())));
+        } catch (java.security.NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException("required SHA-256 unavailable", unavailable);
+        }
     }
 
     /** Attempts to mint the grant for one task; never fabricates success. */
@@ -164,6 +186,9 @@ public final class FirstRenderGrantMinter {
 
         PersistedHostRegistration hostRegistration = host.orElseThrow();
         PersistedRuntimeRegistration runtimeRegistration = runtime.orElseThrow();
+        if (!localIncarnation.equals(runtimeRegistration.workerRuntimeIncarnationId())) {
+            return new Result.Rejected(requestWorkId,"LOCAL_RUNTIME_INCARNATION_RETIRED");
+        }
         if (!hostRegistration.validUntil().isAfter(now)) {
             return new Result.Rejected(requestWorkId, "HOST_REGISTRATION_EXPIRED");
         }

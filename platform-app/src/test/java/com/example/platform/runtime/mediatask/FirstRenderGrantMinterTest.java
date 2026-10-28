@@ -143,7 +143,7 @@ class FirstRenderGrantMinterTest {
         FirstRenderGrantMinter minter = new FirstRenderGrantMinter(
                 validBoundary(), grants, new NativePullAdmissionPort(grants), evidenceProducer,
                 (host, incarnation, generation, demand) -> ReservationFeasibility.FEASIBLE,
-                advancing);
+                advancing, RUNTIME_INC);
 
         minter.mint(RENDER_JOB_ID, taskId(), graph(), contribution());
 
@@ -171,7 +171,7 @@ class FirstRenderGrantMinterTest {
             FirstRenderGrantMinter minter = new FirstRenderGrantMinter(
                     validBoundary(), new FakeGrantBoundary(), port, fullEvidence(),
                     (host, incarnation, generation, demand) -> ReservationFeasibility.FEASIBLE,
-                    CLOCK);
+                    CLOCK, RUNTIME_INC);
 
             minter.mint(RENDER_JOB_ID, requested, graph, contribution());
 
@@ -189,7 +189,7 @@ class FirstRenderGrantMinterTest {
         NativePullAdmissionPort port = mock(NativePullAdmissionPort.class);
         FirstRenderGrantMinter minter = new FirstRenderGrantMinter(
                 validBoundary(), new FakeGrantBoundary(), port, fullEvidence(),
-                (host, incarnation, generation, demand) -> ReservationFeasibility.FEASIBLE, CLOCK);
+                (host, incarnation, generation, demand) -> ReservationFeasibility.FEASIBLE, CLOCK, RUNTIME_INC);
         ExecutableTaskId foreign = new ExecutableTaskId("f".repeat(64));
 
         FirstRenderGrantMinter.Result result =
@@ -204,7 +204,7 @@ class FirstRenderGrantMinterTest {
     @Test
     void identityRuleIsStableBoundedAndAcceptedByTheRequestWorkIdContract() {
         var id = FirstRenderGrantMinter.requestWorkId(RENDER_JOB_ID, taskId());
-        assertThat(id.value()).isEqualTo("rw:" + RENDER_JOB_ID + ":" + taskId().sha256Hex());
+        assertThat(id.value()).matches("rw:[0-9a-f]{64}");
         assertThat(id.value()).hasSizeLessThanOrEqualTo(128);
         assertThat(id).isEqualTo(FirstRenderGrantMinter.requestWorkId(RENDER_JOB_ID, taskId()));
     }
@@ -216,6 +216,34 @@ class FirstRenderGrantMinterTest {
                 .isNotEqualTo(FirstRenderGrantMinter.requestWorkId(RENDER_JOB_ID, other));
         assertThat(FirstRenderGrantMinter.requestWorkId(RENDER_JOB_ID, other))
                 .isEqualTo(FirstRenderGrantMinter.requestWorkId(RENDER_JOB_ID, other));
+    }
+
+    @Test
+    void executionDeliveryIdentityIsBoundedAndBindsOwnerGenerationAndDelivery() {
+        String owner="exe_"+"a".repeat(64)+":epoch:123456789:delivery:123456789";
+        var id=FirstRenderGrantMinter.requestWorkId(owner,taskId());
+        assertThat(id.value()).hasSize(67);
+        assertThat(id).isEqualTo(FirstRenderGrantMinter.requestWorkId(owner,taskId()));
+        assertThat(id).isNotEqualTo(FirstRenderGrantMinter.requestWorkId(owner+"0",taskId()));
+        assertThat(id).isNotEqualTo(FirstRenderGrantMinter.requestWorkId(owner.replace("epoch:1","epoch:2"),taskId()));
+    }
+
+    @Test
+    void retiredProcessCannotMintOrConsumeTheReplacementProcessesGrant() {
+        var replacement=WorkerRuntimeIncarnationId.of("replacement-instance");
+        var boundary=StubBoundary.valid();
+        boundary.runtime=Optional.of(new WorkerFabricRegistrationBoundary.PersistedRuntimeRegistration(
+                RUNTIME,replacement,HOST,HOST_INC,NOW,NOW.plusSeconds(60)));
+        var admission=mock(NativePullAdmissionPort.class);
+        var minter=new FirstRenderGrantMinter(boundary,new FakeGrantBoundary(),admission,fullEvidence(),
+                (host,incarnation,generation,demand)->ReservationFeasibility.FEASIBLE,CLOCK,RUNTIME_INC);
+        var result=minter.mint(RENDER_JOB_ID,taskId());
+        assertThat(result).isInstanceOf(FirstRenderGrantMinter.Result.Rejected.class);
+        assertThat(((FirstRenderGrantMinter.Result.Rejected)result).reason()).isEqualTo("LOCAL_RUNTIME_INCARNATION_RETIRED");
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->minter.requireLocalGrant(
+                grant(taskId(),FirstRenderGrantMinter.requestWorkId(RENDER_JOB_ID,taskId()))))
+                .isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(admission);
     }
 
     // ---------- registration authority ----------
@@ -543,7 +571,7 @@ class FirstRenderGrantMinterTest {
                 // pre-change projection always supplied UNKNOWN, so returning UNKNOWN preserves the
                 // existing test semantics (candidate ineligibility -> ADMISSION_NO_WORK).
                 (host, incarnation, generation, demand) -> ReservationFeasibility.UNKNOWN,
-                CLOCK);
+                CLOCK, RUNTIME_INC);
     }
 
     /** Full P1-1A.6 evidence triple, bound to whatever identity the minter asks for. */

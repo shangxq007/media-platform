@@ -72,6 +72,46 @@ public final class PhysicalPlanningEntryService {
                 identity.audit());
     }
 
+    /** Plans an Artifact-sourced capability in the same #21 model consumed by #22. */
+    public PhysicalExecutionPlan planArtifactCapability(ArtifactCapabilityRequest request, ExecutionPlanId planId) {
+        Objects.requireNonNull(request, "request");
+        Objects.requireNonNull(planId, "planId");
+        String semantic = PhysicalExecutionPlanDigest.sha256(request.canonical());
+        var node = new com.example.platform.render.domain.renderplan.RenderNodeId("artifact-capability-" + semantic);
+        var step = new com.example.platform.execution.domain.ExecutionStepId("artifact-capability-" + semantic);
+        String logical = "artifact-capability-" + semantic;
+        var position = request.parameters().position();
+        var rate = com.example.platform.shared.time.FrameRate.of(1, 1);
+        var extent = new com.example.platform.render.domain.renderplan.RenderExtent(
+                position, position.add(com.example.platform.shared.time.MediaTime.ofTicks(1, 1)), rate);
+        var window = new com.example.platform.render.domain.renderplan.RenderSampleWindow(position, position, rate);
+        var input = new ExecutionIoProjection.InputBinding(
+                new com.example.platform.execution.domain.ExecutionInputId("source-" + semantic),
+                logical, step, node, null, null, null, null, new com.example.platform.render.domain.renderplan.RenderArtifactReference.SourceArtifact(
+                        request.source().artifactId(),request.source().contentDigest()), window);
+        var output = new ExecutionIoProjection.OutputDeclaration(
+                new com.example.platform.execution.domain.ExecutionOutputId("image-" + semantic), logical, node,
+                java.util.List.of(), java.util.List.of(), java.util.List.of(),
+                java.util.List.of(new com.example.platform.render.domain.renderplan.RenderArtifactReference.FinalArtifactExpectation(
+                        com.example.platform.render.domain.renderplan.RenderOutputRole.DERIVED_MEDIA)));
+        var capability = com.example.platform.extension.domain.CapabilityRequirement.of(
+                com.example.platform.shared.capability.CapabilityId.of(request.capabilityId()),
+                com.example.platform.shared.capability.ContractVersionRange.exactly(
+                        com.example.platform.shared.capability.ContractVersion.of(1, 0)));
+        // This intent supplies no resource/runtime preferences. #21 must not manufacture GPU,
+        // memory or CPU constraints; #22/provider registration and the sandbox enforce execution.
+        var unit = new PhysicalExecutionPlan.PhysicalPlanUnit(step, logical, node,
+                new com.example.platform.render.domain.renderplan.RenderNodeKind.Transform(), "frame-extract",
+                java.util.List.of(input), java.util.List.of(output), java.util.List.of(), window, null,
+                java.util.List.of(new ExecutionIoProjection.CapabilityRequirementRef(capability)),
+                java.util.List.of(), extent, true, request);
+        var units = java.util.List.of(unit);
+        var schema = com.example.platform.execution.domain.ExecutionPlanSchemaVersion.V1;
+        var fingerprint = new com.example.platform.render.domain.renderplan.RenderPlanFingerprint(semantic);
+        return new PhysicalExecutionPlan("physical-execution-plan-v1", planId, schema, fingerprint,
+                units, extent, PhysicalExecutionPlanDigest.compute("physical-execution-plan-v1", schema, units, fingerprint, extent));
+    }
+
     /**
      * Typed admission identity required to build the platform admission
      * contract. Every component is caller-supplied — nothing is derived from

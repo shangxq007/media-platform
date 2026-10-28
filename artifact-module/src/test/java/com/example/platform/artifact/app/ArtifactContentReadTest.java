@@ -18,7 +18,7 @@ class ArtifactContentReadTest {
     final ArtifactScope scope=new ArtifactScope("tenant-a","project-a","job-a");
     final ArtifactId id=new ArtifactId("output-a");
     final byte[] bytes=java.util.HexFormat.of().parseHex("000000186674797069736f6d0000020069736f6d6d703432");
-    final ContentDigest digest=ContentDigest.sha256("a".repeat(64));
+    final ContentDigest digest=hash(bytes);
     final ArtifactApplicationQuery scoped=mock(ArtifactApplicationQuery.class);
     final ArtifactQueryService query=mock(ArtifactQueryService.class);
     final VerifiedStorageRead storage=mock(VerifiedStorageRead.class);
@@ -41,5 +41,17 @@ class ArtifactContentReadTest {
     @Test void otherProjectOrJobIsNotFoundBeforeStorage(){assertThrows(ArtifactApplicationService.ArtifactAccessException.class,()->service.read(new ArtifactScope("tenant-a","other-project","job-a"),id));verifyNoInteractions(query,storage);}
     @Test void allNonAvailableStatesFailBeforeReplicaLookup(){for(var state:ArtifactState.values())if(state!=ArtifactState.AVAILABLE){when(scoped.findArtifact(scope,id)).thenReturn(Optional.of(artifact(state)));assertThrows(ArtifactApplicationService.ArtifactAccessException.class,()->service.read(scope,id));}verifyNoInteractions(query,storage);}
     @Test void corruptMissingOrEscapingPhysicalObjectHasOneRedactedFailure(){ready();when(storage.read(any(),any(),any(),anyLong(),anyLong())).thenThrow(new IllegalStateException("private/path/secret"));var e=assertThrows(ArtifactApplicationService.ArtifactAccessException.class,()->service.read(scope,id));assertEquals("Artifact content unavailable",e.getMessage());assertFalse(e.getMessage().contains("private"));}
+    @Test void wrongLengthOrDigestIsNotDisclosedEvenIfStorageClaimsVerification() {
+        ready();
+        byte[] altered=bytes.clone();altered[altered.length-1]^=1;
+        when(storage.read(any(),any(),any(),anyLong(),anyLong())).thenReturn(altered);
+        assertThrows(ArtifactApplicationService.ArtifactAccessException.class,()->service.read(scope,id));
+        when(storage.read(any(),any(),any(),anyLong(),anyLong())).thenReturn(Arrays.copyOf(bytes,bytes.length-1));
+        assertThrows(ArtifactApplicationService.ArtifactAccessException.class,()->service.read(scope,id));
+    }
+    private static ContentDigest hash(byte[] bytes) {
+        try { return ContentDigest.sha256(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes))); }
+        catch(java.security.NoSuchAlgorithmException impossible) {throw new AssertionError(impossible);}
+    }
     @Test void verifiedBytesWithWrongContainerSignatureAreNotDisclosed(){ready();when(storage.read(any(),any(),any(),anyLong(),anyLong())).thenReturn(new byte[24]);assertThrows(ArtifactApplicationService.ArtifactAccessException.class,()->service.read(scope,id));}
 }

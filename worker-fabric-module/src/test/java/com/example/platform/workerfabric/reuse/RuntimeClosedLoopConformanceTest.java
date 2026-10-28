@@ -110,6 +110,17 @@ class RuntimeClosedLoopConformanceTest {
     }
 
     @Test
+    void scopedNonRenderPublicationAlsoRejectsAnotherExecutionsReusableArtifact() throws Exception {
+        Harness harness=harness("provider-a");harness.projectScoped=true;
+        var graph=RuntimeClosedLoopGraphFixture.single("scoped-capability",sourceDigest("scoped-capability"),"provider-a");
+        harness.seedSource("scoped-capability",sourceDigest("scoped-capability"));
+        var first=harness.execute(graph,allTaskIds(graph),"execution-one");var second=harness.execute(graph,allTaskIds(graph),"execution-two");
+        assertThat(second.reuseDecisions().values()).allMatch(d->d.outcome()==ValidatedReuseDecision.Outcome.MISS);
+        assertThat(second.outputArtifactPins()).isNotEqualTo(first.outputArtifactPins());assertThat(harness.runtime.executions()).isEqualTo(2);
+        assertThat(second.executedTaskResults().values()).allMatch(r->r.fencedCompletion().completionDecision()==CompletionDecision.COMPLETED);
+    }
+
+    @Test
     void firstMissPublishesDurablyAndEquivalentHitSkipsRuntime() throws Exception {
         Harness harness = harness("provider-a");
         String sourceDigest = sourceDigest("unit-one");
@@ -570,6 +581,7 @@ class RuntimeClosedLoopConformanceTest {
         private RuntimeClosedLoopOrchestrator orchestrator;
         private boolean forceStaleOwner;
         private String renderJob;
+        private boolean projectScoped;
         private long scopedGeneration;
 
         private Harness(Path root, List<String> providers) throws IOException {
@@ -607,7 +619,7 @@ class RuntimeClosedLoopConformanceTest {
                             authority, Map.of(storage.providerId(), storage), metrics),
                     new FencedReuseCompletionOrchestrator(index, completions),
                     bindings,
-                    metrics);
+                    metrics, (ignoredPublicationTask, ignoredPublicationContext, publicationAction) -> publicationAction.commit());
         }
 
         private void seedSource(String unit, String canonicalDigest) throws IOException {
@@ -649,17 +661,17 @@ class RuntimeClosedLoopConformanceTest {
                 ProviderBoundExecutableTaskGraph graph,
                 Set<ExecutableTaskId> requested,
                 String run) throws IOException {
-            long generationNumber=renderJob==null?1:++scopedGeneration;
+            long generationNumber=renderJob==null&&!projectScoped?1:++scopedGeneration;
             Map<ExecutableTaskId, TaskRuntimeExecution> executions = new LinkedHashMap<>();
             Map<ExecutableTaskId, Cacheability> cacheability = new LinkedHashMap<>();
             for (ExecutableTask task : graph.tasks()) {
                 bindings.putIfAbsent(task.providerBindingPin(), binding());
-                ExecutionAttemptId attempt = new ExecutionAttemptId("attempt-" + (renderJob==null?"":run+"-") + task.id().sha256Hex());
+                ExecutionAttemptId attempt = new ExecutionAttemptId("attempt-" + (renderJob==null&&!projectScoped?"":run+"-") + task.id().sha256Hex());
                 ExecutionOwnershipGeneration generation = new ExecutionOwnershipGeneration(generationNumber);
                 RemoteProviderExecutionHandle handle = RemoteProviderExecutionHandle.forRemoteExecution(
                         attempt, generation, new RemoteExecutionId("remote-" + task.id().sha256Hex()));
                 CompletionEvidence completion = new CompletionEvidence(
-                        new CompletionEventId("completion-" + (renderJob==null?"":run+"-") + task.id().sha256Hex()),
+                        new CompletionEventId("completion-" + (renderJob==null&&!projectScoped?"":run+"-") + task.id().sha256Hex()),
                         handle,
                         task.id(),
                         ObservedExecutionState.SUCCEEDED,
@@ -683,7 +695,7 @@ class RuntimeClosedLoopConformanceTest {
                                 Artifact.CURRENT_SCHEMA_VERSION,
                                 ReplicaRole.PRIMARY,
                                 "local",
-                                List.of(), NOW, NOW, renderJob, renderJob==null?null:"project-scoped")));
+                                List.of(), NOW, NOW, renderJob, renderJob==null&&!projectScoped?null:"project-scoped")));
                 cacheability.put(task.id(), Cacheability.CACHEABLE);
             }
             // Bindings may have been added after the current immutable orchestrator was built.
@@ -692,7 +704,7 @@ class RuntimeClosedLoopConformanceTest {
                     new OutputStagingArea(root.resolve("staging")),
                     new ArtifactOutputCommitOrchestrator(
                             authority, Map.of(storage.providerId(), storage), metrics),
-                    new FencedReuseCompletionOrchestrator(index, completions), bindings, metrics);
+                    new FencedReuseCompletionOrchestrator(index, completions), bindings, metrics, (ignoredPublicationTask, ignoredPublicationContext, publicationAction) -> publicationAction.commit());
             return orchestrator.execute(new RuntimeClosedLoopRequest(
                     TENANT, graph, requested, cacheability, executions));
         }

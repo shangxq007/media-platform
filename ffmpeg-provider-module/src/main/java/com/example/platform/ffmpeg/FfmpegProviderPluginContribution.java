@@ -35,7 +35,7 @@ import org.pf4j.Extension;
 public final class FfmpegProviderPluginContribution implements ProviderPluginContribution {
 
     public static final String PLUGIN_ID = "media.transcode.ffmpeg";
-    public static final String PLUGIN_VERSION = "1.0.0";
+    public static final String PLUGIN_VERSION = "1.1.0";
 
     private static final PluginDescriptor PLUGIN_DESCRIPTOR = new PluginDescriptor(
             PLUGIN_ID,
@@ -44,7 +44,11 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
             "media-platform",
             List.of(new CapabilityDescriptor(
                     "media.transcode", "1.0", "transcode", "ExecutableTask",
-                    "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
+                    "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor("media.cover-image", "1.0", "frame-extract", "Artifact",
+                            "Artifact", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor("media.thumbnail", "1.0", "frame-extract", "Artifact",
+                            "Artifact", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
             List.of(new HandledObjectDescriptor(
                     "ExecutableTask", "1",
                     "com.example.platform.execution.taskgraph.ExecutableTask",

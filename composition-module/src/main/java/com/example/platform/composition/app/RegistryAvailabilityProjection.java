@@ -32,15 +32,9 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
                                          com.example.platform.extension.api.port.PluginRegistryPort providers) {
         this.capabilities=capabilities;
         this.providers=providers;
-        // COVER-PROVIDER-PLATFORM-REGISTER-001: media.cover-image is a first-class capability of
-        // the platform provider family platform.ffmpeg (implementation ffmpeg.cpu.frame-extract.v1,
-        // declared by FrameExtractPlatformProvider and registered in the capability registry by
-        // FrameExtractPlatformRegistration). The capability contract is the platform Artifact contract
-        // (subject Artifact in, cover Artifact out, committed through ArtifactCommitService).
-        // COVER-THUMBNAIL-REBUILD-001 (action 1): the contribution now declares that same Artifact
-        // capability contract, so this entry's availability is derived from the registered, healthy
-        // implementation (media.thumbnail is registered the same way) instead of being pinned.
-        register(new CapabilityAvailability("media.cover-image", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("image"), Set.of("video/mp4", "video/webm", "video/quicktime", "video/x-matroska"), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.UNAVAILABLE, "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (operation invocation boundary) is pending", new CostEstimate(new BigDecimal("0.1"), "quota-unit", new BigDecimal("0.1")), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));
+        // Discovery uses the same registered PF4J capability contracts as native #22 binding.
+        // Purpose-specific provider registries and worker task lifecycles are retired.
+        register(new CapabilityAvailability("media.cover-image", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("image"), Set.of("video/mp4", "video/webm", "video/quicktime", "video/x-matroska"), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.UNAVAILABLE, "Artifact-sourced cover capability", new CostEstimate(new BigDecimal("0.1"), "quota-unit", new BigDecimal("0.1")), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));
         // Capabilities expose only the platform Artifact contract. Raw provider
         // output remains behind the explicit materialization boundary.
         register(new CapabilityAvailability("media.transcode", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("video"), Set.of("video/mp4", "video/webm"), Set.of(ExecutionMode.ASYNCHRONOUS, ExecutionMode.BATCH), Availability.UNAVAILABLE, "MATERIALIZATION_REQUIRED: no typed output adapter is registered", new CostEstimate(BigDecimal.ONE, "quota-unit", BigDecimal.ONE), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));

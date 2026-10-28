@@ -163,7 +163,7 @@ class MediaTaskExecuteTaskIntegrationTest {
         assertThat(request.requestedTasks()).containsExactly(fixture.taskId());
         assertThat(request.taskExecutions()).containsOnlyKeys(fixture.taskId());
         var execution = request.taskExecutions().get(fixture.taskId());
-        String publicationIdentity=TENANT+"\u0000"+execution.artifactCommitMetadata().projectId()+"\u0000"+JOB+"\u0000"+fixture.taskId().sha256Hex()+"\u0000attempt-exec\u0000"+execution.runtimeContext().platformOwnershipGeneration().value();
+        String publicationIdentity=TENANT+"\u0000"+execution.artifactCommitMetadata().projectId()+"\u0000render:"+JOB+"\u0000"+fixture.taskId().sha256Hex()+"\u0000attempt-exec\u0000"+execution.runtimeContext().platformOwnershipGeneration().value();
         String publicationKey=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(publicationIdentity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         assertThat(execution.durableOutputTarget().writeSessionId())
                 .isEqualTo("task-output-" + publicationKey);

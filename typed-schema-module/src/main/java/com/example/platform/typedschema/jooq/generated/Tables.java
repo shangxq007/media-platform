@@ -37,7 +37,6 @@ import com.example.platform.typedschema.jooq.generated.tables.CompositionValidat
 import com.example.platform.typedschema.jooq.generated.tables.CompositionVersion;
 import com.example.platform.typedschema.jooq.generated.tables.ConfigItem;
 import com.example.platform.typedschema.jooq.generated.tables.ConversionSpecification;
-import com.example.platform.typedschema.jooq.generated.tables.CoverImageTask;
 import com.example.platform.typedschema.jooq.generated.tables.CreditReservation;
 import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
@@ -77,7 +76,6 @@ import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewD
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewThread;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation;
 import com.example.platform.typedschema.jooq.generated.tables.MediaStream;
-import com.example.platform.typedschema.jooq.generated.tables.MediaThumbnailTask;
 import com.example.platform.typedschema.jooq.generated.tables.NavigationPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.NlqQueryHistory;
 import com.example.platform.typedschema.jooq.generated.tables.NlqReportDefinition;
@@ -398,11 +396,6 @@ public class Tables {
     public static final ConversionSpecification CONVERSION_SPECIFICATION = ConversionSpecification.CONVERSION_SPECIFICATION;
 
     /**
-     * The table <code>public.cover_image_task</code>.
-     */
-    public static final CoverImageTask COVER_IMAGE_TASK = CoverImageTask.COVER_IMAGE_TASK;
-
-    /**
      * The table <code>public.credit_reservation</code>.
      */
     public static final CreditReservation CREDIT_RESERVATION = CreditReservation.CREDIT_RESERVATION;
@@ -596,11 +589,6 @@ public class Tables {
      * The table <code>public.media_stream</code>.
      */
     public static final MediaStream MEDIA_STREAM = MediaStream.MEDIA_STREAM;
-
-    /**
-     * The table <code>public.media_thumbnail_task</code>.
-     */
-    public static final MediaThumbnailTask MEDIA_THUMBNAIL_TASK = MediaThumbnailTask.MEDIA_THUMBNAIL_TASK;
 
     /**
      * The table <code>public.navigation_policy</code>.

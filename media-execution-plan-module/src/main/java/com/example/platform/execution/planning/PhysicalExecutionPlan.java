@@ -65,7 +65,25 @@ public record PhysicalExecutionPlan(
             List<ExecutionIoProjection.CapabilityRequirementRef> capabilityRequirementRefs,
             List<ExecutionIoProjection.ExecutionIntentRef> executionIntentRefs,
             RenderExtent propagatedExtent,
-            boolean deterministicallyCacheable) {
+            boolean deterministicallyCacheable,
+            ArtifactCapabilityRequest artifactCapabilityRequest) {
+
+        /** Render-derived units carry no Artifact-sourced capability request. */
+        public PhysicalPlanUnit(
+                com.example.platform.execution.domain.ExecutionStepId stepId, String logicalNodeId,
+                RenderNodeId sourceRenderNodeId, RenderNodeKind sourceRenderNodeKind, String operationKey,
+                List<InputBinding> typedInputs, List<OutputDeclaration> typedOutputs,
+                List<LogicalExecutionGraph.LogicalDependencyEdge> typedDependencies,
+                RenderSampleWindow temporalWindow,
+                com.example.platform.render.domain.renderplan.RenderExecutionCoverage executionCoverage,
+                List<ExecutionIoProjection.CapabilityRequirementRef> capabilityRequirementRefs,
+                List<ExecutionIoProjection.ExecutionIntentRef> executionIntentRefs,
+                RenderExtent propagatedExtent, boolean deterministicallyCacheable) {
+            this(stepId, logicalNodeId, sourceRenderNodeId, sourceRenderNodeKind, operationKey,
+                    typedInputs, typedOutputs, typedDependencies, temporalWindow, executionCoverage,
+                    capabilityRequirementRefs, executionIntentRefs, propagatedExtent,
+                    deterministicallyCacheable, null);
+        }
 
         public PhysicalPlanUnit {
             Objects.requireNonNull(stepId, "stepId");

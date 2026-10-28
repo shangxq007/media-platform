@@ -42,8 +42,10 @@ class ArtifactAuthorizationEnforcementTest {
     /** The complete Artifact REST controller set — the protected surface. */
     private static final List<String> PROTECTED_CONTROLLERS = List.of(
             "ArtifactApplicationController.java",
+            "ArtifactContentController.java",
             "ArtifactController.java",
-            "ArtifactLifecycleController.java");
+            "ArtifactLifecycleController.java",
+            "ProjectArtifactController.java");
 
     // ── helpers ─────────────────────────────────────────────────────────────
 

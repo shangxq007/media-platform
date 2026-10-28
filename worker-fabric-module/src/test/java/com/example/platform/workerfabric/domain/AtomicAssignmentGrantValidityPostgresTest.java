@@ -53,6 +53,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         config.setConnectionTimeout(10000);
         dataSource = new com.zaxxer.hikari.HikariDataSource(config);
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
+        dsl.execute("create table native_publication_probe(id int primary key)");
     }
 
     @AfterAll
@@ -64,6 +65,8 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     @BeforeEach
     void resetAuthoritativeRows() {
         AssignmentGrantPostgresFixture.truncate(dsl);
+        dsl.execute("truncate native_publication_probe");
+        dsl.execute("delete from artifact where id='native-probe-output' and tenant_id='tenant-native'");
     }
 
     @Test
@@ -304,6 +307,72 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     }
 
     // ---------- helpers ----------
+
+    private com.example.platform.workerfabric.reuse.TaskRuntimeExecution publication(TaskCTestFixture.CandidateFixture candidate,AssignmentGrant grant) {
+        // Transaction protocol fixture only. Actual planning, bytes and Artifact commit are
+        // separately exercised by the real HTTP media regression.
+        var target=new com.example.platform.workerfabric.reuse.DurableOutputTarget(
+                new com.example.platform.storage.contract.StorageProviderId("storage-native"),
+                new com.example.platform.storage.contract.namespace.StorageNamespace("tenant-native","project-native",
+                        com.example.platform.storage.contract.namespace.NamespaceClass.DERIVED,
+                        com.example.platform.storage.contract.namespace.RegionPolicy.SINGLE_REGION,
+                        com.example.platform.storage.contract.namespace.DataClassification.INTERNAL),"native-probe-write");
+        var metadata=new com.example.platform.workerfabric.reuse.ArtifactCommitMetadata(
+                new com.example.platform.shared.identity.ArtifactId("native-probe-output"),"tenant-native",
+                com.example.platform.artifact.domain.ArtifactMediaType.IMAGE,com.example.platform.artifact.domain.ArtifactKind.DERIVED_MEDIA,
+                1,com.example.platform.artifact.domain.ReplicaRole.PRIMARY,"local",List.of(),FIXED_CLOCK.instant(),FIXED_CLOCK.instant(),null,"project-native");
+        return com.example.platform.workerfabric.reuse.TaskRuntimeExecutionFactory.build(candidate.task(),grant,target,metadata);
+    }
+
+    @Test void nativePublicationTransactionClosesCurrentAttemptAndReleasesOnlyItsReservation() {
+        var runtime=TaskCTestFixture.runtime("native-publish");register(runtime,FIXED_CLOCK.instant().plusSeconds(3600));
+        var candidate=TaskCTestFixture.candidate(701);var granted=granted(runtime,candidate);var execution=publication(candidate,granted.grant());
+        var expected=org.mockito.Mockito.mock(com.example.platform.workerfabric.reuse.RuntimeClosedLoopTaskResult.class);
+        var result=dsl.transactionResult(configuration->{var tx=DSL.using(configuration);
+            var lifecycle=new com.example.platform.workerfabric.infrastructure.JooqExecutionLifecycleBoundary(tx);
+            var publication=new com.example.platform.workerfabric.infrastructure.NativeOutputPublicationTransaction(tx,boundary(tx),lifecycle);
+            try{return publication.commit(candidate.task().id(),execution,()->{
+                tx.execute("insert into artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('native-probe-output','tenant-native','project-native',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,current_timestamp)","a".repeat(64));
+                tx.execute("insert into native_publication_probe values(1)");
+                var decision=new com.example.platform.workerfabric.infrastructure.JooqExecutionAuthorityBoundary(tx,FIXED_CLOCK)
+                        .completeIfCurrent(execution.completionEvidence(),new ArtifactCommitEvidence(execution.artifactCommitMetadata().artifactId()));
+                assertThat(decision).isEqualTo(CompletionDecision.COMPLETED);return expected;
+            });}catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}
+        });
+        assertThat(result).isSameAs(expected);assertThat(count("native_publication_probe")).isOne();assertThat(count("wf_completion_event")).isOne();
+        assertThat(boundary(dsl).findCurrentGrant(candidate.task().id())).isEmpty();
+        assertThat(dsl.fetch("select state from wf_reservation").getValues("state",String.class)).containsOnly("RELEASED");
+    }
+    @Test void nativePublicationFailureRollsBackCallbackAndCompletionAndKeepsOriginalOwnership() {
+        var runtime=TaskCTestFixture.runtime("native-rollback");register(runtime,FIXED_CLOCK.instant().plusSeconds(3600));
+        var candidate=TaskCTestFixture.candidate(702);var granted=granted(runtime,candidate);var execution=publication(candidate,granted.grant());
+        assertThatThrownBy(()->dsl.transactionResult(configuration->{var tx=DSL.using(configuration);
+            var publication=new com.example.platform.workerfabric.infrastructure.NativeOutputPublicationTransaction(tx,boundary(tx),new com.example.platform.workerfabric.infrastructure.JooqExecutionLifecycleBoundary(tx));
+            try{return publication.commit(candidate.task().id(),execution,()->{
+                tx.execute("insert into artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('native-probe-output','tenant-native','project-native',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,current_timestamp)","a".repeat(64));
+                tx.execute("insert into native_publication_probe values(1)");
+                assertThat(new com.example.platform.workerfabric.infrastructure.JooqExecutionAuthorityBoundary(tx,FIXED_CLOCK)
+                        .completeIfCurrent(execution.completionEvidence(),new ArtifactCommitEvidence(execution.artifactCommitMetadata().artifactId())))
+                        .isEqualTo(CompletionDecision.COMPLETED);
+                throw new java.io.IOException("synthetic callback failure");
+            });}catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}
+        })).isInstanceOf(java.io.UncheckedIOException.class).hasMessageContaining("synthetic callback failure");
+        assertThat(count("artifact")).isZero();
+        assertThat(count("native_publication_probe")).isZero();assertThat(count("wf_completion_event")).isZero();
+        assertThat(boundary(dsl).findCurrentGrant(candidate.task().id())).contains(granted.grant());
+        assertThat(dsl.fetch("select state from wf_reservation").getValues("state",String.class)).containsOnly("ACTIVE");
+    }
+    @Test void retiredRuntimeNeverReachesNativePublicationCallback() {
+        var runtime=TaskCTestFixture.runtime("native-retired");register(runtime,FIXED_CLOCK.instant().plusSeconds(3600));
+        var candidate=TaskCTestFixture.candidate(703);var granted=granted(runtime,candidate);var execution=publication(candidate,granted.grant());
+        runtimeRegistration(runtime,"native-replacement",FIXED_CLOCK.instant());var calls=new java.util.concurrent.atomic.AtomicInteger();
+        assertThatThrownBy(()->dsl.transactionResult(configuration->{var tx=DSL.using(configuration);
+            var publication=new com.example.platform.workerfabric.infrastructure.NativeOutputPublicationTransaction(tx,boundary(tx),new com.example.platform.workerfabric.infrastructure.JooqExecutionLifecycleBoundary(tx));
+            try{return publication.commit(candidate.task().id(),execution,()->{calls.incrementAndGet();throw new java.io.IOException("must not enter");});}
+            catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}
+        })).isInstanceOf(IllegalStateException.class).hasMessageContaining("no longer current");
+        assertThat(calls.get()).isZero();assertThat(count("native_publication_probe")).isZero();assertThat(count("wf_completion_event")).isZero();
+    }
 
     private record Granted(
             RequestWorkId requestWorkId, AssignmentGrant grant, ExecutableTaskId taskId) {}

@@ -35,14 +35,16 @@ public final class FfmpegCpuProvider {
     public static final ProviderId PROVIDER_ID = ProviderId.of("ffmpeg");
     public static final ProviderImplementationId IMPLEMENTATION_ID =
             ProviderImplementationId.of("ffmpeg.cpu.native-pull.v1");
-    public static final ProviderVersion VERSION = ProviderVersion.of("1.0.0");
+    public static final ProviderVersion VERSION = ProviderVersion.of("1.1.0");
     public static final ProviderExecutionContractVersion EXECUTION_CONTRACT_VERSION =
-            ProviderExecutionContractVersion.of(1, 0);
+            ProviderExecutionContractVersion.of(1, 1);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
             ProviderCapabilityProfileVersionOrDigest.version(
-                    ProviderCapabilityProfileVersion.of(1, 0));
+                    ProviderCapabilityProfileVersion.of(1, 1));
     public static final RuntimeSupportIdentifier RUNTIME_SUPPORT_IDENTIFIER =
             RuntimeSupportIdentifier.of("ffmpeg.cpu.v1");
+    public static final CapabilityId COVER_CAPABILITY = CapabilityId.of("media.cover-image");
+    public static final CapabilityId THUMBNAIL_CAPABILITY = CapabilityId.of("media.thumbnail");
     public static final CapabilityId TRANSCODE_CAPABILITY = CapabilityId.of("media.transcode");
     /** #20 render-planning decode capability. */
     public static final CapabilityId VIDEO_DECODE_CAPABILITY = CapabilityId.of("video.decode");
@@ -72,7 +74,9 @@ public final class FfmpegCpuProvider {
                             new ProviderCapabilityContractReference(
                                     COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(
-                                    OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
+                                    OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
+                            new ProviderCapabilityContractReference(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
+                            new ProviderCapabilityContractReference(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 
     public static final ProviderCapabilityProfile CAPABILITY_PROFILE =
             new ProviderCapabilityProfile(
@@ -85,7 +89,9 @@ public final class FfmpegCpuProvider {
                             ProviderCapabilitySupport.unpinned(
                                     COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(
-                                    OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
+                                    OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
+                            ProviderCapabilitySupport.unpinned(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
+                            ProviderCapabilitySupport.unpinned(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 
     public static final ProviderBindingPin BINDING = new ProviderBindingPin(
             PROVIDER_ID,

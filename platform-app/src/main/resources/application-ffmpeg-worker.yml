@@ -9,6 +9,8 @@ platform:
     # Bounded V1 host registration scratch root (P2-5b-2a-1-2): the temporary-storage capacity/
     # usage the registration probe reports is this volume's file store.
     work-root: ${FFMPEG_WORKER_WORK_ROOT:/tmp/media-platform-ffmpeg-worker}
+    materialization-root: ${FFMPEG_WORKER_MATERIALIZATION_ROOT:./.data/materialized}
+    materialization-capacity-bytes: ${FFMPEG_WORKER_MATERIALIZATION_CAPACITY_BYTES:1073741824}
     # P2-5b-2b-1a provider plugin wiring (mirrors the remote worker's app.remote-worker.* keys).
     # The typed PF4J provider plugin JARs are loaded from this directory when the worker starts;
     # a missing directory fails the worker context closed.
@@ -33,10 +35,6 @@ platform:
       bwrap: ${FFMPEG_WORKER_BWRAP_PATH:/usr/bin/bwrap}
       ffmpeg: ${FFMPEG_WORKER_FFMPEG_PATH:/usr/bin/ffmpeg}
       ffprobe: ${FFMPEG_WORKER_FFPROBE_PATH:/usr/bin/ffprobe}
-  cover-image:
-    work-root: ${COVER_IMAGE_WORK_ROOT:./.data/cover-image-work}
-    materialization-root: ${COVER_IMAGE_MATERIALIZATION_ROOT:./.data/cover-image-materialized}
-    materialization-capacity-bytes: ${COVER_IMAGE_MATERIALIZATION_CAPACITY_BYTES:1073741824}
 
 app:
   temporal:
@@ -52,8 +50,6 @@ spring:
     start-workers: true
     workers-auto-discovery:
       packages:
-        - com.example.platform.coverimage
-        - com.example.platform.thumbnail
         # P2-5b-2b-2a: the media task activity adapter (whole-graph execution).
         - com.example.platform.runtime.mediatask
         # P0-5 D2: register the existing MediaTaskWorkflowImpl on the canonical queue. Discovery

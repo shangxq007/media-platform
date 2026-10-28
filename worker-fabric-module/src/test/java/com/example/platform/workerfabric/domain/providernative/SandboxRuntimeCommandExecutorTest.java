@@ -86,6 +86,39 @@ class SandboxRuntimeCommandExecutorTest {
                                 .isEqualTo(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED));
     }
 
+    @org.junit.jupiter.api.io.TempDir java.nio.file.Path root;
+
+    @Test
+    void cancellationCannotHideAnActuallySurvivingChildOrRemoveItsInput() throws Exception {
+        var input=java.nio.file.Files.writeString(root.resolve("input"),"owned-media-bytes");
+        var marker=root.resolve("consumed");var unrelated=java.nio.file.Files.writeString(root.resolve("not-owned"),"keep");
+        var builder=new ProcessBuilder("/usr/bin/python3","-c",
+                "from pathlib import Path; import sys,time; Path(sys.argv[2]).write_bytes(Path(sys.argv[1]).read_bytes()); time.sleep(15)",input.toString(),marker.toString());
+        builder.environment().clear();builder.environment().put("PATH","/usr/bin:/bin");
+        builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);builder.redirectError(ProcessBuilder.Redirect.DISCARD);
+        Process child=builder.start();var born=child.info().startInstant().orElseThrow();
+        try {
+            long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(3);
+            while(!java.nio.file.Files.exists(marker) && child.isAlive() && System.nanoTime()<deadline)Thread.sleep(10);
+            assertThat(java.nio.file.Files.readString(marker)).isEqualTo("owned-media-bytes");
+            BoundedProcessLauncher launcher=(specification,cancellation)-> {
+                assertThat(cancellation.isCancellationRequested()).isTrue();
+                return new SandboxExecutionResult(OptionalInt.empty(),new BoundedCapture(new byte[0],false),new BoundedCapture(new byte[0],false),
+                        Optional.of(SandboxFailure.of(SandboxFailureCode.PROCESS_TERMINATED_BY_LIMIT,"cancellation requested",Set.of())),
+                        new SandboxExecutionObservation(new SandboxExecutionHandle(child.pid(),born),root,Duration.ZERO,
+                                SandboxCleanupObservation.failed(1,List.of(child.pid()),"controlled surviving child")));
+            };
+            var executor=new SandboxRuntimeCommandExecutor(launcher,(command,inputs)->new SandboxResolution.Resolved(mock(EffectiveSandboxExecutionSpecification.class)),()->true);
+            assertThatThrownBy(()->executor.execute(bundle(),List.of())).isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
+                    failure->assertThat(failure.code()).isEqualTo(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED));
+            assertThat(child.isAlive()).isTrue();assertThat(child.info().startInstant()).contains(born);
+            assertThat(java.nio.file.Files.readString(input)).isEqualTo("owned-media-bytes");assertThat(java.nio.file.Files.readString(unrelated)).isEqualTo("keep");
+        } finally {
+            if(child.isAlive())child.destroyForcibly();
+            assertThat(child.waitFor(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();assertThat(child.isAlive()).isFalse();
+        }
+    }
+
     @Test
     void truncated_stdout_cannot_become_provider_output() {
         BoundedProcessLauncher launcher = (specification, cancellation) -> result(
@@ -202,6 +235,6 @@ class SandboxRuntimeCommandExecutorTest {
         return new SandboxExecutionResult(exit, stdout, stderr, failure,
                 new SandboxExecutionObservation(new SandboxExecutionHandle(1, now),
                         java.nio.file.Path.of("/tmp"), Duration.ZERO,
-                        new SandboxCleanupObservation(failure.isEmpty(), 0, List.of(), "")));
+                        new SandboxCleanupObservation(failure.map(f->f.code()!=SandboxFailureCode.SANDBOX_CLEANUP_FAILED).orElse(true), 0, List.of(), "")));
     }
 }

@@ -1,264 +1,67 @@
-# media.cover-image capability
+# Cover image: Artifact-sourced capability request
 
-Platform-owned cover-image capability: one capability id served by a provider family whose provider
-identity is independent of any capability, capability-keyed provider selection with no fallback
-provider, and no second asset identity. The slice is deliberately minimal — admission, durable task,
-sandboxed provider execution, a single canonical Artifact commit and read-back.
+`media.cover-image@1.0` generates an image from a committed video Artifact. Generating an image and
+choosing it as a project's official cover are separate actions; this endpoint performs generation.
+It is a thin authenticated intent adapter over the existing #21 planning, #22 binding, native Worker
+Fabric, Execution and Artifact owners. It creates no RenderJob or purpose-specific task lifecycle.
+Operation may eventually express this intent for Media Assets; no new Operation type or framework is
+introduced here. [Execution principles](../architecture/current/execution-architecture-principles.md).
 
-## Capability
+## HTTP contract
 
-| Field | Value |
-|---|---|
-| Capability id | `media.cover-image` |
-| Capability contract version | `1.0` |
-| Provider family | `platform.ffmpeg` (capability-independent identity; never a capability id) |
-| Provider implementation | `ffmpeg.cpu.frame-extract.v1` |
-| Provider version | `1.0.0` |
-| Declared capabilities | the provider manifest declares a capability **list**; this slice declares `media.cover-image` |
-| Provider pin | the capability-neutral platform frame-extract family `platform.ffmpeg`, pinned in the one worker execution adapter (`FrameExtractExecutionAdapter.PINNED_PROVIDER_ID`); the pin names a provider family, never a capability |
-| Provenance operation tag | `cover-image` (capability-independent label; the capability id is carried separately and is never embedded in the tag) |
-| Task queue | `media-platform-tasks` (shared canonical queue; no per-capability queue) |
-| Worker name | `ffmpeg-worker` (shared runtime-grouped worker; hosts `media.cover-image` and `media.thumbnail`) |
-| Provenance | one `COVER_OF` edge, subject → cover, committed through `ArtifactCommitService` |
-
-The cover is **not** a new `ArtifactKind`. It is an existing image Artifact
-(`ArtifactMediaType.IMAGE` + `ArtifactKind.DERIVED_MEDIA`) whose cover-ness is recorded in the
-provenance graph as `ProvenanceRelationType.COVER_OF` (subject Artifact → cover Artifact). The
-Artifact identity stays immutable and is derived deterministically from
-`tenant \0 project \0 taskId \0 storageObjectId`, so a retry cannot mint a second identity.
-
-## HTTP surface (API process only)
-
-`POST /api/projects/{projectId}/cover-images` — admits the durable task and starts the Temporal
-workflow on `media-platform-tasks`. The API process never executes the provider and never touches
-FFmpeg, storage bytes or the sandbox.
-
-`CoverImageController` + `CoverImageService` + `CoverImageTaskStore` are registered by
-`PlatformApplication`'s explicit component scan, which includes `com.example.platform.coverimage`;
-every worker-only bean of the same package (provider, registry, sandbox backend, materializer, local
-object store, commit fence, activities, worker application) is gated on
-`platform.runtime.role=WORKER` and is therefore absent from the API process.
-`CoverImageApiContextRegistrationTest` boots the real API context and asserts exactly that split.
-Admission takes the Temporal client optionally (the default profile runs without a Temporal cluster);
-if no client is available the request fails closed with a clear error instead of admitting a task that
-could never run.
-
-### Request schema
+`POST /api/projects/{projectId}/cover-images` resolves the tenant from the authenticated context.
+The actor needs source Artifact read permission and the existing project `WRITE` permission.
+Artifact tombstone/GC permission is not required and is not granted by this endpoint.
 
 ```json
-{
-  "subjectArtifactId": "art_...",
-  "timestampSeconds": 1.5,
-  "imageFormat": "png",
-  "width": 640,
-  "quality": 80,
-  "idempotencyKey": "cover-<your-key>"
-}
+{"subjectArtifactId":"source-artifact","timestampSeconds":0.25,"imageFormat":"png","width":160,"idempotencyKey":"request-1"}
 ```
 
-| Field | Type | Required | Rules |
-|---|---|---|---|
-| `subjectArtifactId` | string | yes | must be an available Artifact inside the requested project scope |
-| `timestampSeconds` | number | yes | finite, `>= 0` |
-| `imageFormat` | string | yes | `png` or `jpeg` |
-| `width` | integer | no | `16..8192` |
-| `quality` | integer | no | `1..100` |
-| `idempotencyKey` | string | yes | unique per `(tenant, project)`; decides the durable task row |
+The source must be an AVAILABLE VIDEO Artifact in that tenant/project. Timestamp is finite and
+nonnegative; encoding is `png` or `jpeg`; optional width is16–8192 and JPEG quality1–100.
+An unspecified JPEG quality is pinned to85 before planning/fingerprinting. Parameters use the shared
+`MediaFrameExtractParametersV1`; callers cannot supply URLs, paths, providers or command arguments.
 
-### Response schema
+The response is an Execution Handle: `executionId`, positive `generation`, `state`, nullable
+`artifactId`/`failureCode`, and `retryBlocked`. Status is queried at `GET .../{executionId}`.
+The existing Execution lifecycle is ADMITTED → RUNNING → COMPLETED/FAILED/CANCELLED, with RETRYING
+for explicit failed-execution retry. No Cover/Thumbnail COMMITTING state or task table remains.
 
-`201 Created`
+`POST .../{executionId}/cancel` and `POST .../{executionId}/retry` require `{"generation":1}`.
+Stale generations and conflicting idempotency parameters return409. Retry is allowed only from
+FAILED; uncertain physical cleanup sets `retryBlocked` and requires reconciliation. Cancellation
+cannot override a completed output. Temporal schedules the work; it does not own these domain states.
 
-```json
-{
-  "taskId": "cimg_...",
-  "status": "ADMITTED",
-  "artifactId": null,
-  "failureCode": null
-}
-```
+## Identity, persistence and publication
 
-| Field | Notes |
-|---|---|
-| `taskId` | deterministic from `(tenant, project, idempotencyKey)` |
-| `status` | `ADMITTED` \| `RUNNING` \| `COMMITTING` \| `COMPLETED` \| `FAILED` \| `CANCELLED` |
-| `artifactId` | present only once the cover Artifact is committed |
-| `failureCode` | present when the task failed closed |
+Idempotency binds tenant, project, capability and user key. The persisted canonical request pins the
+source Artifact/digest and normalized frame/image parameters. Equivalent replay returns the accepted
+Execution; different parameters with the same key are rejected. Existing
+`platform_execution_admission`/`platform_execution_result` persist request, generation and result
+association across restarts. Durable typed outbox dispatch references one Temporal workflow per
+execution/generation. Outbox failures remain diagnostics requiring recovery, never successful outputs.
 
-`GET /api/projects/{projectId}/cover-images/{taskId}` returns the same `Result` body once the task
-row exists. A repeated `POST` with the same idempotency key returns the existing row instead of
-admitting a second task.
+The registered native FFmpeg contribution is shared with graph execution. Provider selection remains
+with #22 and immutable ProviderBindingPin inputs; there is no slice registry or fallback provider.
+Publication holds the logical cancellation fence and current native attempt fence in one transaction
+with Artifact commit, native completion, exact reservation release and successful quota settlement.
+A failed transaction exposes no formal Artifact result; durable storage bytes may remain for exact
+reconciliation and are never blindly deleted. Cleanup uncertainty retains the native recovery hold.
 
-## Provider
+The result is an IMAGE/DERIVED_MEDIA Artifact with a `COVER_OF` edge from derived image to source,
+including request/result digests and native attempt provenance. Tenant/project/source kind/task/native
+attempt/generation bind its immutable publication identity. No synthetic cover ID is used as a
+RenderJob ID. Cover generation currently incurs no Thumbnail quota operation.
 
-`FfmpegCpuProvider` is the **single capability-neutral provider** of the
-`platform.ffmpeg` family (implementation `ffmpeg.cpu.frame-extract.v1`). It declares its manifest as
-**provider identity + capability declaration list** (`capabilities()`, each entry `capabilityId` +
-capability contract version) and serves both `media.cover-image` and `media.thumbnail` from the one
-implementation. Everything that genuinely differs per capability — the accepted input form, the
-width bound (`8192` for cover, `4096` for thumbnail), the timeout (`120s` / `60s`) and the sandbox
-task capability the bytes run through — is carried by a `FrameExtractCapabilityProfile` selected from
-the executing `capabilityId`, not by a second provider class.
+## Authorized bytes
 
-`FrameExtractExecutionAdapter` is the one worker-side execution adapter over the registered
-providers:
+`GET /api/tenants/{tenant}/projects/{project}/artifacts/{artifact}/access` returns a relative authenticated
+`.../content` route. The content endpoint verifies project access, AVAILABLE commit state, registered
+replica, actual length/digest and media signature before returning bytes (current limit64MiB).
+It emits no signed URL, host path, storage key or credentials. Existing Render-scoped download remains.
+[Thumbnail](media-thumbnail.md) uses the same owners and access contract.
 
-- a provider that declares several capabilities is indexed under each of them — it is never skipped
-  for a capability it declares, and one capability may be served by several providers (N:M);
-- selection is deterministic and fail-closed: the pinned family `platform.ffmpeg`
-  (`FrameExtractExecutionAdapter.PINNED_PROVIDER_ID`, a provider family, never a capability) owns
-  every routed capability and any additional provider that declares the same capability stays
-  registered but is never chosen;
-- an empty registration, a duplicate provider family, a provider whose family and implementation
-  identity collapse into one value, a missing pinned family, a capability no registered provider
-  declares, and a pinned family that does not declare a routed capability all fail at construction.
-
-There is no fallback provider and no implicit default provider. `invoke(capabilityId, …)` passes the
-capability being executed to the provider, and a provider fails closed
-(`UNSUPPORTED_CAPABILITY`) when asked for a capability it does not declare.
-
-Execution stays inside `CoverImageExecutionBackend`, which runs the pinned FFmpeg binary inside a
-bubblewrap profile (`--ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --unshare-all
---die-with-parent`) with no shell involved and no capability other than `COVER_IMAGE`.
-
-## Platform registration (first-class platform capability)
-
-`media.cover-image` is registered with the platform provider/capability registry, not only held as a
-slice-local constant. `FrameExtractPlatformProvider` declares the platform metadata and
-`FrameExtractPlatformRegistration` registers it at platform start-up — one capability-neutral
-contribution that also declares `media.thumbnail`, so both capabilities resolve from the same
-registration.
-
-| Element | Value |
-|---|---|
-| Provider family (`ProviderId`) | `platform.ffmpeg` (capability-independent, model A) |
-| Provider implementation (`ProviderImplementationId`) | `ffmpeg.cpu.frame-extract.v1` |
-| Provider version / execution-contract version | `1.0.0` / `1.0` |
-| Capabilities (`ProviderCapabilityProfile` / `ProviderExecutionContract`) | `media.cover-image` @ `1.0` and `media.thumbnail` @ `1.0`, both contract range `[1.0, 1.0]` |
-| Contribution (`PluginDescriptor`) identity | `media.ffmpeg.frameextract@1.0.0` (capability-neutral, hyphen-free contribution id; it names the frame-extract contribution, not any capability, and is not a provider identity) |
-| Declared platform boundary | `ExecutableTask` in, `ProviderExecutionOutput` out (the platform's P1 provider-facing boundary) |
-| Registered through | `PluginRegistrationPort.registerRuntime(PluginDescriptor)` — the same canonical seam the PF4J provider host uses |
-| Role | platform (API) process only; the cover worker has no capability registry and registers nothing |
-| Composition catalog | `media.cover-image` is listed by the composition capability catalog (`/composition/capabilities`) on the platform Artifact contract (subject Artifact → cover Artifact) |
-
-Every identity value is derived from `CoverImageContracts`, so the slice still has exactly one source
-of truth for the capability id, contract version, provider family and implementation id.
-
-Failure modes stay closed: an invalid descriptor (the platform's own validator) or a duplicate
-contribution identity aborts start-up instead of degrading, and the registration retires exactly its
-own lease on shutdown. The `CapabilityRegistryPort.findCapabilityImplementations` /
-`PluginRegistryPort.findCapabilityCandidates` lookups therefore expose `media.cover-image` for this
-provider family.
-
-### What the registration does not claim
-
-The runtime that executes the capability today is the shared runtime-grouped `ffmpeg-worker`
-(Temporal activity → bubblewrap + FFmpeg sandbox → `ArtifactCommitService`), which also hosts
-`media.thumbnail`. The registration declares the provider-boundary shape
-(`ExecutableTask` / `ProviderExecutionOutput`) on the execution descriptor and the platform Artifact
-capability contract (subject Artifact in / cover Artifact out) on the contribution.
-
-`RegistryAvailabilityProjection` reports `media.cover-image` `AVAILABLE` from that registered,
-healthy contribution (`media.thumbnail` the same way), not from a pinned value. The availability gate
-is still the single computation shared by the published catalog and provider-bound resolution: a
-capability with no matching healthy implementation is `UNAVAILABLE` and never resolves to a provider
-binding (fail-closed), with `CompositionValidator`'s `CAPABILITY_UNAVAILABLE` check as the upstream
-admission guard. `media.transcode` keeps its own un-materialized `UNAVAILABLE` verdict (its provider
-output has no typed adapter yet).
-
-The worker runtime-support requirement (`WorkerRuntimeSupportRequirement`) is likewise not declared
-here, because it belongs to that dispatch path.
-
-## Commit path
-
-`CoverImageCommitService` is one transactional fence:
-
-1. **Idempotent replay** (increment 4 fix): before the commit fence it resolves the cover through
-   the canonical `ArtifactCommitService.findByIdempotencyKey(tenant, "cover-image:" + taskId)` and,
-   when the canonical adapter delegates replay to the caller's durable record, through the task row
-   itself (`COMPLETED` + `artifact_id`). A retry returns the already-committed Artifact id and never
-   re-commits.
-2. Storage publication through `StorageOutputPort` with `IssuanceIdempotencyKey("cover-image:" + taskId)`.
-3. A single `ArtifactCommitService.commit(...)` call carrying the pinned digest and one `COVER_OF`
-   provenance declaration. No Artifact row, replica row or `artifact_relation` row is ever written
-   directly, and `ArtifactCommitService` is not bypassed.
-4. Task completion with the returned `ArtifactId`.
-
-The canonical jOOQ adapter is fail-closed: a re-commit of an existing Artifact identity returns
-`ARTIFACT-409-001` ("Artifact already exists"). That fail-closed behaviour is exactly why replay
-must happen in the caller (step 1) and is intentionally left unchanged.
-
-## Runtime requirements
-
-| Requirement | Value |
-|---|---|
-| Process | dedicated worker process, `web-application-type: none`, no controller/security scan |
-| Profiles | `temporal,ffmpeg-worker` (worker profile applied **last**, per `PlatformFfmpegWorkerApplication.WORKER_PROFILES`; shared with `media.thumbnail`) |
-| Queue set | exactly `{media-platform-tasks}`; `workflow-process` must be absent |
-| Binaries | `ffmpeg`, `ffprobe` (probe) and `bwrap` on the pinned paths |
-| Storage (subject read) | a registered `StorageProvider` bean — the worker composes `LocalObjectStoreStorageProvider` (`app.cover-image.storage.provider-id`, `app.cover-image.storage.root`); its object store holds the subject bytes the materializer reads |
-| Storage (cover write) | `StorageOutputPort` (unchanged canonical publication); the commit staging root is `app.cover-image.commit-staging-root`, which defaults to `app.storage.local-root` and **must** be the root the output port resolves relative paths under |
-| Execution backends | the worker composes `RuntimeExecutionBackends` from its own `ExecutionBackend` beans, so `TaskCapability.COVER_IMAGE` resolves to the cover sandbox backend (the API-side PF4J composition is not part of the worker) |
-| Provider selection | the pinned family `platform.ffmpeg` (`FrameExtractExecutionAdapter.PINNED_PROVIDER_ID`); a provider family, never a capability, and never a hardcoded capability id |
-| Temporal | 1.26.2 or compatible; namespace resolved from `TEMPORAL_NAMESPACE` |
-| Database | `platform-app` migrations, including `V22__cover_image_tasks.sql` |
-
-### Worker-role wiring constraints
-
-- The worker does **not** scan `com.example.platform.config` (API/PF4J composition) and imports the
-  shared clock configuration explicitly.
-- The activity establishes the ambient tenant scope for its own execution
-  (`TenantContext.set(tenant)` … restore), because storage publication asserts it.
-- Sandbox work/staging roots must live **outside** the host `/tmp`: the bubblewrap profile mounts a
-  private tmpfs on `/tmp`, so any host path below it is invisible to the sandboxed provider.
-- The canonical `COVER_OF` edge identity is the bounded digest introduced by the platform fix
-  `2f75b088` — `sha256(child ‖ 0x00 ‖ parent)` rendered as 64 lowercase hex characters — so it fits
-  `artifact_relation.id varchar(64)` for real identities (`art-<uuid>` subjects at 40 characters,
-  `art-cover-<uuid>` covers at 46). The digest is deterministic (re-commits stay idempotent),
-  direction-sensitive, and the endpoints remain the authoritative facts, stored verbatim in
-  `source_artifact_id` / `target_artifact_id`. The previous `child + "-" + parent` concatenation
-  overflowed the column and is gone.
-
-### Profile precedence
-
-Spring Boot replaces a list property with the value from the highest-precedence source that defines
-it, so the **last** profile in the active list wins. `application-ffmpeg-worker.yml` therefore
-only removes the base `application-temporal.yml` worker list when the worker profile is applied
-after `temporal`.
-
-`PlatformFfmpegWorkerApplication.WORKER_PROFILES = [temporal, ffmpeg-worker]` declares exactly that
-order, and `main()` applies it, so the worker profile is last and its single-queue list wins: the
-runtime-grouped ffmpeg worker polls `media-platform-tasks` only (asserted by
-`PlatformFfmpegWorkerQueueSetTest`, which also keeps a negative control showing the base profile alone
-would poll `workflow-process`). The retired per-capability worker profiles and their
-`SPRING_CONFIG_ADDITIONAL_LOCATION` override are gone with the merged worker.
-
-## Acceptance
-
-- `FrameExtractProviderContractTest` — the merged capability-neutral frame-extract provider: one
-  provider family plus one implementation declares a capability list, the manifest vocabulary is
-  capability-independent, and everything that genuinely differs per capability is carried by a
-  profile selected from the executing `capabilityId`.
-- `CoverImageApiContextRegistrationTest` — boots the real `PlatformApplication` context and asserts the
-  API registers exactly `CoverImageController` + `CoverImageService` + `CoverImageTaskStore` from the
-  cover package, that the documented route is present, and that every worker-only cover bean is absent.
-- `FrameExtractExecutionAdapterTest` — N:M worker-side topology: one provider declaring two
-  capabilities is indexed under each, capability-scoped dispatch passes the executing capability to
-  the provider, and dispatch never crosses providers.
-- `FrameExtractPlatformRegistrationTest` — the single merged contribution is registered in the
-  platform capability registry and declares exactly `media.cover-image@1.0` and `media.thumbnail@1.0`
-  (model A, N:M), failing closed on invalid or duplicate contributions.
-- `PlatformFfmpegWorkerQueueSetTest` — reflects the real `WorkerFactory.workers` map for the merged
-  worker and asserts exactly `{media-platform-tasks}` with `workflow-process` absent (plus a negative
-  control on the base profile).
-- `PlatformFfmpegWorkerApplicationTemporalRoleContextTest` — boots the real merged worker context and
-  scans the bean graph: no `@RestController`/`@Controller` bean, web disabled, one `WorkerFactory` on
-  the canonical queue, and both cover and thumbnail capabilities present.
-- `CoverImageCommitServiceIdempotencyTest` — DB-backed (Testcontainers) replay proof: the same
-  Artifact is returned and the commit fence is never reached again.
-- `JooqArtifactCommitServiceCoverOfTest` — DB-backed canonical `COVER_OF` edge, fail-closed
-  conflicting digest and fail-closed identity re-commit.
-
-Local acceptance uses the merged `platform-ffmpeg-worker.jar` worker image built from
-`infra/docker/Dockerfile.ffmpeg-worker` and guarded by
-`PlatformFfmpegWorkerApplicationArchitectureTest`.
+Real PNG/JPEG generation, HTTP bytes, ffprobe/hash, idempotency, failure/retry, cancellation and negative
+access checks run through `scripts/dev/first-render` in newly owned local PG18/Temporal resources.
+The evidence identifies exact source bytes; Fake/unit results never replace this real acceptance.
+Protected production runners and Neon/BWS permissions remain `DEPLOYMENT_ISOLATION_NOT_VERIFIED`.

@@ -2,12 +2,6 @@ package com.example.platform.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.coverimage.CoverImageActivitiesImpl;
-import com.example.platform.coverimage.CoverImageExecutionBackend;
-import com.example.platform.coverimage.CoverImageWorkflowImpl;
-import com.example.platform.thumbnail.ThumbnailActivitiesImpl;
-import com.example.platform.thumbnail.ThumbnailExecutionBackend;
-import com.example.platform.thumbnail.ThumbnailWorkflowImpl;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -27,8 +21,8 @@ class PlatformFfmpegWorkerApplicationArchitectureTest {
         String source = Files.readString(Path.of(
                 "src/main/java/com/example/platform/runtime/PlatformFfmpegWorkerApplication.java"));
         assertThat(source).contains("WebApplicationType.NONE")
-                .contains("com.example.platform.coverimage")
-                .contains("com.example.platform.thumbnail")
+                .contains("com.example.platform.runtime")
+                .doesNotContain("com.example.platform.coverimage", "com.example.platform.thumbnail")
                 .doesNotContain("com.example.platform.web");
         assertThat(PlatformFfmpegWorkerApplication.WORKER_PROFILES).contains("temporal");
         assertThat(PlatformFfmpegWorkerApplication.WORKER_PROFILES.getLast()).isEqualTo("ffmpeg-worker");
@@ -47,27 +41,16 @@ class PlatformFfmpegWorkerApplicationArchitectureTest {
     }
 
     @Test
-    void bothCapabilitiesShareTheCanonicalActivityContractAndQueue() {
-        for (Class<?> workerBean : new Class<?>[] {
-                CoverImageActivitiesImpl.class, ThumbnailActivitiesImpl.class,
-                CoverImageExecutionBackend.class, ThumbnailExecutionBackend.class}) {
-            assertThat(workerBean.getAnnotation(
-                    org.springframework.boot.autoconfigure.condition.ConditionalOnProperty.class).havingValue())
-                    .as(workerBean.getSimpleName() + " is worker-role only")
-                    .isEqualTo("WORKER");
+    void graphAndArtifactCapabilitiesShareTheFormalActivityRuntimeAndQueue() {
+        for(Class<?> activity: new Class<?>[]{com.example.platform.runtime.mediatask.MediaTaskActivitiesAdapter.class,
+                com.example.platform.runtime.mediatask.CapabilityExecutionActivity.class}) {
+            assertThat(activity.getAnnotation(io.temporal.spring.boot.ActivityImpl.class).taskQueues()).containsExactly("media-platform-tasks");
+            assertThat(activity.getAnnotation(org.springframework.boot.autoconfigure.condition.ConditionalOnExpression.class)).isNotNull();
         }
-        assertThat(CoverImageActivitiesImpl.class.getAnnotation(
-                io.temporal.spring.boot.ActivityImpl.class).taskQueues())
-                .containsExactly("media-platform-tasks");
-        assertThat(ThumbnailActivitiesImpl.class.getAnnotation(
-                io.temporal.spring.boot.ActivityImpl.class).taskQueues())
-                .containsExactly("media-platform-tasks");
-        assertThat(CoverImageWorkflowImpl.class.getAnnotation(
-                io.temporal.spring.boot.WorkflowImpl.class).taskQueues())
-                .containsExactly("media-platform-tasks");
-        assertThat(ThumbnailWorkflowImpl.class.getAnnotation(
-                io.temporal.spring.boot.WorkflowImpl.class).taskQueues())
-                .containsExactly("media-platform-tasks");
+        for(Class<?> workflow: new Class<?>[]{com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowImpl.class,
+                com.example.platform.workflow.temporal.mediatask.CapabilityExecutionWorkflowImpl.class}) {
+            assertThat(workflow.getAnnotation(io.temporal.spring.boot.WorkflowImpl.class).taskQueues()).containsExactly("media-platform-tasks");
+        }
     }
 
     @Test

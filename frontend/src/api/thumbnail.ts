@@ -1,11 +1,36 @@
 import { z } from 'zod'
+import api from './index'
 import { apiRequest, type ApiClientConfig } from './core/api-client'
 
-export const thumbnailTaskSchema = z.object({taskId:z.string(),status:z.enum(['ADMITTED','RUNNING','COMMITTING','COMPLETED','FAILED','CANCELLED']),artifactId:z.string().nullable().optional(),failureCode:z.string().nullable().optional()})
-export type ThumbnailTask = z.infer<typeof thumbnailTaskSchema>
-export const thumbnailAssetSchema = z.object({id:z.string(),mediaType:z.string(),filename:z.string().nullable().optional(),sizeBytes:z.number().nullable().optional()})
+export const thumbnailExecutionSchema = z.object({
+  executionId: z.string(), generation: z.number().int().positive(),
+  state: z.enum(['ADMITTED', 'RUNNING', 'RETRYING', 'COMPLETED', 'FAILED', 'CANCELLED']),
+  artifactId: z.string().nullable(), failureCode: z.string().nullable(), retryBlocked: z.boolean(),
+})
+export type ThumbnailExecution = z.infer<typeof thumbnailExecutionSchema>
+export const thumbnailAssetSchema = z.object({ id: z.string(), mediaType: z.string(), filename: z.string().nullish(), sizeBytes: z.number().nullish() })
 export type ThumbnailAsset = z.infer<typeof thumbnailAssetSchema>
-export async function listThumbnailAssets(config:ApiClientConfig, projectId:string, signal?:AbortSignal) { return apiRequest(config,`/api/projects/${encodeURIComponent(projectId)}/assets`,z.array(thumbnailAssetSchema),{signal}) }
-export async function submitThumbnail(config:ApiClientConfig, tenantId:string, projectId:string, body:{sourceAssetId:string;timestampSeconds:number;imageFormat:string;idempotencyKey:string}) { return apiRequest(config,`/api/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/thumbnails`,thumbnailTaskSchema,{method:'POST',body}) }
-export async function getThumbnail(config:ApiClientConfig, tenantId:string, projectId:string, taskId:string) { return apiRequest(config,`/api/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/thumbnails/${encodeURIComponent(taskId)}`,thumbnailTaskSchema) }
-export async function cancelThumbnail(config:ApiClientConfig, tenantId:string, projectId:string, taskId:string) { return apiRequest(config,`/api/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/thumbnails/${encodeURIComponent(taskId)}/cancel`,thumbnailTaskSchema,{method:'POST'}) }
+const route = (tenant: string, project: string) => `/api/tenants/${encodeURIComponent(tenant)}/projects/${encodeURIComponent(project)}/thumbnails`
+export function listThumbnailAssets(config: ApiClientConfig, project: string, signal?: AbortSignal) {
+  return apiRequest(config, `/api/projects/${encodeURIComponent(project)}/assets`, z.array(thumbnailAssetSchema), { signal })
+}
+export function submitThumbnail(config: ApiClientConfig, tenant: string, project: string, body: { sourceAssetId: string; timestampSeconds: number; imageFormat: string; idempotencyKey: string }) {
+  return apiRequest(config, route(tenant, project), thumbnailExecutionSchema, { method: 'POST', body })
+}
+export function getThumbnail(config: ApiClientConfig, tenant: string, project: string, execution: string) {
+  return apiRequest(config, `${route(tenant, project)}/${encodeURIComponent(execution)}`, thumbnailExecutionSchema)
+}
+export function cancelThumbnail(config: ApiClientConfig, tenant: string, project: string, execution: string, generation: number) {
+  return apiRequest(config, `${route(tenant, project)}/${encodeURIComponent(execution)}/cancel`, thumbnailExecutionSchema, { method: 'POST', body: { generation } })
+}
+export function retryThumbnail(config: ApiClientConfig, tenant: string, project: string, execution: string, generation: number) {
+  return apiRequest(config, `${route(tenant, project)}/${encodeURIComponent(execution)}/retry`, thumbnailExecutionSchema, { method: 'POST', body: { generation } })
+}
+export async function readThumbnailImage(config: ApiClientConfig, tenant: string, project: string, execution: string, signal?: AbortSignal): Promise<Blob> {
+  // Reuse the canonical OIDC transport. Never place credentials in an <img> or download URL.
+  const { data } = await api.get(`${route(tenant, project)}/${encodeURIComponent(execution)}/image`, {
+    baseURL: config.baseUrl, headers: config.headers, responseType: 'blob', signal,
+  })
+  if (!(data instanceof Blob) || !['image/jpeg', 'image/png'].includes(data.type)) throw new Error('Image content unavailable')
+  return data
+}

@@ -111,7 +111,14 @@ class FfmpegClosedLoopIntegrationTest {
                         8 * 1024 * 1024,
                         SandboxCancellation.never());
 
-        RuntimeClosedLoopResult result = harness.execute(graph, binding, "success");
+        RuntimeClosedLoopResult result;
+        try {
+            result = harness.execute(graph, binding, "success");
+        } catch (ProviderNativeExecutionFailure failure) {
+            // This test launches only synthetic media with an empty secret environment.
+            throw new AssertionError("synthetic FFmpeg execution: " + failure.code() + ": "
+                    + failure.diagnostics().getOrDefault("boundedStderr", "no bounded stderr"), failure);
+        }
 
         assertThat(result.executedTaskResults()).hasSize(1);
         assertThat(harness.authority.commitCount).isEqualTo(1);
@@ -250,6 +257,14 @@ class FfmpegClosedLoopIntegrationTest {
     }
 
     private static Path binary(String name) {
+        String declaredRuntime = System.getProperty("media.platform.ffmpeg.binary-dir");
+        if (declaredRuntime != null) {
+            Path binary = Path.of(declaredRuntime).resolve(name).toAbsolutePath().normalize();
+            if (!Files.isRegularFile(binary) || !Files.isExecutable(binary)) {
+                throw new IllegalStateException("declared FFmpeg runtime binary is unavailable: " + name);
+            }
+            return binary;
+        }
         String path = System.getenv("PATH");
         if (path == null) {
             throw new IllegalStateException("PATH is absent; cannot locate " + name);
@@ -339,7 +354,7 @@ class FfmpegClosedLoopIntegrationTest {
                             authority, Map.of(storage.providerId(), storage), metrics),
                     new FencedReuseCompletionOrchestrator(index, completionAuthority()),
                     Map.of(FfmpegCpuProvider.BINDING, binding),
-                    metrics);
+                    metrics, (ignoredPublicationTask, ignoredPublicationContext, publicationAction) -> publicationAction.commit());
             return orchestrator.execute(new RuntimeClosedLoopRequest(
                     TENANT, graph, Set.of(task.id()),
                     Map.of(task.id(), Cacheability.CACHEABLE),

@@ -9,6 +9,7 @@ import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.PlatformExecutionResult.PlatformExecutionResultPath;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.PlatformExecutionAdmissionRecord;
 
 import java.math.BigDecimal;
@@ -86,22 +87,37 @@ public class PlatformExecutionAdmission extends TableImpl<PlatformExecutionAdmis
     public final TableField<PlatformExecutionAdmissionRecord, String> ACTOR_ID = createField(DSL.name("actor_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
+     * The column <code>public.platform_execution_admission.project_id</code>.
+     */
+    public final TableField<PlatformExecutionAdmissionRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.platform_execution_admission.failure_code</code>.
+     */
+    public final TableField<PlatformExecutionAdmissionRecord, String> FAILURE_CODE = createField(DSL.name("failure_code"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column
+     * <code>public.platform_execution_admission.retry_blocked</code>.
+     */
+    public final TableField<PlatformExecutionAdmissionRecord, Boolean> RETRY_BLOCKED = createField(DSL.name("retry_blocked"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
+
+    /**
      * The column
      * <code>public.platform_execution_admission.source_domain</code>.
      */
     public final TableField<PlatformExecutionAdmissionRecord, String> SOURCE_DOMAIN = createField(DSL.name("source_domain"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column
-     * <code>public.platform_execution_admission.composition_id</code>.
+     * The column <code>public.platform_execution_admission.source_id</code>.
      */
-    public final TableField<PlatformExecutionAdmissionRecord, String> COMPOSITION_ID = createField(DSL.name("composition_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+    public final TableField<PlatformExecutionAdmissionRecord, String> SOURCE_ID = createField(DSL.name("source_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column
-     * <code>public.platform_execution_admission.composition_revision</code>.
+     * <code>public.platform_execution_admission.source_revision</code>.
      */
-    public final TableField<PlatformExecutionAdmissionRecord, Long> COMPOSITION_REVISION = createField(DSL.name("composition_revision"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<PlatformExecutionAdmissionRecord, Long> SOURCE_REVISION = createField(DSL.name("source_revision"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.platform_execution_admission.plan_id</code>.
@@ -263,6 +279,23 @@ public class PlatformExecutionAdmission extends TableImpl<PlatformExecutionAdmis
         return Arrays.asList(Keys.UQ_PLATFORM_EXECUTION_ADMISSION_IDEMPOTENCY, Keys.UQ_PLATFORM_EXECUTION_ADMISSION_PLAN);
     }
 
+    @Override
+    public List<ForeignKey<PlatformExecutionAdmissionRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.PLATFORM_EXECUTION_ADMISSION__FK_PLATFORM_EXECUTION_PROJECT_SCOPE);
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.PLATFORM_EXECUTION_ADMISSION__FK_PLATFORM_EXECUTION_PROJECT_SCOPE, null);
+
+        return _project;
+    }
+
     private transient PlatformExecutionResultPath _platformExecutionResult;
 
     /**
@@ -281,9 +314,10 @@ public class PlatformExecutionAdmission extends TableImpl<PlatformExecutionAdmis
         return Arrays.asList(
             Internal.createCheck(this, DSL.name("chk_platform_execution_admission_plan_fingerprint"), "(((plan_fingerprint IS NOT NULL) AND (length((plan_fingerprint)::text) > 0)))", true),
             Internal.createCheck(this, DSL.name("chk_platform_execution_admission_quota_charged_units"), "((((quota_charged = false) AND (quota_charged_units IS NULL)) OR ((quota_charged = true) AND (quota_charged_units IS NOT NULL) AND (quota_charged_units >= (0)::numeric))))", true),
-            Internal.createCheck(this, DSL.name("platform_execution_admission_composition_revision_check"), "((composition_revision >= 0))", true),
+            Internal.createCheck(this, DSL.name("ck_artifact_execution_project_required"), "((((source_domain)::text <> 'artifact-capability'::text) OR (project_id IS NOT NULL)))", true),
             Internal.createCheck(this, DSL.name("platform_execution_admission_ownership_generation_check"), "((ownership_generation >= 0))", true),
             Internal.createCheck(this, DSL.name("platform_execution_admission_quota_units_check"), "((quota_units >= (0)::numeric))", true),
+            Internal.createCheck(this, DSL.name("platform_execution_admission_source_revision_check"), "((source_revision >= 0))", true),
             Internal.createCheck(this, DSL.name("platform_execution_admission_state_check"), "(((state)::text = ANY ((ARRAY['ADMITTED'::character varying, 'RUNNING'::character varying, 'RETRYING'::character varying, 'COMPLETED'::character varying, 'FAILED'::character varying, 'CANCELLED'::character varying])::text[])))", true)
         );
     }

@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Configuration;
  * {@code Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>>} the closed loop resolves its
  * runtime binding from. It mirrors the existing remote worker composition
  * ({@code RemoteWorkerRuntimeConfiguration}) and the worker-profile bean style of
- * {@code CoverImageMaterializationConfiguration}: nothing is invented, every value comes from the
+ * {@code ArtifactMaterializationConfiguration}: nothing is invented, every value comes from the
  * worker's own configuration, and the worker role is required.
  *
  * <p><b>Fail closed.</b> A missing plugin directory stops context startup. A plugin whose
@@ -38,8 +38,8 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>The worker is runtime-grouped (one ffmpeg runtime), so every contribution's runtime context uses
  * the guard-validated {@code platform.ffmpeg-worker.sandbox.ffmpeg} executable. The binding map is
- * worker-scoped, so it cannot carry a per-execution cancellation source; cancellation remains
- * {@link SandboxCancellation#never()} at this seam and is bounded by the configured timeout.
+ * worker-scoped, its immutable bindings are copied with each execution's cancellation signal; the default remains
+ * {@link SandboxCancellation#never()} and never carries another execution's mutable cancellation state.
  */
 @Configuration
 @ConditionalOnExpression(

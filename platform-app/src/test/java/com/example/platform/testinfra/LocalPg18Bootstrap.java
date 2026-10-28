@@ -32,6 +32,24 @@ public final class LocalPg18Bootstrap {
             files.filter(p->p.toString().endsWith(".java")).forEach(p->generated.add(p.toString()));
         }
         if(generated.isEmpty())throw new IllegalStateException("REAL_JOOQ_GENERATION_EMPTY");
+        var generatedPackage = output.resolve("com/example/platform/typedschema/jooq/generated");
+        var committedPackage = root.resolve("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated");
+        var freshNames = new java.util.TreeSet<String>();
+        var committedNames = new java.util.TreeSet<String>();
+        try (var files = java.nio.file.Files.walk(generatedPackage)) {
+            files.filter(p -> p.toString().endsWith(".java"))
+                    .forEach(p -> freshNames.add(generatedPackage.relativize(p).toString()));
+        }
+        try (var files = java.nio.file.Files.walk(committedPackage)) {
+            files.filter(p -> p.toString().endsWith(".java"))
+                    .forEach(p -> committedNames.add(committedPackage.relativize(p).toString()));
+        }
+        if (!freshNames.equals(committedNames)) throw new IllegalStateException("REAL_JOOQ_SOURCE_PATH_MISMATCH");
+        for (String name : freshNames) {
+            if (java.nio.file.Files.mismatch(generatedPackage.resolve(name), committedPackage.resolve(name)) != -1)
+                throw new IllegalStateException("REAL_JOOQ_SOURCE_BYTES_MISMATCH: " + name);
+        }
+        System.out.println("REAL_JOOQ_COMMITTED_PARITY sources=" + freshNames.size() + " exact_bytes=true");
         var classes=scratch.resolve("generated-classes");java.nio.file.Files.createDirectories(classes);
         var options=new java.util.ArrayList<String>(java.util.List.of("-proc:none","-cp",System.getProperty("java.class.path"),"-d",classes.toString()));
         options.addAll(generated);

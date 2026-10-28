@@ -24,6 +24,8 @@ class FirstRenderPlanningAndBindingServiceWiringTest {
                         FirstRenderPlanningAndBindingService.class,
                         FirstRenderPlanningAndBindingConfiguration.class)
                 .withBean(RenderJobService.class, () -> mock(RenderJobService.class))
+                .withBean(com.example.platform.render.api.GraphRenderLifecycle.class,
+                        () -> mock(com.example.platform.render.api.GraphRenderLifecycle.class))
                 .withBean(TimelineRevisionSaveService.class, () -> mock(TimelineRevisionSaveService.class))
                 .withBean(TimelineRevisionQueryService.class, () -> mock(TimelineRevisionQueryService.class))
                 .withBean(ArtifactQueryService.class, () -> mock(ArtifactQueryService.class))

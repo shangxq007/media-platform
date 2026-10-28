@@ -6,16 +6,16 @@ import java.net.URI;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-/** Authentication and project authorization precede logical lookup, storage access and response headers. */
+/** Authentication and project projectAuthorization precede logical lookup, storage access and response headers. */
 @RestController
 @RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/render-jobs/{renderJobId}/artifacts")
 public class ArtifactContentController {
     private final ArtifactContentRead contents;
-    private final ArtifactProjectAuthorizationPort authorization;
-    public ArtifactContentController(ArtifactContentRead contents,ArtifactProjectAuthorizationPort authorization){this.contents=contents;this.authorization=authorization;}
+    private final ArtifactProjectAuthorizationPort projectAuthorization;
+    public ArtifactContentController(ArtifactContentRead contents,ArtifactProjectAuthorizationPort projectAuthorization){this.contents=contents;this.projectAuthorization=projectAuthorization;}
     @GetMapping("/{artifactId}/content")
     public ResponseEntity<?> content(@PathVariable String tenantId,@PathVariable String projectId,@PathVariable String renderJobId,@PathVariable String artifactId) {
-        authorization.requireRead(tenantId,projectId);
+        projectAuthorization.requireRead(tenantId,projectId);
         try {
             var content=contents.read(new ArtifactScope(tenantId,projectId,renderJobId),new ArtifactId(artifactId));
             byte[] bytes=content.bytes();

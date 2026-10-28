@@ -6,5 +6,7 @@ package com.example.platform.render.domain.renderplan;
  */
 public enum RenderOutputRole {
     RENDER_MASTER,
-    DELIVERY_RENDITION
+    DELIVERY_RENDITION,
+    /** Materialized derivative, with no implied RenderJob or master-output authority. */
+    DERIVED_MEDIA
 }

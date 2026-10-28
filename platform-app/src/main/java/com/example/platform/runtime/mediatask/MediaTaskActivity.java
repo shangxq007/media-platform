@@ -263,13 +263,17 @@ public final class MediaTaskActivity {
             ExecutableTask executableTask) {
         var current = grantBoundary.findCurrentGrant(taskId);
         if (current.isPresent()) {
+            if (grantMinter != null) grantMinter.requireLocalGrant(current.orElseThrow());
             return current.orElseThrow();
         }
         if (grantMinter != null) {
             FirstRenderGrantMinter.Result result = grantMinter.mint(
                     renderJobId, taskId, graph, requireContribution(executableTask));
             if (result instanceof FirstRenderGrantMinter.Result.Minted minted) {
-                return grantBoundary.findCurrentGrant(taskId).orElse(minted.grant());
+                var grant=grantBoundary.findCurrentGrant(taskId).orElseThrow(()->new TaskRuntimeExecutionConstructionException(
+                        "GRANT_NO_LONGER_CURRENT","new grant lost its current ownership"));
+                grantMinter.requireLocalGrant(grant);
+                return grant;
             }
             if (result instanceof FirstRenderGrantMinter.Result.Unavailable unavailable) {
                 throw new TaskRuntimeExecutionConstructionException(

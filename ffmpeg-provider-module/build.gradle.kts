@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.example.platform"
-version = "1.0.0"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -81,4 +81,11 @@ tasks.register<Copy>("stageFfmpegLinuxRuntime") {
     eachFile {
         if (name == "ffmpeg" || name == "ffprobe") permissions { unix("rwxr-xr-x") }
     }
+}
+
+// Integration tests use the same declared GPL runtime as the real Worker, not host PATH codecs.
+tasks.test {
+    dependsOn(tasks.named("stageFfmpegLinuxRuntime"))
+    systemProperty("media.platform.ffmpeg.binary-dir",
+        layout.buildDirectory.dir("ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl").get().asFile.absolutePath)
 }

@@ -6,19 +6,8 @@ import com.example.platform.shared.capability.MediaFrameExtractParametersV1;
 import com.example.platform.shared.capability.RasterImageEncoding;
 import java.math.BigDecimal;
 
-/**
- * Canonical media.cover-image capability contract.
- *
- * <p>Platform owns this contract. {@link #PROVIDER} is a provider/backend <em>family</em> identity and
- * is deliberately independent of any single capability; a provider declares the capabilities it
- * serves through its manifest
- * ({@link com.example.platform.contract.media.FrameExtractManifest#capabilities()}), and a capability
- * may be served by more than one provider. {@link #CAPABILITY} is one capability of that family —
- * not a provider identity.
- *
- * <p>The subject is a canonical Artifact (no second identity) and the produced cover is committed as
- * an image Artifact related to the subject through {@code ProvenanceRelationType.COVER_OF}.
- */
+/** Provider-neutral media request intent. Its output is committed by the canonical Artifact owner;
+ * provider choice and execution state are deliberately absent from this transport vocabulary. */
 public final class CoverImageContracts {
 
     /** Capability served by this slice; one of the provider family's declared capabilities. */
@@ -27,37 +16,11 @@ public final class CoverImageContracts {
     /** Capability contract version declared alongside {@link #CAPABILITY}. */
     public static final String CAPABILITY_VERSION = "1.0";
 
-    /**
-     * Provider/backend family identity — never a capability identity. The family may declare several
-     * capabilities; this slice is the {@link #CAPABILITY} one.
-     */
-    public static final String PROVIDER = "platform.ffmpeg";
-
-    /**
-     * One provider runtime/adapter implementation of {@link #PROVIDER}. Implementation identity is
-     * separate from both the family identity and any capability identity.
-     */
-    public static final String PROVIDER_IMPLEMENTATION = "ffmpeg.cpu.frame-extract.v1";
-
-    public static final String PROVIDER_VERSION = "1.0.0";
-
-    /**
-     * Provenance operation tag carried on the single {@code COVER_OF} edge.
-     *
-     * <p>This is a capability-independent semantic label, never a capability id and never a
-     * canonical {@code OperationDefinitionId}. The capability is an independent fact
-     * ({@link #CAPABILITY}); the previous value {@code "cover-image:" + CAPABILITY + "@1"} fused the
-     * operation, capability and version identities into one string, which is exactly the
-     * operation/capability conflation the boundary contract forbids. The provenance contract only
-     * requires a non-blank {@code operationId}
-     * ({@link com.example.platform.artifact.domain.ArtifactCommitRequest.ProvenanceEdgeDeclaration#operationId()}),
-     * so the tag stays a plain slice operation label.
-     */
+    /** Provenance operation label; not a second execution or Operation authority. */
     public static final String OPERATION_ID = "cover-image";
 
     private CoverImageContracts() {}
 
-    public enum Status { ADMITTED, RUNNING, COMMITTING, COMPLETED, FAILED, CANCELLED }
 
     /**
      * Immutable cover <em>transport</em> request; the subject is the canonical Artifact identity.
@@ -125,8 +88,6 @@ public final class CoverImageContracts {
         }
     }
 
-    /** Durable task outcome; {@code artifactId} is present only when the cover was committed. */
-    public record Result(String taskId, Status status, String artifactId, String failureCode) {}
 
     static void require(String value, String field) {
         if (value == null || value.isBlank()) {

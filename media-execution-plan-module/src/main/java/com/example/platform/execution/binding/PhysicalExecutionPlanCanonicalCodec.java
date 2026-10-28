@@ -7,6 +7,8 @@ import com.example.platform.execution.domain.ExecutionPlanId;
 import com.example.platform.execution.domain.ExecutionPlanSchemaVersion;
 import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.planning.CanonicalWriter;
+import com.example.platform.execution.planning.ArtifactCapabilityRequest;
+import com.example.platform.shared.capability.*;
 import com.example.platform.execution.planning.ExecutionIoProjection.CapabilityRequirementRef;
 import com.example.platform.execution.planning.ExecutionIoProjection.ExecutionIntentRef;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
@@ -148,6 +150,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                 .optional(unit.propagatedExtent() != null,
                         unit.propagatedExtent() == null ? null : extent(unit.propagatedExtent()))
                 .field("deterministicallyCacheable", Boolean.toString(unit.deterministicallyCacheable()))
+                .optional(unit.artifactCapabilityRequest() != null,
+                        unit.artifactCapabilityRequest() == null ? null : artifactCapability(unit.artifactCapabilityRequest()))
                 .build();
     }
 
@@ -190,10 +194,42 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         FrameReader unitExtentReader = reader.optionalNested();
         RenderExtent unitExtent = unitExtentReader == null ? null : extent(unitExtentReader);
         boolean cacheable = reader.fieldBoolean("deterministicallyCacheable");
+        var capabilityReader = reader.optionalNested();
+        var artifactCapability = capabilityReader == null ? null : artifactCapability(capabilityReader);
+        if (reader.hasRemaining()) throw new UnsupportedPersistedConstructException("trailing physical unit data");
         return new PhysicalPlanUnit(
                 stepId, logicalNodeId, renderNodeId, kind, operationKey,
                 inputs, outputs, dependencies, temporalWindow, coverage,
-                capabilityRefs, intentRefs, unitExtent, cacheable);
+                capabilityRefs, intentRefs, unitExtent, cacheable, artifactCapability);
+    }
+
+    private static String artifactCapability(ArtifactCapabilityRequest request) {
+        var parameters = request.parameters();
+        return new CanonicalWriter().tag("ArtifactCapabilityRequest")
+                .field("requestIdentity", request.requestIdentity()).field("capabilityId", request.capabilityId())
+                .field("artifactId", request.source().artifactId().value())
+                .field("contentDigest", request.source().contentDigest().canonicalValue())
+                .exactTime(parameters.position().ticks(), parameters.position().timeScale())
+                .field("encoding", parameters.encoding() instanceof RasterImageEncoding.Png ? "png" : "jpeg")
+                .field("quality", parameters.encoding() instanceof RasterImageEncoding.Jpeg jpeg
+                        ? Integer.toString(jpeg.quality().orElseThrow().value()) : "")
+                .field("width", parameters.width() instanceof FrameWidth.ExplicitPixels width
+                        ? Integer.toString(width.pixels()) : "native").build();
+    }
+    private static ArtifactCapabilityRequest artifactCapability(FrameReader reader) {
+        reader.requireTag("ArtifactCapabilityRequest");
+        String identity = reader.field("requestIdentity"), capability = reader.field("capabilityId");
+        var source = new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(new ArtifactId(reader.field("artifactId")),
+                ContentDigest.sha256(reader.field("contentDigest")));
+        var position = time(reader);
+        String encoding = reader.field("encoding"), quality = reader.field("quality"), width = reader.field("width");
+        RasterImageEncoding format;
+        if ("png".equals(encoding) && quality.isEmpty()) format = RasterImageEncoding.Png.PNG;
+        else if ("jpeg".equals(encoding)) format = new RasterImageEncoding.Jpeg(new JpegQuality(Integer.parseInt(quality)));
+        else throw new UnsupportedPersistedConstructException("unsupported raster encoding");
+        FrameWidth frameWidth = "native".equals(width) ? FrameWidth.Native.NATIVE : new FrameWidth.ExplicitPixels(Integer.parseInt(width));
+        if (reader.hasRemaining()) throw new UnsupportedPersistedConstructException("trailing capability request data");
+        return new ArtifactCapabilityRequest(identity, capability, source, new MediaFrameExtractParametersV1(position, format, frameWidth));
     }
 
     // ---------- inputs / outputs / dependencies ----------

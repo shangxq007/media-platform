@@ -14,12 +14,19 @@ import java.util.Objects;
 public final class OutputStagingArea {
 
     private final Path root;
+    private final Object rootIdentity;
 
     public OutputStagingArea(Path root) {
         Objects.requireNonNull(root, "root");
         this.root = root.toAbsolutePath().normalize();
         try {
+            for (Path component=this.root; component!=null; component=component.getParent()) {
+                if (Files.isSymbolicLink(component)) throw new IOException("staging root contains a symbolic link");
+            }
             Files.createDirectories(this.root);
+            var attributes=Files.readAttributes(this.root,java.nio.file.attribute.BasicFileAttributes.class,java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            if(!attributes.isDirectory() || !this.root.toRealPath().equals(this.root))throw new IOException("staging root is not a canonical directory");
+            rootIdentity=attributes.fileKey();
         } catch (IOException exception) {
             throw new IllegalArgumentException("cannot create staging root", exception);
         }
@@ -27,6 +34,10 @@ public final class OutputStagingArea {
 
     public StagedExecutionOutput stage(InputStream providerOutput) throws IOException {
         Objects.requireNonNull(providerOutput, "providerOutput");
+        var attributes=Files.readAttributes(root,java.nio.file.attribute.BasicFileAttributes.class,java.nio.file.LinkOption.NOFOLLOW_LINKS);
+        if(!attributes.isDirectory() || !root.toRealPath().equals(root) || !Objects.equals(rootIdentity,attributes.fileKey())) {
+            throw new IOException("staging root identity changed");
+        }
         Path staged = Files.createTempFile(root, "provider-output-", ".staged");
         MessageDigest digest;
         try {
@@ -37,7 +48,7 @@ public final class OutputStagingArea {
         long length = 0;
         boolean complete = false;
         try {
-          try (InputStream input = providerOutput; var output = Files.newOutputStream(staged)) {
+          try (InputStream input = providerOutput; var output = Files.newOutputStream(staged,java.nio.file.StandardOpenOption.WRITE,java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
             byte[] buffer = new byte[64 * 1024];
             int read;
             while (true) {

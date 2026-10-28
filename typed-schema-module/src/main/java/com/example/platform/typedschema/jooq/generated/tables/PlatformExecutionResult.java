@@ -8,6 +8,7 @@ import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.PlatformExecutionAdmission.PlatformExecutionAdmissionPath;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt.WfExecutionAttemptPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.PlatformExecutionResultRecord;
 
 import java.time.Instant;
@@ -80,6 +81,17 @@ public class PlatformExecutionResult extends TableImpl<PlatformExecutionResultRe
      * The column <code>public.platform_execution_result.result_id</code>.
      */
     public final TableField<PlatformExecutionResultRecord, String> RESULT_ID = createField(DSL.name("result_id"), SQLDataType.VARCHAR(256).nullable(false), this, "");
+
+    /**
+     * The column <code>public.platform_execution_result.native_task_id</code>.
+     */
+    public final TableField<PlatformExecutionResultRecord, String> NATIVE_TASK_ID = createField(DSL.name("native_task_id"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column
+     * <code>public.platform_execution_result.native_generation</code>.
+     */
+    public final TableField<PlatformExecutionResultRecord, Long> NATIVE_GENERATION = createField(DSL.name("native_generation"), SQLDataType.BIGINT, this, "");
 
     /**
      * The column <code>public.platform_execution_result.storage_receipt</code>.
@@ -204,7 +216,20 @@ public class PlatformExecutionResult extends TableImpl<PlatformExecutionResultRe
 
     @Override
     public List<ForeignKey<PlatformExecutionResultRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.PLATFORM_EXECUTION_RESULT__PLATFORM_EXECUTION_RESULT_EXECUTION_ID_FKEY);
+        return Arrays.asList(Keys.PLATFORM_EXECUTION_RESULT__FK_PLATFORM_RESULT_NATIVE_ATTEMPT, Keys.PLATFORM_EXECUTION_RESULT__PLATFORM_EXECUTION_RESULT_EXECUTION_ID_FKEY);
+    }
+
+    private transient WfExecutionAttemptPath _wfExecutionAttempt;
+
+    /**
+     * Get the implicit join path to the
+     * <code>public.wf_execution_attempt</code> table.
+     */
+    public WfExecutionAttemptPath wfExecutionAttempt() {
+        if (_wfExecutionAttempt == null)
+            _wfExecutionAttempt = new WfExecutionAttemptPath(this, Keys.PLATFORM_EXECUTION_RESULT__FK_PLATFORM_RESULT_NATIVE_ATTEMPT, null);
+
+        return _wfExecutionAttempt;
     }
 
     private transient PlatformExecutionAdmissionPath _platformExecutionAdmission;
@@ -223,6 +248,7 @@ public class PlatformExecutionResult extends TableImpl<PlatformExecutionResultRe
     @Override
     public List<Check<PlatformExecutionResultRecord>> getChecks() {
         return Arrays.asList(
+            Internal.createCheck(this, DSL.name("ck_platform_result_native_scope"), "((((native_task_id IS NULL) AND (native_generation IS NULL)) OR ((native_task_id IS NOT NULL) AND (native_generation > 0))))", true),
             Internal.createCheck(this, DSL.name("platform_execution_result_materialization_state_check"), "(((materialization_state)::text = ANY ((ARRAY['STORAGE_ISSUED'::character varying, 'ARTIFACT_COMMITTED'::character varying, 'FAILED'::character varying, 'COMPENSATING'::character varying])::text[])))", true),
             Internal.createCheck(this, DSL.name("platform_execution_result_ownership_generation_check"), "((ownership_generation >= 0))", true),
             Internal.createCheck(this, DSL.name("platform_execution_result_reconciliation_state_check"), "(((reconciliation_state)::text = ANY ((ARRAY['NONE'::character varying, 'PENDING'::character varying, 'RESOLVED'::character varying, 'DEAD_LETTER'::character varying])::text[])))", true)

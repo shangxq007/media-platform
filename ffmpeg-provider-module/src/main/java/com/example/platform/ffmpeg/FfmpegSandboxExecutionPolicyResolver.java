@@ -87,7 +87,7 @@ public final class FfmpegSandboxExecutionPolicyResolver
                             arguments,
                             timeout),
                     FilesystemPolicy.exact(
-                            Set.of(executable, input.materializedArtifact().path()),
+                            FfmpegRuntimeFiles.inputs(executable, input.materializedArtifact().path()),
                             workspace.root(),
                             workspace.temporaryRoot(),
                             workspace.outputStagingRoot(),

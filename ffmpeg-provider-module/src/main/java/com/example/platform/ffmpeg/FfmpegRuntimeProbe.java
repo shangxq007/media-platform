@@ -37,7 +37,7 @@ public final class FfmpegRuntimeProbe {
             SandboxExecutionRequirement requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(Set.of(executable.toString()), executable.toString(),
                             List.of("-version"), timeout),
-                    FilesystemPolicy.exact(Set.of(executable), workspace.root(),
+                    FilesystemPolicy.exact(FfmpegRuntimeFiles.inputs(executable), workspace.root(),
                             workspace.temporaryRoot(), workspace.outputStagingRoot(),
                             workspace.workingDirectory()),
                     NetworkPolicy.none(),

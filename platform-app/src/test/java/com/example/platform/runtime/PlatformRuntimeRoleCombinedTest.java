@@ -57,7 +57,7 @@ class PlatformRuntimeRoleCombinedTest {
         MockEnvironment env = base("API")
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.temporal.workers-auto-discovery.packages",
-                        "com.example.platform.thumbnail");
+                        "com.example.platform.runtime.mediatask");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("API role");
@@ -70,7 +70,7 @@ class PlatformRuntimeRoleCombinedTest {
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "servlet")
                 .withProperty("spring.temporal.workers-auto-discovery.packages",
-                        "com.example.platform.thumbnail")
+                        "com.example.platform.runtime.mediatask")
                 .withProperty("spring.temporal.workers[0].task-queue", "media-platform-tasks")
                 .withProperty("platform.ffmpeg-worker.sandbox.bwrap", "/bin/true")
                 .withProperty("platform.ffmpeg-worker.sandbox.ffmpeg", "/bin/true")
@@ -85,7 +85,7 @@ class PlatformRuntimeRoleCombinedTest {
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.temporal.workers[0].task-queue", "media-platform-tasks")
                 .withProperty("spring.temporal.workers-auto-discovery.packages",
-                        "com.example.platform.thumbnail")
+                        "com.example.platform.runtime.mediatask")
                 .withProperty("platform.ffmpeg-worker.sandbox.bwrap", "/bin/true")
                 .withProperty("platform.ffmpeg-worker.sandbox.ffmpeg", "/bin/true")
                 .withProperty("platform.ffmpeg-worker.sandbox.ffprobe", "/bin/true");

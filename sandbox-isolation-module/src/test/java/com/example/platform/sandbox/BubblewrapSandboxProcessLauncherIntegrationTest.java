@@ -150,6 +150,35 @@ class BubblewrapSandboxProcessLauncherIntegrationTest {
         assertThat(throughNeutralBoundary.stdout().utf8()).isEqualTo("immutable");
     }
 
+    @Test
+    void cancellationAfterObservedChildStartReapsItWithoutTouchingInput() throws Exception {
+        var detection = BubblewrapSandboxCapabilityDetector.detect();
+        assertThat(detection.launcher()).as(detection.diagnostic()).isPresent();
+        Path workspace = Files.createDirectory(temp.resolve("active-cancellation"));
+        Path input = Files.writeString(workspace.resolve("input"), "owned immutable source");
+        Path unrelated = Files.writeString(temp.resolve("unrelated"), "preserve");
+        Path marker = workspace.resolve(".sandbox-output/started");
+        // The cancellation signal cannot become true until the actual contained child has
+        // consumed its source and published a start marker. No timer guesses process startup.
+        String program = "from pathlib import Path; import sys,time; "
+                + "data=Path(sys.argv[1]).read_text(); "
+                + "Path('/workspace/.sandbox-output/started').write_text(data); "
+                + "print('CHILD_STARTED',flush=True); time.sleep(15)";
+        var result = launch(detection.launcher().orElseThrow(), workspace, input,
+                command("/usr/bin/python3", List.of("-I", "-B", "-c", program, input.toString())),
+                Map.of(), () -> Files.isRegularFile(marker), Duration.ofSeconds(8), 1024);
+        assertThat(Files.readString(marker)).isEqualTo("owned immutable source");
+        assertThat(result.stdout().utf8()).contains("CHILD_STARTED");
+        assertFailure(result, SandboxFailureCode.PROCESS_TERMINATED_BY_LIMIT);
+        assertCleanupCompleteAndReaped(result);
+        assertThat(result.observation().elapsed()).isLessThan(Duration.ofSeconds(8));
+        assertThat(Files.readString(input)).isEqualTo("owned immutable source");
+        assertThat(Files.readString(unrelated)).isEqualTo("preserve");
+        try (var outputs = Files.list(workspace.resolve(".sandbox-output"))) {
+            assertThat(outputs.toList()).containsExactly(marker);
+        }
+    }
+
     private SandboxExecutionResult launch(
             BubblewrapSandboxProcessLauncher launcher,
             Path workspace,

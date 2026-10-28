@@ -32,11 +32,26 @@ public record TaskOutputPublicationContext(
         String region,
         ArtifactMediaType mediaType,
         ArtifactKind artifactKind,
-        Instant evaluatedAt) {
+        Instant evaluatedAt,
+        String executionId) {
 
+    public TaskOutputPublicationContext(String tenantId, String renderJobId, String projectId,
+            StorageProviderId storageProviderId, String region, ArtifactMediaType mediaType,
+            ArtifactKind artifactKind, Instant evaluatedAt) {
+        this(tenantId,renderJobId,projectId,storageProviderId,region,mediaType,artifactKind,evaluatedAt,null);
+    }
+    public static TaskOutputPublicationContext forExecution(String tenantId,String projectId,String executionId,
+            StorageProviderId storageProviderId,String region,ArtifactMediaType mediaType,
+            ArtifactKind artifactKind,Instant evaluatedAt) {
+        return new TaskOutputPublicationContext(tenantId,null,projectId,storageProviderId,region,mediaType,artifactKind,evaluatedAt,executionId);
+    }
+    public String producingIdentity() { return renderJobId == null ? "execution:"+executionId : "render:"+renderJobId; }
     public TaskOutputPublicationContext {
         requireText(tenantId, "tenantId");
-        requireText(renderJobId, "renderJobId");
+        if ((renderJobId == null) == (executionId == null)) {
+            throw new IllegalArgumentException("one typed producing identity is required");
+        }
+        requireText(renderJobId == null ? executionId : renderJobId, "producing identity");
         requireText(projectId, "projectId");
         Objects.requireNonNull(storageProviderId, "storageProviderId");
         requireText(region, "region");

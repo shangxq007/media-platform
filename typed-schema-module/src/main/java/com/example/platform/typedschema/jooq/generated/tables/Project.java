@@ -9,6 +9,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand.ApplyCommandPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
+import com.example.platform.typedschema.jooq.generated.tables.PlatformExecutionAdmission.PlatformExecutionAdmissionPath;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.ProjectImportMetadataPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext.RenderExecutionContextPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob.RenderJobPath;
@@ -253,6 +254,19 @@ public class Project extends TableImpl<ProjectRecord> {
             _projectImportMetadata = new ProjectImportMetadataPath(this, null, Keys.PROJECT_IMPORT_METADATA__FK_IMPORT_METADATA_PROJECT.getInverseKey());
 
         return _projectImportMetadata;
+    }
+
+    private transient PlatformExecutionAdmissionPath _platformExecutionAdmission;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.platform_execution_admission</code> table
+     */
+    public PlatformExecutionAdmissionPath platformExecutionAdmission() {
+        if (_platformExecutionAdmission == null)
+            _platformExecutionAdmission = new PlatformExecutionAdmissionPath(this, null, Keys.PLATFORM_EXECUTION_ADMISSION__FK_PLATFORM_EXECUTION_PROJECT_SCOPE.getInverseKey());
+
+        return _platformExecutionAdmission;
     }
 
     private transient RenderJobPath _renderJob;

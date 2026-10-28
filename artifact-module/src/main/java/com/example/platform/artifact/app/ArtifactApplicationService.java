@@ -61,6 +61,19 @@ public class ArtifactApplicationService {
         return new ArtifactAccess(artifactId,java.net.URI.create(path),null);
     }
 
+    public ArtifactAccess requestProjectAccess(ArtifactProjectScope scope, ArtifactId artifactId) {
+        TenantGuard.assertSameTenant(scope.tenantId());
+        Artifact artifact = applicationQuery.findProjectArtifact(scope, artifactId)
+                .orElseThrow(() -> new ArtifactAccessException(ArtifactAccessFailure.NOT_FOUND, "Artifact not found"));
+        if (artifact.state() != ArtifactState.AVAILABLE
+                || artifactQueryService.listReplicas(scope.tenantId(), artifactId).isEmpty()) {
+            throw new ArtifactAccessException(ArtifactAccessFailure.NOT_AVAILABLE, "Artifact content unavailable");
+        }
+        String path = "/api/tenants/" + segment(scope.tenantId()) + "/projects/" + segment(scope.projectId())
+                + "/artifacts/" + segment(artifactId.value()) + "/content";
+        return new ArtifactAccess(artifactId, java.net.URI.create(path), null);
+    }
+
     private static String segment(String id) {
         return org.springframework.web.util.UriUtils.encodePathSegment(id,java.nio.charset.StandardCharsets.UTF_8);
     }

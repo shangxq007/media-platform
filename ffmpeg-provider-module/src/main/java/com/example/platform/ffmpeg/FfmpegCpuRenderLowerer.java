@@ -25,6 +25,8 @@ import java.util.Set;
 public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRenderPlan> {
 
     private static final Set<String> DECLARED_CAPABILITIES = Set.of(
+            FfmpegCpuProvider.COVER_CAPABILITY.value(),
+            FfmpegCpuProvider.THUMBNAIL_CAPABILITY.value(),
             FfmpegCpuProvider.TRANSCODE_CAPABILITY.value(),
             FfmpegCpuProvider.VIDEO_DECODE_CAPABILITY.value(),
             FfmpegCpuProvider.COMPOSITE_CAPABILITY.value(),
@@ -59,18 +61,39 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
                     Map.of("authoritativeOutputCount",
                             Integer.toString(task.authoritativeOutputIds().size())));
         }
-        Optional<FfmpegCpuRenderPlan.SourceWindow> window = sourceWindow(unit.temporalWindow(), operation);
+        var artifactRequest = unit.artifactCapabilityRequest();
+        if (operation == FfmpegCpuRenderPlan.Operation.FRAME_EXTRACT) {
+            if (artifactRequest == null || unit.typedInputs().getFirst().sourceArtifact() == null
+                    || !artifactRequest.source().artifactId().equals(unit.typedInputs().getFirst().sourceArtifact().artifactId())
+                    || !artifactRequest.source().contentDigest().matches(unit.typedInputs().getFirst().sourceArtifact().contentDigest())
+                    || unit.capabilityRequirementRefs().size() != 1
+                    || !artifactRequest.capabilityId().equals(unit.capabilityRequirementRefs().getFirst().declaration().capabilityId().value())
+                    || unit.temporalWindow() == null || !unit.temporalWindow().isFreezePoint()
+                    || !unit.temporalWindow().start().equals(artifactRequest.parameters().position())
+                    || unit.typedOutputs().getFirst().finalArtifactExpectations().size() != 1
+                    || unit.typedOutputs().getFirst().finalArtifactExpectations().getFirst().role()
+                            != com.example.platform.render.domain.renderplan.RenderOutputRole.DERIVED_MEDIA) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "frame extraction requires one pinned Artifact and typed image output contract");
+            }
+        } else if (artifactRequest != null) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "Artifact capability parameters cannot change a Render operation");
+        }
+        Optional<FfmpegCpuRenderPlan.SourceWindow> window = operation == FfmpegCpuRenderPlan.Operation.FRAME_EXTRACT
+                ? Optional.empty() : sourceWindow(unit.temporalWindow(), operation);
         return new FfmpegCpuRenderPlan(
                 task.id(),
                 task.providerBindingPin(),
                 operation,
                 task.requiredRuntimeInputs().getFirst().inputId(),
                 task.authoritativeOutputIds().getFirst(),
-                window);
+                window, artifactRequest == null ? Optional.empty() : Optional.of(artifactRequest.parameters()));
     }
 
     private static FfmpegCpuRenderPlan.Operation operationOf(String operationKey) {
         return switch (operationKey) {
+            case "frame-extract" -> FfmpegCpuRenderPlan.Operation.FRAME_EXTRACT;
             case "transcode" -> FfmpegCpuRenderPlan.Operation.TRANSCODE;
             case "decode" -> FfmpegCpuRenderPlan.Operation.DECODE;
             case "composite" -> FfmpegCpuRenderPlan.Operation.COMPOSITE;
@@ -94,7 +117,7 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
             case DECODE -> FfmpegCpuProvider.VIDEO_DECODE_CAPABILITY.value();
             case COMPOSITE -> FfmpegCpuProvider.COMPOSITE_CAPABILITY.value();
             case ENCODE -> FfmpegCpuProvider.OUTPUT_CAPABILITY.value();
-            case TRANSCODE -> null;
+            case TRANSCODE, FRAME_EXTRACT -> null;
         };
         if (required != null && references.stream()
                 .noneMatch(reference -> required.equals(

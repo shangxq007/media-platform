@@ -15,21 +15,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan(basePackages = {
     "com.example.platform.app",
-    // COVER-PROVIDER-FINAL-FIX-001: the cover capability's API-side admission surface
-    // (CoverImageController + CoverImageService + CoverImageTaskStore) lives in this package. The
-    // worker-only beans of the same package are gated on platform.runtime.role=WORKER, so the API
-    // process registers the controller/service and never the provider runtime.
+    // Thin media intent controllers; planning/execution/Artifact state belong to shared owners.
     "com.example.platform.coverimage",
-    // COVER-THUMBNAIL-UNIFY-001: the single capability-neutral ffmpeg frame-extract contribution
-    // (one PluginDescriptor declaring media.cover-image + media.thumbnail) lives in this package on the
-    // platform (API) side. Its worker-only provider/adapter beans are gated on
-    // platform.runtime.role=WORKER, so the API process registers only the registration.
-    "com.example.platform.frameextract",
-    // THUMBNAIL-SLICE-API-WIRING-001: the thumbnail capability's API-side admission surface
-    // (ThumbnailController + ThumbnailService + ThumbnailTaskStore + ThumbnailArtifactReadService)
-    // lives in this package. The worker-only beans of the same package are gated on
-    // platform.runtime.role=WORKER (the same mechanism the cover slice uses), so the API process
-    // registers the admission surface and never the provider runtime.
     "com.example.platform.thumbnail",
     "com.example.platform.security",
     "com.example.platform.production",
@@ -77,7 +64,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     excludeFilters = @ComponentScan.Filter(
             type = FilterType.CUSTOM, classes = org.springframework.boot.context.TypeExcludeFilter.class))
 @EnableScheduling
-@Import({com.example.platform.runtime.PlatformRuntimeRoleGuard.class,com.example.platform.persistence.binding.JooqBoundGraphInputStore.class,BuiltinDataBootstrapRunner.class,
+@Import({com.example.platform.runtime.mediatask.CapabilityExecutionDispatcher.class,com.example.platform.runtime.PlatformRuntimeRoleGuard.class,com.example.platform.persistence.binding.JooqBoundGraphInputStore.class,BuiltinDataBootstrapRunner.class,
     com.example.platform.lifecycle.PlatformGracefulShutdownCoordinator.class,
     com.example.platform.lifecycle.TemporalWorkerHealthIndicator.class,
     com.example.platform.analytics.AnalyticsConfiguration.class, com.example.platform.cloudresource.CloudResourceConfiguration.class, com.example.platform.marketplace.MarketplaceConfiguration.class, DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})
@@ -97,7 +84,12 @@ public class PlatformApplication {
      */
     @Configuration
     @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "COMBINED")
-    @Import({PlatformRuntimeRoleGuard.class, FfmpegWorkerPluginConfiguration.class})
+    @Import({PlatformRuntimeRoleGuard.class, FfmpegWorkerPluginConfiguration.class,
+            com.example.platform.runtime.FfmpegWorkerRuntimeConfiguration.class,
+            com.example.platform.runtime.ArtifactMaterializationConfiguration.class,
+            com.example.platform.runtime.WorkerRegistrationConfiguration.class,
+            com.example.platform.runtime.mediatask.MediaTaskActivitiesAdapter.class,
+            com.example.platform.runtime.mediatask.CapabilityExecutionActivity.class})
     static class CombinedRuntimeAssembly {
     }
 }

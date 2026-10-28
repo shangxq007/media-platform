@@ -2,19 +2,12 @@ package com.example.platform.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.contract.media.CoverImageCapabilityProvider;
-import com.example.platform.coverimage.CoverImageExecutionBackend;
-import com.example.platform.coverimage.CoverImageMaterializationConfiguration;
-import com.example.platform.frameextract.FfmpegCpuProvider;
-import com.example.platform.frameextract.FrameExtractExecutionAdapter;
-import com.example.platform.frameextract.FrameExtractPlatformRegistration;
+import com.example.platform.runtime.ArtifactMaterializationConfiguration;
 import com.example.platform.sandbox.execution.ExecutionBackend;
 import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.storage.contract.provider.StorageProvider;
-import com.example.platform.contract.media.ThumbnailCapabilityProvider;
-import com.example.platform.thumbnail.ThumbnailExecutionBackend;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
 import io.temporal.client.WorkflowClient;
 import io.temporal.spring.boot.autoconfigure.template.WorkersTemplate;
@@ -73,37 +66,15 @@ class PlatformFfmpegWorkerApplicationTemporalRoleContextTest extends PostgresTes
     }
 
     @Test
-    void workerContextOwnsBothCapabilitiesAndTheirExecutionBackends() {
-        // One capability-neutral provider serves both capabilities in the same process.
-        assertThat(context.getBeansOfType(CoverImageCapabilityProvider.class)).hasSize(1);
-        assertThat(context.getBean(FfmpegCpuProvider.class)).isNotNull();
-        assertThat(context.getBeansOfType(ThumbnailCapabilityProvider.class)).hasSize(1);
-        assertThat(context.getBeansOfType(FfmpegCpuProvider.class)).hasSize(1);
-        // One capability-neutral worker-side execution adapter behind the platform registration.
-        assertThat(context.getBean(FrameExtractExecutionAdapter.class)).isNotNull();
-
-        var backends = context.getBean(ExecutionBackendRegistry.class);
-        assertThat(backends.resolve(TaskCapability.COVER_IMAGE))
-                .isPresent().get()
-                .extracting(ExecutionBackend::backendId)
-                .isEqualTo("cover-image-sandbox");
-        assertThat(backends.resolve(TaskCapability.THUMBNAIL))
-                .isPresent().get()
-                .extracting(ExecutionBackend::backendId)
-                .isEqualTo("thumbnail-worker-runtime.local-process");
-        assertThat(context.getBeansOfType(ThumbnailExecutionBackend.class)).hasSize(1);
-        assertThat(context.getBeansOfType(CoverImageExecutionBackend.class)).hasSize(1);
-    }
-
-    @Test
-    void workerContextOwnsTheMaterializerAndNoPlatformRegistry() {
-        assertThat(context.getBeansOfType(StorageProvider.class)).hasSize(1);
-        assertThat(context.getBean(CoverImageMaterializationConfiguration.class)).isNotNull();
-        assertThat(context.getBeansOfType(ArtifactMaterializerPort.class)).hasSize(1);
-        // Platform capability registration is the platform (API) process's authority.
-        assertThat(context.getBeansOfType(
-                com.example.platform.extension.api.port.PluginRegistrationPort.class)).isEmpty();
-        assertThat(context.getBean(FrameExtractPlatformRegistration.class).registered()).isFalse();
+    void workerUsesTheCatalogNativeRuntimeAndSharedArtifactMaterializer() {
+        var catalog=context.getBean(com.example.platform.providerplugin.ProviderPluginCatalog.class);
+        var capabilities=catalog.contributions().stream().flatMap(c->c.pluginDescriptor().capabilities().stream())
+                .map(com.example.platform.extension.domain.CapabilityDescriptor::capabilityId).toList();
+        assertThat(capabilities).contains("media.cover-image","media.thumbnail");
+        assertThat(context.getBeansOfType(com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator.class)).hasSize(1);
+        assertThat(context.getBeansOfType(com.example.platform.workerfabric.reuse.ArtifactMaterializerPort.class)).hasSize(1);
+        assertThat(context.getBeansOfType(com.example.platform.runtime.mediatask.CapabilityExecutionActivity.class)).hasSize(1);
+        assertThat(context.getBeansOfType(com.example.platform.runtime.mediatask.MediaTaskActivitiesAdapter.class)).hasSize(1);
     }
 
     @SuppressWarnings("unchecked")

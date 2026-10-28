@@ -21,10 +21,13 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":outbox-event-module"))
+    implementation(project(":entitlement-module"))
     implementation(project(":sandbox-isolation-module"))
     implementation(project(":media-execution-plan-module"))
     implementation(project(":artifact-module"))
     implementation(project(":storage-module"))
+    implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("io.micrometer:micrometer-core")
 

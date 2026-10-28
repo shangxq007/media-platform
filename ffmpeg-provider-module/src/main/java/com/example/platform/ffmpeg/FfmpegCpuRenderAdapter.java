@@ -86,6 +86,10 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
             arguments.add("-t");
             arguments.add(seconds(window.duration()));
         });
+        plan.frameParameters().ifPresent(parameters -> {
+            arguments.add("-ss");
+            arguments.add(seconds(parameters.position()));
+        });
         arguments.add("-i");
         arguments.add(materializedInputToken(plan.inputId()));
         arguments.add("-map");
@@ -95,6 +99,22 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         arguments.add("-1");
         arguments.add("-map_chapters");
         arguments.add("-1");
+        if (plan.frameParameters().isPresent()) {
+            var parameters=plan.frameParameters().orElseThrow();
+            arguments.addAll(List.of("-frames:v","1"));
+            if (parameters.width() instanceof com.example.platform.shared.capability.FrameWidth.ExplicitPixels width) {
+                arguments.addAll(List.of("-vf","scale="+width.pixels()+":-1"));
+            }
+            if (parameters.encoding() instanceof com.example.platform.shared.capability.RasterImageEncoding.Jpeg jpeg) {
+                int quality=jpeg.quality().orElseThrow().value();
+                int qscale=Math.max(1,Math.min(31,(int)Math.round(31.0-quality*0.3)));
+                arguments.addAll(List.of("-c:v","mjpeg","-pix_fmt","yuvj420p","-q:v",Integer.toString(qscale)));
+            } else {
+                arguments.addAll(List.of("-c:v","png"));
+            }
+            arguments.addAll(List.of("-flags:v","+bitexact","-f","image2pipe","pipe:1"));
+            return arguments;
+        }
         arguments.add("-c:v");
         arguments.add("libx264");
         arguments.add("-preset");

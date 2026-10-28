@@ -27,11 +27,13 @@ public record FfmpegCpuRenderPlan(
         Operation operation,
         ExecutionInputId inputId,
         ExecutionOutputId outputId,
-        Optional<SourceWindow> sourceWindow) implements ProviderNativeExecutionPlan {
+        Optional<SourceWindow> sourceWindow,
+        Optional<com.example.platform.shared.capability.MediaFrameExtractParametersV1> frameParameters) implements ProviderNativeExecutionPlan {
 
     /** Bounded V1 operation vocabulary — the typed chain's node operations this provider serves. */
     public enum Operation {
         /** Capability-neutral transcode slice (no capability requirement attached). */
+        FRAME_EXTRACT,
         TRANSCODE,
         /** {@code video.decode}. */
         DECODE,
@@ -58,6 +60,11 @@ public record FfmpegCpuRenderPlan(
         }
     }
 
+    public FfmpegCpuRenderPlan(ExecutableTaskId executableTaskId, ProviderBindingPin providerBindingPin,
+            Operation operation, ExecutionInputId inputId, ExecutionOutputId outputId, Optional<SourceWindow> sourceWindow) {
+        this(executableTaskId,providerBindingPin,operation,inputId,outputId,sourceWindow,Optional.empty());
+    }
+
     public FfmpegCpuRenderPlan {
         Objects.requireNonNull(executableTaskId, "executableTaskId");
         Objects.requireNonNull(providerBindingPin, "providerBindingPin");
@@ -65,6 +72,10 @@ public record FfmpegCpuRenderPlan(
         Objects.requireNonNull(inputId, "inputId");
         Objects.requireNonNull(outputId, "outputId");
         Objects.requireNonNull(sourceWindow, "sourceWindow");
+        Objects.requireNonNull(frameParameters, "frameParameters");
+        if ((operation == Operation.FRAME_EXTRACT) != frameParameters.isPresent()) {
+            throw new IllegalArgumentException("frame extraction requires exactly its typed parameters");
+        }
         if (!FfmpegCpuProvider.BINDING.equals(providerBindingPin)) {
             throw new IllegalArgumentException("FFmpeg CPU plan requires its exact ProviderBindingPin");
         }

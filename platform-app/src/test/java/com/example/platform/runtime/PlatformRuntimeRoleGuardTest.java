@@ -45,7 +45,7 @@ class PlatformRuntimeRoleGuardTest {
     void apiRoleFailsClosedWhenWorkerDiscoveryIsEnabled() {
         MockEnvironment env = base("API")
                 .withProperty("spring.temporal.start-workers", "true")
-                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail");
+                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.runtime.mediatask");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("API role");
@@ -56,7 +56,7 @@ class PlatformRuntimeRoleGuardTest {
         // Scalar discovery form must keep working (backward compatibility with the previous
         // workaround): the binder resolves a comma-separated scalar into the same single-element list.
         MockEnvironment env = workerBase()
-                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail");
+                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.runtime.mediatask");
         assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
     }
 
@@ -65,15 +65,15 @@ class PlatformRuntimeRoleGuardTest {
         // COVER-THUMBNAIL-REBUILD-001 (action 3): the runtime-grouped ffmpeg worker hosts both
         // capability packages in one process.
         MockEnvironment env = workerBase()
-                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.coverimage")
-                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.thumbnail");
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.workflow.temporal.mediatask")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.runtime.mediatask");
         assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
     }
 
     @Test
     void workerRoleRejectsNonFfmpegDiscoveryPackages() {
         MockEnvironment env = workerBase()
-                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.runtime.mediatask")
                 .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.audio");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
                 .isInstanceOf(IllegalStateException.class)
@@ -84,10 +84,9 @@ class PlatformRuntimeRoleGuardTest {
     void workerRoleAcceptsTheMediaTaskActivityPackage() {
         // P2-5b-2b-2a: the media task activity adapter runs on this same ffmpeg runtime.
         MockEnvironment env = workerBase()
-                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.coverimage")
-                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.thumbnail")
-                .withProperty("spring.temporal.workers-auto-discovery.packages[2]",
-                        "com.example.platform.runtime.mediatask");
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.workflow.temporal.mediatask")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.runtime.mediatask")
+;
         assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
     }
 
@@ -97,7 +96,7 @@ class PlatformRuntimeRoleGuardTest {
         // exist, which is exactly the shape a raw getProperty(key, String[].class) lookup could not
         // read. The binder must resolve it to the canonical single package.
         MockEnvironment env = workerBase()
-                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail");
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.runtime.mediatask");
         assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
     }
 
@@ -113,7 +112,7 @@ class PlatformRuntimeRoleGuardTest {
     @Test
     void workerRoleRejectsMultipleDiscoveryPackages() {
         MockEnvironment env = workerBase()
-                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.runtime.mediatask")
                 .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.audio");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
                 .isInstanceOf(IllegalStateException.class)
@@ -159,7 +158,7 @@ class PlatformRuntimeRoleGuardTest {
         MockEnvironment env = base("WORKER")
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "none")
-                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.runtime.mediatask")
                 .withProperty("platform.ffmpeg-worker.sandbox.bwrap", "/bin/true")
                 .withProperty("platform.ffmpeg-worker.sandbox.ffmpeg", "/bin/true")
                 .withProperty("platform.ffmpeg-worker.sandbox.ffprobe", "/bin/true");
@@ -183,7 +182,7 @@ class PlatformRuntimeRoleGuardTest {
                 .withProperty("app.temporal.task-queue", "other-queue")
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "none")
-                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail");
+                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.runtime.mediatask");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(wrongQueue))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("must remain");
@@ -191,7 +190,7 @@ class PlatformRuntimeRoleGuardTest {
         MockEnvironment http = base("WORKER")
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "servlet")
-                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail");
+                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.runtime.mediatask");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(http))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("HTTP");
@@ -210,7 +209,7 @@ class PlatformRuntimeRoleGuardTest {
     /** The YAML-list discovery form, flattened exactly as Spring Boot flattens a profile list. */
     private static MockEnvironment yamlListPackage(MockEnvironment environment) {
         return environment.withProperty(
-                "spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail");
+                "spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.runtime.mediatask");
     }
 
     private static MockEnvironment base(String role) {

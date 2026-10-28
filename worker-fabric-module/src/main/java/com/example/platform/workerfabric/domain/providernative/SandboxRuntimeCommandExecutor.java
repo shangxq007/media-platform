@@ -27,6 +27,10 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
         this.cancellation = Objects.requireNonNull(cancellation, "cancellation");
     }
 
+    public SandboxRuntimeCommandExecutor withCancellation(SandboxCancellation cancellation) {
+        return new SandboxRuntimeCommandExecutor(launcher, specifications, cancellation);
+    }
+
     @Override
     public ProviderExecutionOutput execute(
             RuntimeExecutionBundle bundle, List<MaterializedExecutionInput> inputs) throws IOException {
@@ -44,6 +48,11 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                 }
                 SandboxExecutionResult result = launcher.launch(
                         ((SandboxResolution.Resolved) resolution).specification(), cancellation);
+                if (result.observation()==null || result.observation().cleanup()==null
+                        || !result.observation().cleanup().completed()) {
+                    throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED,
+                            "sandbox process cleanup is not proven complete");
+                }
                 if (result.failure().isPresent()) {
                     throw mapped(result);
                 }

@@ -12,8 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Temporal implementation of {@link FirstRenderWorkflowStarter}.
  *
- * <p>Uses the existing dynamic typed-stub pattern (as {@code ThumbnailService} / {@code
- * CoverImageService}): {@code newWorkflowStub(MediaTaskWorkflow.class, options)} on the canonical
+ * <p>Uses the canonical typed-stub pattern: {@code newWorkflowStub(MediaTaskWorkflow.class, options)} on the canonical
  * task queue, then {@code WorkflowClient.start(workflow::run, reference, tenantId)}. The client is
  * obtained lazily and fails closed when absent.
  *

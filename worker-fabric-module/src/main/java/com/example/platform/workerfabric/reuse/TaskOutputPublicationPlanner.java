@@ -52,13 +52,13 @@ public final class TaskOutputPublicationPlanner {
             String attemptId,long generation) {
         if(attemptId==null||attemptId.isBlank()||generation<1)throw new IllegalArgumentException("fenced task attempt required");
         var basic=plan(task,context);
-        String identity=context.tenantId()+"\u0000"+context.projectId()+"\u0000"+context.renderJobId()+"\u0000"+task.id().sha256Hex()+"\u0000"+attemptId+"\u0000"+generation;
+        String identity=context.tenantId()+"\u0000"+context.projectId()+"\u0000"+context.producingIdentity()+"\u0000"+task.id().sha256Hex()+"\u0000"+attemptId+"\u0000"+generation;
         String key;
         try {key=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
         catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}
         var m=basic.artifactCommitMetadata();
         return new TaskOutputPublicationPlan(new DurableOutputTarget(basic.durableOutputTarget().providerId(),basic.durableOutputTarget().namespace(),"task-output-"+key),
-            new ArtifactCommitMetadata(new ArtifactId("render-task-"+key.substring(0,52)),m.tenantId(),m.mediaType(),m.artifactKind(),m.schemaVersion(),m.replicaRole(),m.region(),m.provenanceDeclarations(),m.evaluatedAt(),m.createdAt(),m.renderJobId(),m.projectId()));
+            new ArtifactCommitMetadata(new ArtifactId((context.renderJobId()==null?"exec-output-":"render-task-")+key.substring(0,52)),m.tenantId(),m.mediaType(),m.artifactKind(),m.schemaVersion(),m.replicaRole(),m.region(),m.provenanceDeclarations(),m.evaluatedAt(),m.createdAt(),m.renderJobId(),m.projectId()));
     }
 
 

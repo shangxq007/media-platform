@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.PlatformExecutionResult.PlatformExecutionResultPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution.RenderGraphExecutionPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfCompletionEvent.WfCompletionEventPath;
@@ -221,6 +222,19 @@ public class WfExecutionAttempt extends TableImpl<WfExecutionAttemptRecord> {
             _wfExecutionOwnershipGeneration = new WfExecutionOwnershipGenerationPath(this, Keys.WF_EXECUTION_ATTEMPT__WF_EXECUTION_ATTEMPT_TASK_ID_GENERATION_FKEY, null);
 
         return _wfExecutionOwnershipGeneration;
+    }
+
+    private transient PlatformExecutionResultPath _platformExecutionResult;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.platform_execution_result</code> table
+     */
+    public PlatformExecutionResultPath platformExecutionResult() {
+        if (_platformExecutionResult == null)
+            _platformExecutionResult = new PlatformExecutionResultPath(this, null, Keys.PLATFORM_EXECUTION_RESULT__FK_PLATFORM_RESULT_NATIVE_ATTEMPT.getInverseKey());
+
+        return _platformExecutionResult;
     }
 
     private transient RenderGraphExecutionPath _renderGraphExecution;

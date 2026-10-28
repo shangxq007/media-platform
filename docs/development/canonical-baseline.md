@@ -70,9 +70,9 @@ regenerated from actual PG18 using typed-schema-module/jooq-codegen.xml. The loc
 fresh introspection and compiled generated sources externally. Review staged output before installing
 it; never mix generated and hand-written contract classes. `verifyJooqGeneratedSources` checks exact
 canonical table/record identity parity and generated layout. Baseline consolidation compared all
-business DDL and447 generated files between original V1+V2 and newV1, excluding only Flyway bookkeeping,
+the then-current business DDL and447 generated files between original V1+V2 and that initial V1, excluding only Flyway bookkeeping,
 dump restrict randomness, and deliberately distinct test-role ownership/ACLs. Structural constraints,
-functions, indexes and views are included.
+functions, indexes and views are included. Subsequent Owner-approved Schema changes require a new empty-PG18 run and byte parity against the actual newly generated file set;447 is not a permanent count.
 
 ## Architecture and adoption
 

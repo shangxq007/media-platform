@@ -139,6 +139,12 @@ class ArtifactApplicationServiceTest {
         private int calls;
 
         @Override
+        public java.util.Optional<com.example.platform.artifact.domain.Artifact> findProjectArtifact(
+                com.example.platform.artifact.app.ArtifactProjectScope scope, ArtifactId id) {
+            return java.util.Optional.empty();
+        }
+
+        @Override
         public List<Artifact> findArtifacts(ArtifactScope scope, int limit) {
             calls++;
             lastLimit = limit;

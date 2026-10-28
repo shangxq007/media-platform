@@ -32,7 +32,7 @@ projection cannot turn failed/cancelled jobs into success. Do not use SQL to adv
 - RenderStateTransitions is the shared Render state-machine/history/typed-status writer. The public
   GraphRenderLifecycle service is Render's transaction boundary for graph binding, accepted final
   output, quota consumption and completion facts. It stores no second copy of job status.
-- V2 render_graph_execution binds one immutable Render attempt/generation to the exact stored
+- The single V1 render_graph_execution binds one immutable Render attempt/generation to the exact stored
   plan/graph and final task. Retry creates a new Render Job; a late prior attempt cannot take over.
   Composite foreign keys bind tenant/project/job/final Artifact and native task/attempt/generation.
 - Execution's existing assignment/attempt/ownership and wf_completion_event remain the native
@@ -77,10 +77,17 @@ path, signed-URL or default-credential fallback exists. Current validated downlo
 The canonical greenfield migration is now a single V1, containing the accepted graph execution
 bindings and scope/native constraints previously validated as V1+V2. The historical accepted
 snapshot remains immutable outside this Git workspace. Old two-step and new one-step empty-PG18
-schemas and all447 generated jOOQ sources were compared. Never point this baseline at a historical
+schemas and the then-current447 generated jOOQ sources were compared. Later Owner-approved Schema changes require fresh generation with the actual new count. Never point this baseline at a historical
 populated database or rewrite an applied Flyway history. See ../development/canonical-baseline.md.
 
 Dedicated protected runner, cross-UID/executor/cgroup containment and real Neon/BWS scopes remain
 separate deployment gates (DEPLOYMENT_ISOLATION_NOT_VERIFIED). This local PG18/FFmpeg product test
 requires no real cloud credentials and does not prove production readiness. Historical audit packets
 and dirty main workspaces remain untouched; integration requires separate authorization.
+
+The optional `--combined-smoke` flag verifies the same authenticated video/image path in a single
+COMBINED process using the production assembly. The default remains independent API and WORKER.
+Queue-before-start cancellation is tested in the independent-process run; the combined smoke does
+not pause its HTTP process or claim that cancellation scenario. Active contained-process cancellation
+and cleanup uncertainty have separate sandbox/native regressions. All fixtures use synthetic secrets
+and task-owned resources; none establish protected runner/OS isolation.

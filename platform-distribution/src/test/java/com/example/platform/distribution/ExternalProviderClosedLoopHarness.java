@@ -252,7 +252,7 @@ final class ExternalProviderClosedLoopHarness {
                             authority, Map.of(storage.providerId(), storage), metrics),
                     new FencedReuseCompletionOrchestrator(index, completionAuthority()),
                     Map.of(contributionPin(graph), binding),
-                    metrics);
+                    metrics, (ignoredPublicationTask, ignoredPublicationContext, publicationAction) -> publicationAction.commit());
             return orchestrator.execute(new RuntimeClosedLoopRequest(
                     TENANT, graph, Set.of(task.id()),
                     Map.of(task.id(), Cacheability.CACHEABLE),

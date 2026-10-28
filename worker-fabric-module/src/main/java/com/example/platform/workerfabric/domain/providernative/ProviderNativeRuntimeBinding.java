@@ -56,6 +56,15 @@ public final class ProviderNativeRuntimeBinding<P extends ProviderNativeExecutio
         return commandExecutor.execute(bundle, List.copyOf(runtimeLocalInputs));
     }
 
+    /** Per-execution cancellation without mutating the worker-wide binding or using thread locals. */
+    public ProviderNativeRuntimeBinding<P> withCancellation(com.example.platform.sandbox.SandboxCancellation cancellation) {
+        if (!(commandExecutor instanceof SandboxRuntimeCommandExecutor sandbox)) {
+            throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "runtime command executor does not support controlled cancellation");
+        }
+        return new ProviderNativeRuntimeBinding<>(planLowerer,runtimeAdapter,sandbox.withCancellation(cancellation));
+    }
+
     /** Platform-side composition: preserve lowering/adaptation while placing command execution remotely. */
     public ProviderNativeRuntimeBinding<P> withCommandExecutor(RuntimeCommandExecutor executor) {
         return new ProviderNativeRuntimeBinding<>(planLowerer, runtimeAdapter, executor);

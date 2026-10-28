@@ -94,10 +94,10 @@ python3 scripts/test_phase19_clean_forward_guards.py
 python3 scripts/ci/verify_phase19_runtime_conformance_results.py
 
 expected_plugin_digest="df496276e7a087431d9e5ded07163d92d2ccacaede2c0250fb9f8d9ea0319c30"
-producer_plugin="ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.0.0.jar"
-modular_plugin="platform-distribution/build/distributions/modular/plugins/ffmpeg-provider-plugin-1.0.0.jar"
+producer_plugin="ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.1.0.jar"
+modular_plugin="platform-distribution/build/distributions/modular/plugins/ffmpeg-provider-plugin-1.1.0.jar"
 all_in_one="platform-distribution/build/libs/media-platform-all-in-one.jar"
-embedded_entry="embedded-plugins/ffmpeg-provider-plugin-1.0.0.jar"
+embedded_entry="embedded-plugins/ffmpeg-provider-plugin-1.1.0.jar"
 for artifact in "$producer_plugin" "$modular_plugin" "$all_in_one"; do
     [[ -f "$artifact" ]] || fail "required distribution artifact is missing: ${artifact}"
 done

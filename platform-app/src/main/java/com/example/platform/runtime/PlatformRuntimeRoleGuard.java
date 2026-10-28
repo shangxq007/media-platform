@@ -41,8 +41,6 @@ public final class PlatformRuntimeRoleGuard {
      * runtime (one ffmpeg runtime hosting several capabilities), never by a single capability.
      */
     static final Set<String> WORKER_CAPABILITY_PACKAGES = Set.of(
-            "com.example.platform.coverimage",
-            "com.example.platform.thumbnail",
             // P2-5b-2b-2a: the media task activity adapter carries the whole-graph execution
             // capability of this same ffmpeg runtime (WORKER-PACKAGE-TAXONOMY backlog: revisit the
             // capability-vs-runtime naming of this set).

@@ -235,7 +235,7 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
         registry.add("app.cover-image.storage.root", () -> WORK.resolve("object-store").toString());
         registry.add("app.storage.local-root", () -> WORK.resolve("local-storage").toString());
         registry.add("app.cover-image.work-root", () -> WORK.resolve("cover-work").toString());
-        registry.add("app.cover-image.materialization-root", () -> WORK.resolve("materialized").toString());
+        registry.add("platform.ffmpeg-worker.materialization-root", () -> WORK.resolve("materialized").toString());
     }
 
     @TestConfiguration
@@ -702,7 +702,7 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
         Path base = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         for (Path root : List.of(base, base.getParent())) {
             if (root == null) continue;
-            Path jar = root.resolve("ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.0.0.jar");
+            Path jar = root.resolve("ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.1.0.jar");
             if (Files.isRegularFile(jar)) {
                 return jar;
             }

@@ -26,7 +26,6 @@ import com.example.platform.typedschema.jooq.generated.tables.CommerceCart;
 import com.example.platform.typedschema.jooq.generated.tables.CommerceCartLine;
 import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering;
 import com.example.platform.typedschema.jooq.generated.tables.ConfigItem;
-import com.example.platform.typedschema.jooq.generated.tables.CoverImageTask;
 import com.example.platform.typedschema.jooq.generated.tables.CreditReservation;
 import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
@@ -55,7 +54,6 @@ import com.example.platform.typedschema.jooq.generated.tables.InvoiceLineItem;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation;
 import com.example.platform.typedschema.jooq.generated.tables.MediaStream;
-import com.example.platform.typedschema.jooq.generated.tables.MediaThumbnailTask;
 import com.example.platform.typedschema.jooq.generated.tables.NavigationPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.NlqQueryHistory;
 import com.example.platform.typedschema.jooq.generated.tables.NlqReportDefinition;
@@ -142,7 +140,6 @@ import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseInd
 import com.example.platform.typedschema.jooq.generated.tables.WfCompletionEvent;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionBackendSelection;
 import com.example.platform.typedschema.jooq.generated.tables.WfHostRegistration;
-import com.example.platform.typedschema.jooq.generated.tables.WfProviderCandidateSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
 import com.example.platform.typedschema.jooq.generated.tables.WfRuntimeRegistration;
 import com.example.platform.typedschema.jooq.generated.tables.WfTaskLease;
@@ -252,7 +249,6 @@ public class Indexes {
     public static final Index IX_COMMERCE_CART_TENANT = Internal.createIndex(DSL.name("ix_commerce_cart_tenant"), CommerceCart.COMMERCE_CART, new OrderField[] { CommerceCart.COMMERCE_CART.TENANT_ID }, false);
     public static final Index IX_COMMERCIAL_OFFERING_RESOLUTION = Internal.createIndex(DSL.name("ix_commercial_offering_resolution"), CommercialOffering.COMMERCIAL_OFFERING, new OrderField[] { CommercialOffering.COMMERCIAL_OFFERING.TENANT_SCOPE, CommercialOffering.COMMERCIAL_OFFERING.MARKET_SCOPE, CommercialOffering.COMMERCIAL_OFFERING.LIFECYCLE_STATE, CommercialOffering.COMMERCIAL_OFFERING.VALID_FROM, CommercialOffering.COMMERCIAL_OFFERING.VALID_TO }, false);
     public static final Index IX_CONFIG_ITEM_NAMESPACE_KEY = Internal.createIndex(DSL.name("ix_config_item_namespace_key"), ConfigItem.CONFIG_ITEM, new OrderField[] { ConfigItem.CONFIG_ITEM.NAMESPACE_KEY }, false);
-    public static final Index IX_COVER_IMAGE_TASK_SCOPE = Internal.createIndex(DSL.name("ix_cover_image_task_scope"), CoverImageTask.COVER_IMAGE_TASK, new OrderField[] { CoverImageTask.COVER_IMAGE_TASK.TENANT_ID, CoverImageTask.COVER_IMAGE_TASK.PROJECT_ID, CoverImageTask.COVER_IMAGE_TASK.CREATED_AT.desc() }, false);
     public static final Index IX_CREDIT_RESERVATION_WALLET = Internal.createIndex(DSL.name("ix_credit_reservation_wallet"), CreditReservation.CREDIT_RESERVATION, new OrderField[] { CreditReservation.CREDIT_RESERVATION.TENANT_ID, CreditReservation.CREDIT_RESERVATION.WALLET_ID, CreditReservation.CREDIT_RESERVATION.STATUS }, false);
     public static final Index IX_CREDIT_TXN_CREATED = Internal.createIndex(DSL.name("ix_credit_txn_created"), CreditTransaction.CREDIT_TRANSACTION, new OrderField[] { CreditTransaction.CREDIT_TRANSACTION.CREATED_AT }, false);
     public static final Index IX_CREDIT_TXN_TYPE = Internal.createIndex(DSL.name("ix_credit_txn_type"), CreditTransaction.CREDIT_TRANSACTION, new OrderField[] { CreditTransaction.CREDIT_TRANSACTION.TRANSACTION_TYPE }, false);
@@ -306,7 +302,6 @@ public class Indexes {
     public static final Index IX_LEASE_STATUS = Internal.createIndex(DSL.name("ix_lease_status"), RenderJobLease.RENDER_JOB_LEASE, new OrderField[] { RenderJobLease.RENDER_JOB_LEASE.STATUS }, false);
     public static final Index IX_LEASE_UNTIL = Internal.createIndex(DSL.name("ix_lease_until"), RenderJobLease.RENDER_JOB_LEASE, new OrderField[] { RenderJobLease.RENDER_JOB_LEASE.LEASE_UNTIL }, false);
     public static final Index IX_LEASE_WORKER_ID = Internal.createIndex(DSL.name("ix_lease_worker_id"), RenderJobLease.RENDER_JOB_LEASE, new OrderField[] { RenderJobLease.RENDER_JOB_LEASE.WORKER_ID }, false);
-    public static final Index IX_MEDIA_THUMBNAIL_TASK_SCOPE = Internal.createIndex(DSL.name("ix_media_thumbnail_task_scope"), MediaThumbnailTask.MEDIA_THUMBNAIL_TASK, new OrderField[] { MediaThumbnailTask.MEDIA_THUMBNAIL_TASK.TENANT_ID, MediaThumbnailTask.MEDIA_THUMBNAIL_TASK.PROJECT_ID, MediaThumbnailTask.MEDIA_THUMBNAIL_TASK.CREATED_AT.desc() }, false);
     public static final Index IX_ML_FTS = Internal.createIndex(DSL.name("ix_ml_fts"), MarketplaceListing.MARKETPLACE_LISTING, new OrderField[] { MarketplaceListing.MARKETPLACE_LISTING.SEARCH_VECTOR }, false);
     public static final Index IX_ML_STATUS = Internal.createIndex(DSL.name("ix_ml_status"), MarketplaceListing.MARKETPLACE_LISTING, new OrderField[] { MarketplaceListing.MARKETPLACE_LISTING.STATUS }, false);
     public static final Index IX_ML_TYPE = Internal.createIndex(DSL.name("ix_ml_type"), MarketplaceListing.MARKETPLACE_LISTING, new OrderField[] { MarketplaceListing.MARKETPLACE_LISTING.LISTING_TYPE }, false);
@@ -461,7 +456,6 @@ public class Indexes {
     public static final Index IX_WF_ARTIFACT_REUSE_ARTIFACT = Internal.createIndex(DSL.name("ix_wf_artifact_reuse_artifact"), WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX, new OrderField[] { WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX.ARTIFACT_ID }, false);
     public static final Index IX_WF_ARTIFACT_REUSE_PENDING = Internal.createIndex(DSL.name("ix_wf_artifact_reuse_pending"), WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX, new OrderField[] { WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX.PUBLISHED_AT }, false);
     public static final Index IX_WF_COMPLETION_EVENT_ARTIFACT_ID = Internal.createIndex(DSL.name("ix_wf_completion_event_artifact_id"), WfCompletionEvent.WF_COMPLETION_EVENT, new OrderField[] { WfCompletionEvent.WF_COMPLETION_EVENT.ARTIFACT_ID }, false);
-    public static final Index IX_WF_PROVIDER_CANDIDATE_SNAPSHOT_CURRENT = Internal.createIndex(DSL.name("ix_wf_provider_candidate_snapshot_current"), WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT, new OrderField[] { WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT.PHYSICAL_HOST_ID, WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT.PHYSICAL_HOST_INCARNATION_ID, WfProviderCandidateSnapshot.WF_PROVIDER_CANDIDATE_SNAPSHOT.VALID_UNTIL }, false);
     public static final Index IX_WORKFLOW_EXECUTION_TENANT_STATUS = Internal.createIndex(DSL.name("ix_workflow_execution_tenant_status"), WorkflowExecution.WORKFLOW_EXECUTION, new OrderField[] { WorkflowExecution.WORKFLOW_EXECUTION.TENANT_ID, WorkflowExecution.WORKFLOW_EXECUTION.STATUS, WorkflowExecution.WORKFLOW_EXECUTION.CREATED_AT.desc() }, false);
     public static final Index IX_WORKSPACE_ENTITLEMENT_POOL_FEATURE_KEY = Internal.createIndex(DSL.name("ix_workspace_entitlement_pool_feature_key"), WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL, new OrderField[] { WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL.FEATURE_KEY }, false);
     public static final Index IX_WORKSPACE_ENTITLEMENT_POOL_WORKSPACE_ID = Internal.createIndex(DSL.name("ix_workspace_entitlement_pool_workspace_id"), WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL, new OrderField[] { WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL.WORKSPACE_ID }, false);
