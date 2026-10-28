@@ -42,19 +42,25 @@ public final class DirectStorageArtifactMaterializer implements ArtifactMaterial
         Artifact artifact = artifacts.getArtifact(tenantId, artifactPin.artifactId())
                 .orElseThrow(() -> new ArtifactMaterializationException(
                         "Artifact does not exist or is unauthorized for tenant"));
-        if (artifact.state() != ArtifactState.AVAILABLE
+        if (!tenantId.equals(artifact.tenantId()) || !artifactPin.artifactId().equals(artifact.artifactId())
+                || artifact.state() != ArtifactState.AVAILABLE
                 || !artifact.contentDigest().matches(artifactPin.contentDigest())) {
             throw new ArtifactMaterializationException(
                     "Artifact is unavailable or its ContentDigest does not match the pin");
         }
         ArrayList<ArtifactReplicaBinding> replicas = new ArrayList<>(
                 artifacts.listReplicas(tenantId, artifactPin.artifactId()));
+        if (replicas.stream().anyMatch(replica -> !artifactPin.artifactId().equals(replica.artifactId()))) {
+            throw new ArtifactMaterializationException("Artifact replica identity mismatch");
+        }
         replicas.sort(Comparator
                 .comparing((ArtifactReplicaBinding value) -> value.providerId().value())
                 .thenComparing(value -> value.storageReplicaId().value()));
-        return localCache.getOrMaterialize(
-                artifactPin,
-                () -> openFirstReadableReplica(replicas));
+        var result = localCache.getOrMaterialize(artifactPin, () -> openFirstReadableReplica(replicas));
+        if (result.materializedArtifact().byteLength() != artifact.byteLength()) {
+            throw new ArtifactMaterializationException("Artifact byte length mismatch");
+        }
+        return result;
     }
 
     private java.io.InputStream openFirstReadableReplica(

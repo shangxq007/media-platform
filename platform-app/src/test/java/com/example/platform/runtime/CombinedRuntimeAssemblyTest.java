@@ -26,6 +26,8 @@ class CombinedRuntimeAssemblyTest {
         Path plugins = Files.createDirectory(temp.resolve("plugins"));
         new ApplicationContextRunner()
                 .withUserConfiguration(FfmpegWorkerPluginConfiguration.class)
+                .withBean(com.example.platform.extension.api.port.PluginRegistrationPort.class,
+                        com.example.platform.extension.api.port.PluginRegistries::standalone)
                 .withPropertyValues(
                         "platform.runtime.role=COMBINED",
                         "platform.ffmpeg-worker.plugins-directory=" + plugins,
@@ -33,6 +35,22 @@ class CombinedRuntimeAssemblyTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(ProviderPluginCatalog.class);
+                });
+    }
+
+    @Test
+    void combinedCannotSilentlyStartAPrivateRegistryInsteadOfThePublicAuthority() throws Exception {
+        Path plugins = Files.createDirectory(temp.resolve("missing-platform-registry"));
+        new ApplicationContextRunner()
+                .withUserConfiguration(FfmpegWorkerPluginConfiguration.class)
+                .withPropertyValues("platform.runtime.role=COMBINED",
+                        "platform.ffmpeg-worker.plugins-directory=" + plugins,
+                        "platform.ffmpeg-worker.workspace-root=" + temp.resolve("workspace"))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasRootCauseInstanceOf(org.springframework.beans.factory.NoSuchBeanDefinitionException.class)
+                            .hasStackTraceContaining(com.example.platform.extension.api.port.PluginRegistrationPort.class.getName());
                 });
     }
 

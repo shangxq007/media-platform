@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Assembles the canonical, digest-verified Artifact materializer for the media worker.
  *
- * <p>No workerfabric code is modified: the existing {@link StorageProvider} beans of this context are
+ * <p>The existing {@link StorageProvider} beans of this context are
  * collected into the {@code Map<StorageProviderId, StorageProvider>} that
  * {@link DirectStorageArtifactMaterializer} expects, together with a bounded worker-local byte cache.
  * Two providers claiming one id fail closed.

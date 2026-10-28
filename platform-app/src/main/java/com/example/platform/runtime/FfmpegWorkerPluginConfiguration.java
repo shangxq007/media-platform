@@ -48,13 +48,20 @@ public class FfmpegWorkerPluginConfiguration {
 
     @Bean(initMethod = "loadAndStart", destroyMethod = "close")
     ProviderPluginHost providerPluginHost(
-            @Value("${platform.ffmpeg-worker.plugins-directory}") String pluginsDirectory) {
+            @Value("${platform.ffmpeg-worker.plugins-directory}") String pluginsDirectory,
+            org.springframework.beans.factory.ObjectProvider<com.example.platform.extension.api.port.PluginRegistrationPort> registries,
+            org.springframework.core.env.Environment environment) {
         Path directory = Path.of(pluginsDirectory).toAbsolutePath().normalize();
         if (!Files.isDirectory(directory)) {
             throw new IllegalStateException(
                     "ffmpeg worker plugin directory is unavailable: " + directory);
         }
-        return ProviderPluginHost.open(directory);
+        // COMBINED publishes discovery through the same platform registry that its HTTP
+        // composition API reads. A headless WORKER keeps the canonical standalone registry.
+        var registry = "COMBINED".equals(environment.getProperty("platform.runtime.role"))
+                ? registries.getObject()
+                : registries.getIfAvailable(com.example.platform.extension.api.port.PluginRegistries::standalone);
+        return new ProviderPluginHost(directory, registry);
     }
 
     @Bean
