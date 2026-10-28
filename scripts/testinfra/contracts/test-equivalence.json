@@ -83,6 +83,38 @@
       "before": "6f8658dd91ec7613a6a05876a7e3a7fdaac4dd39b8e8b14dfa6ef34d9e37479b",
       "after": "3796ff9a4ab1dfe8e894cd461f72345167bf642d2b1d38f280001a25ff017372",
       "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated."
+    },
+    {
+      "path": "platform-app/src/test/java/com/example/platform/runtime/LocalHostRegistrationRoundTripIT.java",
+      "old_method_hashes": {
+        "registrationTicksAreDurableIdempotentAndGenerationAdvancing": "73b7e16f4968b41f387e6a902ae1bd530d997675912caa62629b58bcecfdfcd4"
+      },
+      "new_method_hashes": {
+        "registrationTicksAreDurableIdempotentAndGenerationAdvancing": "15738dec65776e45299e27f193084e09eb757b0f9676d204d86261808aaa5864"
+      },
+      "reason": "OD2 replaces a fixed local-ffmpeg-v1 process identity with the current production loop UUID. All 20 assertions and the same persisted host/runtime/readiness relationship remain; six additional PG incarnation/takeover/late tick cases enforce the stronger invariant.",
+      "owner": "OD2 / OD3 continuation",
+      "assertions_retained": 20,
+      "real_execution_evidence": "10-owner-approved-implementation/consolidated-runtime-2/04-tests/pg18-retry-13/stdout.log:173/173"
+    },
+    {
+      "path": "platform-app/src/test/java/com/example/platform/runtime/mediatask/MediaTaskExecuteTaskIntegrationTest.java",
+      "old_method_hashes": {
+        "executesTheStoredGraphAndPlansTheTerminalOutputPublication": "f7b4bc3236604987adc46f2d93a4f93870a81ca0a2c8a7e6d68b2e8aab9000fd",
+        "failsClosedWhenTheTaskHasNoCurrentGrant": "4449dd371402451f97ff0f5db5d0dbb47f6d7704106f9c882f4364f85610a46b",
+        "failsClosedWhenThePublicationScopeIsNotConfigured": "1135778802fea500e0c367aa9cb22380ec38aac30303f0bacc83cb305512ba15",
+        "failsClosedWhenTheTenantDoesNotMatchTheReference": "4d96f8a8e3381966c63c787f87c9bc920cddf4708de8fa93b56a542c8cfb60f6"
+      },
+      "new_method_hashes": {
+        "executesTheStoredGraphAndPlansTheTerminalOutputPublication": "bab6a83e6841035c34672cad296f2399ad101292a9429838b7b6b2f3378139fe",
+        "failsClosedWhenTheTaskHasNoCurrentGrant": "4449dd371402451f97ff0f5db5d0dbb47f6d7704106f9c882f4364f85610a46b",
+        "failsClosedWhenThePublicationScopeIsNotConfigured": "1135778802fea500e0c367aa9cb22380ec38aac30303f0bacc83cb305512ba15",
+        "failsClosedWhenTheTenantDoesNotMatchTheReference": "4d96f8a8e3381966c63c787f87c9bc920cddf4708de8fa93b56a542c8cfb60f6"
+      },
+      "reason": "OD3 uses disjoint render:/execution: publication-owner identity before tenant/project/task/native attempt/generation hashing. The exact expected Render Artifact hash assertion is updated to include render: without removing any assertion; real Render/Artifact HTTP and stale-generation PG regressions retain the original behavior.",
+      "owner": "OD2 / OD3 continuation",
+      "assertions_retained": 16,
+      "real_execution_evidence": "10-owner-approved-implementation/consolidated-runtime-2/04-tests/pg18-retry-13/stdout.log:173/173"
     }
   ],
   "real_evidence": "PG18 18.6, target JDBC42.7.14/Flyway11.20.3/jOOQ3.21.9; controlled pg18-local suite. Historical snapshots remain authoritative for previous bytes.",
