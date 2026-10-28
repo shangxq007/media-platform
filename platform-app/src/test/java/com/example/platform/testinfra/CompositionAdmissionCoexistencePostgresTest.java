@@ -2,6 +2,7 @@ package com.example.platform.testinfra;
 
 import com.example.platform.composition.app.JdbcCompositionAdmissionRepository;
 import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.PlatformExecutionState;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
