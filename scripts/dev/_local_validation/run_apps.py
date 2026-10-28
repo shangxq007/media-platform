@@ -73,7 +73,7 @@ if '--bootstrap' in sys.argv:
           '--ro-bind','/var/lib/ca-certificates/java-cacerts','/var/lib/ca-certificates/java-cacerts',
           '--ro-bind',str(R/'03-build/outputs'),str(R/'03-build/outputs'),'--ro-bind',c['ca'],c['ca'],
           '--bind',str(out),str(out),'--tmpfs',str(control),'--chdir',str(out),'--',
-          '/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',jar]
+          '/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',jar,'--platform.runtime.role='+profile.upper()]
   wrapper="#!/usr/bin/python3\nimport os,json,sys\nfrom pathlib import Path\ne=dict(os.environ)\nassert not any(k in e for k in ['BWS_ACCESS_TOKEN','BWS_BIN','BWS_PROJECT_ID','NEON_API_KEY','PLATFORM_RUNTIME_ROLE'])\ne.update(json.loads(Path("+repr(str(runtime))+").read_text()))\nPath("+repr(str(out/(role+'-bootstrap-env.json')))+").write_text(json.dumps({'keys':sorted(e),'role_environment_absent':'PLATFORM_RUNTIME_ROLE' not in e,'synthetic_bws':True}))\nos.execve('/usr/bin/bwrap',"+repr(nested)+"+sys.argv[1:],e)\n"
   target.write_text(wrapper);target.chmod(0o700)
   driver=deploy/'driver.py';driver.write_text("import os\ne="+repr({k:v for k,v in e.items() if k in ['PATH','HOME','LANG','LC_ALL','SPRING_PROFILES_ACTIVE','PLATFORM_ENV']})+"\ne.update("+repr({'BWS_ACCESS_TOKEN':'synthetic-bootstrap-correction','BWS_PROJECT_ID':'00000000-0000-0000-0000-000000000000','BWS_BIN':str(stub),'MEDIA_PLATFORM_DEPLOY_ROOT':str(deploy)})+")\nos.execve('/usr/bin/python3',['/usr/bin/python3','-B',"+repr(str(W/'scripts/startup/bootstrap'))+",'--profile',"+repr(profile)+",'--',"+repr(str(target))+"],e)\n");driver.chmod(0o600)
