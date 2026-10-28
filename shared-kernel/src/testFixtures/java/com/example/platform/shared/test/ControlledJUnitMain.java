@@ -49,6 +49,7 @@ public final class ControlledJUnitMain {
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.GraphRenderLifecycleIT"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.FirstRenderPreparationPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.PlatformCapabilityExecutionPostgresTest"),
+                    DiscoverySelectors.selectClass("com.example.platform.testinfra.PlatformCapabilityTerminalRacePostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.CompositionAdmissionCoexistencePostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.AtomicAssignmentGrantValidityPostgresTest"),
                     DiscoverySelectors.selectClass("com.example.platform.workerfabric.domain.ArtifactReuseIndexPostgresTest"),

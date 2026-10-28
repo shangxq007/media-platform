@@ -71,4 +71,54 @@ class CompositionAdmissionCoexistencePostgresTest {
             assertEquals(0, w.count("artifact")); assertEquals(0, w.count("quota_usage_operation"));
         }
     }
+    @Test void compositionResultsRoundTripWithExactReplayAndRejectConflictingCompletion() throws Exception {
+        try (var w = new PlatformCapabilityExecutionPostgresTest.World()) {
+            var plan = plan("composition-result"); var accepted = w.tx(() -> repository(w).admit(plan));
+            var results = new com.example.platform.composition.app.JdbcCompositionResultRepository(new JdbcTemplate(
+                    new SingleConnectionDataSource(w.fixture.schema.connection(), true)));
+            var output = new com.example.platform.composition.app.CompositionResultRepository.MaterializedResult(
+                    accepted.executionId(), "composition-attempt", "composition-object", "a".repeat(64), 3, "composition-image");
+            w.tx(() -> { results.recordMaterialized("tenant-a", "composition-result", "composition-result", output, 0); return null; });
+            assertEquals(output, results.findMaterialized("tenant-a", "composition-result", "composition-result").orElseThrow());
+            var completion = results.find(accepted.executionId(), "composition-attempt").orElseThrow();
+            assertEquals(completion, results.findByIdempotency("tenant-a", "composition-result", plan.idempotency().requestHash()).orElseThrow());
+            assertTrue(results.findByIdempotency("tenant-a", "composition-result", "wrong-hash").isEmpty());
+            assertTrue(results.findByIdempotency("other-tenant", "composition-result", plan.idempotency().requestHash()).isEmpty());
+            assertEquals(completion, w.tx(() -> results.record(completion, 0)));
+            assertThrows(IllegalArgumentException.class, () -> w.tx(() -> results.record(completion, 1)));
+            var conflict = new com.example.platform.execution.result.PlatformCompletionReference(accepted.executionId(),
+                    "composition-attempt", completion.resultId(), "wrong-receipt", completion.artifactCommitId(), completion.status());
+            assertThrows(IllegalArgumentException.class, () -> w.tx(() -> results.record(conflict, 0)));
+            assertEquals(completion, results.find(accepted.executionId(), "composition-attempt").orElseThrow());
+            assertEquals(1,w.count("platform_execution_result")); assertEquals(0,w.count("artifact"));
+            assertEquals(0,w.count("quota_usage_operation"));
+        }
+    }
+    @Test void compositionResultAdapterCannotReadOrOverwriteARealCapabilityOwnersCommittedResult() throws Exception {
+        try (var w = new PlatformCapabilityExecutionPostgresTest.World()) {
+            var fixture = new PlatformCapabilityTerminalRacePostgresTest(); var f = fixture.ready(w); var calls = new java.util.concurrent.atomic.AtomicInteger();
+            w.tx(() -> { try { return w.owner(w.db).publish("tenant-a","project-a",f.plan().executionId(),1,
+                    f.task(),f.execution(),() -> fixture.nativeCallbackFixture(w.db,f,calls)); }
+                    catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); } });
+            assertEquals(1,calls.get());
+            var before = w.db.fetchOne("select * from platform_execution_result where execution_id=?", f.plan().executionId()).intoMap();
+            var results = new com.example.platform.composition.app.JdbcCompositionResultRepository(new JdbcTemplate(
+                    new SingleConnectionDataSource(w.fixture.schema.connection(), true)));
+            String key = f.plan().scopedIdempotencyKey();
+            assertTrue(results.find(f.plan().executionId(),"race-attempt").isEmpty());
+            assertTrue(results.findByIdempotency("tenant-a",key,f.plan().requestHash()).isEmpty());
+            assertTrue(results.findMaterialized("tenant-a",key,f.plan().requestHash()).isEmpty());
+            var completion = new com.example.platform.execution.result.PlatformCompletionReference(f.plan().executionId(),
+                    "race-attempt","foreign-result","foreign-receipt","foreign-artifact",
+                    com.example.platform.execution.result.PlatformCompletionReference.Status.COMPLETED);
+            assertThrows(IllegalArgumentException.class, () -> w.tx(() -> results.record(completion,1)));
+            var output = new com.example.platform.composition.app.CompositionResultRepository.MaterializedResult(
+                    f.plan().executionId(),"race-attempt","foreign-object","f".repeat(64),99,"foreign-artifact");
+            assertThrows(IllegalArgumentException.class, () -> w.tx(() -> {results.recordMaterialized("tenant-a",key,f.plan().requestHash(),output,1);return null;}));
+            assertEquals(before,w.db.fetchOne("select * from platform_execution_result where execution_id=?",f.plan().executionId()).intoMap());
+            assertEquals(1,w.count("platform_execution_result")); assertEquals(1,w.count("artifact")); assertEquals(1,w.count("quota_usage_operation"));
+            assertEquals(PlatformExecutionState.COMPLETED,w.owner(w.db).find("tenant-a","project-a",f.plan().executionId()).orElseThrow().state());
+        }
+    }
+
 }

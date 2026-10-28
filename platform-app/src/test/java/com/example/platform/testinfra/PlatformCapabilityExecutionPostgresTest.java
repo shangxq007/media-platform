@@ -36,8 +36,9 @@ class PlatformCapabilityExecutionPostgresTest {
             db.execute("insert into workspace(id,tenant_id,name,created_at,updated_at) values('workspace-a','tenant-a','capability-test',now(),now())");
             db.execute("update project set workspace_id='workspace-a' where id='project-a' and tenant_id='tenant-a'");
         }
-        PlatformCapabilityExecutionService owner(DSLContext connection) {
-            var jdbc=new org.springframework.jdbc.core.JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(fixture.schema.connection(),true));
+        PlatformCapabilityExecutionService owner(DSLContext connection) { return owner(connection, fixture.schema.connection()); }
+        PlatformCapabilityExecutionService owner(DSLContext connection, java.sql.Connection sql) {
+            var jdbc=new org.springframework.jdbc.core.JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(sql,true));
             var quota=new QuotaConsumptionApplicationService(new QuotaPolicyService(),new QuotaUsageAuthority(new QuotaUsageJdbcRepository(jdbc)));
             return new PlatformCapabilityExecutionService(connection,new OutboxEventService(connection,3,mock(PostgresNotificationService.class),
                     new OutboxEventRouter(List.of(new ExecutionOutboxEvents()))),quota,new JooqCompletedTaskOutputQuery(connection),new JooqArtifactApplicationQuery(connection));
@@ -94,7 +95,7 @@ class PlatformCapabilityExecutionPostgresTest {
                 TenantContext.set("tenant-a");
                 try(var c=com.example.platform.shared.test.TestDatabaseConnectionProvider.fromControlledLaunch().openConnectionForSchema(w.fixture.schema.name())) {
                     var db=DSL.using(c,SQLDialect.POSTGRES,w.db.settings());db.execute("set lock_timeout='5s'");c.setAutoCommit(false);ready.countDown();assertTrue(start.await(5,TimeUnit.SECONDS));
-                    try {var result=w.owner(db).admit(plan);c.commit();return result;}catch(RuntimeException failure){c.rollback();throw failure;}
+                    try {var result=w.owner(db,c).admit(plan);c.commit();return result;}catch(RuntimeException failure){c.rollback();throw failure;}
                 } finally {TenantContext.clear();}
             };
             var futures=new ArrayList<Future<PlatformExecutionAdmissionPort.CapabilityExecution>>();for(int i=0;i<4;i++)futures.add(pool.submit(call));
