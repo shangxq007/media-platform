@@ -215,13 +215,15 @@ public final class OperationPlanner {
     private static TimelineClip withPlacement(TimelineClip clip, MediaTime newStart, MediaTime newEnd) {
         return new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), newStart, newEnd,
-                clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), clip.getTemporalMapping());
+                clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), clip.getTemporalMapping(),
+                clip.getEffects());
     }
 
     private static TimelineClip withTemporal(TimelineClip clip, TemporalMapping mapping) {
         return new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(),
-                clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), mapping);
+                clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), mapping,
+                clip.getEffects());
     }
 
     private TimelineDocument planAddMediaClip(
@@ -327,9 +329,36 @@ public final class OperationPlanner {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "trim requires exactly one target");
         }
         TimelineClip clip = clipOf(base, scope.get(0));
-        TimelineClip trimmed = params.edge() == OperationParameters.TrimParameters.TrimEdge.START
-                ? withPlacement(clip, clip.getStartTime().add(params.delta()), clip.getEndTime())
-                : withPlacement(clip, clip.getStartTime(), clip.getEndTime().subtract(params.delta()));
+        if (!(clip.getTemporalMapping() instanceof ConstantRateTemporalMapping mapping)) {
+            throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                    "trim requires constant-rate media");
+        }
+        if (!params.delta().isGreaterThan(MediaTime.ZERO)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "trim delta must be positive");
+        }
+        MediaTime sourceDelta = params.delta().multiplyRational(
+                mapping.rate().numerator(), mapping.rate().denominator());
+        boolean startEdge = params.edge() == OperationParameters.TrimParameters.TrimEdge.START;
+        MediaTime newStart = startEdge ? clip.getStartTime().add(params.delta()) : clip.getStartTime();
+        MediaTime newEnd = startEdge ? clip.getEndTime() : clip.getEndTime().subtract(params.delta());
+        MediaTime newSourceStart = clip.getTrimStart();
+        MediaTime newSourceEnd = clip.getTrimEnd();
+        if (mapping.direction() == PlaybackDirection.FORWARD) {
+            newSourceStart = startEdge ? newSourceStart.add(sourceDelta) : newSourceStart;
+            newSourceEnd = startEdge ? newSourceEnd : newSourceEnd.subtract(sourceDelta);
+        } else {
+            newSourceEnd = startEdge ? newSourceEnd.subtract(sourceDelta) : newSourceEnd;
+            newSourceStart = startEdge ? newSourceStart : newSourceStart.add(sourceDelta);
+        }
+        if (!newStart.isLessThan(newEnd) || !newSourceStart.isLessThan(newSourceEnd)
+                || newSourceStart.isLessThan(MediaTime.ZERO)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "trim must leave a positive media range");
+        }
+        TimelineClip trimmed = new TimelineClip(
+                clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
+                clip.getArtifactId(), clip.getContentDigest(), newStart, newEnd,
+                newSourceStart, newSourceEnd, clip.getSourceKind(), mapping, clip.getEffects());
         // frozen policy: trim invalidating a Sync object-local anchor => REJECT
         for (SemanticRelationship rel : base.getSemanticRelationships()) {
             if (rel instanceof SyncRelationship s) {
