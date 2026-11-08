@@ -7,10 +7,11 @@ from controlled_launch import birth
 from local_runtime import sandbox_prefix
 prior=Path((R/'07-runtime/current-apps.txt').read_text().strip()) if (R/'07-runtime/current-apps.txt').exists() else None
 out=R/'07-runtime'/('apps-'+str(time.time_ns()));out.mkdir(mode=0o700)
+shutil.copytree(W/'scripts/startup',out/'bootstrap-source',dirs_exist_ok=True)
 c=json.loads((R/'07-runtime/local-context.json').read_text()); old=json.loads((Path((R/'07-runtime/final-db-job.txt').read_text().strip())/'binding.json').read_text());old.update(scratch=str(out),identity=birth(c['pid']),container_id=c['container_id'],network_namespace=c['network_namespace'],user_namespace=c['user_namespace'],ca=c['ca'],run=c['run'],attempt=c['attempt'])
 b=out/'binding.json';b.write_text(json.dumps(old));b.chmod(0o600)
 for n in ['plugins','workspace','staging','work','object-store','local-storage','cover-work','materialized','oidc']:(out/n).mkdir()
-shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.1.0.jar',out/'plugins')
+shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.2.0.jar',out/'plugins')
 if prior and (prior/'source-metadata.json').exists() and '--fresh' not in sys.argv:
  assert not any(p.is_symlink() for p in (prior/'object-store').rglob('*'))
  shutil.copytree(prior/'object-store',out/'object-store',dirs_exist_ok=True,symlinks=True)
@@ -45,7 +46,8 @@ if combined:
 for role in roles:
  e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else role.upper()};p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
 launcher=out/'launch.py';launcher.write_text("import json,os,sys\ne=json.load(open(sys.argv[1]));os.execve('/usr/bin/java',['/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',sys.argv[2]],e)\n")
-ctypes.CDLL(None,use_errno=True).prctl(36,1,0,0,0) # subreaper; retain all reparented descendants
+from subreaper import require_subreaper
+require_subreaper()
 prefix=sandbox_prefix(b);prefix=prefix[:-1]+['--tmpfs','/usr/local','--ro-bind',str(R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl'),'/usr/local/lib/media-platform/ffmpeg','--'];processes={};logs=[]
 oidc=out/'oidc.py';oidc.write_text("from http.server import HTTPServer,SimpleHTTPRequestHandler\nimport os\nos.chdir("+repr(str(out/'oidc'))+")\nclass JsonHandler(SimpleHTTPRequestHandler):\n def guess_type(self,path):return 'application/json'\nHTTPServer(('127.0.0.1',18081),JsonHandler).serve_forever()\n")
 commands={'oidc':prefix+['/usr/bin/python3','-B',str(oidc)]}
@@ -70,13 +72,21 @@ if '--bootstrap' in sys.argv:
   nested=['/usr/bin/bwrap','--unshare-user','--unshare-pid','--unshare-ipc','--unshare-uts','--unshare-cgroup','--uid','1000','--gid','1000','--cap-drop','ALL','--die-with-parent','--new-session',
           '--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib',
           '--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/etc','--ro-bind','/etc/ld.so.cache','/etc/ld.so.cache',
-          '--ro-bind','/var/lib/ca-certificates/java-cacerts','/var/lib/ca-certificates/java-cacerts',
           '--ro-bind',str(R/'03-build/outputs'),str(R/'03-build/outputs'),'--ro-bind',c['ca'],c['ca'],
           '--bind',str(out),str(out),'--tmpfs',str(control),'--chdir',str(out),'--',
           '/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',jar,'--platform.runtime.role='+profile.upper()]
+  java_config=Path('/etc/java-25-openjdk')
+  if java_config.is_dir() and not java_config.is_symlink():
+   index=nested.index('--');nested[index:index]=['--ro-bind',str(java_config),str(java_config)]
+  for trust in ('/etc/alternatives','/etc/ssl/certs/java','/var/lib/ca-certificates/java-cacerts'):
+   if Path(trust).exists() and not Path(trust).is_symlink():
+    index=nested.index('--');nested[index:index]=['--ro-bind',trust,trust]
   wrapper="#!/usr/bin/python3\nimport os,json,sys\nfrom pathlib import Path\ne=dict(os.environ)\nassert not any(k in e for k in ['BWS_ACCESS_TOKEN','BWS_BIN','BWS_PROJECT_ID','NEON_API_KEY','PLATFORM_RUNTIME_ROLE'])\ne.update(json.loads(Path("+repr(str(runtime))+").read_text()))\nPath("+repr(str(out/(role+'-bootstrap-env.json')))+").write_text(json.dumps({'keys':sorted(e),'role_environment_absent':'PLATFORM_RUNTIME_ROLE' not in e,'synthetic_bws':True}))\nos.execve('/usr/bin/bwrap',"+repr(nested)+"+sys.argv[1:],e)\n"
   target.write_text(wrapper);target.chmod(0o700)
-  driver=deploy/'driver.py';driver.write_text("import os\ne="+repr({k:v for k,v in e.items() if k in ['PATH','HOME','LANG','LC_ALL','SPRING_PROFILES_ACTIVE','PLATFORM_ENV']})+"\ne.update("+repr({'BWS_ACCESS_TOKEN':'synthetic-bootstrap-correction','BWS_PROJECT_ID':'00000000-0000-0000-0000-000000000000','BWS_BIN':str(stub),'MEDIA_PLATFORM_DEPLOY_ROOT':str(deploy)})+")\nos.execve('/usr/bin/python3',['/usr/bin/python3','-B',"+repr(str(W/'scripts/startup/bootstrap'))+",'--profile',"+repr(profile)+",'--',"+repr(str(target))+"],e)\n");driver.chmod(0o600)
+  # The verified build copy is owned by the execution UID, as required by the
+  # bootstrap allowlist check; the immutable source archive stays root-owned.
+  bootstrap=out/'bootstrap-source/bootstrap'
+  driver=deploy/'driver.py';driver.write_text("import os\ne="+repr({k:v for k,v in e.items() if k in ['PATH','HOME','LANG','LC_ALL','SPRING_PROFILES_ACTIVE','PLATFORM_ENV']})+"\ne.update("+repr({'BWS_ACCESS_TOKEN':'synthetic-bootstrap-correction','BWS_PROJECT_ID':'00000000-0000-0000-0000-000000000000','BWS_BIN':str(stub),'MEDIA_PLATFORM_DEPLOY_ROOT':str(deploy)})+")\nos.execve('/usr/bin/python3',['/usr/bin/python3','-B',"+repr(str(bootstrap))+",'--profile',"+repr(profile)+",'--',"+repr(str(target))+"],e)\n");driver.chmod(0o600)
   commands[role]=prefix+['/usr/bin/python3','-B',str(driver)]
 from cli import manifest
 manifest_bytes=manifest()

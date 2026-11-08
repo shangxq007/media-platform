@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Pure fail-closed capability-aware lowering for the bounded CPU ffmpeg slice.
@@ -23,6 +25,8 @@ import java.util.Set;
  * requirement must be one this provider actually declares.</p>
  */
 public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRenderPlan> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FfmpegCpuRenderLowerer.class);
 
     private static final Set<String> DECLARED_CAPABILITIES = Set.of(
             FfmpegCpuProvider.COVER_CAPABILITY.value(),
@@ -50,16 +54,54 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
         var unit = membership.physicalPlanUnit();
         FfmpegCpuRenderPlan.Operation operation = operationOf(unit.operationKey());
         requireDeclaredCapabilities(unit.capabilityRequirementRefs(), operation);
-        if (unit.typedInputs().size() != 1 || task.requiredRuntimeInputs().size() != 1) {
-            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
-                    "FFmpeg CPU lowering requires one exact materialized runtime input");
-        }
         if (unit.typedOutputs().size() != 1 || task.authoritativeOutputIds().size() != 1) {
             throw new ProviderNativeExecutionFailure(
                     ProviderNativeFailureCode.UNSUPPORTED_AUTHORITATIVE_OUTPUT_CARDINALITY,
                     "FFmpeg CPU lowering requires one authoritative output",
                     Map.of("authoritativeOutputCount",
                             Integer.toString(task.authoritativeOutputIds().size())));
+        }
+        if (operation == FfmpegCpuRenderPlan.Operation.COMPOSITE && !unit.typedInputs().isEmpty()) {
+            var extent = unit.propagatedExtent();
+            if (extent == null || task.requiredRuntimeInputs().size() != unit.typedInputs().size()) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "timed composition requires an exact extent and all declared inputs");
+            }
+            var runtimeIds = task.requiredRuntimeInputs().stream()
+                    .map(input -> input.inputId()).collect(java.util.stream.Collectors.toSet());
+            var inputs = new java.util.ArrayList<FfmpegCpuRenderPlan.TimedInput>();
+            for (var input : unit.typedInputs()) {
+                if (!(input.dependencyVariant() instanceof
+                        com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput timed)
+                        || !runtimeIds.contains(input.inputId())
+                        || timed.start().isLessThan(extent.start())
+                        || timed.end().isGreaterThan(extent.end())) {
+                    throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                            "each composition input requires exact in-extent timing");
+                }
+                inputs.add(new FfmpegCpuRenderPlan.TimedInput(input.inputId(),
+                        timed.start().subtract(extent.start()), timed.end().subtract(extent.start())));
+            }
+            inputs.sort(java.util.Comparator.comparing(FfmpegCpuRenderPlan.TimedInput::start)
+                    .thenComparing(input -> input.inputId().value()));
+            for (int i = 1; i < inputs.size(); i++) {
+                if (inputs.get(i - 1).end().isGreaterThan(inputs.get(i).start())) {
+                    throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                            "overlapping composition inputs are not supported");
+                }
+            }
+            LOG.info("FFMPEG_COMPOSITE_PLAN task={} extent={}..{} frameRate={} inputs={} duration={}",
+                    task.id().sha256Hex(), extent.start(), extent.end(), extent.frameRate(),
+                    inputs, extent.end().subtract(extent.start()));
+            return new FfmpegCpuRenderPlan(task.id(), task.providerBindingPin(), operation,
+                    inputs.getFirst().inputId(), task.authoritativeOutputIds().getFirst(),
+                    Optional.empty(), Optional.empty(), inputs,
+                    Optional.of(extent.end().subtract(extent.start())),
+                    Optional.of(extent.frameRate()));
+        }
+        if (unit.typedInputs().size() != 1 || task.requiredRuntimeInputs().size() != 1) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "FFmpeg CPU lowering requires exact materialized runtime inputs");
         }
         var artifactRequest = unit.artifactCapabilityRequest();
         if (operation == FfmpegCpuRenderPlan.Operation.FRAME_EXTRACT) {
@@ -82,13 +124,16 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
         }
         Optional<FfmpegCpuRenderPlan.SourceWindow> window = operation == FfmpegCpuRenderPlan.Operation.FRAME_EXTRACT
                 ? Optional.empty() : sourceWindow(unit.temporalWindow(), operation);
+        var extent = unit.propagatedExtent();
         return new FfmpegCpuRenderPlan(
                 task.id(),
                 task.providerBindingPin(),
                 operation,
                 task.requiredRuntimeInputs().getFirst().inputId(),
                 task.authoritativeOutputIds().getFirst(),
-                window, artifactRequest == null ? Optional.empty() : Optional.of(artifactRequest.parameters()));
+                window, artifactRequest == null ? Optional.empty() : Optional.of(artifactRequest.parameters()),
+                java.util.List.of(), Optional.empty(),
+                extent == null ? Optional.empty() : Optional.of(extent.frameRate()));
     }
 
     private static FfmpegCpuRenderPlan.Operation operationOf(String operationKey) {

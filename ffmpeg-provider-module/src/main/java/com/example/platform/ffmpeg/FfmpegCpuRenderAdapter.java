@@ -1,6 +1,7 @@
 package com.example.platform.ffmpeg;
 
 import com.example.platform.execution.domain.ExecutionInputId;
+import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.providernative.ExecutionCommand;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
@@ -15,6 +16,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Deterministic argv-only adapter for the bounded CPU ffmpeg slice.
@@ -27,6 +30,8 @@ import java.util.Objects;
  * no credentials — materialized input resolution stays worker-owned.</p>
  */
 public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRenderPlan> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FfmpegCpuRenderAdapter.class);
 
     private static final String MATERIALIZED_INPUT_PREFIX = "@platform-materialized-input:";
     private static final int SECONDS_SCALE = 9;
@@ -90,10 +95,53 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
             arguments.add("-ss");
             arguments.add(seconds(parameters.position()));
         });
-        arguments.add("-i");
-        arguments.add(materializedInputToken(plan.inputId()));
-        arguments.add("-map");
-        arguments.add("0:v:0");
+        if (plan.compositeInputs().isEmpty()) {
+            arguments.add("-i");
+            arguments.add(materializedInputToken(plan.inputId()));
+            arguments.add("-map");
+            arguments.add("0:v:0");
+        } else {
+            for (var input : plan.compositeInputs()) {
+                arguments.add("-i");
+                arguments.add(materializedInputToken(input.inputId()));
+            }
+            MediaTime duration = plan.compositeDuration().orElseThrow();
+            var canvasRate = plan.outputFrameRate().orElse(FrameRate.of(30, 1));
+            StringBuilder filter = new StringBuilder("color=c=black:s=320x240:r=")
+                    .append(canvasRate.numerator()).append('/').append(canvasRate.denominator())
+                    .append(":d=").append(seconds(duration)).append("[canvas];");
+            for (int i = 0; i < plan.compositeInputs().size(); i++) {
+                if (i > 0) {
+                    filter.append(';');
+                }
+                var input = plan.compositeInputs().get(i);
+                filter.append('[').append(i).append(":v]setpts=PTS-STARTPTS");
+                if (input.start().ticks() != 0) {
+                    filter.append('+').append(seconds(input.start())).append("/TB");
+                }
+                filter.append("[clip").append(i).append(']');
+            }
+            filter.append(";[canvas][clip0]overlay=enable='gte(t,")
+                    .append(seconds(plan.compositeInputs().getFirst().start()))
+                    .append(")*lt(t,").append(seconds(plan.compositeInputs().getFirst().end()))
+                    .append(")'[base0]");
+            for (int i = 1; i < plan.compositeInputs().size(); i++) {
+                var input = plan.compositeInputs().get(i);
+                filter.append(';').append("[base").append(i - 1).append("][clip").append(i)
+                        .append("]overlay=enable='gte(t,")
+                        .append(seconds(input.start())).append(")*lt(t,")
+                        .append(seconds(input.end())).append(")'[base").append(i).append(']');
+            }
+                arguments.addAll(List.of("-filter_complex", filter.toString(), "-map",
+                    "[base" + (plan.compositeInputs().size() - 1) + "]", "-t", seconds(duration)));
+        }
+        if ((plan.operation() == FfmpegCpuRenderPlan.Operation.COMPOSITE
+                        || plan.operation() == FfmpegCpuRenderPlan.Operation.ENCODE)
+                && plan.outputFrameRate().isPresent()) {
+            var rate = plan.outputFrameRate().orElseThrow();
+            arguments.add("-r");
+            arguments.add(rate.numerator() + "/" + rate.denominator());
+        }
         arguments.add("-an");
         arguments.add("-map_metadata");
         arguments.add("-1");
@@ -120,7 +168,7 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         arguments.add("-preset");
         arguments.add("medium");
         arguments.add("-x264-params");
-        arguments.add("threads=1:lookahead_threads=1:sliced_threads=0");
+        arguments.add("threads=1:lookahead_threads=1:sliced_threads=0:bframes=0");
         arguments.add("-pix_fmt");
         arguments.add("yuv420p");
         arguments.add("-flags:v");
@@ -130,6 +178,8 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         arguments.add("-f");
         arguments.add("mp4");
         arguments.add("pipe:1");
+        LOG.info("FFMPEG_ARGV task={} operation={} argv={}",
+                plan.executableTaskId().sha256Hex(), plan.operation(), arguments);
         return arguments;
     }
 

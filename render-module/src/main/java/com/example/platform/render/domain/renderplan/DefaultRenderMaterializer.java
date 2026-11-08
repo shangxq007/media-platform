@@ -16,6 +16,7 @@ import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.timeline.semantics.temporal.TemporalMapping;
 
 import java.util.ArrayList;
@@ -62,12 +63,37 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         List<MediaClip> clips = input.verifiedRevision().clips();
         RenderRequest request = input.request();
 
+        if (clips.size() > 1 && request.extent() != null) {
+            clips = clips.stream()
+                    .filter(clip -> clip.timelineRange().start().isLessThan(request.extent().end())
+                            && clip.timelineRange().end().isGreaterThan(request.extent().start()))
+                    .sorted(java.util.Comparator.comparing((MediaClip clip) -> clip.timelineRange().start())
+                            .thenComparing(MediaClip::clipId)).toList();
+        }
+
         if (clips.isEmpty() || request.outputs().isEmpty()) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
                     RenderPlanningDiagnosticCode.MATERIALIZATION_FAILED,
                     RenderDiagnosticSeverity.ERROR,
                     "Materialization requires at least one clip and one output requirement"));
             return new RenderMaterializationResult(nodes, edges, diagnostics);
+        }
+
+        boolean multiClip = clips.size() > 1;
+        if (multiClip) {
+            boolean unsupported = false;
+            for (MediaClip clip : clips) {
+                unsupported |= !(clip.temporalMapping() instanceof ConstantRateTemporalMapping mapping
+                        && mapping.direction() == PlaybackDirection.FORWARD
+                        && mapping.rate().numerator() == 1 && mapping.rate().denominator() == 1);
+            }
+            if (unsupported) {
+                diagnostics.add(RenderPlanningDiagnostic.diagnostic(
+                        RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED,
+                        RenderDiagnosticSeverity.ERROR,
+                        "Multiple video clips currently require forward unit rate"));
+                return new RenderMaterializationResult(nodes, edges, diagnostics);
+            }
         }
 
         // clipId -> DECODE node, for wiring audio/effect edges (parallel lists; avoids Map<String)
@@ -95,9 +121,12 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             // ── DECODE node ──
             RenderComponentPath decodePath = new RenderComponentPath(
                     RenderComponentKind.CLIP, List.of(clip.trackId(), clip.clipId()));
-            List<RenderArtifactReference> decodeArtifacts = List.of(
-                    new RenderArtifactReference.SourceArtifact(
-                            mediaBinding.artifactId(), mediaBinding.contentDigest()));
+            List<RenderArtifactReference> decodeArtifacts = new ArrayList<>();
+            decodeArtifacts.add(new RenderArtifactReference.SourceArtifact(
+                    mediaBinding.artifactId(), mediaBinding.contentDigest()));
+            if (multiClip) decodeArtifacts.add(new RenderArtifactReference.IntermediateArtifactExpectation(
+                    new LogicalArtifactId("clip:" + clip.trackId() + ":" + clip.clipId()),
+                    RenderOutputRole.DERIVED_MEDIA));
             List<CapabilityRequirement> decodeCaps = List.of(
                     RenderCapabilityVocabulary.videoDecode());
             String decodeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
@@ -173,8 +202,14 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 // (single grammar, multiple consumers) — application range,
                 // automation, definition version, temporal behavior, target and
                 // effective capabilities all participate in the node identity.
-                String effectReqFp = CODEC.sha256Hex(CODEC.effectMaterializationRequirementCanonical(
-                        effectRequirement, effectCaps));
+                List<RenderArtifactReference> effectArtifacts = multiClip
+                        ? List.of(new RenderArtifactReference.IntermediateArtifactExpectation(
+                                new LogicalArtifactId("effect:" + effect.effectInstanceId()),
+                                RenderOutputRole.DERIVED_MEDIA)) : List.of();
+                String effectCanonical = CODEC.effectMaterializationRequirementCanonical(effectRequirement, effectCaps);
+                String effectReqFp = CODEC.sha256Hex(multiClip ? effectCanonical
+                        + CODEC.requirementsFingerprintCanonical(effectArtifacts, effectCaps, List.of(), List.of())
+                        : effectCanonical);
                 RenderNodeId effectId = RenderNodeId.of(
                         new RenderNodeKind.Effect(), effectPath, opKey, effectReqFp);
                 RenderExecutionCoverage effectCoverage;
@@ -192,7 +227,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 }
                 RenderNode effectNode = new RenderNode(
                         effectId, new RenderNodeKind.Effect(), effectPath, opKey,
-                        List.of(), effectCaps, List.of(), List.of(),
+                        effectArtifacts, effectCaps, List.of(), List.of(),
                         List.of(effectRequirement), Optional.empty(), effectCoverage);
                 nodes.add(effectNode);
                 // data-flow direction: producer (data source) -> consumer (data sink)
@@ -286,8 +321,12 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     "text=" + textElement.styledText().content().value(),
                     "start=" + textElement.start(),
                     "duration=" + textElement.duration());
+            List<RenderArtifactReference> textArtifacts = multiClip
+                    ? List.of(new RenderArtifactReference.IntermediateArtifactExpectation(
+                            new LogicalArtifactId("text:" + textElement.id().value()),
+                            RenderOutputRole.DERIVED_MEDIA)) : List.of();
             String textReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                    List.of(), textCaps, List.of(), textParamEncodings));
+                    textArtifacts, textCaps, List.of(), textParamEncodings));
             RenderNodeId textId = RenderNodeId.of(
                     new RenderNodeKind.TimedText(), textPath, OP_RASTER, textReqFp);
             // TIMED_TEXT temporal bridge (Phase A T2): exact #20-owned projection
@@ -315,7 +354,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             }
             RenderNode textNode = new RenderNode(
                     textId, new RenderNodeKind.TimedText(), textPath, OP_RASTER,
-                    List.of(), textCaps, List.of(), List.of(),
+                    textArtifacts, textCaps, List.of(), List.of(),
                     List.of(textRequirement), Optional.empty(), textCoverage);
             nodes.add(textNode);
             timedTextNodes.add(textId);
@@ -323,25 +362,42 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         // ── COMPOSITE node (F2: visual composition of video + timed text) ──
         RenderNodeId compositeId = null;
-        if (!timedTextNodes.isEmpty()) {
+        if (!timedTextNodes.isEmpty() || !clips.isEmpty()) {
             RenderComponentPath compositePath = RenderComponentPath.of(
                     RenderComponentKind.COMPOSITE, "video");
             List<CapabilityRequirement> compositeCaps = List.of(
                     RenderCapabilityVocabulary.composite());
+            List<RenderArtifactReference> compositeArtifacts = multiClip
+                    ? List.of(new RenderArtifactReference.IntermediateArtifactExpectation(
+                            new LogicalArtifactId("composite:video"), RenderOutputRole.DERIVED_MEDIA))
+                    : List.of();
             String compositeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                    List.of(), compositeCaps, List.of(), List.of()));
+                    compositeArtifacts, compositeCaps, List.of(), List.of()));
             compositeId = RenderNodeId.of(
                     new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE, compositeReqFp);
             RenderNode compositeNode = new RenderNode(
                     compositeId, new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE,
-                    List.of(), compositeCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
+                    compositeArtifacts, compositeCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
             nodes.add(compositeNode);
-            // COMPOSITE depends on the final video producer of the primary clip
-            MediaClip primaryClip = clips.get(0);
-            RenderNodeId primaryProducer = getEntry(producerKeys, producerValues, primaryClip.clipId());
-            if (primaryProducer != null) {
-                edges.add(new RenderDependencyEdge(primaryProducer, compositeId,
-                        new RenderDependency.CompositeInput()));
+            if (multiClip) {
+                for (MediaClip clip : clips) {
+                    var start = maxMediaTime(clip.timelineRange().start(), request.extent().start());
+                    var end = minMediaTime(clip.timelineRange().end(), request.extent().end());
+                    RenderNodeId producer = getEntry(producerKeys, producerValues, clip.clipId());
+                    if (producer != null && start.isLessThan(end)) {
+                        edges.add(new RenderDependencyEdge(producer, compositeId,
+                                new RenderDependency.TimedCompositeInput(start, end)));
+                    }
+                }
+            } else {
+                MediaClip primaryClip = clips.get(0);
+                RenderNodeId primaryProducer = getEntry(producerKeys, producerValues, primaryClip.clipId());
+                var start = maxMediaTime(primaryClip.timelineRange().start(), request.extent().start());
+                var end = minMediaTime(primaryClip.timelineRange().end(), request.extent().end());
+                if (primaryProducer != null && start.isLessThan(end)) {
+                    edges.add(new RenderDependencyEdge(primaryProducer, compositeId,
+                            new RenderDependency.TimedCompositeInput(start, end)));
+                }
             }
             // TIMED_TEXT -> COMPOSITE: typed subtitle/text raster dependency
             for (RenderNodeId textId : timedTextNodes) {

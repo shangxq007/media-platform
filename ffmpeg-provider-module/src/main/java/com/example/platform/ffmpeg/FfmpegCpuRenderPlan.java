@@ -4,6 +4,7 @@ import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.ExecutionOutputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
+import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionPlan;
 import java.util.Objects;
@@ -28,7 +29,10 @@ public record FfmpegCpuRenderPlan(
         ExecutionInputId inputId,
         ExecutionOutputId outputId,
         Optional<SourceWindow> sourceWindow,
-        Optional<com.example.platform.shared.capability.MediaFrameExtractParametersV1> frameParameters) implements ProviderNativeExecutionPlan {
+        Optional<com.example.platform.shared.capability.MediaFrameExtractParametersV1> frameParameters,
+        java.util.List<TimedInput> compositeInputs,
+        Optional<MediaTime> compositeDuration,
+        Optional<FrameRate> outputFrameRate) implements ProviderNativeExecutionPlan {
 
     /** Bounded V1 operation vocabulary — the typed chain's node operations this provider serves. */
     public enum Operation {
@@ -60,9 +64,26 @@ public record FfmpegCpuRenderPlan(
         }
     }
 
+    /** Exact Timeline placement, relative to the requested render extent. */
+    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
+        public TimedInput {
+            Objects.requireNonNull(inputId); Objects.requireNonNull(start); Objects.requireNonNull(end);
+            if (!start.isLessThan(end)) throw new IllegalArgumentException("positive input interval required");
+        }
+    }
+
     public FfmpegCpuRenderPlan(ExecutableTaskId executableTaskId, ProviderBindingPin providerBindingPin,
             Operation operation, ExecutionInputId inputId, ExecutionOutputId outputId, Optional<SourceWindow> sourceWindow) {
-        this(executableTaskId,providerBindingPin,operation,inputId,outputId,sourceWindow,Optional.empty());
+        this(executableTaskId,providerBindingPin,operation,inputId,outputId,sourceWindow,Optional.empty(),
+                java.util.List.of(),Optional.empty(),Optional.empty());
+    }
+
+    public FfmpegCpuRenderPlan(ExecutableTaskId executableTaskId, ProviderBindingPin providerBindingPin,
+            Operation operation, ExecutionInputId inputId, ExecutionOutputId outputId,
+            Optional<SourceWindow> sourceWindow,
+            Optional<com.example.platform.shared.capability.MediaFrameExtractParametersV1> frameParameters) {
+        this(executableTaskId,providerBindingPin,operation,inputId,outputId,sourceWindow,frameParameters,
+                java.util.List.of(),Optional.empty(),Optional.empty());
     }
 
     public FfmpegCpuRenderPlan {
@@ -73,6 +94,20 @@ public record FfmpegCpuRenderPlan(
         Objects.requireNonNull(outputId, "outputId");
         Objects.requireNonNull(sourceWindow, "sourceWindow");
         Objects.requireNonNull(frameParameters, "frameParameters");
+        compositeInputs = java.util.List.copyOf(compositeInputs);
+        Objects.requireNonNull(compositeDuration, "compositeDuration");
+        if (!compositeInputs.isEmpty() && (operation != Operation.COMPOSITE
+                || compositeInputs.size() < 1 || compositeDuration.isEmpty())) {
+            throw new IllegalArgumentException("timed multi-input composition requires its duration");
+        }
+        if (!compositeInputs.isEmpty() && (compositeInputs.stream().map(TimedInput::inputId).distinct().count()
+                != compositeInputs.size() || !inputId.equals(compositeInputs.getFirst().inputId())
+                || compositeInputs.stream().anyMatch(input -> input.end().isGreaterThan(compositeDuration.orElseThrow())))) {
+            throw new IllegalArgumentException("composition inputs must be unique and inside its extent");
+        }
+        if (compositeInputs.isEmpty() && compositeDuration.isPresent()) {
+            throw new IllegalArgumentException("composition duration requires timed inputs");
+        }
         if ((operation == Operation.FRAME_EXTRACT) != frameParameters.isPresent()) {
             throw new IllegalArgumentException("frame extraction requires exactly its typed parameters");
         }
