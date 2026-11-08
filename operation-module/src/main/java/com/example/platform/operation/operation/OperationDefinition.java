@@ -121,4 +121,20 @@ public record OperationDefinition(
         private V2() {
         }
     }
+
+    /** Additive initialization vocabulary; the frozen V1 and V2 sets remain unchanged. */
+    public static final class V3 {
+        public static final OperationDefinition INITIALIZE_TIMELINE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.initialize"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1,
+                OperationParameters.InitializeTimelineParameters.class);
+        public static final OperationDefinition IMPORT_TIMELINE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.import"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1,
+                OperationParameters.ImportTimelineParameters.class);
+        public static final java.util.List<OperationDefinition> ALL =
+                java.util.stream.Stream.concat(V2.ALL.stream(),
+                        java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE)).toList();
+        private V3() {}
+    }
 }

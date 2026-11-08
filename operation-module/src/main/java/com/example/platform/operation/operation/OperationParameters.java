@@ -20,6 +20,8 @@ import java.util.TreeSet;
  */
 @org.springframework.modulith.NamedInterface("invocation")
 public sealed interface OperationParameters permits
+        OperationParameters.InitializeTimelineParameters,
+        OperationParameters.ImportTimelineParameters,
         OperationParameters.AddMediaClipParameters,
         OperationParameters.NoParameters,
         OperationParameters.MoveParameters,
@@ -44,6 +46,25 @@ public sealed interface OperationParameters permits
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters,
         OperationParameters.CreateAlignmentParameters {
+
+    /** Creates the first empty, versioned Timeline with one stable video track. */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record InitializeTimelineParameters(String trackId) implements OperationParameters {
+        public InitializeTimelineParameters {
+            if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}")) {
+                throw new IllegalArgumentException("bounded trackId required");
+            }
+        }
+    }
+
+    /** Exact candidate for an authorized canonical Timeline import. */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record ImportTimelineParameters(com.example.platform.timeline.canonical.TimelineDocument document)
+            implements OperationParameters {
+        public ImportTimelineParameters {
+            java.util.Objects.requireNonNull(document, "canonical import document required");
+        }
+    }
 
     /**
      * ADD_MEDIA_CLIP_V1. The first supported variant adds exactly one

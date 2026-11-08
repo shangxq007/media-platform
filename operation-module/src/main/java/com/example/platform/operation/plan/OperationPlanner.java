@@ -339,6 +339,10 @@ public final class OperationPlanner {
         }
         MediaTime sourceDelta = params.delta().multiplyRational(
                 mapping.rate().numerator(), mapping.rate().denominator());
+        if (!params.delta().isLessThan(clip.getEndTime().subtract(clip.getStartTime()))
+                || !sourceDelta.isLessThan(clip.getTrimEnd().subtract(clip.getTrimStart()))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "trim must leave a positive media range");
+        }
         boolean startEdge = params.edge() == OperationParameters.TrimParameters.TrimEdge.START;
         MediaTime newStart = startEdge ? clip.getStartTime().add(params.delta()) : clip.getStartTime();
         MediaTime newEnd = startEdge ? clip.getEndTime() : clip.getEndTime().subtract(params.delta());

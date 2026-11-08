@@ -88,7 +88,7 @@ public final class OperationRequestResolver {
     }
 
     static OperationDefinition findDefinition(OperationDefinitionId id) throws OperationResolutionException {
-        for (OperationDefinition def : OperationDefinition.V2.ALL) {
+        for (OperationDefinition def : OperationDefinition.V3.ALL) {
             if (def.definitionId().equals(id)) {
                 return def;
             }
@@ -117,6 +117,11 @@ public final class OperationRequestResolver {
                 if (!(target instanceof OperationTargetRequest.ClipSelectionTargetRequest clipReq)) {
                     throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
                             "definition " + def.definitionId() + " requires clip-scope target");
+                }
+                if (clipReq.timelineId() != null
+                        && !clipReq.timelineId().equals(base.timelineId())) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "clip target Timeline does not match resolved Timeline");
                 }
                 var scope = ScopeResolver.resolve(base.timeline(), base.baseRevisionId(), base.baseContentHash(),
                         clipReq.selectionSpec(), clipReq.expansionPolicy());

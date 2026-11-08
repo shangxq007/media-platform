@@ -3,7 +3,9 @@ package com.example.platform.render.app.operation;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.ParameterDigest;
 import com.example.platform.operation.invocation.OperationInvocationContext;
+import com.example.platform.operation.invocation.OperationInvocationResult;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationRequestResolver;
@@ -34,6 +36,11 @@ import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
+import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonicalmodel.TimelineDiagnostic;
@@ -59,6 +66,8 @@ import org.springframework.stereotype.Service;
 public class TimelineMediaClipOperationService {
 
     public static final String OPERATION = "ADD_MEDIA_CLIP_V1";
+    public static final String INITIAL_BASE_REVISION_ID = "__uninitialized__";
+    public static final String INITIAL_BASE_CONTENT_HASH = "0".repeat(64);
     private static final AuthorizationAction TIMELINE_EDIT = new AuthorizationAction(
             "WRITE", AuthorizationResourceType.PROJECT, "Edit canonical Timeline");
     private static final AuthorizationAction TIMELINE_READ = new AuthorizationAction(
@@ -82,6 +91,162 @@ public class TimelineMediaClipOperationService {
         this.timelineValidator = Objects.requireNonNull(timelineValidator, "timelineValidator");
         this.authorizationPort = Objects.requireNonNull(authorizationPort, "authorizationPort");
         this.applyService = Objects.requireNonNull(applyService, "applyService");
+    }
+
+    /** Atomic first revision through the Timeline owner's durable Operation command receipt. */
+    public OperationInvocationResult.Applied initialize(OperationRequest request,
+            OperationInvocationContext context) {
+        if (!OperationDefinition.V3.INITIALIZE_TIMELINE.definitionId().equals(request.definitionId())
+                || !OperationDefinition.V3.INITIALIZE_TIMELINE.version().equals(request.version())
+                || !(request.target() instanceof OperationTargetRequest.TimelineTargetRequest target)
+                || !(request.parameters() instanceof OperationParameters.InitializeTimelineParameters parameters)
+                || !INITIAL_BASE_REVISION_ID.equals(request.baseRevisionId())
+                || !INITIAL_BASE_CONTENT_HASH.equals(request.baseContentHash())) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    List.of("invalid first-revision Operation contract"));
+        }
+        String tenantId = context.actor().tenantId();
+        String projectId = target.timelineId();
+        requirePreparationAuthorization(tenantId, projectId, context.actor(), TIMELINE_EDIT);
+        var document = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(parameters.trackId(), "Video", TrackType.VIDEO, List.of())),
+                TimelineMetadata.empty());
+        String contentHash = new TimelineContentDigester().digest(document);
+        String parameterDigest = ParameterDigest.compute(request.definitionId(), request.version(),
+                request.parameters());
+        String planDigest = sha256("timeline-initialize-v1\0" + tenantId + "\0" + projectId
+                + "\0" + parameterDigest + "\0" + contentHash);
+        String fingerprint = sha256("timeline-initialize-command-v1\0" + planDigest + "\0"
+                + context.actor().actorId());
+        var result = revisionSaveService.saveRevisionForCommand(
+                new TimelineMutationContext(tenantId, projectId, context.actor()),
+                RevisionRef.main(tenantId, projectId), null, document,
+                new TimelineRevisionCommands.RevisionWriteCommand(context.invocationId(),
+                        planDigest, fingerprint, "OPERATION_INITIALIZE", tenantId));
+        if (!contentHash.equals(result.timelineContentHash())) {
+            throw new IllegalStateException("initialized Timeline digest differs from authoritative result");
+        }
+        return new OperationInvocationResult.Applied(request.definitionId(), request.version(),
+                planDigest, INITIAL_BASE_REVISION_ID, result.revisionId(),
+                result.timelineContentHash(), context.invocationId(),
+                context.provenance().correlationId());
+    }
+
+    public void validateInitialization(OperationRequest request, OperationInvocationContext context) {
+        if (!(request.parameters() instanceof OperationParameters.InitializeTimelineParameters)
+                || !(request.target() instanceof OperationTargetRequest.TimelineTargetRequest target)
+                || !INITIAL_BASE_REVISION_ID.equals(request.baseRevisionId())
+                || !INITIAL_BASE_CONTENT_HASH.equals(request.baseContentHash())) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    List.of("invalid first-revision Operation contract"));
+        }
+        requirePreparationAuthorization(context.actor().tenantId(), target.timelineId(),
+                context.actor(), TIMELINE_EDIT);
+    }
+
+    /** Versioned import Operation for existing editor formats and canonical document imports. */
+    public OperationInvocationResult importTimeline(OperationRequest request,
+            OperationInvocationContext context) {
+        ImportedCandidate candidate = prepareImport(request, context);
+        String tenantId = context.actor().tenantId();
+        String projectId = candidate.projectId();
+        String parameterDigest = ParameterDigest.compute(request.definitionId(), request.version(),
+                request.parameters());
+        String planDigest = sha256("timeline-import-v1\0" + tenantId + "\0" + projectId + "\0"
+                + request.baseRevisionId() + "\0" + request.baseContentHash() + "\0"
+                + parameterDigest);
+        String fingerprint = sha256("timeline-import-command-v1\0" + planDigest + "\0"
+                + context.actor().actorId());
+        var command = new TimelineRevisionCommands.RevisionWriteCommand(context.invocationId(),
+                planDigest, fingerprint, "OPERATION_IMPORT", tenantId);
+        var mutation = new TimelineMutationContext(tenantId, projectId, context.actor());
+        var ref = RevisionRef.main(tenantId, projectId);
+        String expected = candidate.initial() ? null : request.baseRevisionId();
+        if (!candidate.initial() && candidate.contentHash().equals(request.baseContentHash())) {
+            var unchanged = revisionSaveService.recordNoOpCommand(mutation, ref, expected,
+                    candidate.contentHash(), command);
+            return new OperationInvocationResult.NoOp(request.definitionId(), request.version(),
+                    planDigest, request.baseRevisionId(), unchanged.timelineContentHash(),
+                    context.invocationId(), context.provenance().correlationId());
+        }
+        var result = revisionSaveService.saveRevisionForCommand(mutation, ref, expected,
+                candidate.document(), command);
+        if (!candidate.contentHash().equals(result.timelineContentHash())) {
+            throw new IllegalStateException("imported Timeline digest differs from authoritative result");
+        }
+        return new OperationInvocationResult.Applied(request.definitionId(), request.version(),
+                planDigest, request.baseRevisionId(), result.revisionId(),
+                result.timelineContentHash(), context.invocationId(),
+                context.provenance().correlationId());
+    }
+
+    public void validateImport(OperationRequest request, OperationInvocationContext context) {
+        prepareImport(request, context);
+    }
+
+    private ImportedCandidate prepareImport(OperationRequest request, OperationInvocationContext context) {
+        if (!OperationDefinition.V3.IMPORT_TIMELINE.definitionId().equals(request.definitionId())
+                || !OperationDefinition.V3.IMPORT_TIMELINE.version().equals(request.version())
+                || !(request.target() instanceof OperationTargetRequest.TimelineTargetRequest target)
+                || !(request.parameters() instanceof OperationParameters.ImportTimelineParameters parameters)) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    List.of("invalid Timeline import Operation"));
+        }
+        String tenantId = context.actor().tenantId();
+        String projectId = target.timelineId();
+        requirePreparationAuthorization(tenantId, projectId, context.actor(), TIMELINE_EDIT);
+        boolean initial = INITIAL_BASE_REVISION_ID.equals(request.baseRevisionId())
+                && INITIAL_BASE_CONTENT_HASH.equals(request.baseContentHash());
+        if (!initial) {
+            var base = revisionSaveService.findById(tenantId, request.baseRevisionId());
+            if (base == null || !projectId.equals(base.productId())) {
+                throw new TimelineOperationException(TimelineOperationException.Code.BASE_REVISION_NOT_FOUND,
+                        List.of("import base revision unavailable in project"));
+            }
+            if (!request.baseContentHash().equals(base.semanticContext().timelineContentDigest())) {
+                throw new TimelineOperationException(TimelineOperationException.Code.STALE_BASE_REVISION,
+                        List.of("import base content hash mismatch"));
+            }
+        }
+        TimelineDocument document = parameters.document();
+        var validation = timelineValidator.validateDocument(projectId, document);
+        if (validation.hasFatalErrors()) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    validation.diagnostics().stream().map(TimelineDiagnostic::message).toList());
+        }
+        for (var track : document.getTracks()) {
+            for (var clip : track.clips()) {
+                final MediaStreamSourceBinding binding;
+                try {
+                    binding = new MediaStreamSourceBinding(MediaAssetId.of(clip.getMediaAssetId()),
+                            MediaStreamId.of(clip.getMediaStreamId()), new ArtifactId(clip.getArtifactId()),
+                            ContentDigest.sha256(clip.getContentDigest()),
+                            new MediaClip.TimeRange(clip.getTrimStart(), clip.getTrimEnd()));
+                } catch (RuntimeException invalid) {
+                    throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                            List.of("invalid imported clip source binding"));
+                }
+                var source = sourceValidator.validate(binding, tenantId, projectId, track.type());
+                if (!source.valid()) {
+                    throw new TimelineOperationException(TimelineOperationException.Code.SOURCE_REFERENCE_INVALID,
+                            source.violations());
+                }
+            }
+        }
+        return new ImportedCandidate(projectId, document, new TimelineContentDigester().digest(document), initial);
+    }
+
+    private record ImportedCandidate(String projectId, TimelineDocument document,
+                                     String contentHash, boolean initial) {}
+
+    private static String sha256(String value) {
+        try {
+            byte[] bytes = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(bytes);
+        } catch (java.security.NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException(unavailable);
+        }
     }
 
     public AddMediaClipPreview preview(
@@ -113,27 +278,105 @@ public class TimelineMediaClipOperationService {
     }
 
     void validateInvocation(OperationRequest request, OperationInvocationContext context) {
-        String projectId = ((OperationTargetRequest.TimelineTargetRequest) request.target()).timelineId();
+        String projectId = targetProjectId(request);
         requirePreparationAuthorization(context.actor().tenantId(), projectId, context.actor(), TIMELINE_EDIT);
-        prepareInternal(context.actor().tenantId(), projectId, request, context.actor());
+        prepareForInvocation(context.actor().tenantId(), projectId, request, context.actor());
     }
 
     InvocationOutcome invoke(OperationRequest request, OperationInvocationContext context) {
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(context, "context");
-        var target = (OperationTargetRequest.TimelineTargetRequest) request.target();
+        String projectId = targetProjectId(request);
         String tenantId = context.actor().tenantId();
         if (tenantId == null || tenantId.isBlank()) {
             throw new TimelineOperationException(
                     TimelineOperationException.Code.TENANT_CONTEXT_MISMATCH,
                     List.of("authenticated actor tenant required"));
         }
-        PreparedOperation prepared = prepareInternal(
-                tenantId, target.timelineId(), request, context.actor());
+        PreparedOperation prepared = prepareForInvocation(
+                tenantId, projectId, request, context.actor());
         ExecutionOutcome execution = executePrepared(
-                tenantId, target.timelineId(), prepared,
+                tenantId, projectId, prepared,
                 prepared.plan().planDigest(), context.invocationId(), context.actor());
         return new InvocationOutcome(execution.result());
+    }
+
+    private static String targetProjectId(OperationRequest request) {
+        if (request.target() instanceof OperationTargetRequest.TimelineTargetRequest target) {
+            return target.timelineId();
+        }
+        if (request.target() instanceof OperationTargetRequest.ClipSelectionTargetRequest target
+                && target.timelineId() != null && !target.timelineId().isBlank()) {
+            return target.timelineId();
+        }
+        throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                List.of("exact Timeline target required"));
+    }
+
+    private static boolean isClipEdit(OperationRequest request) {
+        var id = request.definitionId();
+        return OperationDefinition.V1.MOVE.definitionId().equals(id)
+                || OperationDefinition.V1.TRIM.definitionId().equals(id)
+                || OperationDefinition.V1.DELETE.definitionId().equals(id);
+    }
+
+    private PreparedOperation prepareForInvocation(String tenantId, String projectId,
+            OperationRequest request, CanonicalActor actor) {
+        return isClipEdit(request)
+                ? prepareClipEdit(tenantId, projectId, request, actor)
+                : prepareInternal(tenantId, projectId, request, actor);
+    }
+
+    private PreparedOperation prepareClipEdit(String tenantId, String projectId,
+            OperationRequest request, CanonicalActor actor) {
+        if (!isClipEdit(request)
+                || !(request.target() instanceof OperationTargetRequest.ClipSelectionTargetRequest target)
+                || !projectId.equals(target.timelineId())) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    List.of("exact clip selection and Timeline target required"));
+        }
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
+        TimelineRevision baseRevision = revisionSaveService.findById(tenantId, request.baseRevisionId());
+        if (baseRevision == null || !projectId.equals(baseRevision.productId())) {
+            throw new TimelineOperationException(TimelineOperationException.Code.BASE_REVISION_NOT_FOUND,
+                    List.of("base revision not found in target Timeline"));
+        }
+        String authoritativeHash = baseRevision.semanticContext().timelineContentDigest();
+        if (!authoritativeHash.equals(request.baseContentHash())) {
+            throw new TimelineOperationException(TimelineOperationException.Code.STALE_BASE_REVISION,
+                    List.of("base Timeline content hash mismatch"));
+        }
+        TimelineDocument exactBase = revisionSaveService.findPayloadDocument(tenantId, request.baseRevisionId())
+                .orElseThrow(() -> new TimelineOperationException(
+                        TimelineOperationException.Code.BASE_REVISION_NOT_FOUND,
+                        List.of("base revision canonical payload unavailable")));
+        final com.example.platform.operation.operation.OperationInstance instance;
+        try {
+            instance = OperationRequestResolver.resolve(request,
+                    new OperationRequestResolver.OperationBaseContext(
+                            request.baseRevisionId(), authoritativeHash, exactBase, projectId));
+        } catch (OperationResolutionException failure) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    List.of(failure.getMessage()));
+        } catch (IllegalArgumentException failure) {
+            throw new TimelineOperationException(
+                    failure.getMessage() != null && failure.getMessage().contains("missing clip")
+                            ? TimelineOperationException.Code.TARGET_MISSING
+                            : TimelineOperationException.Code.CANDIDATE_INVALID,
+                    List.of(failure.getMessage() == null ? "invalid clip selection" : failure.getMessage()));
+        }
+        final OperationPlan plan;
+        try {
+            plan = planner.plan(instance, baseRevision.revisionId(), exactBase);
+        } catch (PlanException failure) {
+            throw translatePlanFailure(failure);
+        }
+        var validation = timelineValidator.validateDocument(projectId, plan.candidateTimeline());
+        if (validation.hasFatalErrors()) {
+            throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
+                    validation.diagnostics().stream().map(TimelineDiagnostic::message).toList());
+        }
+        return new PreparedOperation(plan, null, exactBase);
     }
 
     private PreparedOperation prepareInternal(
@@ -300,11 +543,11 @@ public class TimelineMediaClipOperationService {
         return new PreparedOperation(plan, preview, exactBase);
     }
 
-    private static OperationRequest toOperationRequest(
+    public static OperationRequest toOperationRequest(
             String timelineId, AddMediaClipCommand command) {
         Objects.requireNonNull(command, "command");
         MediaClip.TimeRange sourceRange = new MediaClip.TimeRange(
-                MediaTime.parse(command.sourceStart()), MediaTime.parse(command.sourceEnd()));
+                parseTime(command.sourceStart()), parseTime(command.sourceEnd()));
         MediaStreamSourceBinding sourceBinding = new MediaStreamSourceBinding(
                 MediaAssetId.of(command.mediaAssetId()),
                 MediaStreamId.of(command.mediaStreamId()),
@@ -316,8 +559,8 @@ public class TimelineMediaClipOperationService {
                 TimelineClipId.of(command.clipId()),
                 sourceBinding,
                 new MediaClip.TimeRange(
-                        MediaTime.parse(command.timelineStart()),
-                        MediaTime.parse(command.timelineEnd())),
+                        parseTime(command.timelineStart()),
+                        parseTime(command.timelineEnd())),
                 ConstantRateTemporalMapping.of(
                         command.rateNumerator(),
                         command.rateDenominator(),
@@ -330,6 +573,10 @@ public class TimelineMediaClipOperationService {
                 command.baseRevisionId(),
                 command.baseContentHash(),
                 null);
+    }
+
+    private static MediaTime parseTime(String value) {
+        return MediaTime.parse(value.contains("/") || "0".equals(value) ? value : value + "/1");
     }
 
     private static void requireExactDefinition(OperationRequest request) {

@@ -30,13 +30,20 @@ public sealed interface OperationTargetRequest permits
     }
 
     @org.springframework.modulith.NamedInterface("invocation")
-    record ClipSelectionTargetRequest(SelectionSpec selectionSpec,
+    record ClipSelectionTargetRequest(String timelineId,
+                                      SelectionSpec selectionSpec,
                                       SelectionSpec.ExpansionPolicy expansionPolicy)
             implements OperationTargetRequest {
         public ClipSelectionTargetRequest {
             if (selectionSpec == null) {
                 throw new IllegalArgumentException("selectionSpec required");
             }
+        }
+
+        /** Existing in-process callers may bind the aggregate through their trusted context. */
+        public ClipSelectionTargetRequest(SelectionSpec selectionSpec,
+                                          SelectionSpec.ExpansionPolicy expansionPolicy) {
+            this(null, selectionSpec, expansionPolicy);
         }
     }
 

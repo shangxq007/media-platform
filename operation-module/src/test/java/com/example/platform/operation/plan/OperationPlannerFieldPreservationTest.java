@@ -84,6 +84,16 @@ class OperationPlannerFieldPreservationTest {
     }
 
     @Test
+    void trimBeyondSourceEndIsRejectedAsInvalidPlan() {
+        TimelineDocument base = RichTimelineDocument.rich();
+        OperationInstance inst = instance(OperationDefinition.V1.TRIM, clipTarget("clip-3"),
+                new OperationParameters.TrimParameters(
+                        OperationParameters.TrimParameters.TrimEdge.END, MediaTime.ofMillis(2000)));
+        PlanException rejected = assertThrows(PlanException.class, () -> plan(inst, base));
+        assertEquals(PlanErrorCode.INVALID_PLAN, rejected.code());
+    }
+
+    @Test
     void moveAndTrimPreserveAuthoredClipEffects() {
         TimelineDocument rich = RichTimelineDocument.rich();
         TimelineTrack track = rich.getTracks().getFirst();

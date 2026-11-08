@@ -10,8 +10,6 @@ import com.example.platform.execution.taskgraph.ExecutableTaskGraphDigest;
 import com.example.platform.providerplugin.ProviderCandidateProjection;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.render.app.renderplan.RenderPlanningEntryService;
-import com.example.platform.render.app.visibility.VisibilityPlanningAudit;
-import com.example.platform.render.app.visibility.VisibilityPlanningAuditService;
 import com.example.platform.render.domain.renderplan.RenderPlanningResult;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
@@ -131,15 +129,6 @@ public class FirstRenderPlanningAndBindingService {
                 planning.renderRequest(),
                 planning.sourceResolution(),
                 planning.capabilityContext());
-
-        // R2B: read-only visibility audit after #20, before #21. The audit never
-        // replaces the plan and currently proves NO_SAFE_INCREMENTAL_PRUNING.
-        VisibilityPlanningAudit visibilityAudit = new VisibilityPlanningAuditService().audit(
-                tenantId, projectId, hydratedRevision.revisionId(),
-                hydratedRevision.canonicalTimeline(), planning.renderRequest(), renderPlanningResult);
-        if (visibilityAudit.graphChanged()) {
-            throw new IllegalStateException("R2B audit must not mutate the render graph");
-        }
 
         // #21 provider-neutral execution planning.
         ExecutionPlanningEntry.PlanningResult planningResult = physicalPlanningEntryService.plan(

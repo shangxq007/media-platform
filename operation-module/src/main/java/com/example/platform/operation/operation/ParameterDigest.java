@@ -54,6 +54,14 @@ public final class ParameterDigest {
 
     /** Deterministic canonical semantic serialization of typed parameters. */
     static String serialize(OperationParameters p) {
+        if (p instanceof OperationParameters.InitializeTimelineParameters init) {
+            return "initialize-timeline(video-track=" + init.trackId() + ")";
+        }
+        if (p instanceof OperationParameters.ImportTimelineParameters imported) {
+            return "import-timeline(content="
+                    + new com.example.platform.timeline.canonical.TimelineContentDigester()
+                            .digest(imported.document()) + ")";
+        }
         if (p instanceof OperationParameters.AddMediaClipParameters a) {
             var binding = a.sourceBinding();
             return "media-clip(" + a.trackId() + "," + a.clipId().value()

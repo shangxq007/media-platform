@@ -91,10 +91,11 @@ class CanonicalOperationInvocationServiceTest {
                 mock(TimelineMediaClipOperationService.class);
         var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class), mock(AlignmentOperationService.class));
         OperationRequest request = new OperationRequest(
-                OperationDefinition.V1.DELETE.definitionId(),
-                OperationDefinition.V1.DELETE.version(),
+                OperationDefinition.V1.SET_TEMPORAL_RATE.definitionId(),
+                OperationDefinition.V1.SET_TEMPORAL_RATE.version(),
                 new OperationTargetRequest.TimelineTargetRequest("timeline-T"),
-                new OperationParameters.NoParameters(),
+                new OperationParameters.SetTemporalRateParameters(
+                        new com.example.platform.timeline.semantics.clip.MediaClip.Rational(1, 1)),
                 "revision-R0", "base-hash", null);
 
         OperationInvocationException failure = assertThrows(
