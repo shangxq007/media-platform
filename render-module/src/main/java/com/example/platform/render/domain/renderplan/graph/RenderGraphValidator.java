@@ -143,6 +143,11 @@ public final class RenderGraphValidator {
                             || consumer.kind() instanceof RenderNodeKind.Output);
         } else if (dep instanceof RenderDependency.SubtitleRaster) {
             ok = consumer.kind() instanceof RenderNodeKind.TimedText;
+        } else if (dep instanceof RenderDependency.TimedCompositeInput timed) {
+            var coverage = producer.executionCoverage();
+            ok = (producer.kind() instanceof RenderNodeKind.Decode || producer.kind() instanceof RenderNodeKind.Effect)
+                    && consumer.kind() instanceof RenderNodeKind.Composite && coverage != null
+                    && !timed.start().isLessThan(coverage.start()) && !timed.end().isGreaterThan(coverage.end());
         }
         if (!ok) {
             diagnostics.add(RenderPlanningDiagnostic.forNode(

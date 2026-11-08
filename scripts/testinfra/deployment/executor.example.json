@@ -8,5 +8,5 @@
   "socket": "/run/media-platform-executor/broker.sock",
   "records_directory": "/var/lib/media-platform-executor",
   "launch_policy": "/etc/media-platform/testinfra/launch.json",
-  "cgroup_parent": "/sys/fs/cgroup/media-platform-jobs.slice"
+  "cgroup_parent": "/sys/fs/cgroup/media.slice/media-platform.slice/media-platform-jobs.slice"
 }

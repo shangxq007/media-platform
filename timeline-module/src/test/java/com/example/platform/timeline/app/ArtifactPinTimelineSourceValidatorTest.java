@@ -45,6 +45,14 @@ class ArtifactPinTimelineSourceValidatorTest {
         }
     }
 
+    private static ArtifactPinTimelineSourceValidator validator(ArtifactSourcePinAuthority authority) {
+        return new ArtifactPinTimelineSourceValidator(authority, (tenant, project, id, digest) ->
+                java.util.Optional.of(new com.example.platform.artifact.contract.ArtifactSourceFacts(
+                        MediaTime.ofMillis(1000), List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream(
+                                "stream-1", com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO,
+                                MediaTime.ofMillis(1000))))));
+    }
+
     private static MediaStreamSourceBinding binding() {
         return new MediaStreamSourceBinding(
                 new MediaAssetId("asset-1"),
@@ -57,7 +65,7 @@ class ArtifactPinTimelineSourceValidatorTest {
     @Test
     void validWhenArtifactPinResolvesInScope() {
         var authority = new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.RESOLVED);
-        var validator = new ArtifactPinTimelineSourceValidator(authority);
+        var validator = validator(authority);
 
         var result = validator.validate(binding(), TENANT, PROJECT, TrackType.VIDEO);
 
@@ -68,8 +76,21 @@ class ArtifactPinTimelineSourceValidatorTest {
     }
 
     @Test
+    void rejectsMissingFactsOutOfBoundsAndWrongTrackKind() {
+        var authority = new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.RESOLVED);
+        var missing = new ArtifactPinTimelineSourceValidator(authority, (t, p, id, digest) -> java.util.Optional.empty());
+        assertThat(missing.validate(binding(), TENANT, PROJECT, TrackType.VIDEO).valid()).isFalse();
+        var tooLong = new MediaStreamSourceBinding(new MediaAssetId("asset-1"), new MediaStreamId("stream-1"),
+                ARTIFACT, ContentDigest.sha256(DIGEST),
+                new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofMillis(1001)));
+        var validator = validator(authority);
+        assertThat(validator.validate(tooLong, TENANT, PROJECT, TrackType.VIDEO).valid()).isFalse();
+        assertThat(validator.validate(binding(), TENANT, PROJECT, TrackType.AUDIO).valid()).isFalse();
+    }
+
+    @Test
     void unknownPinIsReportedAsSourceReferenceViolation() {
-        var validator = new ArtifactPinTimelineSourceValidator(
+        var validator = validator(
                 new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.UNKNOWN_ARTIFACT));
 
         var result = validator.validate(binding(), TENANT, PROJECT, TrackType.VIDEO);
@@ -81,7 +102,7 @@ class ArtifactPinTimelineSourceValidatorTest {
 
     @Test
     void outOfScopePinIsReported() {
-        var validator = new ArtifactPinTimelineSourceValidator(
+        var validator = validator(
                 new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.OUT_OF_SCOPE));
 
         var result = validator.validate(binding(), TENANT, PROJECT, TrackType.VIDEO);
@@ -92,7 +113,7 @@ class ArtifactPinTimelineSourceValidatorTest {
 
     @Test
     void unusablePinIsReported() {
-        var validator = new ArtifactPinTimelineSourceValidator(
+        var validator = validator(
                 new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.NOT_USABLE));
 
         var result = validator.validate(binding(), TENANT, PROJECT, TrackType.VIDEO);
@@ -103,7 +124,7 @@ class ArtifactPinTimelineSourceValidatorTest {
 
     @Test
     void digestMismatchIsReportedWithRecordedDigest() {
-        var validator = new ArtifactPinTimelineSourceValidator(
+        var validator = validator(
                 new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.PIN_MISMATCH));
 
         var result = validator.validate(binding(), TENANT, PROJECT, TrackType.VIDEO);
@@ -115,7 +136,7 @@ class ArtifactPinTimelineSourceValidatorTest {
     @Test
     void failsClosedWithoutScopeInsteadOfStructuralOnlyPass() {
         var authority = new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.RESOLVED);
-        var validator = new ArtifactPinTimelineSourceValidator(authority);
+        var validator = validator(authority);
 
         assertThat(validator.validate(binding()).valid()).isFalse();
         assertThat(validator.validate(binding(), null, PROJECT, TrackType.VIDEO).valid()).isFalse();
@@ -125,7 +146,7 @@ class ArtifactPinTimelineSourceValidatorTest {
 
     @Test
     void nullBindingIsRejected() {
-        var validator = new ArtifactPinTimelineSourceValidator(
+        var validator = validator(
                 new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.RESOLVED));
 
         assertThat(validator.validate(null).valid()).isFalse();

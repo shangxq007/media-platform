@@ -8,7 +8,7 @@ import threading,time
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from broker import Broker
-from controlled_launch import LaunchPolicy,ProcessJob
+from controlled_launch import LaunchPolicy,ProcessJob,birth
 from protected_runtime import admin_json,CgroupDomain
 from state import PolicyError
 
@@ -17,6 +17,7 @@ CONFIG=Path('/etc/media-platform/testinfra/executor.json')
 class ProtectedProcessJob(ProcessJob):
     def __init__(self,policy,config,spec):
         super().__init__(policy)
+        self.credential_uid=config['test_uid']
         launch=spec['launch_id'];parent=Path(config['cgroup_parent'])
         # Parent is provisioned, controller-enabled and protected by the runner admin.
         with_parent=CgroupDomain(parent)
@@ -53,6 +54,22 @@ def enforce_deadlines(broker,clock=time.monotonic):
         for launch,job in broker.jobs.items():
             record=broker.retained[launch]
             if record.get('closed') or record.get('deadline_stop'):continue
+            if getattr(job,'identity',None) is not None:
+                observation=job.observe()
+                if broker.record_terminal(launch,job,observation):continue
+                if not observation.get('reachable',False):
+                    failure={'stage':'observer','category':'UNREACHABLE'}
+                    try:
+                        saved=admin_json(str(job.protected_job)+'.failure.json')
+                        if (set(saved)=={'launch_id','stage','category','errno'} and saved['launch_id']==launch
+                                and saved['stage'] in ('entry','protected_config','command_validation','domain_validation','main_spawn','observer_protocol')
+                                and saved['category'] in ('OSError','PermissionError','ValueError','RuntimeError','PolicyError','SubprocessError','OTHER')
+                                and (saved['errno'] is None or type(saved['errno']) is int)):
+                            failure['executor']=saved
+                    except (OSError,PolicyError,ValueError):
+                        failure['executor']='UNAVAILABLE'
+                    if record.get('state')!='QUARANTINED' or record.get('failure')!=failure:
+                        record.update(state='QUARANTINED',failure=failure);broker.persist()
             if clock()-job.started_at>=300:
                 record.update(state='QUARANTINED',deadline_stop=True,reason='bounded Job deadline; no resource cleanup')
                 broker.persist()
@@ -67,7 +84,7 @@ def main():
     for key in ('control_uid','control_gid','test_uid','test_gid'):
         if type(config[key])!=int or config[key]<=0:raise PolicyError('non-root control/test IDs required')
     if config['control_uid']==config['test_uid']:raise PolicyError('distinct control/test required')
-    fixed={'socket':'/run/media-platform-executor/broker.sock','records_directory':'/var/lib/media-platform-executor','launch_policy':'/etc/media-platform/testinfra/launch.json','cgroup_parent':'/sys/fs/cgroup/media-platform-jobs.slice'}
+    fixed={'socket':'/run/media-platform-executor/broker.sock','records_directory':'/var/lib/media-platform-executor','launch_policy':'/etc/media-platform/testinfra/launch.json','cgroup_parent':'/sys/fs/cgroup/media.slice/media-platform.slice/media-platform-jobs.slice'}
     if any(config[k]!=v for k,v in fixed.items()):raise PolicyError('protected service path scope')
     records=Path(config['records_directory'])
     s=records.lstat()
@@ -78,7 +95,39 @@ def main():
         domain=CgroupDomain(config['cgroup_parent'])
         try:return domain.observe()['empty'] and not any(p.is_dir() for p in Path(config['cgroup_parent']).iterdir())
         finally:domain.close()
-    broker=Broker(config['control_uid'],records/'jobs.json',lambda spec:ProtectedProcessJob(policy,config,spec),empty_domain_namespace)
+    def verify_correction(ledger,jobs,terminal,boot):
+        from admin_reconcile import corrected_history
+        parent=Path(config['cgroup_parent'])
+        if not empty_domain_namespace():raise PolicyError('Job namespace is not empty')
+        for launch,proof in terminal.items():
+            if admin_json(records/(launch+'.json.terminal.json'))!=proof:
+                raise PolicyError('terminal file differs from independent evidence')
+        def domain_exists(launch,proof):
+            return proof.get('path')!=str(parent/launch) or (parent/launch).exists()
+        def identity_alive(identity):
+            pid=identity.get('pid')
+            if type(pid)!=int or pid<=1 or identity.get('boot')!=boot:raise PolicyError('invalid process identity')
+            try:handle=os.pidfd_open(pid)
+            except ProcessLookupError:return False
+            try:
+                try:current=birth(pid)
+                except ProcessLookupError:return False
+                return current['boot']==identity['boot'] and current['start']==identity['start']
+            finally:os.close(handle)
+        corrected_history(ledger,jobs,terminal,boot,domain_exists,identity_alive)
+        # A controller-owned flock is advisory. Descriptor rechecks alone cannot
+        # exclude an uncooperative same-UID writer between the last check and
+        # spawn. Do not grant corrected admission until an enforced fence has
+        # been independently proven under the real protected deployment.
+        raise PolicyError('corrected admission fence not independently verified')
+    from runtime_integrity import verify_runtime
+    from admission_authority import AdmissionAuthority
+    admission_path=records/'admission-intents'
+    admission_path.mkdir(mode=0o700,exist_ok=True)
+    admission_store=AdmissionAuthority(admission_path,0)
+    control=Path('/var/lib/media-platform/testinfra')
+    broker=Broker(config['control_uid'],records/'jobs.json',lambda spec:ProtectedProcessJob(policy,config,spec),
+                  empty_domain_namespace,(control/'ledger.json',control/'controller.lock'),verify_correction,verify_runtime,admission_store)
     def deadlines():
         while True:
             time.sleep(.5)

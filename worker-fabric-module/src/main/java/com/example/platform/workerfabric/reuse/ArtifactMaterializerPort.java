@@ -9,4 +9,9 @@ import java.io.IOException;
 public interface ArtifactMaterializerPort {
     ArtifactMaterializationResult materialize(String tenantId, ArtifactPin artifactPin)
             throws IOException;
+
+    default ArtifactMaterializationResult materialize(String tenantId, String projectId, ArtifactPin artifactPin)
+            throws IOException {
+        return materialize(tenantId, artifactPin);
+    }
 }

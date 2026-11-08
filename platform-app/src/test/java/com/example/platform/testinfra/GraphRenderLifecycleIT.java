@@ -107,4 +107,24 @@ class GraphRenderLifecycleIT {
     @Test void dispatchOrPreparationFailureLeavesVisibleFailedJobInsteadOfQueued() throws Exception {
         try(var w=new World()) {w.tx(()->{w.owner.fail("tenant-a","job-a","plan-ref",PLAN,GRAPH,false);return null;});assertEquals("FAILED",w.state());assertEquals(0,w.count("quota_usage_operation"));assertEquals(2,w.count("outbox_events"));}
     }
+    @Test void sourceFactsAreScopedIdempotentAndImmutable() throws Exception {
+        try (var w = new World()) {
+            String hash = "d".repeat(64);
+            w.db.execute("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('source-facts','tenant-a','project-a','workspace-a',?,10,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())", hash);
+            var store = new com.example.platform.artifact.infrastructure.ArtifactSourceFactsStore(w.db);
+            var scope = new com.example.platform.artifact.contract.ArtifactScope("tenant-a", "workspace-a", "project-a");
+            var id = new com.example.platform.shared.identity.ArtifactId("source-facts");
+            var digest = com.example.platform.shared.digest.ContentDigest.sha256(hash);
+            var duration = com.example.platform.shared.time.MediaTime.ofTicks(1, 1);
+            var facts = new com.example.platform.artifact.contract.ArtifactSourceFacts(duration,
+                    List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream("source-facts:s0",
+                            com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO, duration)));
+            store.record(scope, id, digest, facts);
+            store.record(scope, id, digest, facts);
+            assertEquals(facts, store.find("tenant-a", "project-a", id, digest).orElseThrow());
+            assertTrue(store.find("tenant-a", "other-project", id, digest).isEmpty());
+            assertThrows(RuntimeException.class, () -> w.db.execute("update artifact set audit_provenance='{}'::jsonb where id='source-facts'"));
+            assertEquals(facts, store.find("tenant-a", "project-a", id, digest).orElseThrow());
+        }
+    }
 }

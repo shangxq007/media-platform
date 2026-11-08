@@ -855,7 +855,9 @@ begin
         or new.artifact_kind is distinct from old.artifact_kind
         or new.schema_version is distinct from old.schema_version
         or new.storage_reference is distinct from old.storage_reference
-        or new.source_lineage is distinct from old.source_lineage then
+        or new.source_lineage is distinct from old.source_lineage
+        or (old.audit_provenance ? 'sourceProbeV1'
+            and new.audit_provenance->'sourceProbeV1' is distinct from old.audit_provenance->'sourceProbeV1') then
         raise exception 'V19_ARTIFACT_IDENTITY_IMMUTABLE';
     end if;
     return new;

@@ -36,8 +36,19 @@ public record ArtifactCommitRequest(
         // GCR-2: nullable provenance/association trace (render_job_id / project_id
         // on the canonical record). NOT identity — never used for lookup/equality.
         String renderJobId,
-        String projectId
+        String projectId,
+        String workspaceId
 ) {
+    public ArtifactCommitRequest(ArtifactId artifactId, String tenantId, ContentDigest contentDigest,
+            long byteLength, ArtifactMediaType mediaType, ArtifactKind artifactKind, int schemaVersion,
+            StorageObjectId storageObjectId, StorageReplicaId storageReplicaId, StorageProviderId providerId,
+            ReplicaRole replicaRole, String region, String idempotencyKey,
+            List<ProvenanceEdgeDeclaration> provenanceDeclarations, Instant evaluatedAt,
+            Instant createdAt, String renderJobId, String projectId) {
+        this(artifactId, tenantId, contentDigest, byteLength, mediaType, artifactKind, schemaVersion,
+                storageObjectId, storageReplicaId, providerId, replicaRole, region, idempotencyKey,
+                provenanceDeclarations, evaluatedAt, createdAt, renderJobId, projectId, null);
+    }
     public ArtifactCommitRequest {
         Objects.requireNonNull(artifactId, "artifactId");
         Objects.requireNonNull(tenantId, "tenantId");
@@ -56,6 +67,9 @@ public record ArtifactCommitRequest(
         provenanceDeclarations = provenanceDeclarations != null ? List.copyOf(provenanceDeclarations) : List.of();
         Objects.requireNonNull(evaluatedAt, "evaluatedAt");
         Objects.requireNonNull(createdAt, "createdAt");
+        if (workspaceId != null && (workspaceId.isBlank() || projectId == null || projectId.isBlank())) {
+            throw new IllegalArgumentException("workspace requires project scope");
+        }
         // Trace fields are nullable by contract (render_job_id/project_id association only).
     }
 

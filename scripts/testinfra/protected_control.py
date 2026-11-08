@@ -30,8 +30,14 @@ def main():
     journal=Journal(root/'ledger.json',root/'controller.lock').acquire()
     try:
         # Never initialize over existing or uncertain history. Restart always reconciles.
+        reconciled=False
         if not journal.path.exists():journal.initialize(not api.resources and job.client.request(dict(op='NAMESPACE'))['empty'])
-        supervisor=Supervisor(dp,api,job,journal,lambda *_:secrets.token_urlsafe(32))
+        else:
+            prior=journal.load()
+            if prior.get('state')!='CLOSED' or prior.get('last_operation')!='DELETE_CONFIRMED' or prior.get('quarantined'):
+                raise PolicyError('only cleanly closed history can be reconciled')
+            reconciled=True
+        supervisor=Supervisor(dp,api,job,journal,lambda *_:secrets.token_urlsafe(32),reconciled_closed=reconciled)
         if supervisor.state=='QUARANTINED':raise PolicyError('recovery requires independent reconciliation')
         if supervisor.allocate('r'+secrets.token_hex(8),'a1')!='READY':raise PolicyError('allocation rejected')
         supervisor.start()

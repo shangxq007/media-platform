@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
+import com.example.platform.operation.invocation.OperationInvocationPort;
 import com.example.platform.render.app.operation.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
@@ -57,16 +58,18 @@ class TimelineMediaClipOperationControllerMockMvcTest {
 
     private TimelineMediaClipOperationService service;
     private CanonicalActorResolver actorResolver;
+    private OperationInvocationPort invocations;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         TenantContext.set("tenant-a");
         service = mock(TimelineMediaClipOperationService.class);
+        invocations = mock(OperationInvocationPort.class);
         actorResolver = mock(CanonicalActorResolver.class);
         when(actorResolver.resolveCurrentActor()).thenReturn(Optional.of(
                 CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
-        var controller = new TimelineMediaClipOperationController(service, actorResolver);
+        var controller = new TimelineMediaClipOperationController(service, actorResolver, invocations);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler(Optional.<SentryMonitoringService>empty()))
                 .build();
@@ -91,8 +94,8 @@ class TimelineMediaClipOperationControllerMockMvcTest {
     @MethodSource("typedFailures")
     void applyMapsTypedFailureCategory(
             TimelineOperationException.Code code, int expectedStatus) throws Exception {
-        when(service.authorizeAndApply(
-                anyString(), anyString(), any(), anyString(), anyString(), any()))
+        when(service.preview(
+                anyString(), anyString(), any(), any()))
                 .thenThrow(new TimelineOperationException(code, List.of("typed failure")));
 
         mvc.perform(post("/api/tenants/tenant-a/projects/project-a/timeline-operations/add-media-clip/apply")
@@ -124,8 +127,8 @@ class TimelineMediaClipOperationControllerMockMvcTest {
 
     @Test
     void unknownFailureRemains5xx() throws Exception {
-        when(service.authorizeAndApply(
-                anyString(), anyString(), any(), anyString(), anyString(), any()))
+        when(service.preview(
+                anyString(), anyString(), any(), any()))
                 .thenThrow(new RuntimeException("database unavailable"));
 
         mvc.perform(post("/api/tenants/tenant-a/projects/project-a/timeline-operations/add-media-clip/apply")

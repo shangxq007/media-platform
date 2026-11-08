@@ -40,13 +40,14 @@ public class MediaTaskWorkflowImpl implements MediaTaskWorkflow {
     };
 
     /**
-     * Bounded retry policy for the media-task activities, unchanged except for the deterministic
-     * no-retry classification (attempts 3, initial 1 s, coefficient 2.0).
+     * Bounded retry policy for the media-task activities. Capacity-only retryable admission
+     * failures use the full bound; all deterministic no-retry types remain non-retryable.
      */
     static RetryOptions mediaTaskActivityRetryOptions() {
         return RetryOptions.newBuilder()
-                .setMaximumAttempts(3)
-                .setInitialInterval(Duration.ofSeconds(1))
+                .setMaximumAttempts(20)
+                .setInitialInterval(Duration.ofSeconds(2))
+                .setMaximumInterval(Duration.ofSeconds(15))
                 .setBackoffCoefficient(2.0)
                 .setDoNotRetry(DETERMINISTIC_NO_RETRY_TYPES)
                 .build();

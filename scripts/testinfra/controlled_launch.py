@@ -5,8 +5,10 @@ OS/CI authentication is an external deployment gate, never a property of a fd.
 from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
+import ctypes
 import json
 import os
+import re
 from pathlib import Path
 import select
 import signal
@@ -22,6 +24,29 @@ JVM_FLAGS=('-XX:+DisableAttachMechanism','-XX:-UsePerfData','--enable-native-acc
 EXECUTOR=Path(__file__).resolve().with_name('job_executor.py')
 PYTHON=str(Path('/usr/bin/python3').resolve())
 ENV_KEYS=frozenset({'HOME','TMPDIR','PATH','LANG','LC_ALL'})
+
+def credential_pipe(test_uid=None):
+    """Create a pipe reopenable by the test UID without changing process-wide credentials."""
+    if test_uid is None:return os.pipe()
+    if type(test_uid)!=int or test_uid<=0:raise PolicyError('invalid credential pipe owner')
+    libc=ctypes.CDLL(None,use_errno=True);libc.setfsuid.argtypes=[ctypes.c_uint];libc.setfsuid.restype=ctypes.c_int
+    previous=libc.setfsuid(test_uid);fds=None
+    try:
+        if libc.setfsuid(0xffffffff)!=test_uid:raise PolicyError('credential pipe fsuid switch failed')
+        fds=os.pipe()
+        if os.fstat(fds[0]).st_uid!=test_uid:raise PolicyError('credential pipe owner mismatch')
+    except BaseException:
+        if fds:
+            for fd in fds:os.close(fd)
+            fds=None
+        raise
+    finally:
+        libc.setfsuid(previous)
+        if libc.setfsuid(0xffffffff)!=previous:
+            if fds:
+                for fd in fds:os.close(fd)
+            raise PolicyError('credential pipe fsuid restoration failed')
+    return fds
 
 def tree_digest(path):
     p=Path(path)
@@ -130,6 +155,7 @@ class ProcessJob:
         self._buffers={'stdout':bytearray(),'stderr':bytearray()};self._stream_done={'stdout':False,'stderr':False};self._condition=threading.Condition()
         self._threads=[];self._secret='';self._overflow=False;self._rpc_lock=threading.Lock()
         self._sequence=0;self._event_buffer=b'';self._events=None;self._control=None;self.last_observation=None;self._closed=False
+        self.on_spawn=None;self.on_bound=None;self.failure_info=None;self.credential_uid=None
 
     def _text(self,name):
         with self._condition:
@@ -189,28 +215,38 @@ class ProcessJob:
         self.started=True;self._secret=credential
         payload=encode_spec(spec);password=frame(encode_credential(spec['launch_id'],credential))
         env=self.policy.child_env();assert set(env)==ENV_KEYS
-        sr,sw=os.pipe();cr,cw=os.pipe();er,ew=os.pipe();rr,rw=os.pipe()
-        owned={sr,sw,cr,cw,er,ew,rr,rw}
+        owned=set()
+        stage='policy'
         try:
+            sr,sw=os.pipe();owned.update((sr,sw))
+            cr,cw=credential_pipe(self.credential_uid);owned.update((cr,cw))
+            er,ew=os.pipe();owned.update((er,ew))
+            rr,rw=os.pipe();owned.update((rr,rw))
             java=self.policy.command(spec['run_id'],spec['attempt_id'],spec['launch_id'],hashlib.sha256(payload).hexdigest(),cr,os.readlink(f'/proc/self/fd/{cr}'))
             argv=[PYTHON,'-I','-B',str(EXECUTOR),'--secret-fd',str(cr),'--events-fd',str(ew),
                   '--control-fd',str(rr),'--launch-id',spec['launch_id'],
                   *(['--protected-job',str(self.protected_job)] if self.protected_job else []),
                   *(['--local-binding',str(self.local_binding)] if self.local_binding else []),'--',*java]
+            stage='observer_spawn'
             self.process=subprocess.Popen(argv,stdin=sr,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                 pass_fds=(cr,ew,rr),env=env,cwd=self.policy.scratch,close_fds=True,start_new_session=True,bufsize=0)
             self.identity={**birth(self.process.pid),'launch_id':spec['launch_id']}
+            if self.on_spawn:self.on_spawn(self.identity.copy())
             self._events=er;self._control=rw;owned.remove(er);owned.remove(rw)
             for stream,name in ((self.process.stdout,'stdout'),(self.process.stderr,'stderr')):
                 thread=threading.Thread(target=self._collect,args=(stream,name),daemon=True);thread.start();self._threads.append(thread)
             for fd in (sr,cr,ew,rr):os.close(fd);owned.remove(fd)
+            stage='observer_bind'
             bound=self._receive(time.monotonic()+5)
             if bound.get('kind')!='BOUND' or bound.get('seq')!=0:raise PolicyError('executor binding failed')
+            if self.on_bound:self.on_bound(bound)
             self.trace.append(('spawn',java,sorted(env),{'spec':0,'credential':int(java[-2]),'stderr':2,'inherited_extra_fds':[int(java[-2])]}))
+            stage='credential_handoff'
             for fd,data in ((sw,frame(payload)),(cw,password)):
                 view=memoryview(data)
                 while view:view=view[os.write(fd,view):]
                 os.close(fd);owned.remove(fd)
+            stage='java_acknowledgment'
             deadline=time.monotonic()+10
             expected=f"CONTROLLED_READY {spec['run_id']} {spec['attempt_id']} {spec['launch_id']} CLOSED_SPEC_SECRET\n"
             while True:
@@ -226,7 +262,18 @@ class ProcessJob:
                     break
             if current.split(b'\n',1)[0]+b'\n'!=expected.encode():raise PolicyError('Java launch acknowledgment rejected')
             self.trace.append(('job_ready',self.identity.copy()));return self.identity.copy()
-        except Exception:
+        except Exception as exc:
+            self.failure_info=dict(stage=stage,category=type(exc).__name__ if type(exc).__name__ in ('PolicyError','OSError','PermissionError','BrokenPipeError','TimeoutError') else 'OTHER',errno=exc.errno if isinstance(exc,OSError) else None)
+            if self.process is not None and self.process.poll() is not None:
+                for thread in self._threads:thread.join(.5)
+                with self._condition:
+                    diagnostics=bytes(self._buffers['stderr']);stdout=bytes(self._buffers['stdout'])
+                marker=re.search(rb'EXECUTOR_FAILURE stage=(entry|protected_config|command_validation|domain_validation|main_spawn|observer_protocol) category=(OSError|PermissionError|ValueError|RuntimeError|PolicyError|SubprocessError|OTHER) errno=(None|[0-9]+)',diagnostics)
+                if marker:self.failure_info['executor']={'stage':marker[1].decode(),'category':marker[2].decode(),'errno':None if marker[3]==b'None' else int(marker[3])}
+                drop=re.search(rb'EXECUTOR_IDENTITY_DROP_FAILED errno=([0-9]+)',diagnostics)
+                if drop:self.failure_info['identity_drop_errno']=int(drop[1])
+                rejection=re.search(rb'^CONTROLLED_REJECT (FileNotFoundException|SecurityException|IOException|CREDENTIAL_DESCRIPTOR|CREDENTIAL_FRAME_MISSING|CREDENTIAL_FRAME_SIZE|CREDENTIAL_FRAME_TRUNCATED)\r?$',stdout,re.M)
+                if rejection:self.failure_info['java_rejection']=rejection[1].decode()
             self.trace.append(('launch_failed',self.identity));raise
         finally:
             for fd in owned:os.close(fd)

@@ -21,7 +21,7 @@ class FfmpegProviderPluginContributionTest {
         PluginDescriptor plugin = contribution.pluginDescriptor();
 
         assertThat(contribution.pluginId()).isEqualTo("media.transcode.ffmpeg");
-        assertThat(contribution.pluginVersion()).isEqualTo("1.1.0");
+        assertThat(contribution.pluginVersion()).isEqualTo("1.2.0");
         assertThat(plugin.pluginId()).isEqualTo(contribution.pluginId());
         assertThat(plugin.pluginVersion()).isEqualTo(contribution.pluginVersion());
         assertThat(plugin.handledObjects()).extracting(object -> object.objectTypeId())

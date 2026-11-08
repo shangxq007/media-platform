@@ -55,7 +55,7 @@ def process_denials(context):
                 rows.append(dict(operation=role+'-ptrace',result='FAIL',detached=True))
         finally:os.close(handle)
     domain=Path(context['domain'])
-    if not str(domain).startswith('/sys/fs/cgroup/media-platform-jobs.slice/'):raise ValueError('probe Job domain scope')
+    if not str(domain).startswith('/sys/fs/cgroup/media.slice/media-platform.slice/media-platform-jobs.slice/'):raise ValueError('probe Job domain scope')
     for path in (domain/'cgroup.procs',domain/'cgroup.subtree_control',domain.parent/'cgroup.procs'):
         rows.append(open_denied(path,os.O_WRONLY))
     # A bounded real setsid descendant must retain the same protected kernel membership.

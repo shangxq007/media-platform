@@ -20,8 +20,14 @@ import com.example.platform.workerfabric.domain.providernative.ProviderExecution
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
+import com.example.platform.artifact.domain.Artifact;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -31,9 +37,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Generic production Phase 16 closed loop over the accepted graph and Phase 15 runtime SPI. */
 public final class RuntimeClosedLoopOrchestrator {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RuntimeClosedLoopOrchestrator.class);
 
     private final ArtifactReuseResolver reuseResolver;
     private final ArtifactMaterializerPort artifactMaterializer;
@@ -101,10 +111,15 @@ public final class RuntimeClosedLoopOrchestrator {
             }
         }
 
+        validatedHitIds.addAll(request.seedOutputPins().keySet());
         ReusePruningResult pruning = DependencyPreservingReusePruner.prune(
                 graph, request.requestedTasks(), Set.copyOf(validatedHitIds));
-        Map<ExecutableTaskId, ArtifactPin> outputPins = new LinkedHashMap<>();
+        Map<ExecutableTaskId, ArtifactPin> outputPins =
+                new LinkedHashMap<>(request.seedOutputPins());
         for (ExecutableTaskId reusedTaskId : pruning.reusedTasks()) {
+            if (request.seedOutputPins().containsKey(reusedTaskId)) {
+                continue;
+            }
             outputPins.put(reusedTaskId, decisions.get(reusedTaskId).record()
                     .orElseThrow(() -> new IllegalStateException(
                             "only a typed validated hit may enter reuse pruning"))
@@ -122,7 +137,18 @@ public final class RuntimeClosedLoopOrchestrator {
             ExecutableTask task = tasks.get(taskId);
             TaskRuntimeExecution taskExecution = requireTaskExecution(request, task);
             List<MaterializedExecutionInput> inputs = materializeInputs(
-                    request.tenantId(), task, incoming.getOrDefault(taskId, List.of()), outputPins);
+                    request.tenantId(), taskExecution.artifactCommitMetadata().projectId(), task,
+                    incoming.getOrDefault(taskId, List.of()), outputPins);
+            String attemptId = taskExecution.runtimeContext().platformExecutionAttemptId().value();
+            String renderJobId = taskExecution.artifactCommitMetadata().renderJobId();
+            for (MaterializedExecutionInput input : inputs) {
+                LOG.info("BYTE_INPUT job={} task={} attempt={} input={} artifact={} pinDigest={} bytes={} fileDigest={}",
+                        renderJobId, taskId.sha256Hex(), attemptId, input.inputId().value(),
+                        input.artifactPin().artifactId().value(),
+                        input.artifactPin().contentDigest().canonicalValue(),
+                        input.materializedArtifact().byteLength(),
+                        fileDigest(input.materializedArtifact().path()));
+            }
             ProviderNativeRuntimeBinding<?> runtimeBinding = runtimeBindings.get(
                     task.providerBindingPin());
             if (runtimeBinding == null) {
@@ -132,6 +158,9 @@ public final class RuntimeClosedLoopOrchestrator {
 
             StagedExecutionOutput staged = stageProviderOutput(
                     cancellation == null ? runtimeBinding : runtimeBinding.withCancellation(cancellation), task, taskExecution, inputs);
+            LOG.info("BYTE_STAGED job={} task={} attempt={} bytes={} sha256={} path={}",
+                    renderJobId, taskId.sha256Hex(), attemptId, staged.byteLength(),
+                    staged.contentDigest().canonicalValue(), staged.path());
             RuntimeClosedLoopTaskResult published;
             try {
                 if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Runtime output cancelled before commitment");
@@ -162,6 +191,9 @@ public final class RuntimeClosedLoopOrchestrator {
                 deleteStagedBestEffort(staged);
             }
             var artifact=published.durableArtifactCommit().artifactCommitResult().artifact();
+            LOG.info("BYTE_COMMITTED job={} task={} attempt={} artifact={} bytes={} sha256={}",
+                    renderJobId, taskId.sha256Hex(), attemptId, artifact.artifactId().value(),
+                    artifact.byteLength(), artifact.contentDigest().canonicalValue());
             outputPins.put(taskId,new ArtifactPin(artifact.artifactId(),artifact.contentDigest()));
             executed.put(taskId,published);
         }
@@ -170,6 +202,7 @@ public final class RuntimeClosedLoopOrchestrator {
 
     private List<MaterializedExecutionInput> materializeInputs(
             String tenantId,
+            String projectId,
             ExecutableTask task,
             List<ExecutableTaskDependency> dependencies,
             Map<ExecutableTaskId, ArtifactPin> outputPins) throws IOException {
@@ -224,7 +257,7 @@ public final class RuntimeClosedLoopOrchestrator {
         for (ResolvedExecutionInput input : resolved) {
             try {
                 ArtifactMaterializationResult result = artifactMaterializer.materialize(
-                        tenantId, input.artifactPin());
+                        tenantId, projectId, input.artifactPin());
                 materialized.add(new MaterializedExecutionInput(
                         input.inputId(), input.artifactPin(), result.materializedArtifact()));
                 metrics.materialization(result.disposition());
@@ -319,4 +352,19 @@ public final class RuntimeClosedLoopOrchestrator {
             Objects.requireNonNull(artifactPin, "artifactPin");
         }
     }
+
+    private static String fileDigest(Path path) throws IOException {
+        try (InputStream input = Files.newInputStream(path)) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[64 * 1024];
+            int read;
+            while ((read = input.read(buffer)) >= 0) {
+                if (read > 0) digest.update(buffer, 0, read);
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException("SHA-256 unavailable", unavailable);
+        }
+    }
+
 }

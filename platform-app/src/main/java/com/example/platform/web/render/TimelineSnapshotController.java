@@ -8,6 +8,15 @@ import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
+import com.example.platform.operation.invocation.OperationInvocationPort;
+import com.example.platform.operation.invocation.OperationInvocationContext;
+import com.example.platform.operation.invocation.OperationInvocationResult;
+import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationRequest;
+import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,16 +41,19 @@ public class TimelineSnapshotController {
     private final TimelineRevisionQueries revisionQueryService;
     private final TimelineConversionService conversionService;
     private final TimelineProjectAuthorizationService projectAuthorization;
+    private final OperationInvocationPort invocations;
 
     public TimelineSnapshotController(
             TimelineRevisionCommands revisionSaveService,
             TimelineRevisionQueries revisionQueryService,
             TimelineConversionService conversionService,
-            TimelineProjectAuthorizationService projectAuthorization) {
+            TimelineProjectAuthorizationService projectAuthorization,
+            OperationInvocationPort invocations) {
         this.revisionSaveService = revisionSaveService;
         this.revisionQueryService = revisionQueryService;
         this.conversionService = conversionService;
         this.projectAuthorization = projectAuthorization;
+        this.invocations = invocations;
     }
 
     @PostMapping
@@ -50,16 +62,45 @@ public class TimelineSnapshotController {
         String tenantId = TenantContext.get();
         var actor = projectAuthorization.requireWrite(tenantId, request.projectId());
         var document = toCanonicalDocument(request);
-        var revision = revisionSaveService.saveRevision(
-                new TimelineMutationContext(tenantId, request.projectId(), actor),
-                request.expectedCurrentRevisionId(), document);
+        String baseRevisionId = request.expectedCurrentRevisionId() == null
+                ? TimelineMediaClipOperationService.INITIAL_BASE_REVISION_ID
+                : request.expectedCurrentRevisionId();
+        String baseHash = request.expectedCurrentRevisionId() == null
+                ? TimelineMediaClipOperationService.INITIAL_BASE_CONTENT_HASH
+                : java.util.Optional.ofNullable(revisionSaveService.findById(
+                        tenantId, request.expectedCurrentRevisionId()))
+                        .filter(revision -> request.projectId().equals(revision.productId()))
+                        .map(revision -> revision.semanticContext().timelineContentDigest())
+                        .orElseThrow(() -> new IllegalArgumentException("import base revision unavailable"));
+        String contentHash = new TimelineContentDigester().digest(document);
+        String commandId = "import-" + sha256(tenantId + "\0" + request.projectId() + "\0"
+                + baseRevisionId + "\0" + contentHash);
+        var definition = OperationDefinition.V3.IMPORT_TIMELINE;
+        var result = invocations.invoke(new OperationRequest(
+                definition.definitionId(), definition.version(),
+                new OperationTargetRequest.TimelineTargetRequest(request.projectId()),
+                new OperationParameters.ImportTimelineParameters(document),
+                baseRevisionId, baseHash, null),
+                new OperationInvocationContext(actor, commandId, null, "timeline-import-http"));
+        String revisionId = result instanceof OperationInvocationResult.Applied applied
+                ? applied.newRevisionId() : baseRevisionId;
         String snapshotId = revisionQueryService
-                .findById(request.projectId(), tenantId, revision.revisionId())
+                .findById(request.projectId(), tenantId, revisionId)
                 .map(TimelineRevisionQueries.RevisionInfo::snapshotId)
                 .orElseThrow(() -> new IllegalStateException(
-                        "canonical revision result could not be reloaded: " + revision.revisionId()));
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new SnapshotResponse(snapshotId, request.projectId(), revision.revisionId()));
+                        "canonical revision result could not be reloaded: " + revisionId));
+        return ResponseEntity.status(result instanceof OperationInvocationResult.Applied
+                        ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(new SnapshotResponse(snapshotId, request.projectId(), revisionId));
+    }
+
+    private static String sha256(String value) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException(unavailable);
+        }
     }
 
     private com.example.platform.timeline.canonical.TimelineDocument toCanonicalDocument(

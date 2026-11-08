@@ -11,13 +11,15 @@ public record ArtifactStorageReference(
         StorageObjectId objectId,
         StorageReplicaId replicaId,
         StorageProviderId providerId,
-        String issuanceId
+        String issuanceId,
+        String receiptKey
 ) {
     public ArtifactStorageReference {
         Objects.requireNonNull(objectId, "objectId");
         Objects.requireNonNull(replicaId, "replicaId");
         Objects.requireNonNull(providerId, "providerId");
         requireText(issuanceId, "issuanceId");
+        requireText(receiptKey, "receiptKey");
     }
 
     private static void requireText(String value, String name) {

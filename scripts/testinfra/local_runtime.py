@@ -25,7 +25,12 @@ def sandbox_prefix(path):
         '--uid','1000','--gid','1000','--cap-drop','ALL','--die-with-parent','--new-session','--clearenv',
         '--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib',
         '--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run','--dir','/etc',
-        '--ro-bind','/etc/ld.so.cache','/etc/ld.so.cache','--ro-bind','/var/lib/ca-certificates/java-cacerts','/var/lib/ca-certificates/java-cacerts']
+        '--ro-bind','/etc/ld.so.cache','/etc/ld.so.cache']
+    # Debian packages JDK configuration under /etc; expose it read-only to Java.
+    java_config=Path('/etc/java-25-openjdk')
+    if java_config.is_dir() and not java_config.is_symlink():prefix+=['--ro-bind',str(java_config),str(java_config)]
+    for trust in ('/etc/alternatives','/etc/ssl/certs/java','/var/lib/ca-certificates/java-cacerts'):
+        if Path(trust).exists() and not Path(trust).is_symlink():prefix+=['--ro-bind',trust,trust]
     paths=[d['source'],*d['runtime_dirs'],d['ca']]
     for value in paths:
         p=Path(value)

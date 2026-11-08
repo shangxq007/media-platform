@@ -35,7 +35,7 @@ import org.pf4j.Extension;
 public final class FfmpegProviderPluginContribution implements ProviderPluginContribution {
 
     public static final String PLUGIN_ID = "media.transcode.ffmpeg";
-    public static final String PLUGIN_VERSION = "1.1.0";
+    public static final String PLUGIN_VERSION = "1.2.0";
 
     private static final PluginDescriptor PLUGIN_DESCRIPTOR = new PluginDescriptor(
             PLUGIN_ID,

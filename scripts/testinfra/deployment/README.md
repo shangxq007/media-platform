@@ -32,6 +32,10 @@ Protected executor creates exactly one fixed-root child cgroup, writes pids/memo
 limits, assigns the JVM BEFORE exec, then drops groups/GID/UID and all root capabilities and
 sets no_new_privs/non-dumpable. Subreaper stays outside the test domain. Fresh ECHILD after
 Main reap AND an unchanged empty kernel-cgroup identity are required for complete proof.
+Cgroup-bound startup persists the observer and effective test UID/GID before acknowledging
+the launch. The observer persists its terminal proof before publishing completion, and the
+broker retains a fresh verified copy. Sanitized failure categories exclude credentials and
+exception text. A failed or missing proof remains quarantined.
 Cgroup snapshots alone never prove fork-lineage completion. Stop uses exact birth/pidfd
 signals. Domain replacement/observation failure/setsid survivor -> UNKNOWN -> quarantine.
 A 300s watchdog requests bounded owned stop and persists quarantine; it performs no resource
@@ -55,6 +59,10 @@ read-only mounts prevent root-owned runtime/policy mutation. The test cannot wri
 cgroup tree/socket/policy or signal/attach the observer. These are CONFIGURED requirements,
 not verified cross-UID facts in this task. SELinux/CI/cgroup permission semantics need real
 runner execution; root identity alone does not prove least privilege.
+The service carries only the configured SETUID, SETGID and KILL capabilities as ambient
+capabilities inside the same bounding set. The credential pipe is created using a temporary
+thread-local filesystem UID matching the test identity, then the original filesystem UID is
+restored before launch. Failure to establish or restore that identity fails closed.
 
 ## Files and immutable runtime
 
@@ -67,7 +75,7 @@ runner execution; root identity alone does not prove least privilege.
 | /var/lib/media-platform-executor | root0700, atomic Job records and per-Job config0600 |
 | /var/lib/media-platform/testinfra-scratch | test0710:root, private1GiB bounded mount (executor traverse) |
 | /run/media-platform-executor | root0711, socket root:control0660; no test writes |
-| /sys/fs/cgroup/media-platform-jobs.slice/<launchID> | protected root owner, no test delegation |
+| /sys/fs/cgroup/media.slice/media-platform.slice/media-platform-jobs.slice/<launchID> | protected root owner, no test delegation |
 
 Admin reader rejects writable/non-admin ancestors, symlinks, duplicate fields and excess
 bytes. LaunchPolicy pins the actual nonsymlink JDK25 root, entire code_home, classpath, CA,

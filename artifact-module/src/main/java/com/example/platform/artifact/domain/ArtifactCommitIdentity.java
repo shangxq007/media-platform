@@ -14,6 +14,7 @@ public final class ArtifactCommitIdentity {
                 && a.replicaRole()==b.replicaRole() && a.region().equals(b.region())
                 && a.idempotencyKey().equals(b.idempotencyKey())
                 && a.provenanceDeclarations().equals(b.provenanceDeclarations())
-                && Objects.equals(a.renderJobId(),b.renderJobId()) && Objects.equals(a.projectId(),b.projectId());
+                && Objects.equals(a.renderJobId(),b.renderJobId()) && Objects.equals(a.projectId(),b.projectId())
+                && Objects.equals(a.workspaceId(),b.workspaceId());
     }
 }

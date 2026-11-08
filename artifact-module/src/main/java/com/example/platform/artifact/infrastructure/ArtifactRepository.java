@@ -49,7 +49,7 @@ public class ArtifactRepository {
         this.dsl = dsl;
     }
 
-    public Artifact insert(Artifact artifact, String projectId, String renderJobId) {
+    public Artifact insert(Artifact artifact, String projectId, String renderJobId, String workspaceId) {
         dsl.insertInto(ARTIFACT)
                 .columns(ARTIFACT.ID, ARTIFACT.TENANT_ID, ARTIFACT.PROJECT_ID, ARTIFACT.RENDER_JOB_ID,
                         ARTIFACT.CONTENT_DIGEST, ARTIFACT.BYTE_LENGTH, ARTIFACT.MEDIA_TYPE,
@@ -59,7 +59,8 @@ public class ArtifactRepository {
                         artifact.contentDigest().canonicalValue(), artifact.byteLength(),
                         artifact.mediaType().name(), artifact.artifactKind().name(),
                         artifact.state().name(), artifact.schemaVersion(),
-                        toDb(artifact.createdAt()), null, workspaceIdFor(projectId))
+                        toDb(artifact.createdAt()), null,
+                        workspaceId == null ? workspaceIdFor(projectId) : workspaceId)
                 .execute();
         return artifact;
     }

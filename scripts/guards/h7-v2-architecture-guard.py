@@ -114,7 +114,9 @@ def critical_laws(sources: dict[str, str], exact_pg_matrix: str) -> dict[str, in
         )) and "patchFailureStatus" in git_controller else 1,
         "SHADOW_SIMPLIFIED_CANONICAL_SCHEMA_FIXTURES": 0 if all(
             marker in exact_pg_matrix for marker in (
-                'PostgreSQLContainer<>("postgres:16-alpine")',
+                "extends PostgresTestContainerSupport",
+                "TestDatabaseConnectionProvider.fromControlledLaunch()",
+                "external PostgreSQL 18 database",
                 'locations("classpath:db/migration")',
                 "concurrentAllocatorUsesIndependentConnections",
                 "dataSource.getConnection()",
@@ -308,6 +310,8 @@ def main() -> int:
                                      if p.endswith("TimelineReviewRepository.java")), "")
     exact_pg_matrix = next((without_comments(path.read_text(encoding="utf-8"))
                             for path in ROOT.rglob("H7V2CanonicalOwnershipInvariantTest.java")), "")
+    exact_pg_matrix += "\n" + next((path.read_text(encoding="utf-8")
+                            for path in ROOT.rglob("PostgresTestContainerSupport.java")), "")
     critical = critical_laws(sources, exact_pg_matrix)
     restore_parent_missing = 0 if (
         "restoreRevision" in save_source

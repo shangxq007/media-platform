@@ -6,6 +6,11 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.storage.contract.*;
 import com.example.platform.storage.contract.provider.StorageProvider;
+import com.example.platform.artifact.app.ArtifactCatalogService;
+import com.example.platform.storage.api.*;
+import com.example.platform.storage.contract.identity.StorageObjectLocation;
+import com.example.platform.storage.contract.namespace.*;
+import com.example.platform.storage.contract.replica.ReplicaState;
 import java.io.*;
 import java.nio.file.*;
 import java.time.Instant;
@@ -75,5 +80,65 @@ class DirectStorageArtifactMaterializerTest {
         ready(4); when(first.openRead(any())).thenReturn(Optional.of(new ByteArrayInputStream("abc".getBytes())));
         var failure = assertThrows(ArtifactMaterializationException.class, () -> reader().materialize("tenant", new ArtifactPin(id, digest)));
         assertEquals("Artifact byte length mismatch", failure.getMessage()); verifyNoInteractions(second);
+    }
+
+    @Test void scopedCommittedSourceReadRevalidatesReceiptOnCacheHit() throws Exception {
+        var catalog = mock(ArtifactCatalogService.class);
+        var storage = mock(StoragePlacementQuery.class);
+        var owner = new StorageOwnershipScope("tenant", "project");
+        var replica = replica(id, "blob-backend");
+        var namespace = new StorageNamespace("tenant", "project", NamespaceClass.SOURCE,
+                RegionPolicy.SINGLE_REGION, DataClassification.INTERNAL);
+        var location = new StorageObjectLocation(replica.providerId(), namespace, "opaque", null, "local");
+        var placement = new StorageObjectIssuance.BackendPlacementResult(replica.storageReplicaId(),
+                location, ReplicaState.AVAILABLE, digest, 3, "correlation");
+        var receipt = new StorageObjectIssuance.PlacementReceipt("receipt", new IssuanceIdempotencyKey("key"),
+                "a".repeat(64), StorageObjectIssuance.ReceiptPurpose.ORIGINAL_ISSUANCE,
+                replica.storageObjectId(), replica.storageReplicaId(), location, ReplicaState.AVAILABLE,
+                digest, 3, "correlation", Instant.EPOCH);
+        var issuance = new StorageObjectIssuance.IssuanceResult(owner, replica.storageObjectId(), placement, receipt);
+        when(artifacts.getArtifact("tenant", id)).thenReturn(Optional.of(new Artifact(id, "tenant", digest,
+                3, ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, Instant.EPOCH)));
+        when(artifacts.listReplicas("tenant", id)).thenReturn(List.of(replica));
+        var entry = mock(ArtifactCatalogEntry.class);
+        when(entry.isUsable()).thenReturn(true);
+        when(catalog.findArtifact("tenant", "project", id.value())).thenReturn(Optional.of(entry));
+        when(storage.findPlacement(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn(Optional.of(issuance));
+        when(storage.read(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn("abc".getBytes());
+        var reader = new DirectStorageArtifactMaterializer(artifacts, Map.of(),
+                new WorkerLocalMaterializationCache(root.resolve("source-cache"), 64), catalog, storage);
+        assertArrayEquals("abc".getBytes(), Files.readAllBytes(reader.materialize("tenant", "project", new ArtifactPin(id, digest)).materializedArtifact().path()));
+        when(storage.findPlacement(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn(Optional.empty());
+        assertThrows(ArtifactMaterializationException.class, () -> reader.materialize("tenant", "project", new ArtifactPin(id, digest)));
+        assertThrows(ArtifactMaterializationException.class, () -> reader.materialize("tenant", "other", new ArtifactPin(id, digest)));
+        verify(storage, times(1)).read(owner, replica.storageObjectId(), replica.storageReplicaId());
+
+        var wrongDigest = ContentDigest.sha256("f".repeat(64));
+        var badPlacement = new StorageObjectIssuance.BackendPlacementResult(replica.storageReplicaId(), location,
+                ReplicaState.AVAILABLE, wrongDigest, 3, "correlation");
+        var badReceipt = new StorageObjectIssuance.PlacementReceipt("receipt", new IssuanceIdempotencyKey("key"),
+                "a".repeat(64), StorageObjectIssuance.ReceiptPurpose.ORIGINAL_ISSUANCE,
+                replica.storageObjectId(), replica.storageReplicaId(), location, ReplicaState.AVAILABLE,
+                wrongDigest, 3, "correlation", Instant.EPOCH);
+        when(storage.findPlacement(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn(Optional.of(
+                new StorageObjectIssuance.IssuanceResult(owner, replica.storageObjectId(), badPlacement, badReceipt)));
+        assertThrows(ArtifactMaterializationException.class, () -> reader.materialize("tenant", "project", new ArtifactPin(id, digest)));
+        var foreignNamespace = new StorageNamespace("tenant", "other", NamespaceClass.SOURCE,
+                RegionPolicy.SINGLE_REGION, DataClassification.INTERNAL);
+        var foreignLocation = new StorageObjectLocation(replica.providerId(), foreignNamespace, "opaque", null, "local");
+        var foreignPlacement = new StorageObjectIssuance.BackendPlacementResult(replica.storageReplicaId(), foreignLocation,
+                ReplicaState.AVAILABLE, digest, 3, "correlation");
+        var foreignReceipt = new StorageObjectIssuance.PlacementReceipt("receipt", new IssuanceIdempotencyKey("key"),
+                "a".repeat(64), StorageObjectIssuance.ReceiptPurpose.ORIGINAL_ISSUANCE,
+                replica.storageObjectId(), replica.storageReplicaId(), foreignLocation, ReplicaState.AVAILABLE,
+                digest, 3, "correlation", Instant.EPOCH);
+        when(storage.findPlacement(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn(Optional.of(
+                new StorageObjectIssuance.IssuanceResult(owner, replica.storageObjectId(), foreignPlacement, foreignReceipt)));
+        assertThrows(ArtifactMaterializationException.class, () -> reader.materialize("tenant", "project", new ArtifactPin(id, digest)));
+        when(storage.findPlacement(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn(Optional.of(issuance));
+        when(storage.read(owner, replica.storageObjectId(), replica.storageReplicaId())).thenReturn("bad".getBytes());
+        var freshReader = new DirectStorageArtifactMaterializer(artifacts, Map.of(),
+                new WorkerLocalMaterializationCache(root.resolve("corrupt-cache"), 64), catalog, storage);
+        assertThrows(IOException.class, () -> freshReader.materialize("tenant", "project", new ArtifactPin(id, digest)));
     }
 }

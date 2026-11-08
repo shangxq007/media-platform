@@ -1,5 +1,6 @@
 """Behavior tests for guard ordering, phase isolation and resource ownership."""
 import json
+from copy import deepcopy
 from pathlib import Path
 import tempfile
 import unittest
@@ -45,6 +46,18 @@ class Admission(unittest.TestCase):
         s.adapter=object();before=list(self.trace)
         with self.assertRaisesRegex(PolicyError,'built-in FakeNeon'):s.stop()
         self.assertEqual(before,self.trace);self.assertEqual('RUNNING',s.state)
+    def test_new_allocation_preserves_prior_closed_history(self):
+        s=self.supervisor();s.branch_id='old';s.doc['records']['old']={'state':'CLOSED','proof':'preserved'}
+        s._save('CLOSED','DELETE_CONFIRMED');before=deepcopy(s.doc['records']['old'])
+        self.assertEqual('READY',s.allocate('newrun','a1'))
+        self.assertEqual(before,s.doc['records']['old']);self.assertEqual(before,self.journal.load()['records']['old'])
+
+    def test_reused_historical_branch_is_rejected_without_modifying_history(self):
+        s=self.supervisor();s.branch_id='old';s.doc['records']['old']={'state':'CLOSED','proof':'preserved'}
+        s._save('CLOSED','DELETE_CONFIRMED');before=deepcopy(s.doc['records']['old'])
+        with patch.object(self.api,'create',return_value={'created':True,'branch':'old'}):
+            self.assertEqual('QUARANTINED',s.allocate('newrun','a1'))
+        self.assertEqual(before,s.doc['records']['old']);self.assertEqual(before,self.journal.load()['records']['old'])
     def test_recovery_no_new_secret_or_delete(self):
         s=self.supervisor();s.allocate('run','attempt');s.start()
         with patch.object(self.job,'confirm_complete',side_effect=AssertionError('recovery cannot claim completion')):

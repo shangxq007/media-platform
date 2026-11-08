@@ -112,6 +112,7 @@ public class FirstRenderPlanningApplicationService {
         // 6. Bounded capability context: only what the minimal scenario truly requires (D4/E1).
         CapabilityContext capabilityContext = new CapabilityContext(Set.of(
                 RenderCapabilityVocabulary.videoDecode().capabilityId(),
+                RenderCapabilityVocabulary.composite().capabilityId(),
                 RenderCapabilityVocabulary.outputEncode().capabilityId()));
 
         // 7. Declarations come from the Provider Interoperability Authority (OD5/R5).

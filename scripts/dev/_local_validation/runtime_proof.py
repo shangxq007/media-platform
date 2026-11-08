@@ -17,7 +17,7 @@ raw=execute('product-database-facts',psql,sql);facts=json.loads(raw);assert fact
 seed='''insert into account(id,issuer,subject,status,created_at) values('account-fr-denied','http://127.0.0.1:18081','f8-denied-subject','ACTIVE',now());
 insert into "user"(id,tenant_id,account_id,username,email,role,status,created_at) values('actor-fr-denied','tenant-fr-e2e','account-fr-denied','denied','denied@example.invalid','USER','ACTIVE',now());
 insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values('member-fr-denied','workspace-fr-e2e','actor-fr-denied','MEMBER','ACTIVE',now(),now());
-insert into project(id,tenant_id,workspace_id,name,created_at) values('project-fr-other','tenant-fr-e2e','workspace-fr-e2e','other scoped project',now());'''
+insert into project(id,tenant_id,workspace_id,name,created_at) values('project-fr-other','tenant-fr-e2e','workspace-fr-e2e','other scoped project',now()) on conflict(id) do nothing;'''
 execute('authorization-fixture',psql,seed)
 b64=lambda b:base64.urlsafe_b64encode(b).decode().rstrip('=');old=(app/'token').read_text().split('.');payload=json.loads(base64.urlsafe_b64decode(old[1]+'='*(-len(old[1])%4)));payload.update(sub='f8-denied-subject',iat=int(time.time()),exp=int(time.time())+1800);header=json.loads(base64.urlsafe_b64decode(old[0]+'='*(-len(old[0])%4)));unsigned=b64(json.dumps(header,separators=(',',':')).encode())+'.'+b64(json.dumps(payload,separators=(',',':')).encode());signature=subprocess.check_output(['openssl','dgst','-sha256','-sign',str(R/'07-runtime/private/oidc-private.pem')],input=unsigned.encode(),env={'PATH':'/usr/bin:/bin'});p=app/'denied-token';p.write_text(unsigned+'.'+b64(signature));p.chmod(0o600)
 client='''from pathlib import Path
@@ -33,4 +33,18 @@ for label,path,token,expected in [('history',base+'/status-history','token',{200
 (r/'authorization-negatives.json').write_text(json.dumps(results,indent=2));print('AUTHORIZATION_NEGATIVES_PASS')
 '''
 (app/'authorization-negatives.py').write_text(client);execute('authorization-negatives',sandbox_prefix(app/'binding.json')+['/usr/bin/python3','-B',str(app/'authorization-negatives.py'),str(app)])
-tools=R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl';env={'PATH':'/usr/bin:/bin','LD_LIBRARY_PATH':str(tools)};argv=[str(tools/'ffprobe'),'-v','error','-show_entries','stream=codec_name,width,height:format=duration','-of','json',str(app/'downloaded-final.mp4')];p=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=30);assert p.returncode==0;probe=json.loads(p.stdout);assert probe['streams'][0]['codec_name']=='h264' and probe['streams'][0]['width']==320 and float(probe['format']['duration'])==1.0;(app/'downloaded-ffprobe.json').write_text(json.dumps(dict(argv=argv,exit_code=p.returncode,probe=probe,sha256=hashlib.sha256((app/'downloaded-final.mp4').read_bytes()).hexdigest()),indent=2));print('REAL_HTTP_PRODUCT_FACTS_AND_FFPROBE_PASS',job)
+tools=R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl';env={'PATH':'/usr/bin:/bin','LD_LIBRARY_PATH':str(tools)};argv=[str(tools/'ffprobe'),'-v','error','-show_entries','stream=codec_name,width,height:format=duration','-of','json',str(app/'downloaded-final.mp4')];p=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=30);assert p.returncode==0;probe=json.loads(p.stdout);expected_duration=2.0 if (app/'operation-http.stdout').exists() else 1.0
+assert probe['streams'][0]['codec_name']=='h264' and probe['streams'][0]['width']==320 and abs(float(probe['format']['duration'])-expected_duration) <= 1.0/30.0 + 1e-6;(app/'downloaded-ffprobe.json').write_text(json.dumps(dict(argv=argv,exit_code=p.returncode,probe=probe,sha256=hashlib.sha256((app/'downloaded-final.mp4').read_bytes()).hexdigest()),indent=2));print('REAL_HTTP_PRODUCT_FACTS_AND_FFPROBE_PASS',job)
+if (app/'operation-http.stdout').exists():
+    frame_evidence = {}
+    for label, second, dominant in [('red', '0', 0), ('blue', '1', 2)]:
+        frame_command = [str(tools/'ffmpeg'), '-hide_banner', '-loglevel', 'error', '-nostdin',
+            '-ss', second, '-i', str(app/'downloaded-final.mp4'), '-frames:v', '1',
+            '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']
+        frame = subprocess.run(frame_command, env=env, capture_output=True, timeout=30)
+        assert frame.returncode == 0 and len(frame.stdout) == 320*240*3, (label, frame.stderr[:300])
+        averages = [sum(frame.stdout[channel::3])/(320*240) for channel in range(3)]
+        assert averages[dominant] > 80 and averages[dominant] > 2*max(
+            averages[(dominant+1)%3], averages[(dominant+2)%3]), (label, averages)
+        frame_evidence[label] = {'timestampSeconds': second, 'averageRgb': averages}
+    (app/'operation-frame-evidence.json').write_text(json.dumps(frame_evidence, indent=2))

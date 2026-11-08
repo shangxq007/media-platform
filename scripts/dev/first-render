@@ -7,7 +7,10 @@ No personal Gradle/container credentials are inherited. All generated state is o
 from pathlib import Path
 import argparse,json,os,subprocess,sys,time,secrets,shutil,hashlib
 W=Path(__file__).resolve().parents[2];HELP=W/'scripts/dev/_local_validation'
-p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--gradle',type=Path,help='Optional existing Gradle9.1 executable; default uses committed wrapper');p.add_argument('--cache',type=Path,help='Explicit modules-2 cache seed, copied without user configuration');p.add_argument('--offline',action='store_true');p.add_argument('--combined-smoke',action='store_true',help='Optional single-process COMBINED regression; default validates independent API and WORKER');a=p.parse_args()
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--gradle',type=Path,help='Optional existing Gradle9.1 executable; default uses committed wrapper');p.add_argument('--cache',type=Path,help='Explicit modules-2 cache seed, copied without user configuration');p.add_argument('--offline',action='store_true');p.add_argument('--postgres-archive',type=Path,help='Local OCI archive containing postgres:18 for offline validation');p.add_argument('--temporal-archive',type=Path,help='Local OCI archive containing temporal:latest for offline validation');p.add_argument('--source-ffmpeg',type=Path,default=Path('/usr/bin/ffmpeg'),help='FFmpeg with libopenh264 for synthetic source media');p.add_argument('--build-only',action='store_true',help='Build and export the runtime without creating services or executing media');p.add_argument('--services-only',action='store_true',help='Verify API, Worker, database and Temporal without submitting media or render jobs');p.add_argument('--combined-smoke',action='store_true',help='Optional single-process COMBINED regression; default validates independent API and WORKER');p.add_argument('--timeline-operation-editing',action='store_true',help='Exercise authenticated source uploads and an Operation-produced revision');a=p.parse_args()
+if a.services_only and (a.build_only or a.combined_smoke or a.timeline_operation_editing):p.error('services-only requires independent API/Worker and no media exercise')
+if bool(a.postgres_archive)!=bool(a.temporal_archive) or (a.offline and not a.postgres_archive):p.error('offline validation requires both explicit PostgreSQL and Temporal image archives')
+if not a.source_ffmpeg.is_absolute() or not a.source_ffmpeg.is_file() or a.source_ffmpeg.is_symlink() or not os.access(a.source_ffmpeg,os.X_OK):p.error('source FFmpeg must be an executable absolute nonsymlink file')
 raw=a.output.absolute()
 if '..' in raw.parts or any(x.is_symlink() for x in [raw,*raw.parents]):p.error('output traversal or symlink refused')
 R=raw.resolve()
@@ -16,7 +19,7 @@ for tool in ['podman','bwrap','nsenter','openssl','javac','ffmpeg','curl']:
  if not shutil.which(tool):p.error('required tool missing: '+tool)
 R.mkdir(mode=0o700,parents=True)
 for name in ['03-build','04-tests','07-runtime','07-runtime/private-correction','07-runtime/private','03-build/home','03-build/outputs','03-build/gradle-home/caches','03-build/podman/home','03-build/podman/runtime','03-build/podman/runroot']:(R/name).mkdir(mode=0o700,parents=True,exist_ok=True)
-run=time.strftime('%Y%m%dt%H%M%Sz',time.gmtime())+'-'+secrets.token_hex(3);(R/'07-runtime/run.json').write_text(json.dumps({'id':run,'source':str(W)}));env={'PATH':'/usr/bin:/bin','HOME':str(R/'03-build/home'),'LANG':'C.UTF-8','PYTHONDONTWRITEBYTECODE':'1','MEDIA_PLATFORM_VALIDATION_OUTPUT':str(R)};records=[];clients=None;B=None;E=None;cid=None;tid=None;volume='f8-pg18-'+run+'-data'
+run=time.strftime('%Y%m%dt%H%M%Sz',time.gmtime())+'-'+secrets.token_hex(3);(R/'07-runtime/run.json').write_text(json.dumps({'id':run,'source':str(W)}));env={'PATH':'/usr/bin:/bin','HOME':str(R/'03-build/home'),'LANG':'C.UTF-8','PYTHONDONTWRITEBYTECODE':'1','MEDIA_PLATFORM_VALIDATION_OUTPUT':str(R),'MEDIA_PLATFORM_SOURCE_FFMPEG':str(a.source_ffmpeg)};records=[];clients=None;B=None;E=None;cid=None;tid=None;volume='f8-pg18-'+run+'-data'
 def command(name,cmd,input=None,environment=None,timeout=240):
  with (R/(name+'.stdout')).open('w') as o,(R/(name+'.stderr')).open('w') as e:x=subprocess.run(list(map(str,cmd)),env=environment or env,input=input,text=True,stdout=o,stderr=e,timeout=timeout)
  records.append({'name':name,'argv':list(map(str,cmd)),'cwd':str(W),'exit_code':x.returncode,'stdin':'withheld synthetic initialization' if input else None});(R/'commands.json').write_text(json.dumps(records,indent=2));
@@ -30,9 +33,19 @@ try:
  if a.cache:
   if not a.cache.is_dir() or a.cache.is_symlink():raise RuntimeError('explicit cache seed must be a real modules-2 directory')
   shutil.copytree(a.cache,R/'03-build/gradle-home/caches/modules-2',symlinks=True)
+ source_copy=R/'03-build/source-work';shutil.copytree(W,source_copy,symlinks=True)
+ source_hashes={}
+ for source_path in W.rglob('*'):
+  if source_path.is_symlink():raise RuntimeError('source symlink refused')
+  if source_path.is_file():
+   relative=source_path.relative_to(W);target=source_copy/relative
+   with source_path.open('rb') as f:expected=hashlib.file_digest(f,'sha256').hexdigest()
+   with target.open('rb') as f:actual=hashlib.file_digest(f,'sha256').hexdigest()
+   if expected!=actual:raise RuntimeError('source copy differs from candidate')
+   source_hashes[relative]=expected
  java=Path(shutil.which('java')).resolve().parents[1]
- args=['/usr/bin/bwrap','--unshare-all',*([] if a.offline else ['--share-net']),'--uid',str(os.getuid()),'--gid',str(os.getgid()),'--cap-drop','ALL','--die-with-parent','--new-session','--clearenv','--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/etc','--bind',str(W),'/work','--bind',str(R/'03-build'),'/build','--setenv','PATH','/usr/bin:/bin','--setenv','HOME','/build/home','--setenv','LANG','C.UTF-8','--setenv','GRADLE_USER_HOME','/build/gradle-home','--setenv','JAVA_HOME',str(java),'--chdir','/work']
- for f in ['/etc/ld.so.cache','/etc/hosts','/etc/resolv.conf','/etc/nsswitch.conf','/etc/crypto-policies/back-ends/java.config','/var/lib/ca-certificates/java-cacerts']:
+ args=['/usr/bin/bwrap','--unshare-all',*([] if a.offline else ['--share-net']),'--uid',str(os.getuid()),'--gid',str(os.getgid()),'--cap-drop','ALL','--die-with-parent','--new-session','--clearenv','--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/etc','--bind',str(source_copy),'/work','--bind',str(R/'03-build'),'/build','--setenv','PATH','/usr/bin:/bin','--setenv','HOME','/build/home','--setenv','LANG','C.UTF-8','--setenv','GRADLE_USER_HOME','/build/gradle-home','--setenv','JAVA_HOME',str(java),'--chdir','/work']
+ for f in ['/etc/ld.so.cache','/etc/hosts','/etc/resolv.conf','/etc/nsswitch.conf','/etc/crypto-policies/back-ends/java.config','/etc/alternatives','/etc/java-25-openjdk','/etc/ssl/certs/java','/var/lib/ca-certificates/java-cacerts']:
   if Path(f).exists():args+=['--ro-bind',f,f]
  if not java.is_relative_to('/usr'):args+=['--ro-bind',str(java),str(java)]
  gradle='/work/gradlew'
@@ -45,8 +58,24 @@ try:
 } } }
 ''')
  command('build',args+['--',gradle,*(['--offline'] if a.offline else []),'--no-daemon','--max-workers=2','--project-cache-dir','/build/project-cache','--init-script','/build/external-build.gradle','-PbuildRoot=/build/outputs','-Dorg.gradle.java.installations.auto-download=false','-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=768m','compileJava','testClasses','assemble',':shared-kernel:testFixturesJar',':ffmpeg-provider-module:stageFfmpegLinuxRuntime',':exportValidationClasspath'],timeout=1200)
+ for relative,expected in source_hashes.items():
+  target=source_copy/relative
+  if target.is_symlink() or not target.is_file():raise RuntimeError('candidate source removed or replaced during build')
+  with target.open('rb') as f:actual=hashlib.file_digest(f,'sha256').hexdigest()
+  if actual!=expected:raise RuntimeError('candidate source modified during build')
+ if a.build_only:
+  (R/'build-only.json').write_text(json.dumps({'result':'PASS','source':str(W),'real_services_created':False}))
+  raise SystemExit(0)
  conf=R/'03-build/podman/containers.conf';conf.write_text('[engine]\ncgroup_manager="cgroupfs"\nevents_logger="file"\n');E={'PATH':'/usr/bin:/bin','HOME':str(R/'03-build/podman/home'),'XDG_RUNTIME_DIR':str(R/'03-build/podman/runtime'),'CONTAINERS_CONF':str(conf),'LANG':'C.UTF-8'};B=['/usr/bin/podman','--root',str(R/'03-build/podman/storage'),'--runroot',str(R/'03-build/podman/runroot'),'--storage-driver','vfs','--cgroup-manager','cgroupfs'];(R/'07-runtime/podman-base.json').write_text(json.dumps(B));(R/'03-build/podman/environment.json').write_text(json.dumps(E))
- for image in ['docker.io/library/postgres:18','docker.io/temporalio/temporal:latest']:command('pull-'+('pg' if 'postgres' in image else 'temporal'),B+['pull',image],environment=E)
+ if a.postgres_archive:
+  for label,archive,image,expected_id in [('pg',a.postgres_archive,'docker.io/library/postgres:18','a1be1c8380f5c8ca80b4ad72f6be191f8a283e0ecb2e9496b1ee67dc0022d0f1'),('temporal',a.temporal_archive,'docker.io/temporalio/temporal:latest','e1534f2d0aa0ce2d79375ce20ac15a3405fc51c3e7bd374f4ac204bc94e1252c')]:
+   if not archive.is_file() or archive.is_symlink():raise RuntimeError('image archive must be an existing nonsymlink file')
+   command('load-'+label,B+['load','--input',archive],environment=E,timeout=600)
+   command('verify-image-'+label,B+['image','exists',image],environment=E)
+   image_id=command('verify-image-id-'+label,B+['image','inspect','--format','{{.Id}}',image],environment=E)
+   if image_id!=expected_id:raise RuntimeError('offline image identity mismatch: '+label)
+ else:
+  for image in ['docker.io/library/postgres:18','docker.io/temporalio/temporal:latest']:command('pull-'+('pg' if 'postgres' in image else 'temporal'),B+['pull',image],environment=E)
  priv=R/'07-runtime/private-correction';pf=priv/'postgres-password';pf.write_text(secrets.token_urlsafe(32));pf.chmod(0o600);command('create-volume',B+['volume','create','--label','media-platform.f8-run='+run,volume],environment=E)
  affinity=','.join(map(str,sorted(os.sched_getaffinity(0))[:2]));prefix=['/usr/bin/taskset','--cpu-list',affinity]
  cid=command('create-pg',prefix+B+['run','-d','--pull=never','--name','f8-pg18-'+run,'--label','media-platform.f8-run='+run,'--network=none','--shm-size=256m','--pids-limit=128','--ulimit=nofile=1024:1024','--ulimit=fsize=1073741824:1073741824','--ulimit=core=0:0','--volume',volume+':/var/lib/postgresql','--volume',str(pf)+':/run/secrets/password:ro,Z','--env','POSTGRES_PASSWORD_FILE=/run/secrets/password','--env','POSTGRES_USER=mp_owner','--env','POSTGRES_DB=mp_f8','--entrypoint','/bin/sh','docker.io/library/postgres:18','-c','ulimit -v 2097152; exec /usr/local/bin/docker-entrypoint.sh postgres "$@"','mp-pg','-c','shared_buffers=64MB','-c','work_mem=4MB','-c','max_connections=100','-c','temp_file_limit=256MB','-c','statement_timeout=180s'],environment=E)
@@ -70,7 +99,7 @@ try:
   time.sleep(.2)
  else:raise RuntimeError('PostgreSQL TLS restart readiness timeout')
  d=inspect(cid);pid=d['State']['Pid'];sys.path.insert(0,str(W/'scripts/testinfra'));from controlled_launch import birth
- c={'container_id':cid,'run':'canon','attempt':'a2','database':'mp_f8_canon_a2','role':'mp_test_canon_a2','pid':pid,'network_namespace':os.readlink('/proc/'+str(pid)+'/ns/net'),'user_namespace':os.readlink('/proc/'+str(pid)+'/ns/user'),'ca':str(priv/'ca.crt'),'password_file':str(pwf),'volume':volume};(R/'07-runtime/local-context.json').write_text(json.dumps(c));binding={k:c[k] for k in ['container_id','network_namespace','user_namespace','ca','run','attempt']};binding.update(identity=birth(pid),source=str(W),runtime_dirs=[str(R/'03-build/outputs'),str(R/'03-build/gradle-home/caches/modules-2/files-2.1')],scratch=str(R/'04-tests'),launch='local-validation');bf=R/'07-runtime/binding.json';bf.write_text(json.dumps(binding));bf.chmod(0o600)
+ c={'container_id':cid,'run':'canon','attempt':'a2','database':'mp_f8_canon_a2','role':'mp_test_canon_a2','pid':pid,'network_namespace':os.readlink('/proc/'+str(pid)+'/ns/net'),'user_namespace':os.readlink('/proc/'+str(pid)+'/ns/user'),'ca':str(priv/'ca.crt'),'password_file':str(pwf),'volume':volume};(R/'07-runtime/local-context.json').write_text(json.dumps(c));binding={k:c[k] for k in ['container_id','network_namespace','user_namespace','ca','run','attempt']};binding.update(identity=birth(pid),source=str(W),runtime_dirs=[str(R/'03-build/outputs'),str(R/'03-build/gradle-home/caches/modules-2/files-2.1'),str(source_copy)],scratch=str(R/'04-tests'),launch='local-validation');bf=R/'07-runtime/binding.json';bf.write_text(json.dumps(binding));bf.chmod(0o600)
  tid=command('create-temporal',prefix+B+['run','-d','--pull=never','--name','f8-temporal-'+run,'--label','media-platform.f8-run='+run,'--network=container:'+cid,'--pids-limit=128','--ulimit=core=0:0','--env','GOMEMLIMIT=512MiB','--env','GOMAXPROCS=2','docker.io/temporalio/temporal:latest','server','start-dev','--ip','127.0.0.1','--namespace','f8-pg18-'+run,'--db-filename','/tmp/temporal.sqlite'],environment=E);(R/'07-runtime/temporal-id').write_text(tid)
  command('pg18', ['python3','-I','-B',str(W/'scripts/test-infra'),'pg18-local','--binding',str(bf),'--password-file',str(pwf),'--classpath-file',str(R/'03-build/platform-app-test-classpath.txt'),'--output',str(R/'04-tests/pg18')],timeout=360);(R/'07-runtime/final-db-job.txt').write_text(str(R/'04-tests/pg18'))
  clients=subprocess.Popen(['python3','-B',str(HELP/'run_apps.py'),'--fresh','--bootstrap',*(['--combined'] if a.combined_smoke else [])],env=env,stdout=(R/'apps-driver.stdout').open('w'),stderr=(R/'apps-driver.stderr').open('w'))
@@ -82,15 +111,21 @@ try:
   if clients.poll() is not None:raise RuntimeError('application startup failed')
   time.sleep(1)
  else:raise RuntimeError('application startup deadline')
- for name in ['exercise_first_render','check_product','runtime_proof','check_media_capabilities',*([] if a.combined_smoke else ['check_cancel'])]:command(name,['python3','-B',str(HELP/(name+'.py'))],timeout=240)
- (R/'product-result.json').write_text(json.dumps({'result':'PASS','source':str(W),'real_pg18':True,'runtime_mode':'COMBINED' if a.combined_smoke else 'API_WORKER','independent_api_worker':not a.combined_smoke,'real_api_worker_temporal_ffmpeg_http_download':True,'deployment':'DEPLOYMENT_ISOLATION_NOT_VERIFIED'}))
+ if a.services_only:
+  command('services-health',['python3','-B',str(HELP/'check_services.py')],timeout=240)
+ else:
+  exercises=['exercise_timeline_operation_editing' if a.timeline_operation_editing else 'exercise_first_render',
+             'check_product','runtime_proof',*([] if a.timeline_operation_editing else ['check_media_capabilities']),
+             *([] if a.combined_smoke else ['check_cancel'])]
+  for name in exercises:command(name,['python3','-B',str(HELP/(name+'.py'))],timeout=300)
+  (R/'product-result.json').write_text(json.dumps({'result':'PASS','source':str(W),'real_pg18':True,'runtime_mode':'COMBINED' if a.combined_smoke else 'API_WORKER','independent_api_worker':not a.combined_smoke,'real_api_worker_temporal_ffmpeg_http_download':True,'deployment':'DEPLOYMENT_ISOLATION_NOT_VERIFIED'}))
 finally:
  if clients:
   current=R/'07-runtime/current-apps.txt'
   if current.exists():(Path(current.read_text().strip())/'STOP').touch()
   clients.wait(timeout=60)
  # Fail closed on client uncertainty. On a failed run, retain owned resources and evidence.
- if cid and tid and (R/'product-result.json').exists():
+ if cid and tid and ((R/'product-result.json').exists() or (R/'services-health.json').exists()):
   proof=json.loads((Path((R/'07-runtime/current-apps.txt').read_text().strip())/'complete.json').read_text());dbproof=json.loads((R/'04-tests/pg18/result.json').read_text());assert proof['all_children_reaped'] and dbproof['executor_closed']
   active=json.loads(command('active-workflows',B+['exec',tid,'temporal','--address','127.0.0.1:7233','--namespace','f8-pg18-'+run,'workflow','list','--query',"ExecutionStatus = 'Running'",'--output','json'],environment=E));assert active==[] or active=={'executions':[]}
   inspect(cid);inspect(tid);sql="ALTER ROLE mp_test_canon_a2 NOLOGIN; ALTER DATABASE mp_f8_canon_a2 ALLOW_CONNECTIONS false; SELECT count(*) FROM pg_stat_activity WHERE datname='mp_f8_canon_a2';";command('fence-zero-sessions',admin,input=sql,environment=E)
@@ -105,6 +140,10 @@ finally:
   d=json.loads(command('inspect-volume',B+['volume','inspect',volume],environment=E))[0];assert d['Name']==volume and d['Labels']['media-platform.f8-run']==run;command('remove-volume',B+['volume','rm',volume],environment=E);(R/'cleanup.json').write_text(json.dumps({'result':'PASS','exact_containers':[tid,cid],'exact_volume':volume,'clients_complete':True,'zero_sessions':True}))
 
 # Overall success is published only after all owned resources have been closed and cleaned.
+if a.services_only:
+ service=json.loads((R/'services-health.json').read_text());cleanup=json.loads((R/'cleanup.json').read_text());assert service['result']=='PASS' and cleanup['result']=='PASS'
+ (R/'services-result.json').write_text(json.dumps({**service,'cleanup':'PASS','nle_isolation':'NOT_VERIFIED'}))
+ raise SystemExit(0)
 product=json.loads((R/'product-result.json').read_text());cleanup=json.loads((R/'cleanup.json').read_text());assert cleanup['result']=='PASS'
 (R/'result.json').write_text(json.dumps({**product,'cleanup':'PASS'}))
 print('FIRST_RENDER_LOCAL_VALIDATION_PASS '+str(R),flush=True)

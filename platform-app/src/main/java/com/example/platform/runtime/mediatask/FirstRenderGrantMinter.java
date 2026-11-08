@@ -138,13 +138,28 @@ public final class FirstRenderGrantMinter {
 
     /** Bind the logical owner and exact task without exceeding the persisted 128-character limit. */
     public static RequestWorkId requestWorkId(String ownerIdentity, ExecutableTaskId taskId) {
+        return requestWorkId(ownerIdentity, taskId, 1L);
+    }
+
+    /**
+     * Deterministic RequestWork identity for one Temporal admission attempt. Attempt 1 retains the
+     * original identity; later attempts append the activity attempt number so a fresh snapshot must
+     * be represented by a fresh, traceable admission attempt rather than reused as the old context.
+     */
+    public static RequestWorkId requestWorkId(
+            String ownerIdentity, ExecutableTaskId taskId, long admissionAttempt) {
         Objects.requireNonNull(ownerIdentity, "ownerIdentity");
         Objects.requireNonNull(taskId, "taskId");
         if (ownerIdentity.isBlank()) throw new IllegalArgumentException("ownerIdentity must not be blank");
+        if (admissionAttempt < 1) throw new IllegalArgumentException("admissionAttempt must be positive");
         byte[] owner = ownerIdentity.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] task = taskId.sha256Hex().getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-        var framed = java.nio.ByteBuffer.allocate(8 + owner.length + task.length);
+        var framed = java.nio.ByteBuffer.allocate(8 + owner.length + task.length
+                + (admissionAttempt == 1 ? 0 : 8));
         framed.putInt(owner.length).put(owner).putInt(task.length).put(task);
+        if (admissionAttempt != 1) {
+            framed.putLong(admissionAttempt);
+        }
         try {
             return RequestWorkId.of(REQUEST_WORK_ID_PREFIX + java.util.HexFormat.of().formatHex(
                     java.security.MessageDigest.getInstance("SHA-256").digest(framed.array())));
@@ -167,8 +182,22 @@ public final class FirstRenderGrantMinter {
             ExecutableTaskId taskId,
             ProviderBoundExecutableTaskGraph graph,
             ProviderPluginContribution contribution) {
+        return mint(renderJobId, taskId, graph, contribution, 1L);
+    }
+
+    /**
+     * Attempts to mint the grant for one task using the actual bound graph task and the exact
+     * matching provider contribution. The admission attempt is part of the RequestWork identity;
+     * the logical render job and task identity remain stable.
+     */
+    public Result mint(
+            String renderJobId,
+            ExecutableTaskId taskId,
+            ProviderBoundExecutableTaskGraph graph,
+            ProviderPluginContribution contribution,
+            long admissionAttempt) {
         Objects.requireNonNull(taskId, "taskId");
-        RequestWorkId requestWorkId = requestWorkId(renderJobId, taskId);
+        RequestWorkId requestWorkId = requestWorkId(renderJobId, taskId, admissionAttempt);
         Instant now = clock.instant();
 
         var host = registrationBoundary.findActiveHostRegistration();
@@ -385,6 +414,10 @@ public final class FirstRenderGrantMinter {
             }
             return new Result.Unavailable(
                     requestWorkId, List.of("persisted-assignment-grant"));
+        }
+        if (result instanceof RequestWorkResult.CapacityUnavailable capacityUnavailable) {
+            return new Result.Rejected(
+                    requestWorkId, "ADMISSION_REJECTED: " + capacityUnavailable.reason().name());
         }
         if (result instanceof RequestWorkResult.ReprobeRequired reprobe) {
             return new Result.Rejected(

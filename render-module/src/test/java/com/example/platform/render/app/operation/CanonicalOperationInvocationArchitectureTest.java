@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CanonicalOperationInvocationArchitectureTest {
 
-    // The approved Identity/resource-scope prerequisite changed this route; EP07 must preserve it.
+    // The authorized normal-profile ADD transport now delegates Apply through Invocation.
     private static final String ACCEPTED_IDENTITY_SCOPE_CONTROLLER_SHA256 =
-            "a31d1350b8ef058c5ba997c73fd6ff3858316f7d976ceaf82de2694a5773989d";
+            "1e3f181979ac1e74151da40ee409641503ce9777343001472efb7b8a0ec67d85";
     private static final Path ROOT = repositoryRoot(Path.of(System.getProperty("user.dir")));
     private static final Path RENDER_MAIN = ROOT.resolve("render-module/src/main/java");
     private static final Path SERVICE = RENDER_MAIN.resolve(

@@ -16,7 +16,7 @@ WorkingDirectory=/
 UMask=0077
 NoNewPrivileges=yes
 CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_KILL
-AmbientCapabilities=
+AmbientCapabilities=CAP_SETUID CAP_SETGID CAP_KILL
 PrivateNetwork=yes
 PrivateTmp=yes
 ProtectSystem=strict
@@ -36,7 +36,7 @@ RestrictRealtime=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 SystemCallFilter=~@mount @reboot @swap @module @raw-io
-ReadWritePaths=/var/lib/media-platform-executor /run/media-platform-executor /sys/fs/cgroup/media-platform-jobs.slice
+ReadWritePaths=/var/lib/media-platform-executor /run/media-platform-executor /sys/fs/cgroup/media.slice/media-platform.slice/media-platform-jobs.slice
 # Test scratch must be a private, bounded pre-created volume; root group traverse only.
 ReadWritePaths=/var/lib/media-platform/testinfra-scratch
 InaccessiblePaths=-/run/user -/var/lib/media-platform/testinfra

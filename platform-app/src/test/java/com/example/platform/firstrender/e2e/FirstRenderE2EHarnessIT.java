@@ -702,7 +702,7 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
         Path base = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         for (Path root : List.of(base, base.getParent())) {
             if (root == null) continue;
-            Path jar = root.resolve("ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.1.0.jar");
+            Path jar = root.resolve("ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.2.0.jar");
             if (Files.isRegularFile(jar)) {
                 return jar;
             }

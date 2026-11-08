@@ -496,6 +496,10 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         if (dependency instanceof RenderDependency.CompositeInput) {
             return writer.field("variant", "COMPOSITE_INPUT").build();
         }
+        if (dependency instanceof RenderDependency.TimedCompositeInput timed) {
+            return writer.field("variant", "TIMED_COMPOSITE_INPUT")
+                    .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
+        }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
     }
@@ -510,6 +514,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     AudioMixInput.of(reader.field("trackId"), reader.field("clipId")));
             case "SUBTITLE_RASTER" -> new RenderDependency.SubtitleRaster();
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
+            case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
+                    MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }

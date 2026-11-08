@@ -2,13 +2,14 @@
 """Single protected controller; fake adapters are explicit and never forward network calls."""
 from __future__ import annotations
 from copy import deepcopy
+import os
 import re
 import secrets
 import time
 from state import API_FIELDS, IDENTITY_FIELDS, PolicyError, ResourceReceipt
 
 class Supervisor:
-    def __init__(self,policy,adapter,job,journal,credential_reader,host='single-controller',clock=time.monotonic):
+    def __init__(self,policy,adapter,job,journal,credential_reader,host='single-controller',clock=time.monotonic,reconciled_closed=False):
         journal.require_lock()
         self.policy,self.adapter,self.job,self.journal=policy,adapter,job,journal
         self.credential_reader=credential_reader;self.clock=clock;self.host=host
@@ -19,7 +20,21 @@ class Supervisor:
         self.delete_retry_allowed=False;self.last_heartbeat=clock()
         fresh=getattr(journal,'initialized_here',False)
         journal.initialized_here=False
-        if self.state!='NEW' or not fresh:
+        reconciled=False
+        if (reconciled_closed is True and self.state=='CLOSED'
+                and self.doc.get('last_operation')=='DELETE_CONFIRMED' and not self.doc.get('quarantined')):
+            from broker import BrokerJob
+            if type(job) is not BrokerJob:raise PolicyError('protected Broker required for reconciliation')
+            status=job.client.request(dict(op='HISTORY_STATUS'))
+            fd=os.open(journal.path,os.O_RDONLY|os.O_NOFOLLOW)
+            try:
+                audit=job.client.request(dict(op='RECONCILE_CLOSED',ledger_hash=self.doc['hash'],jobs_hash=status['jobs_hash']),[fd,journal._lock])
+            finally:os.close(fd)
+            if audit.get('ledger_hash')!=self.doc['hash'] or audit.get('jobs_hash')!=status['jobs_hash']:
+                raise PolicyError('reconciliation response mismatch')
+            reconciled=True
+            job.control_journal=journal
+        if (self.state!='NEW' or not fresh) and not reconciled:
             # A valid content hash cannot prove this file was not rolled back.
             try:obs=job.observe()
             except Exception:obs={'reachable':False,'complete':False,'reason':'recovery observer exception'}
@@ -66,6 +81,8 @@ class Supervisor:
         for v in (run,attempt):
             if not isinstance(v,str) or not re.fullmatch('[a-z][a-z0-9_]{0,19}',v):raise PolicyError('run/attempt format')
         if [run,attempt] in self.doc['used_attempts']:raise PolicyError('run/attempt replay')
+        # A new intent must not mutate the previous closed branch's historical record.
+        self.branch_id=''
         self.run_id,self.attempt_id=run,attempt
         self.doc['used_attempts'].append([run,attempt])
         baseline=self.adapter.baseline(self.policy.project_id)
@@ -74,9 +91,11 @@ class Supervisor:
         try:raw=self.adapter.create(self.policy.project_id,self.policy.seed_branch_id,run,attempt)
         except Exception:return self.quarantine('create outcome unknown')
         if raw is None:return self.quarantine('create outcome unknown; no trusted ID; no adoption')
-        self.branch_id=raw.get('branch','')
-        if raw.get('created') is not True or self.branch_id in baseline or raw.get('default') or raw.get('protected'):
+        candidate=raw.get('branch','')
+        if (raw.get('created') is not True or candidate in baseline or candidate in self.doc['records']
+                or raw.get('default') or raw.get('protected')):
             return self.quarantine('existing/default/baseline receipt refused')
+        self.branch_id=candidate
         try:
             # Preserve actual returned operation and owner. Never manufacture ownership from requested names.
             receipt=self._provisioner().receipt(raw,run,attempt)

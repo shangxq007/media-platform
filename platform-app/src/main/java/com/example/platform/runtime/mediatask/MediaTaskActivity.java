@@ -1,5 +1,6 @@
 package com.example.platform.runtime.mediatask;
 
+import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.execution.binding.BoundGraphDigestMismatchException;
 import com.example.platform.execution.binding.BoundGraphInputStore;
 import com.example.platform.execution.binding.BoundGraphInputs;
@@ -16,6 +17,7 @@ import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.workerfabric.domain.AssignmentGrant;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
+import com.example.platform.workerfabric.reuse.AdmissionCapacityRetryableException;
 import com.example.platform.workerfabric.reuse.ArtifactCommitMetadata;
 import com.example.platform.workerfabric.reuse.DurableOutputTarget;
 import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
@@ -27,11 +29,13 @@ import com.example.platform.workerfabric.reuse.TaskRuntimeExecutionFactory;
 import com.example.platform.workerfabric.reuse.TaskOutputPublicationContext;
 import com.example.platform.workerfabric.reuse.TaskOutputPublicationPlan;
 import com.example.platform.workerfabric.reuse.TaskOutputPublicationPlanner;
+import io.temporal.activity.Activity;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Set;
 
 /** Worker orchestration over verified bound-graph inputs and existing Execution/Artifact contracts.
@@ -134,20 +138,46 @@ public final class MediaTaskActivity {
             Map<ExecutableTaskId, DurableOutputTarget> durableOutputTargets,
             Map<ExecutableTaskId, ArtifactCommitMetadata> artifactCommitMetadata,
             RuntimeClosedLoopOrchestrator orchestrator) throws IOException {
+        ProviderBoundExecutableTaskGraph graph = prepared.executableTaskGraph();
+        Set<ExecutableTaskId> allTasks = graph.tasks().stream()
+                .map(ExecutableTask::id)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        return executePreparedGraph(
+                tenantId, prepared, allTasks, Map.of(), currentGrants, durableOutputTargets,
+                artifactCommitMetadata, orchestrator);
+    }
+
+    /**
+     * Executes only the requested tasks of a prepared graph. Previously committed outputs may be
+     * supplied as seed pins so a dependent task can be executed in a later capacity batch; the
+     * orchestrator still derives and validates the exact input bindings.
+     */
+    public RuntimeClosedLoopResult executePreparedGraph(
+            String tenantId,
+            PreparedTask prepared,
+            Set<ExecutableTaskId> requestedTasks,
+            Map<ExecutableTaskId, ArtifactPin> seedOutputPins,
+            Map<ExecutableTaskId, AssignmentGrant> currentGrants,
+            Map<ExecutableTaskId, DurableOutputTarget> durableOutputTargets,
+            Map<ExecutableTaskId, ArtifactCommitMetadata> artifactCommitMetadata,
+            RuntimeClosedLoopOrchestrator orchestrator) throws IOException {
         Objects.requireNonNull(prepared, "prepared");
         Objects.requireNonNull(orchestrator, "orchestrator");
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("tenantId must not be blank");
         }
+        Objects.requireNonNull(requestedTasks, "requestedTasks");
+        Objects.requireNonNull(seedOutputPins, "seedOutputPins");
         Objects.requireNonNull(currentGrants, "currentGrants");
         Objects.requireNonNull(durableOutputTargets, "durableOutputTargets");
         Objects.requireNonNull(artifactCommitMetadata, "artifactCommitMetadata");
 
         ProviderBoundExecutableTaskGraph graph = prepared.executableTaskGraph();
-        Set<ExecutableTaskId> requestedTasks = new LinkedHashSet<>();
         Map<ExecutableTaskId, TaskRuntimeExecution> taskExecutions = new LinkedHashMap<>();
         for (ExecutableTask task : graph.tasks()) {
-            requestedTasks.add(task.id());
+            if (!requestedTasks.contains(task.id())) {
+                continue;
+            }
             taskExecutions.put(task.id(), TaskRuntimeExecutionFactory.build(
                     task,
                     requireEntry(currentGrants, task.id(), "GRANT_ABSENT",
@@ -160,7 +190,7 @@ public final class MediaTaskActivity {
         Map<ExecutableTaskId, Cacheability> cacheability =
                 TaskCacheabilityDeriver.derive(graph);
         return orchestrator.execute(new RuntimeClosedLoopRequest(
-                tenantId, graph, requestedTasks, cacheability, taskExecutions));
+                tenantId, graph, requestedTasks, cacheability, taskExecutions, seedOutputPins));
     }
 
     private static <T> T requireEntry(
@@ -210,34 +240,57 @@ public final class MediaTaskActivity {
                 : publicationSettings.contextFor(tenantId,prepared.renderJobId(),prepared.execution().projectId());
 
         ExecutableTask finalTask=prepared.execution()==null?null:com.example.platform.execution.taskgraph.GraphFinalOutput.requireRenderMaster(graph);
-        Map<ExecutableTaskId, AssignmentGrant> grants = new LinkedHashMap<>();
-        Map<ExecutableTaskId, DurableOutputTarget> durableOutputTargets = new LinkedHashMap<>();
-        Map<ExecutableTaskId, ArtifactCommitMetadata> artifactCommitMetadata = new LinkedHashMap<>();
-        for (ExecutableTask executableTask : graph.tasks()) {
+        long admissionAttempt = currentAdmissionAttempt();
+        Map<ExecutableTaskId, ExecutableTask> tasksById = new LinkedHashMap<>();
+        graph.tasks().forEach(executableTask -> tasksById.put(executableTask.id(), executableTask));
+        Map<ExecutableTaskId, ArtifactPin> committedOutputs = new LinkedHashMap<>();
+        com.example.platform.render.api.GraphRenderLifecycle.Output finalClaim = null;
+        ArtifactPin finalPin = null;
+        for (ExecutableTaskId taskId : graph.topologicalTaskOrder()) {
+            ExecutableTask executableTask = tasksById.get(taskId);
             AssignmentGrant grant = currentGrantOrMint(
-                    prepared.renderJobId(), executableTask.id(), graph, executableTask);
+                    prepared.renderJobId(), executableTask.id(), graph, executableTask,
+                    admissionAttempt);
             TaskOutputPublicationPlan publicationPlan =
                     TaskOutputPublicationPlanner.plan(executableTask, new TaskOutputPublicationContext(
                             publicationContext.tenantId(),publicationContext.renderJobId(),publicationContext.projectId(),publicationContext.storageProviderId(),publicationContext.region(),publicationContext.mediaType(),
                             finalTask==null?publicationContext.artifactKind():(executableTask.id().equals(finalTask.id())?com.example.platform.artifact.domain.ArtifactKind.RENDER_MASTER:com.example.platform.artifact.domain.ArtifactKind.DERIVED_MEDIA),publicationContext.evaluatedAt()),
                             grant.attempt().id().value(),grant.attempt().ownershipGeneration().value());
-            grants.put(executableTask.id(), grant);
-            durableOutputTargets.put(executableTask.id(), publicationPlan.durableOutputTarget());
-            artifactCommitMetadata.put(executableTask.id(), publicationPlan.artifactCommitMetadata());
-        }
-        var finalGrant=finalTask==null?null:grants.get(finalTask.id());
-        var finalClaim=finalTask==null?null:new com.example.platform.render.api.GraphRenderLifecycle.Output(finalTask.id().sha256Hex(),finalGrant.attempt().id().value(),finalGrant.attempt().ownershipGeneration().value(),artifactCommitMetadata.get(finalTask.id()).artifactId().value());
-        if(finalClaim!=null)beforeFinalExecution.accept(finalClaim);
-        RuntimeClosedLoopResult executed;
-        try {
-            executed=executePreparedGraph(
-                    tenantId, task, grants, durableOutputTargets, artifactCommitMetadata, orchestrator);
-        } catch (IOException failure) {
-            throw new IllegalStateException("media task execution failed", failure);
+            if (finalTask != null && executableTask.id().equals(finalTask.id())) {
+                finalClaim = new com.example.platform.render.api.GraphRenderLifecycle.Output(
+                        finalTask.id().sha256Hex(),
+                        grant.attempt().id().value(),
+                        grant.attempt().ownershipGeneration().value(),
+                        publicationPlan.artifactCommitMetadata().artifactId().value());
+                beforeFinalExecution.accept(finalClaim);
+            }
+            RuntimeClosedLoopResult executed;
+            try {
+                executed = executePreparedGraph(
+                        tenantId, task, Set.of(executableTask.id()), committedOutputs,
+                        Map.of(executableTask.id(), grant),
+                        Map.of(executableTask.id(), publicationPlan.durableOutputTarget()),
+                        Map.of(executableTask.id(), publicationPlan.artifactCommitMetadata()),
+                        orchestrator);
+            } catch (IOException failure) {
+                throw new IllegalStateException("media task execution failed", failure);
+            }
+            ArtifactPin pin = executed.outputArtifactPins().get(executableTask.id());
+            if (pin == null) {
+                throw new IllegalStateException(
+                        "executed task did not publish an authoritative output pin");
+            }
+            committedOutputs.put(executableTask.id(), pin);
+            if (finalTask != null && executableTask.id().equals(finalTask.id())) {
+                finalPin = pin;
+            }
         }
         if(finalTask!=null) {
-            var finalPin=executed.outputArtifactPins().get(finalTask.id());
-            if(finalPin==null || !finalPin.artifactId().value().equals(finalClaim.artifactId()))throw new IllegalStateException("final output differs from current bound task publication");
+            if(finalClaim == null || finalPin == null
+                    || !finalPin.artifactId().value().equals(finalClaim.artifactId())) {
+                throw new IllegalStateException(
+                        "final output differs from current bound task publication");
+            }
         }
         return new MediaTaskWorkflowResult(
                 tenantId,
@@ -256,11 +309,24 @@ public final class MediaTaskActivity {
      * <p>Fail-closed: a missing or incomplete authoritative context still raises
      * {@code GRANT_ABSENT}; nothing is fabricated and the existing success path is unchanged.
      */
+    /**
+     * Temporal attempt identity for the admission request. Production execution always has an
+     * activity context; direct unit invocation without one is treated as the first attempt.
+     */
+    private static long currentAdmissionAttempt() {
+        try {
+            return Activity.getExecutionContext().getInfo().getAttempt();
+        } catch (IllegalStateException unavailable) {
+            return 1L;
+        }
+    }
+
     private AssignmentGrant currentGrantOrMint(
             String renderJobId,
             ExecutableTaskId taskId,
             ProviderBoundExecutableTaskGraph graph,
-            ExecutableTask executableTask) {
+            ExecutableTask executableTask,
+            long admissionAttempt) {
         var current = grantBoundary.findCurrentGrant(taskId);
         if (current.isPresent()) {
             if (grantMinter != null) grantMinter.requireLocalGrant(current.orElseThrow());
@@ -268,7 +334,8 @@ public final class MediaTaskActivity {
         }
         if (grantMinter != null) {
             FirstRenderGrantMinter.Result result = grantMinter.mint(
-                    renderJobId, taskId, graph, requireContribution(executableTask));
+                    renderJobId, taskId, graph, requireContribution(executableTask),
+                    admissionAttempt);
             if (result instanceof FirstRenderGrantMinter.Result.Minted minted) {
                 var grant=grantBoundary.findCurrentGrant(taskId).orElseThrow(()->new TaskRuntimeExecutionConstructionException(
                         "GRANT_NO_LONGER_CURRENT","new grant lost its current ownership"));
@@ -281,8 +348,15 @@ public final class MediaTaskActivity {
                                 + String.join(",", unavailable.missingAuthoritativeInputs()));
             }
             if (result instanceof FirstRenderGrantMinter.Result.Rejected rejected) {
+                String reason = rejected.reason();
+                if (reason.equals("ADMISSION_REJECTED: RESERVATION_CONFLICT")
+                        || reason.equals("ADMISSION_REJECTED: HOST_RESOURCE_SNAPSHOT_MISMATCH")
+                        || reason.equals("READINESS_GENERATION_MISMATCH")
+                        || reason.startsWith("ADMISSION_REPROBE_REQUIRED:")) {
+                    throw new AdmissionCapacityRetryableException(reason);
+                }
                 throw new TaskRuntimeExecutionConstructionException(
-                        "GRANT_MINT_REJECTED", rejected.reason());
+                        "GRANT_MINT_REJECTED", reason);
             }
         }
         throw new TaskRuntimeExecutionConstructionException(

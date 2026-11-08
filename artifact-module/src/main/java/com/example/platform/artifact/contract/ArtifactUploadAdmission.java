@@ -17,10 +17,11 @@ public record ArtifactUploadAdmission(
         String idempotencyKey,
         String quotaDecisionId
 ) {
-    public static final int CURRENT_CONTRACT_VERSION = 1;
+    public static final int CURRENT_CONTRACT_VERSION = 2;
     public ArtifactUploadAdmission {
         if (contractVersion != CURRENT_CONTRACT_VERSION) throw new ArtifactContractException(ArtifactContractErrorCode.CONFLICTING_FACT, "unsupported upload contract version");
         Objects.requireNonNull(scope, "scope"); Objects.requireNonNull(storage, "storage"); Objects.requireNonNull(digest, "digest");
+        requireText(scope.projectId(), "scope.projectId");
         if (sizeBytes < 0) throw new ArtifactContractException(ArtifactContractErrorCode.MISSING_REQUIRED_FACT, "sizeBytes is required");
         Objects.requireNonNull(technicalMetadata, "technicalMetadata"); Objects.requireNonNull(audit, "audit"); Objects.requireNonNull(lifecycle, "lifecycle"); Objects.requireNonNull(lineage, "lineage");
         requireText(idempotencyKey, "idempotencyKey"); requireText(quotaDecisionId, "quotaDecisionId");

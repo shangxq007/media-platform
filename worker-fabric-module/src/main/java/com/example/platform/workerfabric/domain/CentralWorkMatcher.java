@@ -8,9 +8,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Correctness-only Native Pull matcher; global optimization remains Roadmap #23. */
 public final class CentralWorkMatcher {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CentralWorkMatcher.class);
 
     private static final Comparator<EligibleNativeWork> STABLE_TASK_ID_ORDER =
             Comparator.comparing(candidate -> candidate.candidate().executableTask().id());
@@ -54,13 +58,26 @@ public final class CentralWorkMatcher {
         }
 
         List<EligibleNativeWork> canRun = new ArrayList<>();
+        boolean[] capacityConflict = {false};
         for (PendingNativeWorkCandidate candidate : pendingCandidates) {
             Objects.requireNonNull(candidate, "pendingCandidates element");
-            evaluateCanRun(requestWork, validationContext, candidate).ifPresent(canRun::add);
+            evaluateCanRun(requestWork, validationContext, candidate, capacityConflict)
+                    .ifPresent(canRun::add);
         }
 
         Optional<EligibleNativeWork> selected = whichIsBest(canRun);
         if (selected.isEmpty()) {
+            LOG.warn("ADMISSION_NO_WORK request={} candidates={} eligible={} capacityConflict={} "
+                            + "worker={} host={} workerRuntime={} hostSnapshot={}",
+                    requestWork.requestWorkId(), pendingCandidates.size(), canRun.size(),
+                    capacityConflict[0], requestWork.workerRuntimeId(),
+                    requestWork.physicalHostId(), requestWork.workerRuntimeAvailability(),
+                    requestWork.hostResourceSnapshot());
+            if (capacityConflict[0]) {
+                return new RequestWorkResult.CapacityUnavailable(
+                        requestWork.requestWorkId(),
+                        RequestWorkFailureReason.RESERVATION_CONFLICT);
+            }
             return resolveTerminal(
                     requestWork,
                     new RequestWorkResult.NoWork(requestWork.requestWorkId()));
@@ -156,8 +173,11 @@ public final class CentralWorkMatcher {
     private static Optional<EligibleNativeWork> evaluateCanRun(
             RequestWork requestWork,
             RequestWorkValidationContext context,
-            PendingNativeWorkCandidate candidate) {
+            PendingNativeWorkCandidate candidate,
+            boolean[] capacityConflict) {
         if (!candidate.pendingWithoutActiveLease()) {
+            LOG.warn("ADMISSION_CANDIDATE_REJECTED request={} task={} reason=PENDING_WITH_ACTIVE_LEASE",
+                    requestWork.requestWorkId(), candidate.executableTask().id());
             return Optional.empty();
         }
 
@@ -167,6 +187,8 @@ public final class CentralWorkMatcher {
                         candidate.backendExecutionSupport(),
                         ExecutionBackend.NATIVE_PULL_WORKER);
         if (!backendDecision.eligible()) {
+            LOG.warn("ADMISSION_CANDIDATE_REJECTED request={} task={} reason=BACKEND_INELIGIBLE backend={}",
+                    requestWork.requestWorkId(), candidate.executableTask().id(), backendDecision);
             return Optional.empty();
         }
         ExecutionBackendSelection backendSelection = ExecutionBackendSelection.select(
@@ -215,6 +237,12 @@ public final class CentralWorkMatcher {
         RuntimeEligibilityDecision runtimeDecision =
                 RuntimeEligibilityEvaluator.evaluate(eligibilityRequest);
         if (!runtimeDecision.eligible()) {
+            if (runtimeDecision.reasons().contains(RuntimeEligibilityReason.RESERVATION_CONFLICT)) {
+                capacityConflict[0] = true;
+            }
+            LOG.warn("ADMISSION_CANDIDATE_REJECTED request={} task={} reason=RUNTIME_INELIGIBLE status={} reasons={}",
+                    requestWork.requestWorkId(), candidate.executableTask().id(),
+                    runtimeDecision.status(), runtimeDecision.reasons());
             return Optional.empty();
         }
         return Optional.of(new EligibleNativeWork(candidate, backendSelection, runtimeDecision));

@@ -1,11 +1,14 @@
 package com.example.platform.web.render;
-import org.springframework.context.annotation.Profile;
 
 import com.example.platform.render.app.operation.AddMediaClipCommand;
 import com.example.platform.render.app.operation.AddMediaClipPreview;
 import com.example.platform.render.app.operation.AddMediaClipResult;
 import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
 import com.example.platform.render.app.operation.TimelineOperationException;
+import com.example.platform.operation.invocation.OperationInvocationContext;
+import com.example.platform.operation.invocation.OperationInvocationPort;
+import com.example.platform.operation.invocation.OperationInvocationResult;
+import com.example.platform.operation.invocation.OperationInvocationException;
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
@@ -27,18 +30,20 @@ import org.springframework.web.server.ResponseStatusException;
  * typed canonical intent and delegates all mutation to the application layer.
  */
 @RestController
-@Profile("legacy-media-disabled")
 @RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/timeline-operations")
 public class TimelineMediaClipOperationController {
 
     private final TimelineMediaClipOperationService operationService;
     private final CanonicalActorResolver actorResolver;
+    private final OperationInvocationPort invocations;
 
     public TimelineMediaClipOperationController(
             TimelineMediaClipOperationService operationService,
-            CanonicalActorResolver actorResolver) {
+            CanonicalActorResolver actorResolver,
+            OperationInvocationPort invocations) {
         this.operationService = operationService;
         this.actorResolver = actorResolver;
+        this.invocations = invocations;
     }
 
     @PostMapping("/add-media-clip/preview")
@@ -60,9 +65,28 @@ public class TimelineMediaClipOperationController {
         requireTransportId(tenantId, "tenantId");
         requireTransportId(projectId, "projectId");
         var actor = authenticatedActor(tenantId);
-        AddMediaClipResult applied = operationService.authorizeAndApply(
-                tenantId, projectId, request.request().toCommand(),
-                request.expectedPlanDigest(), request.applyCommandId(), actor);
+        var command = request.request().toCommand();
+        AddMediaClipPreview preview = operationService.preview(tenantId, projectId, command, actor);
+        if (!preview.planDigest().equals(request.expectedPlanDigest())) {
+            throw new TimelineOperationException(TimelineOperationException.Code.PLAN_CHANGED,
+                    List.of("expected plan digest does not match freshly validated plan"));
+        }
+        OperationInvocationResult invoked = invocations.invoke(
+                TimelineMediaClipOperationService.toOperationRequest(projectId, command),
+                new OperationInvocationContext(actor, request.applyCommandId(), null, "timeline-http"));
+        boolean appliedRevision = invoked instanceof OperationInvocationResult.Applied;
+        String revisionId = appliedRevision
+                ? ((OperationInvocationResult.Applied) invoked).newRevisionId() : null;
+        String contentHash = appliedRevision
+                ? ((OperationInvocationResult.Applied) invoked).resultContentHash()
+                : ((OperationInvocationResult.NoOp) invoked).unchangedContentHash();
+        AddMediaClipResult applied = new AddMediaClipResult(
+                appliedRevision ? "APPLIED" : "NO_OP", preview.planDigest(),
+                preview.baseRevisionId(), revisionId, contentHash,
+                appliedRevision ? preview.baseRevisionId() : null,
+                new AddMediaClipResult.TimelineRevisionRenderHandoff(
+                        projectId, revisionId, contentHash),
+                preview.expectedChangedCanonicalObjects());
         return ResponseEntity.status(HttpStatus.CREATED).body(applied);
     }
 
@@ -101,7 +125,7 @@ public class TimelineMediaClipOperationController {
 
         public AddMediaClipRequest {
             requireTransportId(baseRevisionId, "baseRevisionId");
-            requireDigest(baseContentHash, "baseContentHash");
+            requireTimelineHash(baseContentHash, "baseContentHash");
             requireTransportId(trackId, "trackId");
             requireTransportId(clipId, "clipId");
             requireTransportId(mediaAssetId, "mediaAssetId");
@@ -161,6 +185,20 @@ public class TimelineMediaClipOperationController {
         return problem(HttpStatus.BAD_REQUEST, "MALFORMED_INPUT", failure.getMessage(), List.of());
     }
 
+    @ExceptionHandler(OperationInvocationException.class)
+    ResponseEntity<ProblemDetail> invocationFailure(OperationInvocationException failure) {
+        HttpStatus status = switch (failure.code()) {
+            case AUTHORIZATION_DENIED, AUTHORIZATION_CONTEXT_MISMATCH, INVALID_SCOPE -> HttpStatus.FORBIDDEN;
+            case BASE_REVISION_NOT_FOUND, TARGET_MISSING -> HttpStatus.NOT_FOUND;
+            case STALE_BASE_REVISION, PLAN_CHANGED, IDEMPOTENCY_CONFLICT -> HttpStatus.CONFLICT;
+            case INVALID_REQUEST, INVALID_PARAMETER, UNSUPPORTED_OPERATION -> HttpStatus.BAD_REQUEST;
+            case PERSISTENCE_FAILURE, APPLY_FAILURE -> HttpStatus.INTERNAL_SERVER_ERROR;
+            case SOURCE_REFERENCE_INVALID, CANDIDATE_INVALID, PLACEMENT_CONFLICT,
+                    CANONICAL_INVARIANT_VIOLATION -> HttpStatus.UNPROCESSABLE_ENTITY;
+        };
+        return problem(status, failure.code().name(), failure.code().name(), List.of());
+    }
+
     private static void requireTransportId(String value, String field) {
         requireBoundedText(value, field, 64);
         if (!value.matches("[A-Za-z0-9._:-]+")) {
@@ -174,9 +212,15 @@ public class TimelineMediaClipOperationController {
         }
     }
 
+    private static void requireTimelineHash(String value, String field) {
+        if (value == null || !value.matches("(?:[A-Za-z0-9+/]{43}=|[0-9a-fA-F]{64})")) {
+            throw new TimelineTransportException(field + " must be a canonical SHA-256 Timeline hash");
+        }
+    }
+
     private static void requireRational(String value, String field) {
         requireBoundedText(value, field, 64);
-        if (!value.matches("[+-]?[0-9]+(?:/[1-9][0-9]*)?")) {
+        if (!value.matches("[+]?[0-9]+(?:/[1-9][0-9]*)?")) {
             throw new TimelineTransportException(field + " must use bounded rational syntax");
         }
     }

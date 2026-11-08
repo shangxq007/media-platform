@@ -81,6 +81,45 @@ class FfmpegCapabilityAwareLoweringTest {
     }
 
     @Test
+    void timedCompositionPreservesInputIdentityAndPlacement() {
+        ExecutableTask task = task("composite", List.of("render.composite"), null, 1);
+        var unit = task.memberships().getFirst().physicalPlanUnit();
+        var firstId = new ExecutionInputId("first");
+        var secondId = new ExecutionInputId("second");
+        var first = mock(InputBinding.class);
+        var second = mock(InputBinding.class);
+        when(first.inputId()).thenReturn(firstId);
+        when(second.inputId()).thenReturn(secondId);
+        when(first.dependencyVariant()).thenReturn(new com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput(
+                MediaTime.ZERO, MediaTime.ofRational(1, 2)));
+        when(second.dependencyVariant()).thenReturn(new com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput(
+                MediaTime.ofRational(1, 1), MediaTime.ofRational(2, 1)));
+        when(unit.typedInputs()).thenReturn(List.of(second, first));
+        when(unit.propagatedExtent()).thenReturn(new com.example.platform.render.domain.renderplan.RenderExtent(
+                MediaTime.ZERO, MediaTime.ofRational(2, 1), FrameRate.of(30, 1)));
+        var firstRuntime = mock(ExecutableInputProjection.class);
+        var secondRuntime = mock(ExecutableInputProjection.class);
+        when(firstRuntime.inputId()).thenReturn(firstId);
+        when(secondRuntime.inputId()).thenReturn(secondId);
+        when(task.requiredRuntimeInputs()).thenReturn(List.of(firstRuntime, secondRuntime));
+        var plan = LOWERER.lower(task, CONTEXT);
+        assertThat(plan.compositeInputs()).extracting(FfmpegCpuRenderPlan.TimedInput::inputId)
+                .containsExactly(firstId, secondId);
+        var context = new RuntimeExecutionContext(plan.executableTaskId(), FfmpegCpuProvider.BINDING,
+                ExecutionAttemptId.of("attempt-capability"), ExecutionOwnershipGeneration.first());
+        var invocation = (ProcessInvocationSpec) new FfmpegCpuRenderAdapter(Path.of("/usr/bin/ffmpeg"))
+                .adapt(plan, context).commands().getFirst().invocationSpec();
+        assertThat(invocation.arguments()).containsOnlyOnce(FfmpegCpuRenderAdapter.materializedInputToken(firstId))
+                .containsOnlyOnce(FfmpegCpuRenderAdapter.materializedInputToken(secondId))
+                .contains("-filter_complex", "-t", "2");
+        String filter = invocation.arguments().get(invocation.arguments().indexOf("-filter_complex") + 1);
+        assertThat(filter).contains("color=c=black:s=320x240:r=30/1:d=2")
+                .contains("overlay=enable='gte(t,0)*lt(t,0.5)'")
+                .contains("overlay=enable='gte(t,1)*lt(t,2)'")
+                .doesNotContain("tpad=");
+    }
+
+    @Test
     void transcodeSliceKeepsLoweringWithoutAnyCapabilityRequirement() {
         FfmpegCpuRenderPlan plan = LOWERER.lower(task("transcode", List.of(), null, 1), CONTEXT);
 

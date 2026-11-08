@@ -143,7 +143,7 @@ tasks.test {
     useJUnitPlatform()
     dependsOn(providerJar, stageModularDistribution, allInOneJar)
     systemProperty("distribution.modular.plugin",
-        layout.buildDirectory.file("distributions/modular/plugins/ffmpeg-provider-plugin-1.1.0.jar")
+        layout.buildDirectory.file("distributions/modular/plugins/ffmpeg-provider-plugin-1.2.0.jar")
             .get().asFile.absolutePath)
     systemProperty("distribution.allinone.jar",
         layout.buildDirectory.file("libs/media-platform-all-in-one.jar").get().asFile.absolutePath)

@@ -11,7 +11,8 @@ public sealed interface RenderDependency permits
         RenderDependency.EffectInput,
         RenderDependency.AudioInput,
         RenderDependency.SubtitleRaster,
-        RenderDependency.CompositeInput {
+        RenderDependency.CompositeInput,
+        RenderDependency.TimedCompositeInput {
 
     /**
      * Canonical variant key for deterministic edge ordering.
@@ -67,6 +68,20 @@ public sealed interface RenderDependency permits
         @Override
         public String variantKey() {
             return "COMPOSITE_INPUT";
+        }
+    }
+
+    /** A video producer's exact visible interval in the requested Timeline. */
+    record TimedCompositeInput(com.example.platform.shared.time.MediaTime start,
+                               com.example.platform.shared.time.MediaTime end)
+            implements RenderDependency {
+        public TimedCompositeInput {
+            java.util.Objects.requireNonNull(start, "start");
+            java.util.Objects.requireNonNull(end, "end");
+            if (!start.isLessThan(end)) throw new IllegalArgumentException("positive composite interval required");
+        }
+        @Override public String variantKey() {
+            return "TIMED_COMPOSITE_INPUT:" + start + ":" + end;
         }
     }
 }

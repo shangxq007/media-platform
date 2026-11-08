@@ -81,12 +81,9 @@ public class TimelineGitV1Controller {
             @PathVariable String productId,
             @RequestBody SaveRevisionRequest request) {
         String tenantId = TenantContext.get();
-        var actor = projectAuthorization.requireWrite(tenantId, productId);
-        var document = request.toDocument();
-        var revision = saveService.saveRevision(
-                new TimelineMutationContext(tenantId, productId, actor),
-                request.expectedCurrentRevisionId(), document);
-        return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
+        projectAuthorization.requireWrite(tenantId, productId);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE,
+                "Direct revision save retired; use a versioned Timeline Operation");
     }
 
     @GetMapping("/products/{productId}/revisions/current")
@@ -128,11 +125,9 @@ public class TimelineGitV1Controller {
             @PathVariable String historicalRevisionId,
             @RequestBody RestoreRequest request) {
         String tenantId = TenantContext.get();
-        var actor = projectAuthorization.requireWrite(tenantId, productId);
-        var revision = saveService.restoreRevision(
-                new TimelineMutationContext(tenantId, productId, actor),
-                historicalRevisionId, request.expectedCurrentRevisionId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
+        projectAuthorization.requireWrite(tenantId, productId);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE,
+                "Direct revision restore retired; use a versioned Timeline Operation");
     }
 
     @PostMapping("/render-jobs")
@@ -190,20 +185,9 @@ public class TimelineGitV1Controller {
             @PathVariable String productId,
             @RequestBody PatchRequest request) {
         String tenantId = TenantContext.get();
-        var actor = projectAuthorization.requireWrite(tenantId, productId);
-        var patch = request.toPatch(productId);
-        var result = patchService.apply(
-                new TimelineMutationContext(tenantId, productId, actor), patch);
-        if (result instanceof PatchApplyResult.Failure failure) {
-            return ResponseEntity.status(patchFailureStatus(failure.error().code()))
-                    .body(new PatchApplyResponse(failure.error().code().name(), failure.error().message(), null, null, null, false));
-        }
-        if (result instanceof PatchApplyResult.NoChanges noChanges) {
-            return ResponseEntity.ok(new PatchApplyResponse(null, null, noChanges.baseRevisionId(), null, null, false));
-        }
-        PatchApplyResult.Success success = (PatchApplyResult.Success) result;
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new PatchApplyResponse(null, null, success.newRevisionId(), success.parentRevisionId(), success.resultDigest(), true));
+        projectAuthorization.requireWrite(tenantId, productId);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE,
+                "Direct patch apply retired; use a versioned Timeline Operation");
     }
 
     @ExceptionHandler(PatchExecutionException.class)

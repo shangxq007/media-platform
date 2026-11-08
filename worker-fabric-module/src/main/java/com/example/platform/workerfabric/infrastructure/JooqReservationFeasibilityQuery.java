@@ -10,6 +10,8 @@ import com.example.platform.workerfabric.domain.RuntimeResourceDemand;
 import java.util.Objects;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -29,6 +31,8 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQuery {
+
+    private static final Logger LOG = LoggerFactory.getLogger(JooqReservationFeasibilityQuery.class);
 
     private final DSLContext dsl;
 
@@ -99,11 +103,31 @@ public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQu
             if (reservedCpu == null || reservedMemory == null || reservedTemporary == null) {
                 return ReservationFeasibility.UNKNOWN;
             }
-
             if (!fits(reservedCpu, demand.cpuMillicores(), capacityCpu, headroomCpu)
                     || !fits(reservedMemory, demand.memoryBytes(), capacityMemory, headroomMemory)
                     || !fits(reservedTemporary, demand.temporaryStorageBytes(),
                             capacityTemporary, headroomTemporary)) {
+                LOG.warn("RESERVATION_ROWS {}", dsl.fetch(
+                        """
+                        select reservation_id, assignment_id, task_id, state,
+                               cpu_millicores, memory_bytes, temporary_storage_bytes, created_at
+                          from wf_reservation
+                         where physical_host_id = ? and physical_host_incarnation_id = ?
+                           and state in ('ACTIVE', 'RECOVERY_HOLD')
+                         order by created_at, reservation_id
+                        """,
+                        physicalHostId.value(), physicalHostIncarnationId.value()).stream()
+                        .map(row -> row.formatJSON()).toList());
+                LOG.warn("RESERVATION_CONFLICT host={} incarnation={} generation={} "
+                                + "demandCpu={} demandMemory={} demandTemporary={} "
+                                + "capacityCpu={} capacityMemory={} capacityTemporary={} "
+                                + "headroomCpu={} headroomMemory={} headroomTemporary={} "
+                                + "reservedCpu={} reservedMemory={} reservedTemporary={}",
+                        physicalHostId.value(), physicalHostIncarnationId.value(),
+                        snapshotGeneration.value(), demand.cpuMillicores(), demand.memoryBytes(),
+                        demand.temporaryStorageBytes(), capacityCpu, capacityMemory,
+                        capacityTemporary, headroomCpu, headroomMemory, headroomTemporary,
+                        reservedCpu, reservedMemory, reservedTemporary);
                 return ReservationFeasibility.CONFLICT;
             }
 

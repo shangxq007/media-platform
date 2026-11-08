@@ -69,62 +69,48 @@ class TimelineMutationControllersMockMvcTest {
     }
 
     @Test
-    void saveCanonicalSemanticRejectionIs422() throws Exception {
-        when(saveService.saveRevision(any(), any(), any())).thenThrow(canonicalRejection());
-
+    void directGitSaveIsRetiredBeforeCanonicalMutation() throws Exception {
         gitMvc.perform(post("/api/timeline-git/products/project-a/revisions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedCurrentRevisionId\":null,\"tracks\":[]}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.errorCode").value("TIMELINE_CANONICAL_REJECTED"));
+                .andExpect(status().isGone());
+        verifyNoInteractions(saveService, patchService);
     }
 
     @Test
-    void saveStaleCasIs409() throws Exception {
-        when(saveService.saveRevision(any(), any(), any()))
-                .thenThrow(new TimelineConflictException("project-a", "old", "new"));
-
+    void directGitSaveCannotBypassOperationWithAnExpectedHead() throws Exception {
         gitMvc.perform(post("/api/timeline-git/products/project-a/revisions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedCurrentRevisionId\":\"old\",\"tracks\":[]}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errorCode").value("TIMELINE_CONFLICT"));
+                .andExpect(status().isGone());
+        verifyNoInteractions(saveService, patchService);
     }
 
     @Test
-    void restoreStaleCasIs409() throws Exception {
-        when(saveService.restoreRevision(any(), anyString(), anyString()))
-                .thenThrow(new TimelineConflictException("project-a", "old", "new"));
-
+    void directGitRestoreCannotBypassOperation() throws Exception {
         gitMvc.perform(post("/api/timeline-git/products/project-a/revisions/history-1/restore")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedCurrentRevisionId\":\"old\"}"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isGone());
+        verifyNoInteractions(saveService, patchService);
     }
 
     @Test
-    void patchStaleConflictIs409NotBlanket400() throws Exception {
-        when(patchService.apply(any(), any())).thenReturn(PatchApplyResult.failure(
-                new PatchError(PatchErrorCode.TIMELINE_PATCH_BASE_NOT_CURRENT,
-                        "stale base", null, null)));
-
+    void directGitPatchApplyCannotBypassOperation() throws Exception {
         gitMvc.perform(post("/api/timeline-git/products/project-a/patch/apply")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(patchJson()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("TIMELINE_PATCH_BASE_NOT_CURRENT"));
+                .andExpect(status().isGone());
+        verifyNoInteractions(saveService, patchService);
     }
 
     @Test
-    void patchCanonicalPreconditionIs422() throws Exception {
-        when(patchService.apply(any(), any())).thenReturn(PatchApplyResult.failure(
-                new PatchError(PatchErrorCode.TIMELINE_PATCH_PRECONDITION_FAILED,
-                        "semantic mismatch", null, null)));
-
+    void directGitPatchApplyCannotUseAnAlternatePrecondition() throws Exception {
         gitMvc.perform(post("/api/timeline-git/products/project-a/patch/apply")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(patchJson()))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isGone());
+        verifyNoInteractions(saveService, patchService);
     }
 
     @Test
@@ -165,13 +151,14 @@ class TimelineMutationControllersMockMvcTest {
 
     @Test
     void standaloneSnapshotSurfaceSemanticRejectionIs422() throws Exception {
+        var invocations = mock(com.example.platform.operation.invocation.OperationInvocationPort.class);
         var snapshotController = new TimelineSnapshotController(
                 saveService,
                 mock(TimelineRevisionQueryService.class),
                 mock(com.example.platform.render.app.timeline.TimelineConversionService.class),
-                authorization);
+                authorization, invocations);
         MockMvc snapshotMvc = mvc(snapshotController);
-        when(saveService.saveRevision(any(), any(), any())).thenThrow(canonicalRejection());
+        when(invocations.invoke(any(), any())).thenThrow(canonicalRejection());
         String payload = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.serialize(
                 new com.example.platform.timeline.canonical.TimelineDocument(
                         com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
@@ -187,13 +174,50 @@ class TimelineMutationControllersMockMvcTest {
     }
 
     @Test
+    void snapshotImportUsesTypedOperationAndReturnsTheCommittedRevision() throws Exception {
+        var invocations = mock(com.example.platform.operation.invocation.OperationInvocationPort.class);
+        var queries = mock(com.example.platform.timeline.api.revision.TimelineRevisionQueries.class);
+        var info = mock(com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionInfo.class);
+        when(info.snapshotId()).thenReturn("snapshot-1");
+        when(queries.findById("project-a", "tenant-a", "revision-1")).thenReturn(Optional.of(info));
+        when(invocations.invoke(any(), any())).thenAnswer(call -> {
+            com.example.platform.operation.operation.OperationRequest request = call.getArgument(0);
+            com.example.platform.operation.invocation.OperationInvocationContext context = call.getArgument(1);
+            return new com.example.platform.operation.invocation.OperationInvocationResult.Applied(
+                    request.definitionId(), request.version(), "digest", request.baseRevisionId(),
+                    "revision-1", "timeline-hash", context.invocationId(), null);
+        });
+        var controller = new TimelineSnapshotController(saveService, queries,
+                mock(com.example.platform.render.app.timeline.TimelineConversionService.class),
+                authorization, invocations);
+        String payload = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.serialize(
+                new com.example.platform.timeline.canonical.TimelineDocument(
+                        com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        java.util.List.of(), com.example.platform.timeline.canonical.TimelineMetadata.empty()));
+        mvc(controller).perform(post("/api/render/timeline-snapshots")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"projectId\":\"project-a\",\"payloadJson\":"
+                        + new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload) + "}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.revisionId").value("revision-1"));
+        var request = org.mockito.ArgumentCaptor.forClass(
+                com.example.platform.operation.operation.OperationRequest.class);
+        org.mockito.Mockito.verify(invocations).invoke(request.capture(), any());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                com.example.platform.operation.operation.OperationDefinition.V3.IMPORT_TIMELINE.definitionId(),
+                request.getValue().definitionId());
+        verifyNoInteractions(saveService);
+    }
+
+    @Test
     void snapshotAuthorizationDenialPrecedesPayloadImportAndMutation() throws Exception {
         var conversion = mock(com.example.platform.render.app.timeline.TimelineConversionService.class);
+        var invocations = mock(com.example.platform.operation.invocation.OperationInvocationPort.class);
         var snapshotController = new TimelineSnapshotController(
                 saveService,
                 mock(TimelineRevisionQueryService.class),
                 conversion,
-                authorization);
+                authorization, invocations);
         when(authorization.requireWrite("tenant-a", "project-a"))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "denied"));
 
@@ -201,14 +225,12 @@ class TimelineMutationControllersMockMvcTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"projectId\":\"project-a\",\"payloadJson\":\"{}\"}"))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(saveService, conversion);
+        verifyNoInteractions(saveService, conversion, invocations);
     }
 
     @Test
-    void mergeStaleCasIs409ThroughGlobalContract() throws Exception {
+    void directMergeCannotBypassOperation() throws Exception {
         var mergeEngine = mock(com.example.platform.timeline.app.TimelineMergeEngine.class);
-        when(mergeEngine.merge(any(com.example.platform.timeline.diff.merge.TimelineMergeRequest.class)))
-                .thenThrow(new TimelineConflictException("project-a", "target-old", "target-new"));
         var controller = new TimelineRevisionController(
                 mock(TimelineRevisionQueryService.class),
                 mock(TimelineRevisionDiffQuery.class),
@@ -230,8 +252,21 @@ class TimelineMutationControllersMockMvcTest {
                                   "resolutions": []
                                 }
                                 """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errorCode").value("TIMELINE_CONFLICT"));
+                .andExpect(status().isGone());
+        verifyNoInteractions(mergeEngine, saveService);
+    }
+
+    @Test
+    void directRevisionRestoreCannotBypassOperation() throws Exception {
+        var mergeEngine = mock(com.example.platform.timeline.app.TimelineMergeEngine.class);
+        var queries = mock(TimelineRevisionQueryService.class);
+        var controller = new TimelineRevisionController(queries,
+                mock(TimelineRevisionDiffQuery.class), mergeEngine, null, null, saveService,
+                mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
+                authorization);
+        mvc(controller).perform(post("/api/render/projects/project-a/timeline/revisions/history-1/restore"))
+                .andExpect(status().isGone());
+        verifyNoInteractions(queries, mergeEngine, saveService);
     }
 
     @Test

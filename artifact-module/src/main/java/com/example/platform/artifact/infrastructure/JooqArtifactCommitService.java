@@ -98,7 +98,7 @@ public class JooqArtifactCommitService implements ArtifactCommitService {
 
         List<ProvenanceEdge> edges = prepareValidatedProvenance(artifact, request);
 
-        artifactRepository.insert(artifact, request.projectId(), request.renderJobId());
+        artifactRepository.insert(artifact, request.projectId(), request.renderJobId(), request.workspaceId());
 
         ArtifactReplicaBinding replica = new ArtifactReplicaBinding(
                 request.artifactId().value() + ":" + request.storageReplicaId().value(),
@@ -219,6 +219,8 @@ public class JooqArtifactCommitService implements ArtifactCommitService {
                     || !accepted.request().createdAt().truncatedTo(java.time.temporal.ChronoUnit.MICROS).equals(accepted.result().artifact().createdAt())
                     || !ArtifactCommitIdentity.sameIntent(accepted.request(), resultIntent(accepted))
                     || !artifactRepository.findById(tenant,accepted.request().artifactId()).filter(accepted.result().artifact()::equals).isPresent()
+                    || (accepted.request().workspaceId() != null && !artifactRepository.existsInWorkspace(
+                            tenant, accepted.request().workspaceId(), accepted.request().artifactId()))
                     || !artifactRepository.listReplicas(tenant,accepted.request().artifactId()).contains(accepted.result().replicaBinding()))
                 throw new IllegalStateException("Artifact receipt no longer matches canonical identity");
             requireCanonicalProvenance(accepted);
@@ -253,7 +255,7 @@ public class JooqArtifactCommitService implements ArtifactCommitService {
         return new ArtifactCommitRequest(a.artifactId(),a.tenantId(),a.contentDigest(),a.byteLength(),
                 a.mediaType(),a.artifactKind(),a.schemaVersion(),b.storageObjectId(),b.storageReplicaId(),
                 b.providerId(),b.replicaRole(),b.region(),receipt.result().idempotencyKey(),
-                r.provenanceDeclarations(),r.evaluatedAt(),a.createdAt(),r.renderJobId(),r.projectId());
+                r.provenanceDeclarations(),r.evaluatedAt(),a.createdAt(),r.renderJobId(),r.projectId(),r.workspaceId());
     }
     private static ArtifactErrorCode.ArtifactDomainException conflict(ArtifactCommitRequest request) {
         return new ArtifactErrorCode.ArtifactDomainException(ArtifactErrorCode.Error.builder(

@@ -188,17 +188,9 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId) {
         String tenantId = TenantContext.get();
-        var actor = projectAuthorization.requireWrite(tenantId, projectId);
-        // CFRH-I1: legacy restore authority (TimelineRevisionDiffQuery.restore) replaced by the
-        // canonical restore transaction boundary (TimelineRevisionSaveService.restoreRevision).
-        // expected-current CAS comes from the canonical current-revision authority.
-        String expectedCurrent = revisionQueryService.findHead(projectId, tenantId)
-                .map(com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionInfo::id)
-                .orElse(null);
-        var restored = revisionSaveService.restoreRevision(
-                new TimelineMutationContext(tenantId, projectId, actor),
-                revisionId, expectedCurrent);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(projectId, restored.revisionId()));
+        projectAuthorization.requireWrite(tenantId, projectId);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE,
+                "Direct revision restore retired; use a versioned Timeline Operation");
     }
 
     @PostMapping("/merge")
@@ -207,42 +199,9 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @RequestBody MergeApiRequest body) {
         String tenantId = TenantContext.get();
-        var actor = projectAuthorization.requireWrite(tenantId, projectId);
-        TimelineMergeRequest request = new TimelineMergeRequest(
-                new TimelineMutationContext(tenantId, projectId, actor),
-                body.baseRevisionId(), body.sourceRevisionId(), body.targetRevisionId(),
-                body.message());
-
-        TimelineMergeResult result;
-        if (body.resolutions() != null && !body.resolutions().isEmpty()) {
-            Map<String, TimelineResolutionIntent> intents = new HashMap<>();
-            for (var r : body.resolutions()) {
-                var intent = switch (r.resolutionMode()) {
-                    case "USE_SOURCE" ->
-                        TimelineResolutionIntent.useSource(
-                            new com.example.platform.timeline.diff.merge.EntityRef(
-                                com.example.platform.timeline.diff.merge.EntityKind.CLIP,
-                                r.entityId()), null);
-                    case "USE_TARGET" ->
-                        TimelineResolutionIntent.useTarget(
-                            new com.example.platform.timeline.diff.merge.EntityRef(
-                                com.example.platform.timeline.diff.merge.EntityKind.CLIP,
-                                r.entityId()), null);
-                    default -> null;
-                };
-                if (intent != null) {
-                    intents.put(r.entityRef(), intent);
-                }
-            }
-            result = mergeEngine.merge(request, intents);
-        } else {
-            result = mergeEngine.merge(request);
-        }
-
-        if (result.isMerged() && result.mergedRevisionId() != null) {
-        }
-
-        return ResponseEntity.ok(toMergeResponse(result));
+        projectAuthorization.requireWrite(tenantId, projectId);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE,
+                "Direct revision merge retired; use a versioned Timeline Operation");
     }
 
     @PostMapping("/{revisionId}/render")

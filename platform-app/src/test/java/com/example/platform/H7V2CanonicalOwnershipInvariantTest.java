@@ -334,7 +334,12 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
                             outcome, aid, tenant, proj, pinned.canonicalValue(),
                             rows.isEmpty() ? null : (String) rows.get(0).get("content_digest"), null);
                 };
-        var sourceValidator = new com.example.platform.timeline.app.ArtifactPinTimelineSourceValidator(pins);
+        var sourceValidator = new com.example.platform.timeline.app.ArtifactPinTimelineSourceValidator(pins,
+                (tenant, proj, aid, digest) -> java.util.Optional.of(
+                        new com.example.platform.artifact.contract.ArtifactSourceFacts(MediaTime.ofTicks(20, 1),
+                                List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream(
+                                        mediaStreamId, com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO,
+                                        MediaTime.ofTicks(20, 1))))));
         var operationService = new com.example.platform.render.app.operation.TimelineMediaClipOperationService(
                 saveService,
                 sourceValidator,

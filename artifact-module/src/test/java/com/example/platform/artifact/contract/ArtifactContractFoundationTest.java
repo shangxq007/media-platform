@@ -23,14 +23,15 @@ class ArtifactContractFoundationTest {
 
     @Test
     void uploadContractRequiresCompleteImmutableFactsAndHasStableFingerprint() {
-        var upload = new ArtifactUploadAdmission(1, SCOPE,
-                new ArtifactStorageReference(new StorageObjectId("object-1"), new StorageReplicaId("replica-1"), new StorageProviderId("provider-1"), "issuance-1"),
+        var uploadScope = new ArtifactScope("tenant-a", "workspace-a", "project-a");
+        var upload = new ArtifactUploadAdmission(2, uploadScope,
+                new ArtifactStorageReference(new StorageObjectId("object-1"), new StorageReplicaId("replica-1"), new StorageProviderId("provider-1"), "issuance-1", "receipt-1"),
                 DIGEST, 42, new ArtifactTechnicalMetadata(ArtifactKind.SOURCE_MEDIA, ArtifactMediaType.VIDEO, Map.of("codec", "h264")),
                 new ArtifactAuditFacts("actor", "request", Instant.parse("2026-01-01T00:00:00Z")),
                 new ArtifactLifecycleFacts(ArtifactState.AVAILABLE, Instant.parse("2026-01-01T00:00:00Z")),
                 new ArtifactLineageFacts(List.of(), "upload", 1), "idem-1", "quota-1");
         assertEquals(ArtifactContractFingerprint.upload(upload), ArtifactContractFingerprint.upload(upload));
-        assertThrows(ArtifactContractException.class, () -> new ArtifactUploadAdmission(1, SCOPE, upload.storage(), DIGEST, 42, upload.technicalMetadata(), upload.audit(), upload.lifecycle(), upload.lineage(), "", "quota-1"));
+        assertThrows(ArtifactContractException.class, () -> new ArtifactUploadAdmission(2, uploadScope, upload.storage(), DIGEST, 42, upload.technicalMetadata(), upload.audit(), upload.lifecycle(), upload.lineage(), "", "quota-1"));
     }
 
     @Test

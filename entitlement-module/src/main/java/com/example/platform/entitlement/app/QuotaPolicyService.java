@@ -13,6 +13,7 @@ public class QuotaPolicyService {
         }
         return switch (featureCode) {
             case "render.job.create", "composition" -> policy("qp-render", featureCode, 10000);
+            case "artifact.source.upload" -> policy("qp-source-upload", featureCode, 1024L * 1024 * 1024);
             case "media.thumbnail" -> policy("qp-thumbnail", featureCode, 10000);
             case "ai.model.standard" -> policy("qp-ai-std", featureCode, 1000);
             case "ai.model.premium" -> policy("qp-ai-prem", featureCode, 100);

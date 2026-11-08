@@ -246,6 +246,10 @@ public final class Canonical {
         if (d instanceof RenderDependency.CompositeInput) {
             return "COMPOSITE_INPUT";
         }
+        if (d instanceof RenderDependency.TimedCompositeInput timed) {
+            return "TIMED_COMPOSITE_INPUT|" + framed(timed.start().toString())
+                    + "|" + framed(timed.end().toString());
+        }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
     }
 

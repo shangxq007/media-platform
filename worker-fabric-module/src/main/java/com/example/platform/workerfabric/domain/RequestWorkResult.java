@@ -7,7 +7,8 @@ public sealed interface RequestWorkResult
         permits RequestWorkResult.Granted,
                 RequestWorkResult.NoWork,
                 RequestWorkResult.Rejected,
-                RequestWorkResult.ReprobeRequired {
+                RequestWorkResult.ReprobeRequired,
+                RequestWorkResult.CapacityUnavailable {
 
     RequestWorkId requestWorkId();
 
@@ -44,6 +45,19 @@ public sealed interface RequestWorkResult
         public Rejected {
             Objects.requireNonNull(requestWorkId, "requestWorkId");
             Objects.requireNonNull(reason, "reason");
+        }
+    }
+
+    /** Non-terminal capacity wait: no resolution is persisted and the same RequestWork may retry. */
+    record CapacityUnavailable(RequestWorkId requestWorkId, RequestWorkFailureReason reason)
+            implements RequestWorkResult {
+
+        public CapacityUnavailable {
+            Objects.requireNonNull(requestWorkId, "requestWorkId");
+            Objects.requireNonNull(reason, "reason");
+            if (reason != RequestWorkFailureReason.RESERVATION_CONFLICT) {
+                throw new IllegalArgumentException("capacity wait requires reservation conflict");
+            }
         }
     }
 

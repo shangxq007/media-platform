@@ -10,7 +10,13 @@ public final class ArtifactContractFingerprint {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private ArtifactContractFingerprint() {}
 
-    public static String upload(ArtifactUploadAdmission value) { return fingerprint(Map.of("version", value.contractVersion(), "scope", value.scope().canonicalForm(), "digest", value.digest().toString(), "size", value.sizeBytes(), "idempotency", value.idempotencyKey())); }
+    public static String upload(ArtifactUploadAdmission value) {
+        return fingerprint(Map.of("version", value.contractVersion(), "scope", value.scope().canonicalForm(),
+                "storage", value.storage(), "digest", value.digest().toString(),
+                "size", value.sizeBytes(), "kind", value.technicalMetadata().kind().name(),
+                "mediaType", value.technicalMetadata().mediaType().name(),
+                "idempotency", value.idempotencyKey()));
+    }
     public static String subject(ArtifactSubject value) { return fingerprint(Map.of("version", value.contractVersion(), "artifactId", value.artifactId().value(), "scope", value.scope().canonicalForm(), "visibility", value.visibility().name(), "owner", value.ownerId(), "lineage", value.lineageFingerprint(), "lifecycle", value.lifecycleFingerprint())); }
     public static String source(ArtifactSourceReference value) { return fingerprint(Map.of("version", value.contractVersion(), "artifactId", value.artifactId().value(), "digest", value.sourceDigest().toString(), "scope", value.scope().canonicalForm(), "lineage", value.lineageFingerprint(), "revision", value.artifactRevision())); }
     private static String fingerprint(Object value) {

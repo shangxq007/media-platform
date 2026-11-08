@@ -9,11 +9,18 @@ import com.example.platform.sandbox.SandboxResolution;
 import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Worker-owned command composition that routes process mechanics through the neutral sandbox boundary. */
 public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecutor {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SandboxRuntimeCommandExecutor.class);
     private final BoundedProcessLauncher launcher;
     private final SandboxExecutionPolicyResolver specifications;
     private final SandboxCancellation cancellation;
@@ -46,8 +53,20 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                 if (resolution instanceof SandboxResolution.Rejected rejected) {
                     throw mapped(rejected.failure());
                 }
-                SandboxExecutionResult result = launcher.launch(
-                        ((SandboxResolution.Resolved) resolution).specification(), cancellation);
+                var resolved = ((SandboxResolution.Resolved) resolution).specification();
+                LOG.info("PROCESS_SPEC task={} attempt={} executable={} argv={} cwd={}",
+                        bundle.executableTaskId().sha256Hex(),
+                        bundle.platformExecutionAttemptId().value(),
+                        resolved.process().executable(),
+                        resolved.process().arguments(),
+                        resolved.filesystem().workingDirectory());
+                SandboxExecutionResult result = launcher.launch(resolved, cancellation);
+                LOG.info("PROCESS_OUTPUT task={} attempt={} exit={} stdoutBytes={} stdoutSha256={} stdoutTruncated={} stderrBytes={}",
+                        bundle.executableTaskId().sha256Hex(),
+                        bundle.platformExecutionAttemptId().value(),
+                        result.exitCode().isPresent() ? Integer.toString(result.exitCode().getAsInt()) : "NOT_AVAILABLE",
+                        result.stdout().bytes().length, sha256(result.stdout().bytes()),
+                        result.stdout().truncated(), result.stderr().bytes().length);
                 if (result.observation()==null || result.observation().cleanup()==null
                         || !result.observation().cleanup().completed()) {
                     throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED,
@@ -79,6 +98,14 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
         }
     }
 
+
+    private static String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException("SHA-256 unavailable", unavailable);
+        }
+    }
     private static ProviderNativeExecutionFailure mapped(SandboxFailure failure) {
         return mapped(failure, java.util.Map.of(
                 "sandboxFailureCode", failure.code().name()));

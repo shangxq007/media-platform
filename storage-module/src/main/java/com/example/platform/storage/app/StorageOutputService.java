@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Storage write-intent orchestration. External bytes survive downstream database rollback. */
 @Service
-public class StorageOutputService implements StorageOutputPort, StoragePlacementQuery {
+public class StorageOutputService implements StorageOutputPort, StoragePlacementQuery, StorageSourceUploadPort {
     private final BlobStorage backend;
     private final StorageWriteIntentRecovery recovery;
     private final StorageObjectAuthorityRepository receipts;
@@ -41,6 +41,10 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
     @Override
     @Transactional(propagation=Propagation.NOT_SUPPORTED)
     public WrittenOutput write(OutputCommand command) {
+        return writeWithNamespace(command, NamespaceClass.DERIVED);
+    }
+
+    private WrittenOutput writeWithNamespace(OutputCommand command, NamespaceClass namespaceClass) {
         TenantGuard.assertSameTenant(command.owner().tenantId());
         String providerType = providerType(); // reject unsupported configuration before any write
         try {
@@ -56,12 +60,14 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
             if (bucket==null || bucket.isBlank()) bucket=s3.getDefaultBucket();
             if (bucket==null || bucket.isBlank()) throw new IllegalArgumentException("output bucket required");
             String region="local".equals(properties.getProvider()) ? "local" : com.example.platform.storage.infrastructure.S3ClientSettingsResolver.resolve(s3).region();
-            String fingerprint=StableStorageFingerprint.sha256(List.of("output-v1", command.owner().tenantId(),
+            String fingerprint=StableStorageFingerprint.sha256(List.of(
+                    namespaceClass == NamespaceClass.SOURCE ? "source-v1" : "output-v1", command.owner().tenantId(),
                     command.owner().projectId(), command.key().value(), command.contentType(), digest.canonicalValue(),
                     Long.toString(bytes.length), backend.code(), bucket, region));
             var intent=recovery.beginOrResume(new StorageWriteIntentRecovery.BeginWriteIntentCommand(
                     command.owner(), command.key(), fingerprint, null));
-            String key="outputs/"+intent.objectId().value()+"/output";
+            String key=(namespaceClass == NamespaceClass.SOURCE ? "sources/" : "outputs/")
+                    +intent.objectId().value()+"/output";
             StorageObjectRef location=new StorageObjectRef(backend.code(),bucket,key);
             if (intent.state()==StorageWriteIntent.State.PENDING_PROVIDER) {
                 StorageObjectRef written=backend.put(new PutObjectCommand(bucket,key,bytes,command.contentType()));
@@ -70,7 +76,7 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
             byte[] actual=backend.get(bucket,key).orElseThrow(()->new IllegalStateException("written output is unavailable"));
             if (actual.length!=bytes.length || !digest.matches(digest(actual))) throw new IllegalStateException("written output length/digest mismatch");
             var namespace=new StorageNamespace(command.owner().tenantId(),command.owner().projectId(),
-                    NamespaceClass.DERIVED,RegionPolicy.SINGLE_REGION,DataClassification.INTERNAL);
+                    namespaceClass,RegionPolicy.SINGLE_REGION,DataClassification.INTERNAL);
             var placement=new BackendPlacementResult(new StorageReplicaId("rep-"+intent.objectId().value()),
                     new StorageObjectLocation(new StorageProviderId(backend.code()),namespace,location.toStorageUri(),null,
                             region),
@@ -85,10 +91,39 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
         } catch (java.io.IOException e) { throw new IllegalStateException("output not found or write/read failed; retain write intent for retry",e); }
     }
 
+    @Override
+    @Transactional(propagation=Propagation.NOT_SUPPORTED)
+    public WrittenOutput writeSource(StorageOwnershipScope owner, IssuanceIdempotencyKey key,
+            byte[] bytes, String contentType) {
+        TenantGuard.assertSameTenant(owner.tenantId());
+        if (owner.projectId() == null || owner.projectId().isBlank()
+                || bytes == null || bytes.length == 0 || bytes.length > 64 * 1024 * 1024) {
+            throw new IllegalArgumentException("bounded project-scoped source bytes required");
+        }
+        try {
+            Path stagingRoot = root.resolve(".source-upload-staging");
+            Files.createDirectories(stagingRoot);
+            Path staged = Files.createTempFile(stagingRoot, "upload-", ".bin");
+            try {
+                Files.write(staged, bytes);
+                return writeWithNamespace(new OutputCommand(owner, key,
+                        root.relativize(staged).toString(), contentType), NamespaceClass.SOURCE);
+            } finally {
+                Files.deleteIfExists(staged);
+            }
+        } catch (java.io.IOException failure) {
+            throw new IllegalStateException("source staging unavailable", failure);
+        }
+    }
+
     @Override public List<IssuanceResult> references(String uri,String projectId,int limit){return receipts.references(uri,projectId,limit);}
     @Override public Optional<IssuanceResult> find(StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
         TenantGuard.assertSameTenant(owner.tenantId());
         return receipts.findOriginalIssuance(owner,key);
+    }
+    @Override public Optional<IssuanceResult> findPlacement(StorageOwnershipScope owner, StorageObjectId objectId, StorageReplicaId replicaId) {
+        TenantGuard.assertSameTenant(owner.tenantId());
+        return receipts.findPlacement(owner, objectId, replicaId);
     }
     @Override public byte[] read(StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
         var issued=find(owner,key).orElseThrow(()->new IllegalArgumentException("output receipt not found"));

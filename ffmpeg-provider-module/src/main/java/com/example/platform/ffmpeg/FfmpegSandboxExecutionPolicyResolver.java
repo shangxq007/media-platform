@@ -61,23 +61,31 @@ public final class FfmpegSandboxExecutionPolicyResolver
         Objects.requireNonNull(runtimeLocalInputs, "runtimeLocalInputs");
         if (!(command.invocationSpec() instanceof ProcessInvocationSpec invocation)
                 || !invocation.executable().equals(executable.toString())
-                || runtimeLocalInputs.size() != 1) {
-            return rejected("FFmpeg requires one exact typed process and materialized input");
+                || runtimeLocalInputs.isEmpty()) {
+            return rejected("FFmpeg requires an exact typed process and materialized inputs");
         }
-        MaterializedExecutionInput input = runtimeLocalInputs.getFirst();
-        String token = FfmpegCpuRuntimeAdapter.materializedInputToken(input.inputId());
-        int replacements = 0;
+        java.util.Map<String, Path> inputs = new java.util.HashMap<>();
+        for (MaterializedExecutionInput input : runtimeLocalInputs) {
+            String token = FfmpegCpuRuntimeAdapter.materializedInputToken(input.inputId());
+            if (inputs.put(token, input.materializedArtifact().path().toAbsolutePath().normalize()) != null) {
+                return rejected("duplicate materialized input identity");
+            }
+        }
+        java.util.Set<String> used = new java.util.HashSet<>();
         List<String> arguments = new ArrayList<>(invocation.arguments().size());
         for (String argument : invocation.arguments()) {
-            if (argument.equals(token)) {
-                arguments.add(input.materializedArtifact().path().toAbsolutePath().normalize().toString());
-                replacements++;
+            if (inputs.containsKey(argument)) {
+                if (!used.add(argument)) return rejected("materialized input is referenced more than once");
+                arguments.add(inputs.get(argument).toString());
             } else {
+                if (argument.startsWith("@platform-materialized-input:")) {
+                    return rejected("unknown materialized input identity");
+                }
                 arguments.add(argument);
             }
         }
-        if (replacements != 1) {
-            return rejected("FFmpeg argv must contain exactly one exact materialized input token");
+        if (used.size() != inputs.size()) {
+            return rejected("FFmpeg argv must reference every materialized input exactly once");
         }
         try {
             SandboxExecutionRequirement requirement = new SandboxExecutionRequirement(
@@ -87,7 +95,7 @@ public final class FfmpegSandboxExecutionPolicyResolver
                             arguments,
                             timeout),
                     FilesystemPolicy.exact(
-                            FfmpegRuntimeFiles.inputs(executable, input.materializedArtifact().path()),
+                            FfmpegRuntimeFiles.inputs(executable, inputs.values().toArray(Path[]::new)),
                             workspace.root(),
                             workspace.temporaryRoot(),
                             workspace.outputStagingRoot(),

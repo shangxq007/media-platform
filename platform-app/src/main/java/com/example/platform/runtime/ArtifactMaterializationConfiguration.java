@@ -32,6 +32,8 @@ public class ArtifactMaterializationConfiguration {
     @ConditionalOnMissingBean(ArtifactMaterializerPort.class)
     ArtifactMaterializerPort artifactMaterializer(
             ArtifactQueryService artifacts,
+            com.example.platform.artifact.app.ArtifactCatalogService catalog,
+            com.example.platform.storage.api.StoragePlacementQuery placements,
             List<StorageProvider> storageProviders,
             @Value("${platform.ffmpeg-worker.materialization-root:./.data/materialized}") String cacheRoot,
             @Value("${platform.ffmpeg-worker.materialization-capacity-bytes:1073741824}") long capacityBytes) {
@@ -48,6 +50,6 @@ public class ArtifactMaterializationConfiguration {
         return new DirectStorageArtifactMaterializer(
                 artifacts,
                 providers,
-                new WorkerLocalMaterializationCache(Path.of(cacheRoot), capacityBytes));
+                new WorkerLocalMaterializationCache(Path.of(cacheRoot), capacityBytes), catalog, placements);
     }
 }

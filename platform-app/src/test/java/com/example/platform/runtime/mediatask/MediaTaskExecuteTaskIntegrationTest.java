@@ -147,6 +147,14 @@ class MediaTaskExecuteTaskIntegrationTest {
         Fixture fixture = seed();
         RuntimeClosedLoopOrchestrator orchestrator = mock(RuntimeClosedLoopOrchestrator.class);
         RuntimeClosedLoopResult canned = mock(RuntimeClosedLoopResult.class);
+        String expectedPublicationIdentity=TENANT+"\u0000project-exec\u0000render:"+JOB+"\u0000"+fixture.taskId().sha256Hex()+"\u0000attempt-exec\u00001";
+        String expectedPublicationKey=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(expectedPublicationIdentity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        when(canned.outputArtifactPins()).thenReturn(java.util.Map.of(
+                fixture.taskId(),
+                new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
+                        new com.example.platform.shared.identity.ArtifactId(
+                                "render-task-" + expectedPublicationKey.substring(0, 52)),
+                        com.example.platform.shared.digest.ContentDigest.sha256("a".repeat(64)))));
         when(orchestrator.execute(any())).thenReturn(canned);
         MediaTaskActivity activity = activity(grantBoundary(fixture.taskId()), orchestrator);
 
@@ -168,7 +176,7 @@ class MediaTaskExecuteTaskIntegrationTest {
         assertThat(execution.durableOutputTarget().writeSessionId())
                 .isEqualTo("task-output-" + publicationKey);
         assertThat(execution.artifactCommitMetadata().artifactId().value())
-                .isEqualTo("render-task-" + publicationKey.substring(0, 52));
+                .isEqualTo("render-task-" + expectedPublicationKey.substring(0, 52));
         assertThat(execution.artifactCommitMetadata().tenantId()).isEqualTo(TENANT);
         assertThat(execution.artifactCommitMetadata().renderJobId()).isEqualTo(JOB);
         assertThat(execution.runtimeContext().platformExecutionAttemptId())
