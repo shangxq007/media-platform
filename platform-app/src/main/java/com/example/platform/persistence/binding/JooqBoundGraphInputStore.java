@@ -65,15 +65,17 @@ public class JooqBoundGraphInputStore implements BoundGraphInputStore {
                 .values(tenantId, renderJobId, planRef, planDigest, etgDigest, planJson,
                         candidatesJson, declarationsJson, Instant.now())
                 .onConflict(RENDER_BINDING_INPUTS.TENANT_ID, RENDER_BINDING_INPUTS.RENDER_JOB_ID)
-                .doUpdate()
-                .set(RENDER_BINDING_INPUTS.PLAN_REF, planRef)
-                .set(RENDER_BINDING_INPUTS.PLAN_DIGEST, planDigest)
-                .set(RENDER_BINDING_INPUTS.EXPECTED_ETG_DIGEST, etgDigest)
-                .set(RENDER_BINDING_INPUTS.PLAN_JSON, planJson)
-                .set(RENDER_BINDING_INPUTS.CANDIDATES_JSON, candidatesJson)
-                .set(RENDER_BINDING_INPUTS.DECLARATIONS_JSON, declarationsJson)
-                .set(RENDER_BINDING_INPUTS.CREATED_AT, Instant.now())
+                .doNothing()
                 .execute();
+        var frozen = dsl.selectFrom(RENDER_BINDING_INPUTS)
+                .where(RENDER_BINDING_INPUTS.TENANT_ID.eq(tenantId))
+                .and(RENDER_BINDING_INPUTS.RENDER_JOB_ID.eq(renderJobId)).fetchSingle();
+        if (!planRef.equals(frozen.getPlanRef()) || !planDigest.equals(frozen.getPlanDigest())
+                || !etgDigest.equals(frozen.getExpectedEtgDigest())
+                || !java.util.Arrays.equals(planJson, frozen.getPlanJson())
+                || !java.util.Arrays.equals(candidatesJson, frozen.getCandidatesJson())
+                || !java.util.Arrays.equals(declarationsJson, frozen.getDeclarationsJson()))
+            throw new IllegalStateException("Bound graph already frozen for this Job");
 
         return new BoundGraphReference(tenantId, renderJobId, planRef, planDigest, etgDigest);
     }

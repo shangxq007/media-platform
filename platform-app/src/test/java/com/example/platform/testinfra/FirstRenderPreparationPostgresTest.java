@@ -106,7 +106,7 @@ class FirstRenderPreparationPostgresTest {
                 db.execute("create trigger reject_bound_graph_save before insert on render_binding_inputs for each row execute function reject_bound_graph_save()");
             }
             when(starter.start(any(),any(),any())).thenReturn(true);
-            save=new FirstRenderSaveAndStartService(new JooqBoundGraphInputStore(db),starter,lifecycle);
+            save=new FirstRenderSaveAndStartService(new JooqBoundGraphInputStore(db),lifecycle);
         }
         FirstRenderPlanningAndBindingResult plan() {
             return planning.planAndBind(new FirstRenderPlanningRequest(TENANT,REVISION,
@@ -136,7 +136,7 @@ class FirstRenderPreparationPostgresTest {
         try(var s=new Scenario("BINDING")){assertThrows(RuntimeException.class,s::plan);s.assertFailed("BINDING");}
     }
     @Test void databaseSaveFailureUsesRenderOwnerAndNeverStartsWorkflow() throws Exception {
-        try(var s=new Scenario("BOUND_GRAPH_SAVE")){var plan=s.plan();assertThrows(RuntimeException.class,()->s.save.start(plan));s.assertFailed("BOUND_GRAPH_SAVE");assertEquals(0,s.world.count("render_binding_inputs"));}
+        try(var s=new Scenario("BOUND_GRAPH_SAVE")){var plan=s.plan();assertThrows(RuntimeException.class,()->s.save.save(plan));s.assertFailed("BOUND_GRAPH_SAVE");assertEquals(0,s.world.count("render_binding_inputs"));}
     }
     @Test void crashedPreparationIsRecoveredAfterDurableDeadlineButNotBeforeIt() throws Exception {
         try(var s=new Scenario("NONE")) {
@@ -150,13 +150,13 @@ class FirstRenderPreparationPostgresTest {
             assertEquals(0,s.world.tx(()->recovery.compensate(request)).compensated());
             assertEquals("FAILED",s.job().get("status"));
             assertEquals("GRAPH_PREPARATION_BINDING_TIMEOUT",s.job().get("error_message"));
-            assertThrows(RuntimeException.class,()->s.save.start(plan));
+            assertThrows(RuntimeException.class,()->s.save.save(plan));
             verifyNoInteractions(s.starter);assertEquals(0,s.world.count("render_graph_execution"));
         }
     }
     @Test void actualBeginDisarmsPreparationRecoveryAndLateFailureCannotOverwriteExecution() throws Exception {
         try(var s=new Scenario("NONE")) {
-            var plan=s.plan();s.save.start(plan);
+            var plan=s.plan();s.save.save(plan);
             var reference=new JooqBoundGraphInputStore(s.world.db).load(new JooqBoundGraphInputStore(s.world.db).save(plan.boundGraphInputs(),TENANT,plan.renderJobId()));
             // Use the actual bound final task, not a fabricated Render output association.
             var graph=new ProviderBindingEntryService().bind(reference.physicalPlan(),reference.candidates(),reference.transitionDeclarations()).executableTaskGraph();

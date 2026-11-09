@@ -1,0 +1,58 @@
+package com.example.platform.config.firstrender;
+
+import com.example.platform.render.api.request.RenderInitiator;
+import com.example.platform.render.app.RenderAcceptanceContextService;
+import com.example.platform.render.domain.renderplan.RenderExtent;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/** One DB commit owns the reservation, accepted Job, revision, graph and dispatch intent. */
+@Service
+public class FirstRenderSubmissionService {
+    private final TransactionTemplate transactions;
+    private final FirstRenderPlanningApplicationService preparation;
+    private final FirstRenderPlanningAndBindingService planning;
+    private final FirstRenderSaveAndStartService graphs;
+    private final FirstRenderIdempotencyService idempotency;
+    private final RenderAcceptanceContextService acceptance;
+    private final FirstRenderDispatchService dispatch;
+
+    public FirstRenderSubmissionService(org.springframework.transaction.PlatformTransactionManager manager,
+            FirstRenderPlanningApplicationService preparation, FirstRenderPlanningAndBindingService planning,
+            FirstRenderSaveAndStartService graphs, FirstRenderIdempotencyService idempotency,
+            RenderAcceptanceContextService acceptance, FirstRenderDispatchService dispatch) {
+        this.transactions = new TransactionTemplate(manager);
+        this.preparation = preparation; this.planning = planning; this.graphs = graphs;
+        this.idempotency = idempotency; this.acceptance = acceptance; this.dispatch = dispatch;
+    }
+    public record Submission(boolean created, FirstRenderPlanHttpResponse response) {}
+    public Submission submit(FirstRenderPlanHttpRequest request, RenderExtent extent, RenderInitiator actor, String key) {
+        if (key != null && (key.isBlank() || key.length() > 255))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid Idempotency-Key");
+        var accepted = transactions.execute(status -> {
+            String tenant = actor.tenantId();
+            String project = preparation.projectIdForRevision(tenant, request.revisionId());
+            // Authorize every submission, including replay/conflict, before revealing reservation identity.
+            acceptance.prepare(tenant, project, actor);
+            if (key != null) {
+                String hash = FirstRenderIdempotencyService.requestHash(request.revisionId(), request.extent().startMillis(),
+                        request.extent().endMillis(), request.extent().frameRateNumerator(), request.extent().frameRateDenominator(),
+                        request.profile(), request.outputFormat().name());
+                var old = idempotency.reserve(tenant, project, key, hash);
+                if (!old.created()) return new Submission(false, new FirstRenderPlanHttpResponse(old.renderJobId(), old.requestId(),
+                        old.executionPlanId(), "PLANNED", old.workflowId(), old.workflowStarted()));
+            }
+            var plan = planning.planAndBind(new FirstRenderPlanningRequest(tenant, request.revisionId(), actor, extent, request.profile()));
+            var reference = graphs.save(plan);
+            String workflow = com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenant, plan.renderJobId());
+            String executionPlan = plan.boundGraphInputs().physicalPlan().planId().value();
+            if (key != null) idempotency.complete(tenant, project, key, plan.renderJobId(), plan.renderRequestId().value(), executionPlan, workflow, false);
+            return new Submission(true, new FirstRenderPlanHttpResponse(plan.renderJobId(), plan.renderRequestId().value(), executionPlan, "PLANNED", workflow, false));
+        });
+        // No Temporal side effect is permitted until the entire submission committed.
+        boolean started = dispatch.tryDispatch(actor.tenantId(), accepted.response().renderJobId());
+        var r = accepted.response();
+        return new Submission(accepted.created(), new FirstRenderPlanHttpResponse(r.renderJobId(), r.requestId(),
+                r.executionPlanId(), r.status(), r.workflowId(), r.workflowStarted() || started));
+    }
+}

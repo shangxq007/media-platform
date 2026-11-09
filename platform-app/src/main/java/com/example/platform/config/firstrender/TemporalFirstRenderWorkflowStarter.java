@@ -43,6 +43,7 @@ public class TemporalFirstRenderWorkflowStarter implements FirstRenderWorkflowSt
                 WorkflowOptions.newBuilder()
                         .setWorkflowId(workflowId)
                         .setTaskQueue(TASK_QUEUE)
+                        .setWorkflowIdReusePolicy(io.temporal.api.enums.v1.WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE)
                         .build());
         return classifyStart(() -> WorkflowClient.start(workflow::run, reference, tenantId));
     }
