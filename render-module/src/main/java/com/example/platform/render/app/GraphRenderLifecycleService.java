@@ -105,6 +105,18 @@ public class GraphRenderLifecycleService implements GraphRenderLifecycle {
             throw new IllegalStateException("Render execution no longer accepts publication");
     }
     @Override @Transactional
+    public Optional<IncrementalReference> incrementalReference(Execution e) {
+        locked(e);
+        var job = jobs.requireScopedJobForUpdate(e.tenantId(), e.jobId());
+        String previous = job.get("incremental_reference_job_id", String.class);
+        if (previous == null) return Optional.empty();
+        var reference = jobs.requireScopedJobForUpdate(e.tenantId(), previous);
+        if (!e.projectId().equals(reference.get("project_id", String.class)) || !"COMPLETED".equals(reference.get("status", String.class)))
+            throw new IllegalStateException("Incremental reference scope or terminal proof changed");
+        return Optional.of(new IncrementalReference(previous, reference.get("timeline_revision_id", String.class)));
+    }
+
+    @Override @Transactional
     public void bindOutput(Execution e,Output o) {
         Record row=locked(e);requireOutput(e,o,row);
         String status=jobs.requireScopedJobForUpdate(e.tenantId(),e.jobId()).get("status",String.class);

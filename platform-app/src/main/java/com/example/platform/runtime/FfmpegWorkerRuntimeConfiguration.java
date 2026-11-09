@@ -97,8 +97,8 @@ public class FfmpegWorkerRuntimeConfiguration {
 
     @Bean
     ArtifactReuseResolver artifactReuseResolver(
-            ArtifactReuseIndexPort artifactReuseIndex, ArtifactQueryService artifacts) {
-        return new ArtifactReuseResolver(artifactReuseIndex, artifacts);
+            ArtifactReuseIndexPort artifactReuseIndex, ArtifactQueryService artifacts, com.example.platform.artifact.app.ArtifactApplicationQuery scopedArtifacts) {
+        return new ArtifactReuseResolver(artifactReuseIndex, artifacts, scopedArtifacts);
     }
 
     @Bean

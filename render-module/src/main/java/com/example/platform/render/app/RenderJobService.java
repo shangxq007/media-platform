@@ -92,6 +92,18 @@ public class RenderJobService {
         renderJobRepository.pinRevision(tenantId, projectId, jobId, revisionId);
     }
 
+    /** Authenticated reference validation precedes any incremental idempotency lookup. */
+    public void requireIncrementalReference(String tenant, String project, String referenceJob, String referenceRevision) {
+        var previous = getByIdAndProject(tenant, project, referenceJob);
+        var row = renderJobRepository.requireScopedJobForUpdate(tenant, referenceJob);
+        if (!"COMPLETED".equals(previous.status()) || !referenceRevision.equals(row.get("timeline_revision_id", String.class)))
+            throw new PlatformException(CommonErrorCode.CONFLICT, "Incremental reference must be a completed Job pinned to the reference revision");
+    }
+    public void pinIncrementalReference(String tenant, String project, String job, String previous, String revision) {
+        requireIncrementalReference(tenant, project, previous, revision);
+        renderJobRepository.pinIncrementalReference(tenant, project, job, previous);
+    }
+
     public RenderJobResponse getById(String jobId) {
         String tenantId = TenantContext.get();
         CanonicalActor actor = requireReadActor(tenantId);

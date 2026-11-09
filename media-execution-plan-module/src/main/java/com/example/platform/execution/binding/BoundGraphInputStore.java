@@ -27,4 +27,6 @@ public interface BoundGraphInputStore {
      * @throws IllegalArgumentException          when no record exists for the reference
      */
     BoundGraphInputs load(BoundGraphReference reference);
+
+    java.util.Optional<BoundGraphReference> findReference(String tenantId, String renderJobId);
 }

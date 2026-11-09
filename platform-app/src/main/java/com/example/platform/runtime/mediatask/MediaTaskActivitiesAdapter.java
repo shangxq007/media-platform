@@ -57,11 +57,16 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
             var e=prepared.execution();
             var accepted=lifecycle.find(tenantId,e.projectId(),e.jobId()).filter(s->"COMPLETED".equals(s.status()) && e.equals(s.execution()));
             if(accepted.isPresent())return new MediaTaskWorkflowResult(tenantId,e.jobId(),e.planDigest(),e.graphDigest(),prepared.executableTaskIds(),MediaTaskWorkflowResult.STATUS_EXECUTED,Objects.requireNonNull(accepted.orElseThrow().boundOutput()));
+            var incremental=activity.incrementalInputs(prepared,tenantId,lifecycle.incrementalReference(e));
             // Recover a lost Activity response only from every current-generation fenced success.
             var recovered=prepared.executableTaskIds().stream().map(completed::find).toList();
             var scope=new com.example.platform.artifact.app.ArtifactScope(tenantId,e.projectId(),e.jobId());
-            boolean sameExecution=!recovered.isEmpty() && recovered.stream().allMatch(item->item.isPresent()
-                    && artifacts.findArtifact(scope,new com.example.platform.shared.identity.ArtifactId(item.orElseThrow().artifactId())).isPresent());
+            boolean sameExecution=!recovered.isEmpty() && java.util.stream.IntStream.range(0,recovered.size()).allMatch(i -> {
+                var taskId=new com.example.platform.execution.taskgraph.ExecutableTaskId(prepared.executableTaskIds().get(i));
+                var item=recovered.get(i);
+                return (incremental!=null && incremental.pins().containsKey(taskId)) || (item.isPresent()
+                        && artifacts.findArtifact(scope,new com.example.platform.shared.identity.ArtifactId(item.orElseThrow().artifactId())).isPresent());
+            });
             if(sameExecution) {
                 var finalOutput=completed.find(e.finalTaskId()).orElseThrow();
                 var o=new com.example.platform.render.api.GraphRenderLifecycle.Output(finalOutput.taskId(),finalOutput.attemptId(),finalOutput.generation(),finalOutput.artifactId());
@@ -92,7 +97,7 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
                         catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
                     });
                 } catch (java.io.UncheckedIOException failure) { throw failure.getCause(); }
-            }, cancellation);
+            }, cancellation, incremental);
         });
     }
 

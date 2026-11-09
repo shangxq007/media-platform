@@ -445,6 +445,12 @@ public class RenderJobRepository {
     }
 
     /** Pins the immutable Timeline revision on a newly prepared render job. */
+    public void pinIncrementalReference(String tenant, String project, String job, String previous) {
+        int n = dsl.execute("update render_job set incremental_reference_job_id=? where id=? and tenant_id=? and project_id=? "
+                + "and status='QUEUED' and graph_preparation_stage='DISPATCH' and incremental_reference_job_id is null", previous, job, tenant, project);
+        if (n != 1) throw new IllegalStateException("Incremental reference already frozen or Job no longer preparing");
+    }
+
     public void pinRevision(String tenantId, String projectId, String jobId, String revisionId) {
         if (dsl.update(RENDER_JOB)
                 .set(RENDER_JOB.TIMELINE_REVISION_ID, revisionId)

@@ -54,6 +54,7 @@ create table render_job (
         (graph_preparation_stage is null and graph_preparation_deadline is null)
         or (graph_preparation_stage in ('INPUTS','SNAPSHOT','PLANNING','BINDING','BOUND_GRAPH_SAVE','DISPATCH')
             and graph_preparation_deadline is not null)),
+    incremental_reference_job_id varchar(64),
     base_job_id varchar(64),
     trace_id varchar(128),
     initiator_type varchar(32) not null,
@@ -4938,6 +4939,9 @@ insert into commercial_offering(id,product_id,offering_key,offering_version,life
 -- Render owns the immutable graph execution fence and the accepted final output.
 -- Artifact remains the content/replica owner; no physical storage coordinates here.
 alter table render_job add constraint uq_render_job_execution_scope unique (tenant_id,project_id,id);
+alter table render_job add constraint fk_render_incremental_reference_scope
+    foreign key (tenant_id,project_id,incremental_reference_job_id)
+    references render_job(tenant_id,project_id,id);
 alter table artifact add constraint uq_artifact_render_output_scope unique (tenant_id,project_id,render_job_id,id);
 
 create table render_graph_execution (

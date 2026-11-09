@@ -73,10 +73,10 @@ class MediaTaskActivitiesAdapterTest {
         MediaTaskWorkflowResult result = new MediaTaskWorkflowResult(
                 "tenant-1", "render-job-1", DIGEST, DIGEST, List.of(DIGEST),
                 MediaTaskWorkflowResult.STATUS_EXECUTED);
-        when(activity.executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any())).thenReturn(result);
+        when(activity.executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any(),any())).thenReturn(result);
 
         assertThat(adapter.executeTask(prepared, "tenant-1")).isSameAs(result);
-        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any());
+        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any(),any());
     }
 
     @Test

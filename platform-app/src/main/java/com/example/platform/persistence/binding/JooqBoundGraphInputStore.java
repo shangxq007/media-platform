@@ -81,6 +81,14 @@ public class JooqBoundGraphInputStore implements BoundGraphInputStore {
     }
 
     @Override
+    public java.util.Optional<BoundGraphReference> findReference(String tenantId, String renderJobId) {
+        return dsl.selectFrom(RENDER_BINDING_INPUTS)
+                .where(RENDER_BINDING_INPUTS.TENANT_ID.eq(tenantId))
+                .and(RENDER_BINDING_INPUTS.RENDER_JOB_ID.eq(renderJobId)).fetchOptional()
+                .map(r -> new BoundGraphReference(tenantId, renderJobId, r.getPlanRef(), r.getPlanDigest(), r.getExpectedEtgDigest()));
+    }
+
+    @Override
     public BoundGraphInputs load(BoundGraphReference reference) {
         Record row = dsl.selectFrom(RENDER_BINDING_INPUTS)
                 .where(RENDER_BINDING_INPUTS.TENANT_ID.eq(reference.tenantId()))

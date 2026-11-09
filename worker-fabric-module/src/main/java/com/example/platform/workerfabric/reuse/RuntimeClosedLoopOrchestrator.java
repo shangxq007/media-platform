@@ -76,6 +76,31 @@ public final class RuntimeClosedLoopOrchestrator {
         this.nativePublicationTransaction=Objects.requireNonNull(nativePublicationTransaction,"nativePublicationTransaction");
     }
 
+    public record IncrementalInputs(com.example.platform.execution.taskgraph.IncrementalExecutionImpact impact,
+            Map<ExecutableTaskId, ValidatedReuseDecision> decisions, Map<ExecutableTaskId, ArtifactPin> pins) {
+        public IncrementalInputs { decisions=Map.copyOf(decisions); pins=Map.copyOf(pins); }
+    }
+
+    /** Reference graph proves unchanged computation; the index supplies authorized same-project historical INPUTS.
+     * Existing exact current-output checks in execute remain unchanged, and final output is never admitted here. */
+    public IncrementalInputs resolveIncrementalInputs(String tenant, String project,
+            ProviderBoundExecutableTaskGraph target, ProviderBoundExecutableTaskGraph reference) {
+        var impact = com.example.platform.execution.taskgraph.IncrementalExecutionImpact.analyze(target, reference);
+        var cacheability = com.example.platform.execution.taskgraph.TaskCacheabilityDeriver.derive(target);
+        Map<ExecutableTaskId, ValidatedReuseDecision> decisions = new LinkedHashMap<>();
+        Map<ExecutableTaskId, ArtifactPin> pins = new LinkedHashMap<>();
+        for (var task : target.tasks()) {
+            var change = impact.decisions().get(task.id());
+            var decision = change.unchanged()
+                    ? reuseResolver.resolveIntermediate(tenant, project, change.key(), cacheability.get(task.id()), task.id())
+                    : ValidatedReuseDecision.reject(ValidatedReuseDecision.Outcome.MISS, change.reason());
+            decisions.put(task.id(), decision);
+            if (decision.outcome() == ValidatedReuseDecision.Outcome.VALIDATED_HIT)
+                pins.put(task.id(), decision.record().orElseThrow().artifactPin());
+        }
+        return new IncrementalInputs(impact, decisions, pins);
+    }
+
     public RuntimeClosedLoopResult execute(RuntimeClosedLoopRequest request) throws IOException {
         return execute(request,(task,execution,action)->action.commit(),null);
     }

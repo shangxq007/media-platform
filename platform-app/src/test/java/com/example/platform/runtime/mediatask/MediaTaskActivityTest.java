@@ -193,6 +193,7 @@ class MediaTaskActivityTest {
 
     /** Test double: no database, no codec — the store contract only. */
     private static final class FixedStore implements BoundGraphInputStore {
+        @Override public java.util.Optional<BoundGraphReference> findReference(String tenant, String job) { return java.util.Optional.empty(); }
 
         private final String expectedJobId;
         private final BoundGraphInputs inputs;

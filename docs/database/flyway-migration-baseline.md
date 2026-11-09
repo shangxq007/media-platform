@@ -19,7 +19,9 @@
 ## 当前开发基线
 
 路径：`platform-app/src/main/resources/db/migration/V1__baseline.sql`。
-完整 SHA-256：`ddaaab7dd6c5aaa4c9cbc262405227d814b26d800cbedef3101247473fdfeb47`。
+完整 SHA-256：`0a502fd3f72a9d02cff06e51e1593be2bb89bade60d04fb173dce363b0ce1673`。
+
+Owner R1C 在 RenderJob 增加同租户、同项目的不可变增量参考 Job 外键；保留原 Job 生命周期与 Artifact 权威。该新基线须经全新空 PG18、完整 jOOQ 生成和实际增量回归。
 
 Owner OD1–OD3 授权在未上线单一 V1 内移除无消费者的 Provider Candidate Snapshot 表和
 Cover/Thumbnail 专用任务表，并由现有 Execution admission/result 持久化承接能力请求。
