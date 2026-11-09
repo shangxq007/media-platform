@@ -252,26 +252,6 @@ public class RenderJobRepository {
 
 
     /**
-     * Update pipeline plan JSON.
-     */
-    public void updatePipelinePlan(String jobId, String pipelinePlanJson) {
-        dsl.update(RENDER_JOB)
-                .set(RENDER_JOB.PIPELINE_PLAN_JSON, pipelinePlanJson)
-                .where(RENDER_JOB.ID.eq(jobId))
-                .execute();
-    }
-
-    /**
-     * Update pipeline execution JSON.
-     */
-    public void updatePipelineExecution(String jobId, String pipelineExecutionJson) {
-        dsl.update(RENDER_JOB)
-                .set(RENDER_JOB.PIPELINE_EXECUTION_JSON, pipelineExecutionJson)
-                .where(RENDER_JOB.ID.eq(jobId))
-                .execute();
-    }
-
-    /**
      * Update AI script.
      */
     public void updateAiScript(String jobId, String aiScript) {
