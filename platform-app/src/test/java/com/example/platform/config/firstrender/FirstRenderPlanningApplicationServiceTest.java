@@ -99,7 +99,8 @@ class FirstRenderPlanningApplicationServiceTest {
         // P3-H: capability context covers the minimal scenario, and nothing more is asserted.
         assertThat(result.capabilityContext().supports(CapabilityId.of("video.decode"))).isTrue();
         assertThat(result.capabilityContext().supports(CapabilityId.of("render.output"))).isTrue();
-        assertThat(result.capabilityContext().availableCapabilities()).hasSize(2);
+        assertThat(result.capabilityContext().supports(CapabilityId.of("render.composite"))).isTrue();
+        assertThat(result.capabilityContext().availableCapabilities()).hasSize(3);
         // P3-I: declarations come from the authority; V0 is empty.
         assertThat(result.declarations()).isEmpty();
         verify(authority).declarations();

@@ -72,6 +72,13 @@ public class FirstRenderPlanningApplicationService {
                 providerInteroperabilityAuthority, "providerInteroperabilityAuthority");
     }
 
+    /** Resolves the owning project before creating an idempotency reservation. */
+    public String projectIdForRevision(String tenantId, String revisionId) {
+        TimelineRevision revision = timelineRevisionCommands.findById(tenantId, revisionId);
+        if (revision == null) throw new IllegalArgumentException("Timeline revision not found: " + revisionId);
+        return revision.productId();
+    }
+
     /**
      * Prepares the First Render inputs and context for one request.
      *

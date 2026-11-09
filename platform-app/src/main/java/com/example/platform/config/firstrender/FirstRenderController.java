@@ -10,7 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -30,8 +32,12 @@ public class FirstRenderController {
     static final String STATUS_PLANNED = "PLANNED";
 
     private final FirstRenderPlanningAndBindingService planningAndBindingService;
+    @Autowired(required = false)
+    private FirstRenderPlanningApplicationService planningApplicationService;
     private final FirstRenderSaveAndStartService saveAndStartService;
     private final CanonicalActorResolver canonicalActorResolver;
+    @Autowired(required = false)
+    private FirstRenderIdempotencyService idempotency;
 
     public FirstRenderController(
             FirstRenderPlanningAndBindingService planningAndBindingService,
@@ -44,7 +50,8 @@ public class FirstRenderController {
 
     @PostMapping("/plans")
     public ResponseEntity<FirstRenderPlanHttpResponse> createPlan(
-            @Valid @RequestBody FirstRenderPlanHttpRequest request) {
+            @Valid @RequestBody FirstRenderPlanHttpRequest request,
+        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         // Initiator (and its tenant) come only from the authenticated context — never the body.
         RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
                 .map(RenderInitiator::from)
@@ -52,21 +59,38 @@ public class FirstRenderController {
 
         RenderExtent extent = toExtent(request.extent());
 
-        // Phase 5: the single chain entry — planning + binding run exactly once.
-        FirstRenderPlanningAndBindingResult planning = planningAndBindingService.planAndBind(
-                new FirstRenderPlanningRequest(
-                        initiator.tenantId(), request.revisionId(), initiator, extent, request.profile()));
-
-        // Phase 6: persist the bound-graph inputs, then start the workflow.
-        FirstRenderStartResult startResult = saveAndStartService.start(planning);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(new FirstRenderPlanHttpResponse(
-                planning.renderJobId(),
-                planning.renderRequestId().value(),
-                planning.boundGraphInputs().physicalPlan().planId().value(),
-                STATUS_PLANNED,
-                startResult.workflowId(),
-                startResult.workflowStarted()));
+        String projectId = planningApplicationService.projectIdForRevision(initiator.tenantId(), request.revisionId());
+        String key = idempotencyKey == null || idempotencyKey.isBlank() ? null : idempotencyKey;
+        String hash = idempotency == null || key == null ? null : FirstRenderIdempotencyService.requestHash(
+                request.revisionId(), request.extent().startMillis(), request.extent().endMillis(),
+                request.extent().frameRateNumerator(), request.extent().frameRateDenominator(),
+                request.profile(), request.outputFormat().name());
+        FirstRenderIdempotencyService.Reservation reservation = null;
+        if (hash != null) {
+            reservation = idempotency.reserve(initiator.tenantId(), projectId, key, hash);
+            if (!reservation.created()) {
+                return ResponseEntity.ok(new FirstRenderPlanHttpResponse(
+                        reservation.renderJobId(), reservation.requestId(), reservation.executionPlanId(),
+                        STATUS_PLANNED, reservation.workflowId(), reservation.workflowStarted()));
+            }
+        }
+        try {
+            FirstRenderPlanningAndBindingResult planning = planningAndBindingService.planAndBind(
+                    new FirstRenderPlanningRequest(initiator.tenantId(), request.revisionId(), initiator, extent, request.profile()));
+            FirstRenderStartResult startResult = saveAndStartService.start(planning);
+            if (reservation != null) {
+                idempotency.complete(initiator.tenantId(), projectId, key, planning.renderJobId(),
+                        planning.renderRequestId().value(), planning.boundGraphInputs().physicalPlan().planId().value(),
+                        startResult.workflowId(), startResult.workflowStarted());
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body(new FirstRenderPlanHttpResponse(
+                    planning.renderJobId(), planning.renderRequestId().value(),
+                    planning.boundGraphInputs().physicalPlan().planId().value(),
+                    STATUS_PLANNED, startResult.workflowId(), startResult.workflowStarted()));
+        } catch (RuntimeException failure) {
+            if (reservation != null) idempotency.release(initiator.tenantId(), projectId, key);
+            throw failure;
+        }
     }
 
     private static RenderExtent toExtent(FirstRenderExtentHttpRequest extent) {

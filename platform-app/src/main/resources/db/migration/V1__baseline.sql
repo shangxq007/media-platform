@@ -62,6 +62,23 @@ create table render_job (
 );
 
 create index ix_render_job_project_id on render_job(project_id);
+
+-- First Render client idempotency reservation; unique key is the concurrency authority.
+create table first_render_idempotency (
+    tenant_id varchar(128) not null,
+    project_id varchar(64) not null,
+    idempotency_key varchar(255) not null,
+    request_hash varchar(64) not null,
+    render_job_id varchar(64),
+    request_id varchar(128),
+    execution_plan_id varchar(128),
+    workflow_id varchar(256),
+    workflow_started boolean not null default false,
+    lifecycle_status varchar(32) not null default 'RESERVED',
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (tenant_id, project_id, idempotency_key)
+);
 create index ix_render_job_status on render_job(status);
 create index ix_render_job_base_job_id on render_job(base_job_id);
 create index ix_render_job_trace_id on render_job(trace_id);
