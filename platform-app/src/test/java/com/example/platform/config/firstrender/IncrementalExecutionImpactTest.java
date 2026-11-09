@@ -51,9 +51,13 @@ class IncrementalExecutionImpactTest {
             assertFalse(impact.affectedRegions().isEmpty());
         }
     }
-    @Test void deleteKeepsSurvivingMultiClipDecodeComputations() {
+    @Test void deleteKeepsStableSurvivorAndRecomputesRenumberedInputBoundary() {
         var impact=IncrementalExecutionImpact.analyze(graph(List.of(base().get(0),base().get(2))),graph(base()));
-        assertEquals(2,impact.decisions().values().stream().filter(IncrementalExecutionImpact.Decision::unchanged).count());
+        // Removing the middle input renumbers green's composite-input boundary; red's boundary remains exact.
+        assertEquals(1,impact.decisions().values().stream().filter(IncrementalExecutionImpact.Decision::unchanged).count());
+        var target=graph(List.of(base().get(0),base().get(2)));
+        var stable=target.tasks().stream().filter(t->impact.decisions().get(t.id()).unchanged()).findFirst().orElseThrow();
+        assertEquals("source-red",stable.sourceArtifactPins().getFirst().artifactId().value());
         assertFalse(impact.affectedRegions().isEmpty());
     }
     @Test void changedInputDigestCannotBorrowOldDecode() {
