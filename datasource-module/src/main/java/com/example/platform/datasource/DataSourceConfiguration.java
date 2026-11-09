@@ -44,13 +44,18 @@ public class DataSourceConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(DSLContext.class)
-    public DSLContext dslContext(DataSource dataSource) throws java.sql.SQLException {
+    public DSLContext dslContext(DataSource dataSource, org.springframework.transaction.PlatformTransactionManager manager) throws java.sql.SQLException {
         // GCR-2 T7 (PIN_REGISTRATION_FAILURE_ROLLBACK_V1): jOOQ must participate in
         // Spring-managed transactions (@Transactional rollback). A bare DataSource
         // hands jOOQ an untracked connection that commits independently of the
         // surrounding transaction — a pin-persistence failure would NOT roll back
         // the revision insert. TransactionAwareDataSourceProxy binds jOOQ
         // connections to the active Spring transaction when one exists.
-        return DSL.using(new TransactionAwareDataSourceProxy(dataSource), SQLDialect.POSTGRES);
+        var config = new org.jooq.impl.DefaultConfiguration();
+        config.set(new TransactionAwareDataSourceProxy(dataSource));
+        config.set(SQLDialect.POSTGRES);
+        config.set(new org.springframework.boot.jooq.autoconfigure.SpringTransactionProvider(manager));
+        org.slf4j.LoggerFactory.getLogger(DataSourceConfiguration.class).info("JOOQ_TRANSACTION_PROVIDER={}", config.transactionProvider().getClass().getName());
+        return DSL.using(config);
     }
 }

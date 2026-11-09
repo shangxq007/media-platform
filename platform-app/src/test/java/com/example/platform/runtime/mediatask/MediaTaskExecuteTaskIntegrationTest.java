@@ -155,7 +155,7 @@ class MediaTaskExecuteTaskIntegrationTest {
                         new com.example.platform.shared.identity.ArtifactId(
                                 "render-task-" + expectedPublicationKey.substring(0, 52)),
                         com.example.platform.shared.digest.ContentDigest.sha256("a".repeat(64)))));
-        when(orchestrator.execute(any())).thenReturn(canned);
+        when(orchestrator.execute(any(), any(), any())).thenReturn(canned);
         MediaTaskActivity activity = activity(grantBoundary(fixture.taskId()), orchestrator);
 
         MediaTaskWorkflowResult result = activity.executeTask(preparedRef(fixture), TENANT);
@@ -275,7 +275,7 @@ class MediaTaskExecuteTaskIntegrationTest {
             RuntimeClosedLoopOrchestrator orchestrator) throws Exception {
         ArgumentCaptor<RuntimeClosedLoopRequest> captor =
                 ArgumentCaptor.forClass(RuntimeClosedLoopRequest.class);
-        org.mockito.Mockito.verify(orchestrator).execute(captor.capture());
+        org.mockito.Mockito.verify(orchestrator).execute(captor.capture(), any(), any());
         return captor.getValue();
     }
 

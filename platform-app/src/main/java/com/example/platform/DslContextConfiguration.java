@@ -42,6 +42,7 @@ public class DslContextConfiguration {
         config.set(settings);
         // Nested owner dsl.transactionResult() scopes use Spring savepoints, never commit the caller's transaction.
         config.set(new org.springframework.boot.jooq.autoconfigure.SpringTransactionProvider(manager));
+        log.info("JOOQ_TRANSACTION_PROVIDER={}", config.transactionProvider().getClass().getName());
         return DSL.using(config);
     }
 
