@@ -306,7 +306,7 @@ public final class MediaTaskActivity {
                 if (finalTask == null || finalTask.id().equals(taskId)) throw new IllegalStateException("Final output cannot be borrowed from a reference Job");
                 var input=incremental.pins().get(taskId);
                 committedOutputs.put(taskId,input);
-                traceTask(prepared,executableTask,keys.get(taskId),cacheability.get(taskId),incremental,false,input,committedOutputs);
+                traceTask(prepared,graph,executableTask,keys.get(taskId),cacheability.get(taskId),incremental,false,input,committedOutputs);
                 continue;
             }
             AssignmentGrant grant = currentGrantOrMint(
@@ -346,7 +346,7 @@ public final class MediaTaskActivity {
                 throw new IllegalStateException(
                         "executed task did not publish an authoritative output pin");
             }
-            traceTask(prepared,executableTask,keys.get(taskId),cacheability.get(taskId),incremental,
+            traceTask(prepared,graph,executableTask,keys.get(taskId),cacheability.get(taskId),incremental,
                     executed.executedTaskResults().containsKey(taskId),pin,committedOutputs);
             committedOutputs.put(executableTask.id(), pin);
             if (finalTask != null && executableTask.id().equals(finalTask.id())) {
@@ -391,7 +391,7 @@ public final class MediaTaskActivity {
      * Temporal attempt identity for the admission request. Production execution always has an
      * activity context; direct unit invocation without one is treated as the first attempt.
      */
-    private static void traceTask(PreparedTaskRef prepared, ExecutableTask task,
+    private static void traceTask(PreparedTaskRef prepared, ProviderBoundExecutableTaskGraph graph, ExecutableTask task,
             com.example.platform.execution.taskgraph.ExecutionReuseKey key, Cacheability cacheability,
             RuntimeClosedLoopOrchestrator.IncrementalInputs incremental, boolean executed, ArtifactPin output,
             Map<ExecutableTaskId,ArtifactPin> inputs) {
@@ -403,7 +403,11 @@ public final class MediaTaskActivity {
         event.put("effective",executed?"EXECUTED":"SKIPPED_AUTHORIZED_INPUT");event.put("executed",executed);
         event.put("outputArtifact",output.artifactId().value());event.put("outputDigest",output.contentDigest().canonicalValue());
         event.put("sourceArtifacts",task.sourceArtifactPins().stream().map(p->p.artifactId().value()).toList());
-        event.put("availablePredecessorArtifacts",inputs.values().stream().map(p->p.artifactId().value()).toList());
+        var consumed = new java.util.ArrayList<String>();
+        task.sourceArtifactPins().forEach(p->consumed.add(p.artifactId().value()));
+        graph.taskDependencies().stream().filter(d->d.consumerTaskId().equals(task.id()))
+                .map(d->inputs.get(d.producerTaskId())).filter(Objects::nonNull).forEach(p->consumed.add(p.artifactId().value()));
+        event.put("inputArtifacts",consumed.stream().sorted().toList());
         event.put("providerBinding",task.providerBindingPin().toString());
         try {LOG.info("RENDER_TASK_DECISION {}",new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(event));}
         catch(com.fasterxml.jackson.core.JsonProcessingException unavailable) {LOG.warn("RENDER_TASK_DECISION_SERIALIZATION_FAILED job={} task={}",prepared.renderJobId(),task.id());}

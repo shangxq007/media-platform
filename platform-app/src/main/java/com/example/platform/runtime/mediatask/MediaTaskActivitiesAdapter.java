@@ -55,8 +55,22 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
         requirePrepared(prepared,tenantId);
         return inTenant(tenantId,()-> {
             var e=prepared.execution();
-            var accepted=lifecycle.find(tenantId,e.projectId(),e.jobId()).filter(s->"COMPLETED".equals(s.status()) && e.equals(s.execution()));
+            var current=lifecycle.find(tenantId,e.projectId(),e.jobId());
+            var accepted=current.filter(s->"COMPLETED".equals(s.status()) && e.equals(s.execution()));
             if(accepted.isPresent())return new MediaTaskWorkflowResult(tenantId,e.jobId(),e.planDigest(),e.graphDigest(),prepared.executableTaskIds(),MediaTaskWorkflowResult.STATUS_EXECUTED,Objects.requireNonNull(accepted.orElseThrow().boundOutput()));
+            // A committed final output no longer needs its historical source inputs on Activity retry.
+            // Recover only the exact persisted claim AND its current-generation native fenced success.
+            var bound=current.filter(s->e.equals(s.execution())).map(s->s.boundOutput()).orElse(null);
+            if(bound!=null) {
+                var finalSuccess=completed.find(e.finalTaskId());
+                boolean exact=finalSuccess.filter(p->p.taskId().equals(bound.taskId()) && p.attemptId().equals(bound.taskAttemptId())
+                        && p.generation()==bound.taskGeneration() && p.artifactId().equals(bound.artifactId())).isPresent();
+                var finalArtifact=artifacts.findArtifact(new com.example.platform.artifact.app.ArtifactScope(tenantId,e.projectId(),e.jobId()),
+                        new com.example.platform.shared.identity.ArtifactId(bound.artifactId()));
+                if(exact && finalArtifact.filter(a->a.state()==com.example.platform.artifact.domain.ArtifactState.AVAILABLE
+                        && a.artifactKind()==com.example.platform.artifact.domain.ArtifactKind.RENDER_MASTER).isPresent())
+                    return new MediaTaskWorkflowResult(tenantId,e.jobId(),e.planDigest(),e.graphDigest(),prepared.executableTaskIds(),MediaTaskWorkflowResult.STATUS_EXECUTED,bound);
+            }
             var incremental=activity.incrementalInputs(prepared,tenantId,lifecycle.incrementalReference(e));
             // Recover a lost Activity response only from every current-generation fenced success.
             var recovered=prepared.executableTaskIds().stream().map(completed::find).toList();

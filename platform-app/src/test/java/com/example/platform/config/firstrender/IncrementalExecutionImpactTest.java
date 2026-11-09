@@ -23,7 +23,7 @@ class IncrementalExecutionImpactTest {
     static final EffectSemanticSnapshot EFFECT=new EffectSemanticSnapshotAuthority(new EffectDefinitionVersionRegistry.InMemory(),new EffectSemanticSnapshotStore.InMemory()).mintEmpty();
     static TimelineClip clip(String id,long start,long end,String digest) {
         return new TimelineClip(id,"asset-"+id,"stream-"+id,"source-"+id,digest,
-            MediaTime.ofMillis(0),MediaTime.ofMillis(end-start),MediaTime.ofMillis(start),MediaTime.ofMillis(end),"MEDIA_STREAM",ConstantRateTemporalMapping.of(1,1,PlaybackDirection.FORWARD));
+            MediaTime.ofMillis(start),MediaTime.ofMillis(end),MediaTime.ofMillis(0),MediaTime.ofMillis(end-start),"MEDIA_STREAM",ConstantRateTemporalMapping.of(1,1,PlaybackDirection.FORWARD));
     }
     static ProviderBoundExecutableTaskGraph graph(List<TimelineClip> clips) {
         var document=new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,List.of(new TimelineTrack("track","v",TrackType.VIDEO,clips)),TimelineMetadata.empty(),AudioMix.EMPTY,List.of(),List.of());
@@ -31,7 +31,7 @@ class IncrementalExecutionImpactTest {
         String semantic=TimelineRevisionEffectSemanticCommitment.revisionEffectSemanticDigest(digest,EFFECT.reference());
         var revision=new TimelineRevision(UUID.randomUUID().toString(),"project",null,TimelineDocument.CURRENT_SCHEMA_VERSION,null,semantic,Instant.EPOCH,"test",
             new TimelineRevisionSemanticContext(digest,EFFECT.reference(),semantic,TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1)).hydrate(document);
-        Map<ArtifactId,RenderSourceResolutionState> sources=new HashMap<>();clips.forEach(c->sources.put(new ArtifactId("source-"+c.clipId()),RenderSourceResolutionState.RESOLVED));
+        Map<ArtifactId,RenderSourceResolutionState> sources=new HashMap<>();clips.forEach(c->sources.put(new ArtifactId(c.getArtifactId()),RenderSourceResolutionState.RESOLVED));
         var result=new RenderPlanningEntryService().plan(revision,EFFECT,
             new RenderRequest(new RenderRequestId(UUID.randomUUID().toString()),new RenderExtent(MediaTime.ofMillis(0),MediaTime.ofMillis(3000),FrameRate.of(4,1)),List.of(RenderOutputRequirement.of(RenderOutputRole.RENDER_MASTER))),
             new SourceResolutionInput(sources),new CapabilityContext(Set.of(RenderCapabilityVocabulary.videoDecode().capabilityId(),RenderCapabilityVocabulary.composite().capabilityId(),RenderCapabilityVocabulary.outputEncode().capabilityId())));

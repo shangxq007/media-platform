@@ -211,6 +211,7 @@ class MediaTaskActivityExecutionTest {
     /** TEST-ONLY store double: the execution half is always called with an already-prepared graph. */
     private static final class UnusedBoundGraphInputStore
             implements com.example.platform.execution.binding.BoundGraphInputStore {
+        @Override public java.util.Optional<com.example.platform.execution.binding.BoundGraphReference> findReference(String tenant, String job) { return java.util.Optional.empty(); }
 
         @Override
         public com.example.platform.execution.binding.BoundGraphReference save(
