@@ -91,6 +91,19 @@ class MediaTaskActivitiesAdapterTest {
         assertThat(com.example.platform.shared.web.TenantContext.get()).isNull();
     }
 
+    @Test void exactCommittedFinalResponseRecoversWithoutHistoricalInputs() {
+        var activity=mock(MediaTaskActivity.class);var adapter=new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts,mock(org.springframework.transaction.PlatformTransactionManager.class));
+        var output=new GraphRenderLifecycle.Output(DIGEST,"native-attempt",2,"current-final");
+        var prepared=new PreparedTaskRef("tenant-1","render-job-1",REFERENCE.planRef(),DIGEST,DIGEST,List.of(DIGEST),EXECUTION);
+        when(lifecycle.find("tenant-1","project-1","render-job-1")).thenReturn(java.util.Optional.of(new GraphRenderLifecycle.Status(EXECUTION,"EXECUTING",null,null,output)));
+        when(completed.find(DIGEST)).thenReturn(java.util.Optional.of(new CompletedTaskOutputQuery.Output(DIGEST,"native-attempt",2,"current-final")));
+        var finalArtifact=new com.example.platform.artifact.domain.Artifact(new com.example.platform.shared.identity.ArtifactId("current-final"),"tenant-1",com.example.platform.shared.digest.ContentDigest.sha256("d".repeat(64)),10,
+                com.example.platform.artifact.domain.ArtifactMediaType.VIDEO,com.example.platform.artifact.domain.ArtifactKind.RENDER_MASTER,com.example.platform.artifact.domain.ArtifactState.AVAILABLE,1,java.time.Instant.EPOCH);
+        when(artifacts.findArtifact(new com.example.platform.artifact.app.ArtifactScope("tenant-1","project-1","render-job-1"),new com.example.platform.shared.identity.ArtifactId("current-final"))).thenReturn(java.util.Optional.of(finalArtifact));
+        assertThat(adapter.executeTask(prepared,"tenant-1").finalOutput()).isEqualTo(output);
+        org.mockito.Mockito.verifyNoInteractions(activity);
+    }
+
     @Test void conflictingPlanReferenceOrTaskInventoryFailsBeforeOwnerOrNativeQueries() {
         var activity=mock(MediaTaskActivity.class);var adapter=new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts,mock(org.springframework.transaction.PlatformTransactionManager.class));
         var p=new PreparedTaskRef("tenant-1","render-job-1","other-ref",DIGEST,DIGEST,List.of(DIGEST),EXECUTION);
