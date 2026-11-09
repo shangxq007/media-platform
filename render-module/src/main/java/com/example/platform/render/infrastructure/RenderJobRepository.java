@@ -444,6 +444,19 @@ public class RenderJobRepository {
         return Optional.ofNullable(record).map(r -> r.get(RENDER_JOB.ID, String.class));
     }
 
+    /** Pins the immutable Timeline revision on a newly prepared render job. */
+    public void pinRevision(String tenantId, String projectId, String jobId, String revisionId) {
+        if (dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.TIMELINE_REVISION_ID, revisionId)
+                .where(RENDER_JOB.ID.eq(jobId))
+                .and(RENDER_JOB.PROJECT_ID.eq(projectId))
+                .and(RENDER_JOB.TENANT_ID.eq(tenantId))
+                .and(RENDER_JOB.TIMELINE_REVISION_ID.isNull())
+                .execute() != 1) {
+            throw new IllegalStateException("render job revision could not be pinned");
+        }
+    }
+
     private RenderJobResponse mapToResponse(Record record) {
         return new RenderJobResponse(
                 record.get(RENDER_JOB.ID),

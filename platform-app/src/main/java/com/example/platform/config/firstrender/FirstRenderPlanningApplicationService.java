@@ -127,6 +127,7 @@ public class FirstRenderPlanningApplicationService {
                 new CreateRenderJobRequest(projectId, payload.snapshotId(), request.profile()),
                 initiator);
         String renderJobId = job.id();
+        renderJobService.pinRevision(tenantId, projectId, renderJobId, revisionId);
 
 
         return new FirstRenderPlanningResult(

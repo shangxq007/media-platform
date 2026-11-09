@@ -87,6 +87,11 @@ public class RenderJobService {
         return job;
     }
 
+    /** Pins the exact Timeline revision on an existing graph-preparation job. */
+    public void pinRevision(String tenantId, String projectId, String jobId, String revisionId) {
+        renderJobRepository.pinRevision(tenantId, projectId, jobId, revisionId);
+    }
+
     public RenderJobResponse getById(String jobId) {
         String tenantId = TenantContext.get();
         CanonicalActor actor = requireReadActor(tenantId);
