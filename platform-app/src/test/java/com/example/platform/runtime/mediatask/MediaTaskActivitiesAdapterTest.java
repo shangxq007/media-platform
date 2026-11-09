@@ -52,7 +52,7 @@ class MediaTaskActivitiesAdapterTest {
         when(graph.tasks()).thenReturn(List.of(task));
         when(activity.prepareTask(REFERENCE, "tenant-1")).thenReturn(new PreparedTask(
                 graph, mock(BoundGraphInputs.class), new ExecutableTaskGraphDigest(DIGEST)));
-        MediaTaskActivitiesAdapter adapter = new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts);
+        MediaTaskActivitiesAdapter adapter = new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts,mock(org.springframework.transaction.PlatformTransactionManager.class));
 
         PreparedTaskRef prepared = adapter.prepareTask(REFERENCE, "tenant-1");
 
@@ -67,21 +67,21 @@ class MediaTaskActivitiesAdapterTest {
     @Test
     void executeTaskDelegatesToTheActivityUnchanged() {
         MediaTaskActivity activity = mock(MediaTaskActivity.class);
-        MediaTaskActivitiesAdapter adapter = new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts);
+        MediaTaskActivitiesAdapter adapter = new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts,mock(org.springframework.transaction.PlatformTransactionManager.class));
         PreparedTaskRef prepared = new PreparedTaskRef(
                 "tenant-1", "render-job-1", REFERENCE.planRef(), DIGEST, DIGEST, List.of(DIGEST),EXECUTION);
         MediaTaskWorkflowResult result = new MediaTaskWorkflowResult(
                 "tenant-1", "render-job-1", DIGEST, DIGEST, List.of(DIGEST),
                 MediaTaskWorkflowResult.STATUS_EXECUTED);
-        when(activity.executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any())).thenReturn(result);
+        when(activity.executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any())).thenReturn(result);
 
         assertThat(adapter.executeTask(prepared, "tenant-1")).isSameAs(result);
-        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any());
+        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any());
     }
 
     @Test
     void acceptedCompletionRemainsIdempotentAfterAnotherJobAdvancesNativeGeneration() {
-        var activity=mock(MediaTaskActivity.class);var adapter=new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts);
+        var activity=mock(MediaTaskActivity.class);var adapter=new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts,mock(org.springframework.transaction.PlatformTransactionManager.class));
         var output=new GraphRenderLifecycle.Output(DIGEST,"old-native-attempt",1,"accepted-artifact");
         var prepared=new PreparedTaskRef("tenant-1","render-job-1",REFERENCE.planRef(),DIGEST,DIGEST,List.of(DIGEST),EXECUTION);
         var result=new MediaTaskWorkflowResult("tenant-1","render-job-1",DIGEST,DIGEST,List.of(DIGEST),MediaTaskWorkflowResult.STATUS_EXECUTED,output);
@@ -92,7 +92,7 @@ class MediaTaskActivitiesAdapterTest {
     }
 
     @Test void conflictingPlanReferenceOrTaskInventoryFailsBeforeOwnerOrNativeQueries() {
-        var activity=mock(MediaTaskActivity.class);var adapter=new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts);
+        var activity=mock(MediaTaskActivity.class);var adapter=new MediaTaskActivitiesAdapter(activity,lifecycle,completed,artifacts,mock(org.springframework.transaction.PlatformTransactionManager.class));
         var p=new PreparedTaskRef("tenant-1","render-job-1","other-ref",DIGEST,DIGEST,List.of(DIGEST),EXECUTION);
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,()->adapter.executeTask(p,"tenant-1"));
         var correct=new PreparedTaskRef("tenant-1","render-job-1",REFERENCE.planRef(),DIGEST,DIGEST,List.of(DIGEST),EXECUTION);

@@ -36,7 +36,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Set;
 
 /** Worker orchestration over verified bound-graph inputs and existing Execution/Artifact contracts.
  * The Temporal adapter owns calls into Render's public lifecycle. This component does not write
@@ -161,6 +160,16 @@ public final class MediaTaskActivity {
             Map<ExecutableTaskId, DurableOutputTarget> durableOutputTargets,
             Map<ExecutableTaskId, ArtifactCommitMetadata> artifactCommitMetadata,
             RuntimeClosedLoopOrchestrator orchestrator) throws IOException {
+        return executePreparedGraph(tenantId, prepared, requestedTasks, seedOutputPins, currentGrants, durableOutputTargets,
+                artifactCommitMetadata, orchestrator, (id, execution, action) -> action.commit(), null);
+    }
+
+    private RuntimeClosedLoopResult executePreparedGraph(String tenantId, PreparedTask prepared,
+            Set<ExecutableTaskId> requestedTasks, Map<ExecutableTaskId, ArtifactPin> seedOutputPins,
+            Map<ExecutableTaskId, AssignmentGrant> currentGrants, Map<ExecutableTaskId, DurableOutputTarget> durableOutputTargets,
+            Map<ExecutableTaskId, ArtifactCommitMetadata> artifactCommitMetadata, RuntimeClosedLoopOrchestrator orchestrator,
+            com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
+            com.example.platform.sandbox.SandboxCancellation cancellation) throws IOException {
         Objects.requireNonNull(prepared, "prepared");
         Objects.requireNonNull(orchestrator, "orchestrator");
         if (tenantId == null || tenantId.isBlank()) {
@@ -190,7 +199,7 @@ public final class MediaTaskActivity {
         Map<ExecutableTaskId, Cacheability> cacheability =
                 TaskCacheabilityDeriver.derive(graph);
         return orchestrator.execute(new RuntimeClosedLoopRequest(
-                tenantId, graph, requestedTasks, cacheability, taskExecutions, seedOutputPins));
+                tenantId, graph, requestedTasks, cacheability, taskExecutions, seedOutputPins), publication, cancellation);
     }
 
     private static <T> T requireEntry(
@@ -219,6 +228,13 @@ public final class MediaTaskActivity {
 
     public MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared,String tenantId,
             java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution) {
+        return executeTask(prepared, tenantId, beforeFinalExecution, (id, execution, action) -> action.commit(), null);
+    }
+
+    public MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared, String tenantId,
+            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution,
+            com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
+            com.example.platform.sandbox.SandboxCancellation cancellation) {
         Objects.requireNonNull(prepared, "prepared");
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("tenantId must not be blank");
@@ -247,6 +263,8 @@ public final class MediaTaskActivity {
         com.example.platform.render.api.GraphRenderLifecycle.Output finalClaim = null;
         ArtifactPin finalPin = null;
         for (ExecutableTaskId taskId : graph.topologicalTaskOrder()) {
+            if (cancellation != null && cancellation.isCancellationRequested())
+                throw new IllegalStateException("Render execution cancelled before task admission");
             ExecutableTask executableTask = tasksById.get(taskId);
             AssignmentGrant grant = currentGrantOrMint(
                     prepared.renderJobId(), executableTask.id(), graph, executableTask,
@@ -271,7 +289,7 @@ public final class MediaTaskActivity {
                         Map.of(executableTask.id(), grant),
                         Map.of(executableTask.id(), publicationPlan.durableOutputTarget()),
                         Map.of(executableTask.id(), publicationPlan.artifactCommitMetadata()),
-                        orchestrator);
+                        orchestrator, publication, cancellation);
             } catch (IOException failure) {
                 throw new IllegalStateException("media task execution failed", failure);
             }

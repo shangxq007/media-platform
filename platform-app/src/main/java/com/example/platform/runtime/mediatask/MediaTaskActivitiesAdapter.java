@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 @ActivityImpl(taskQueues = "media-platform-tasks")
 public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
 
+    private final org.springframework.transaction.support.TransactionTemplate transactions;
     private final MediaTaskActivity activity;
     private final com.example.platform.render.api.GraphRenderLifecycle lifecycle;
     private final com.example.platform.workerfabric.domain.CompletedTaskOutputQuery completed;
@@ -25,7 +26,9 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
     public MediaTaskActivitiesAdapter(MediaTaskActivity activity,
             com.example.platform.render.api.GraphRenderLifecycle lifecycle,
             com.example.platform.workerfabric.domain.CompletedTaskOutputQuery completed,
-            com.example.platform.artifact.app.ArtifactApplicationQuery artifacts) {
+            com.example.platform.artifact.app.ArtifactApplicationQuery artifacts,
+            org.springframework.transaction.PlatformTransactionManager manager) {
+        this.transactions = new org.springframework.transaction.support.TransactionTemplate(manager);
         this.activity = Objects.requireNonNull(activity, "activity");
         this.lifecycle=Objects.requireNonNull(lifecycle);this.completed=Objects.requireNonNull(completed);this.artifacts=Objects.requireNonNull(artifacts);
     }
@@ -65,7 +68,28 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
                 lifecycle.bindOutput(e,o);
                 return new MediaTaskWorkflowResult(tenantId,e.jobId(),e.planDigest(),e.graphDigest(),prepared.executableTaskIds(),MediaTaskWorkflowResult.STATUS_EXECUTED,o);
             }
-            return activity.executeTask(prepared,tenantId,o->lifecycle.bindOutput(e,o));
+            var cancellation = new com.example.platform.sandbox.SandboxCancellation() {
+                long nextCheck; boolean stopped;
+                public boolean isCancellationRequested() {
+                    if (stopped || Thread.currentThread().isInterrupted()) return true;
+                    long now = System.nanoTime(); if (now < nextCheck) return false; nextCheck = now + 100_000_000L;
+                    try {
+                        io.temporal.activity.Activity.getExecutionContext().heartbeat(java.util.Map.of("renderJobId", e.jobId(), "attemptId", e.attemptId(), "generation", e.generation()));
+                        var current = lifecycle.find(tenantId, e.projectId(), e.jobId());
+                        stopped = current.isEmpty() || !e.equals(current.orElseThrow().execution()) || !"EXECUTING".equals(current.orElseThrow().status());
+                    } catch (io.temporal.client.ActivityCompletionException cancelled) { stopped = true; }
+                    return stopped;
+                }
+            };
+            return activity.executeTask(prepared,tenantId,o->lifecycle.bindOutput(e,o), (task, execution, action) -> {
+                try {
+                    return transactions.execute(tx -> {
+                        lifecycle.requireExecuting(e);
+                        try { return action.commit(); }
+                        catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
+                    });
+                } catch (java.io.UncheckedIOException failure) { throw failure.getCause(); }
+            }, cancellation);
         });
     }
 

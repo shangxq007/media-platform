@@ -18,6 +18,8 @@ public interface GraphRenderLifecycle {
 
     Execution begin(String tenantId, String jobId, String planRef, String planDigest,
             String graphDigest, String finalTaskId);
+    /** Holds the canonical Job lock until the caller's publication transaction ends; rejects stale/terminal execution. */
+    void requireExecuting(Execution execution);
     void bindOutput(Execution execution, Output output);
     ArtifactOutputReference complete(Execution execution, Output output);
     void fail(String tenantId, String jobId, String planRef, String planDigest,

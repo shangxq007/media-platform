@@ -98,6 +98,12 @@ public class GraphRenderLifecycleService implements GraphRenderLifecycle {
         if(row.get("expected_artifact_id")!=null && (!o.artifactId().equals(row.get("expected_artifact_id",String.class))
                 ||!o.taskAttemptId().equals(row.get("task_attempt_id",String.class))||o.taskGeneration()!=row.get("task_generation",Long.class)))throw new IllegalArgumentException("stale or conflicting final publication");
     }
+    @Override @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void requireExecuting(Execution e) {
+        locked(e);
+        if (!"EXECUTING".equals(jobs.requireScopedJobForUpdate(e.tenantId(), e.jobId()).get("status", String.class)))
+            throw new IllegalStateException("Render execution no longer accepts publication");
+    }
     @Override @Transactional
     public void bindOutput(Execution e,Output o) {
         Record row=locked(e);requireOutput(e,o,row);
