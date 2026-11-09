@@ -64,6 +64,7 @@ import com.example.platform.typedschema.jooq.generated.tables.FeatureDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagEvaluationSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagTargetingRule;
+import com.example.platform.typedschema.jooq.generated.tables.FirstRenderIdempotency;
 import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
@@ -544,6 +545,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.feature_flag_targeting_rule</code>.
      */
     public final FeatureFlagTargetingRule FEATURE_FLAG_TARGETING_RULE = FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE;
+
+    /**
+     * The table <code>public.first_render_idempotency</code>.
+     */
+    public final FirstRenderIdempotency FIRST_RENDER_IDEMPOTENCY = FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY;
 
     /**
      * The table <code>public.frontend_route_definition</code>.
@@ -1411,6 +1417,7 @@ public class Public extends SchemaImpl {
             FeatureFlagDefinition.FEATURE_FLAG_DEFINITION,
             FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT,
             FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE,
+            FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY,
             FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION,
             GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT,
             IngestPreflightSafeReportRecords.INGEST_PREFLIGHT_SAFE_REPORT_RECORDS,

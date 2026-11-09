@@ -224,13 +224,14 @@ public class FfmpegWorkerRuntimeConfiguration {
             RuntimeClosedLoopOrchestrator runtimeClosedLoopOrchestrator,
             MediaTaskPublicationSettings mediaTaskPublicationSettings,
             FirstRenderGrantMinter firstRenderGrantMinter,
-            ProviderPluginCatalog providerPluginCatalog) {
+            ProviderPluginCatalog providerPluginCatalog,
+            com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle) {
         return new MediaTaskActivity(
                 boundGraphInputStore,
                 atomicAssignmentGrantBoundary,
                 runtimeClosedLoopOrchestrator,
                 mediaTaskPublicationSettings,
                 firstRenderGrantMinter,
-                providerPluginCatalog);
+                providerPluginCatalog, nativeLifecycle);
     }
 }

@@ -64,6 +64,7 @@ import com.example.platform.typedschema.jooq.generated.tables.FeatureDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagEvaluationSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagTargetingRule;
+import com.example.platform.typedschema.jooq.generated.tables.FirstRenderIdempotency;
 import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
@@ -281,6 +282,7 @@ import com.example.platform.typedschema.jooq.generated.tables.records.FeatureDef
 import com.example.platform.typedschema.jooq.generated.tables.records.FeatureFlagDefinitionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.FeatureFlagEvaluationSnapshotRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.FeatureFlagTargetingRuleRecord;
+import com.example.platform.typedschema.jooq.generated.tables.records.FirstRenderIdempotencyRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.FrontendRouteDefinitionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.GroupRoleAssignmentRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.IngestPreflightSafeReportRecordsRecord;
@@ -551,6 +553,7 @@ public class Keys {
     public static final UniqueKey<FeatureFlagDefinitionRecord> FEATURE_FLAG_DEFINITION_PKEY = Internal.createUniqueKey(FeatureFlagDefinition.FEATURE_FLAG_DEFINITION, DSL.name("feature_flag_definition_pkey"), new TableField[] { FeatureFlagDefinition.FEATURE_FLAG_DEFINITION.ID }, true);
     public static final UniqueKey<FeatureFlagEvaluationSnapshotRecord> FEATURE_FLAG_EVALUATION_SNAPSHOT_PKEY = Internal.createUniqueKey(FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT, DSL.name("feature_flag_evaluation_snapshot_pkey"), new TableField[] { FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT.SNAPSHOT_ID }, true);
     public static final UniqueKey<FeatureFlagTargetingRuleRecord> FEATURE_FLAG_TARGETING_RULE_PKEY = Internal.createUniqueKey(FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE, DSL.name("feature_flag_targeting_rule_pkey"), new TableField[] { FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE.ID }, true);
+    public static final UniqueKey<FirstRenderIdempotencyRecord> FIRST_RENDER_IDEMPOTENCY_PKEY = Internal.createUniqueKey(FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY, DSL.name("first_render_idempotency_pkey"), new TableField[] { FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY.TENANT_ID, FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY.PROJECT_ID, FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY.IDEMPOTENCY_KEY }, true);
     public static final UniqueKey<FrontendRouteDefinitionRecord> FRONTEND_ROUTE_DEFINITION_PKEY = Internal.createUniqueKey(FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION, DSL.name("frontend_route_definition_pkey"), new TableField[] { FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION.ID }, true);
     public static final UniqueKey<FrontendRouteDefinitionRecord> FRONTEND_ROUTE_DEFINITION_ROUTE_KEY_KEY = Internal.createUniqueKey(FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION, DSL.name("frontend_route_definition_route_key_key"), new TableField[] { FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION.ROUTE_KEY }, true);
     public static final UniqueKey<GroupRoleAssignmentRecord> GROUP_ROLE_ASSIGNMENT_PKEY = Internal.createUniqueKey(GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT, DSL.name("group_role_assignment_pkey"), new TableField[] { GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT.ID }, true);

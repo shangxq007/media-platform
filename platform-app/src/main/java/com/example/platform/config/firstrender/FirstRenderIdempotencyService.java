@@ -16,8 +16,9 @@ public class FirstRenderIdempotencyService {
 
     public static String requestHash(String revisionId, long startMillis, long endMillis,
             int rateNumerator, int rateDenominator, String profile, String outputFormat) {
+        var rate = com.example.platform.shared.time.FrameRate.of(rateNumerator, rateDenominator);
         String canonical = String.join("\n", revisionId, Long.toString(startMillis), Long.toString(endMillis),
-                rateNumerator + "/" + rateDenominator, profile, outputFormat);
+                rate.numerator() + "/" + rate.denominator(), profile, outputFormat);
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(canonical.getBytes(StandardCharsets.UTF_8)));

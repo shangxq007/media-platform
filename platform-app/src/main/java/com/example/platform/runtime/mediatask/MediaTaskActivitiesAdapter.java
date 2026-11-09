@@ -77,7 +77,10 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
                         io.temporal.activity.Activity.getExecutionContext().heartbeat(java.util.Map.of("renderJobId", e.jobId(), "attemptId", e.attemptId(), "generation", e.generation()));
                         var current = lifecycle.find(tenantId, e.projectId(), e.jobId());
                         stopped = current.isEmpty() || !e.equals(current.orElseThrow().execution()) || !"EXECUTING".equals(current.orElseThrow().status());
-                    } catch (io.temporal.client.ActivityCompletionException cancelled) { stopped = true; }
+                    } catch (RuntimeException uncertainty) {
+                        // Returning cancellation lets the sandbox prove termination; throwing here can strand a child.
+                        stopped = true;
+                    }
                     return stopped;
                 }
             };

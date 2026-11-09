@@ -48,6 +48,7 @@ public final class MediaTaskActivity {
     private final MediaTaskPublicationSettings publicationSettings;
     private final FirstRenderGrantMinter grantMinter;
     private final ProviderPluginCatalog providerPluginCatalog;
+    private final com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle;
 
     public MediaTaskActivity(
             BoundGraphInputStore boundGraphInputStore,
@@ -73,6 +74,14 @@ public final class MediaTaskActivity {
             MediaTaskPublicationSettings publicationSettings,
             FirstRenderGrantMinter grantMinter,
             ProviderPluginCatalog providerPluginCatalog) {
+        this(boundGraphInputStore, grantBoundary, orchestrator, publicationSettings, grantMinter, providerPluginCatalog, null);
+    }
+
+    public MediaTaskActivity(BoundGraphInputStore boundGraphInputStore, AtomicAssignmentGrantBoundary grantBoundary,
+            RuntimeClosedLoopOrchestrator orchestrator, MediaTaskPublicationSettings publicationSettings,
+            FirstRenderGrantMinter grantMinter, ProviderPluginCatalog providerPluginCatalog,
+            com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle) {
+        this.nativeLifecycle = nativeLifecycle;
         this.boundGraphInputStore = Objects.requireNonNull(
                 boundGraphInputStore, "boundGraphInputStore");
         this.grantBoundary = Objects.requireNonNull(grantBoundary, "grantBoundary");
@@ -269,6 +278,8 @@ public final class MediaTaskActivity {
             AssignmentGrant grant = currentGrantOrMint(
                     prepared.renderJobId(), executableTask.id(), graph, executableTask,
                     admissionAttempt);
+            var physicallyFinished = new java.util.concurrent.atomic.AtomicBoolean();
+            try {
             TaskOutputPublicationPlan publicationPlan =
                     TaskOutputPublicationPlanner.plan(executableTask, new TaskOutputPublicationContext(
                             publicationContext.tenantId(),publicationContext.renderJobId(),publicationContext.projectId(),publicationContext.storageProviderId(),publicationContext.region(),publicationContext.mediaType(),
@@ -289,7 +300,10 @@ public final class MediaTaskActivity {
                         Map.of(executableTask.id(), grant),
                         Map.of(executableTask.id(), publicationPlan.durableOutputTarget()),
                         Map.of(executableTask.id(), publicationPlan.artifactCommitMetadata()),
-                        orchestrator, publication, cancellation);
+                        orchestrator, (id, execution, action) -> {
+                            physicallyFinished.set(true); // provider returned staged bytes; its process has finished
+                            return publication.commit(id, execution, action);
+                        }, cancellation);
             } catch (IOException failure) {
                 throw new IllegalStateException("media task execution failed", failure);
             }
@@ -301,6 +315,16 @@ public final class MediaTaskActivity {
             committedOutputs.put(executableTask.id(), pin);
             if (finalTask != null && executableTask.id().equals(finalTask.id())) {
                 finalPin = pin;
+            }
+            release(grant, true);
+            } catch (RuntimeException failure) {
+                var nativeFailure = failure instanceof com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure f ? f : null;
+                boolean knownExit = physicallyFinished.get() || (nativeFailure != null
+                        && nativeFailure.code() != com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode.RUNTIME_EXECUTION_UNKNOWN
+                        && nativeFailure.code() != com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED);
+                try { release(grant, knownExit); }
+                catch (RuntimeException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
+                throw failure;
             }
         }
         if(finalTask!=null) {
@@ -331,6 +355,15 @@ public final class MediaTaskActivity {
      * Temporal attempt identity for the admission request. Production execution always has an
      * activity context; direct unit invocation without one is treated as the first attempt.
      */
+    private void release(AssignmentGrant grant, boolean physicalExitConfirmed) {
+        if (nativeLifecycle == null) return; // direct planning fixtures do not own an executing native runtime
+        var fence = com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary.LeaseOwnershipFence.from(grant.lease());
+        nativeLifecycle.cancelAttempt(new com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary.AttemptCancellation(fence, java.time.Instant.now()));
+        if (physicalExitConfirmed) nativeLifecycle.confirmPhysicalRelease(
+                new com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary.PhysicalReleaseConfirmation(
+                        "first-render-release:" + grant.attempt().id().value(), fence, grant.assignment().reservationIds(), java.time.Instant.now()));
+    }
+
     private static long currentAdmissionAttempt() {
         try {
             return Activity.getExecutionContext().getInfo().getAttempt();

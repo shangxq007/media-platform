@@ -32,11 +32,17 @@ public class DslContextConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public DSLContext dslContext(DataSource dataSource) {
+    public DSLContext dslContext(DataSource dataSource, org.springframework.transaction.PlatformTransactionManager manager) {
         Settings settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
         // GCR-2 T7 (PIN_REGISTRATION_FAILURE_ROLLBACK_V1): jOOQ joins Spring
         // transactions so revision+artifact_pin commit/rollback atomically.
-        return DSL.using(new TransactionAwareDataSourceProxy(dataSource), SQLDialect.POSTGRES, settings);
+        var config = new org.jooq.impl.DefaultConfiguration();
+        config.set(new TransactionAwareDataSourceProxy(dataSource));
+        config.set(SQLDialect.POSTGRES);
+        config.set(settings);
+        // Nested owner dsl.transactionResult() scopes use Spring savepoints, never commit the caller's transaction.
+        config.set(new org.springframework.boot.jooq.autoconfigure.SpringTransactionProvider(manager));
+        return DSL.using(config);
     }
 
     @Bean
