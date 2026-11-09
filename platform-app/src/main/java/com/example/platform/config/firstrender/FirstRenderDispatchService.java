@@ -22,13 +22,17 @@ public class FirstRenderDispatchService {
         try {
             return Boolean.TRUE.equals(transactions.execute(tx -> {
                 // Same Render row lock as cancellation, begin and terminal acceptance. No competing rebind.
-                var rows = jdbc.queryForList("select j.status,j.graph_preparation_deadline,b.plan_ref,b.plan_digest,b.expected_etg_digest "
+                var rows = jdbc.queryForList("select j.status,j.graph_preparation_stage,j.graph_preparation_deadline,b.plan_ref,b.plan_digest,b.expected_etg_digest "
                         + "from render_job j join render_binding_inputs b on b.render_job_id=j.id and b.tenant_id=j.tenant_id "
                         + "where j.id=? and j.tenant_id=? for update of j skip locked", job, tenant);
                 if (rows.isEmpty()) return false;
                 Map<String,Object> row = rows.getFirst();
                 String state = (String) row.get("status");
-                if (!"QUEUED".equals(state)) return false;
+                if (!"QUEUED".equals(state)) {
+                    // A real Render execution is durable proof that the workflow passed begin, including a lost start response.
+                    return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from render_graph_execution where tenant_id=? and job_id=?)", Boolean.class, tenant, job));
+                }
+                if (!"DISPATCH".equals(row.get("graph_preparation_stage"))) return false;
                 var deadline = (java.sql.Timestamp) row.get("graph_preparation_deadline");
                 if (deadline == null || !deadline.toInstant().isAfter(java.time.Instant.now())) return false;
                 var reference = new BoundGraphReference(tenant, job, (String) row.get("plan_ref"), (String) row.get("plan_digest"), (String) row.get("expected_etg_digest"));

@@ -65,7 +65,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * P2-5a2c: real-PostgreSQL proof for the {@code render_binding_inputs} migration and the jOOQ
- * bound-graph input store adapter — migration application, save/load round-trip, upsert-per-job,
+ * bound-graph input store adapter — migration application, save/load round-trip, immutable-per-job,
  * and fail-closed digest verification. The plan/candidate fixture mirrors the bounded V1 codec
  * fixture in media-execution-plan-module.
  */
@@ -146,15 +146,16 @@ class JooqBoundGraphInputStoreIT {
     }
 
     @Test
-    void saveIsUpsertPerTenantAndJob() {
+    void saveRejectsRebindingButAllowsExactReplayPerTenantAndJob() {
         BoundGraphInputs first = inputsForBoundPlan("job-upsert");
-        store.save(first, "tenant-a", "job-upsert");
+        BoundGraphReference reference = store.save(first, "tenant-a", "job-upsert");
+        assertEquals(reference, store.save(first, "tenant-a", "job-upsert"));
         BoundGraphInputs second = inputsForBoundPlan("job-upsert-v2");
-        BoundGraphReference reference = store.save(second, "tenant-a", "job-upsert");
+        assertThrows(IllegalStateException.class, () -> store.save(second, "tenant-a", "job-upsert"));
 
         assertEquals(1, dsl.fetchCount(DSL.table("render_binding_inputs"),
                 DSL.field("tenant_id").eq("tenant-a").and(DSL.field("render_job_id").eq("job-upsert"))));
-        assertEquals(second.physicalPlan().planId(), store.load(reference).physicalPlan().planId());
+        assertEquals(first.physicalPlan().planId(), store.load(reference).physicalPlan().planId());
     }
 
     @Test
