@@ -430,6 +430,11 @@ public final class MediaTaskActivity {
         }
     }
 
+    static void requireOwnedGrant(AssignmentGrant grant, String job, ExecutableTaskId task, long activityAttempt) {
+        if (!FirstRenderGrantMinter.requestWorkId(job, task, activityAttempt).equals(grant.requestWorkId()))
+            throw new AdmissionCapacityRetryableException("TASK_OWNERSHIP_BUSY");
+    }
+
     private AssignmentGrant currentGrantOrMint(
             String renderJobId,
             ExecutableTaskId taskId,
@@ -438,7 +443,10 @@ public final class MediaTaskActivity {
             long admissionAttempt) {
         var current = grantBoundary.findCurrentGrant(taskId);
         if (current.isPresent()) {
-            if (grantMinter != null) grantMinter.requireLocalGrant(current.orElseThrow());
+            if (grantMinter != null) {
+                requireOwnedGrant(current.orElseThrow(), renderJobId, taskId, admissionAttempt);
+                grantMinter.requireLocalGrant(current.orElseThrow());
+            }
             return current.orElseThrow();
         }
         if (grantMinter != null) {
