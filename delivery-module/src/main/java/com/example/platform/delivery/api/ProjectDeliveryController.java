@@ -24,9 +24,9 @@ public class ProjectDeliveryController {
                 .header(HttpHeaders.CACHE_CONTROL,"private, no-store").body(result.delivery());
     }
     @GetMapping("/{deliveryId}")
-    public DeliveryService.View get(@PathVariable String projectId,@PathVariable String deliveryId){return deliveries.get(projectId,deliveryId);}
+    public ResponseEntity<DeliveryService.View> get(@PathVariable String projectId,@PathVariable String deliveryId){return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL,"private, no-store").body(deliveries.get(projectId,deliveryId));}
     @GetMapping
-    public List<DeliveryService.View> list(@PathVariable String projectId,@RequestParam(defaultValue="50") int limit){return deliveries.list(projectId,limit);}
+    public ResponseEntity<List<DeliveryService.View>> list(@PathVariable String projectId,@RequestParam(defaultValue="50") int limit){return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL,"private, no-store").body(deliveries.list(projectId,limit));}
     @GetMapping("/{deliveryId}/result")
     public ResponseEntity<byte[]> result(@PathVariable String projectId,@PathVariable String deliveryId) {
         var content=deliveries.result(projectId,deliveryId);byte[] bytes=content.bytes();

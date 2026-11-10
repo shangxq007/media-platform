@@ -31,11 +31,11 @@ Composite FK constraints bind Delivery tenant/project/sourceJob/Artifact. Stable
 
 | Existing behavior | Required semantics | Owner and disposition | Acceptance |
 |---|---|---|---|
-| Outbound destination/probe/policy/transfer/retry | Existing diagnostics and destination copies | Existing DeliveryAdministrationService/DeliveryJobService retained for actual Frontend/admin consumers; not used to manufacture R1D results | Existing consumer tests plus fresh build |
+| Outbound destination/probe/policy/transfer/retry | Existing destination copies used by the legacy execution path | DeliveryJobService retained for DeliveryCompletionListener and RenderActivitiesImpl.finalizeDeliveriesForRenderJob; administration remains scoped to those outbound transfers, not used to manufacture R1D results | Existing consumer tests plus fresh build |
 | Render completion listener | Optional outbound copying | Retained; no new policy is created by formal Delivery | No new execution/transfer during R1D creation |
 | Final output selection | Exact completed Job result | RenderJob + GraphRenderLifecycle authority, ArtifactOutputRead | First/Incremental real results and invalid state negatives |
 | Delivery identity/status/idempotency | Independent immutable business record | DeliveryService/DeliveryRepository/ProjectDeliveryController | Real PG/API concurrency and replay |
 | Result download | Live authenticated verified Artifact bytes | Artifact/Storage official contracts | Digest/media comparison and state/permission negatives |
-| Frontend Delivery diagnostics | Existing real consumer | Old DeliveryAPI retained; new DeliveriesAPI offers formal contract directly, no compatibility adapter | Gateway transport tests |
+| Frontend normal Delivery gateway | No page consumer of the old destination/transfer gateway was found | DeliveryAPI now implements the formal project-scoped contract; old normal DTO/gateway definitions removed, no compatibility adapter | Gateway transport and type checks |
 
-Legacy Render execution, MCP Pipeline tools and complete Frontend migration are outside this scope; no legacy runtime is deleted merely because formal Delivery no longer needs it. UNIFIED_EXECUTION remains IN PROGRESS; LEGACY_RETIREMENT remains NOT COMPLETE.
+Legacy Render execution, MCP Pipeline tools and complete Frontend migration are outside this scope; no legacy runtime is deleted merely because formal Delivery no longer needs it. StorageDeliveryDiagnosticsPage only renders the read-only Storage profile diagnostics and does not call the old DeliveryAPI. It is not claimed as an outbound Delivery consumer. Backend outbound protocol code is retained because the legacy Render Activities and completion listener still call it; this task does not retire their execution kernel. UNIFIED_EXECUTION remains IN PROGRESS; LEGACY_RETIREMENT remains NOT COMPLETE.

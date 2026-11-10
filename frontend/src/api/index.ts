@@ -92,6 +92,7 @@ export type {
   TimelineInternalPreviewResponse,
 } from './ai-timeline'
 export { DeliveryAPI } from './delivery'
+export type { Delivery, CreateDelivery } from './delivery'
 export type {
   DeliveryDestination,
   DeliveryJob,
@@ -289,5 +290,3 @@ export type {
 
 export default api
 
-export { DeliveriesAPI } from './delivery-product'
-export type { Delivery, CreateDelivery } from './delivery-product'
