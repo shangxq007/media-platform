@@ -25,11 +25,12 @@ class MediaTaskGrantOwnershipTest {
         var executable=mock(com.example.platform.execution.taskgraph.ExecutableTask.class);
         var contribution=mock(com.example.platform.providerplugin.ProviderPluginContribution.class);
         when(catalog.find(executable.providerBindingPin())).thenReturn(java.util.Optional.of(contribution));
-        when(boundary.findCurrentGrant(task)).thenReturn(java.util.Optional.empty(),java.util.Optional.of(grant("job-b",1)));
+        var ownGrant=grant("job-a",1);var foreignGrant=grant("job-b",1);
+        when(boundary.findCurrentGrant(task)).thenReturn(java.util.Optional.empty(),java.util.Optional.of(foreignGrant));
         when(minter.mint("job-a",task,graph,contribution,1L)).thenReturn(
-                new FirstRenderGrantMinter.Result.Minted(FirstRenderGrantMinter.requestWorkId("job-a",task,1),grant("job-a",1)));
+                new FirstRenderGrantMinter.Result.Minted(FirstRenderGrantMinter.requestWorkId("job-a",task,1),ownGrant));
         var activity=new MediaTaskActivity(mock(com.example.platform.execution.binding.BoundGraphInputStore.class),boundary,
-                mock(com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator.class),null,minter,catalog);
+                mock(com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator.class),mock(MediaTaskPublicationSettings.class),minter,catalog);
         var method=MediaTaskActivity.class.getDeclaredMethod("currentGrantOrMint",String.class,ExecutableTaskId.class,
                 com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph.class,
                 com.example.platform.execution.taskgraph.ExecutableTask.class,long.class);
