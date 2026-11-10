@@ -19,7 +19,9 @@
 ## 当前开发基线
 
 路径：`platform-app/src/main/resources/db/migration/V1__baseline.sql`。
-完整 SHA-256：`0a502fd3f72a9d02cff06e51e1593be2bb89bade60d04fb173dce363b0ce1673`。
+完整 SHA-256：`3b292b02f9454dafa2841f1f9319c48002412e6be17175835aaa326870575fe9`。
+
+Owner R1D 增加仅保存授权交付选择的不可变 Delivery 表、同作用域外键及幂等唯一性；不改变 Artifact 身份或生命周期。须通过新鲜 PG18 和 jOOQ 一致性验证。
 
 Owner R1C 在 RenderJob 增加同租户、同项目的不可变增量参考 Job 外键；保留原 Job 生命周期与 Artifact 权威。该新基线须经全新空 PG18、完整 jOOQ 生成和实际增量回归。
 

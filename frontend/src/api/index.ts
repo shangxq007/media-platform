@@ -288,3 +288,6 @@ export type {
 } from '../foundation/platformClient'
 
 export default api
+
+export { DeliveriesAPI } from './delivery-product'
+export type { Delivery, CreateDelivery } from './delivery-product'

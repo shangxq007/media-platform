@@ -4968,3 +4968,30 @@ create table render_graph_execution (
     foreign key (task_attempt_id,final_task_id,task_generation) references wf_execution_attempt(attempt_id,task_id,generation) on delete restrict,
     check (final_artifact_id is null or final_artifact_id = expected_artifact_id)
 );
+
+-- R1D: immutable authorized delivery selection; outbound delivery_job remains a separate legacy consumer.
+create table delivery (
+    id varchar(64) primary key,
+    tenant_id varchar(128) not null,
+    project_id varchar(128) not null,
+    source_render_job_id varchar(128) not null,
+    artifact_id varchar(128) not null,
+    idempotency_key varchar(200) not null check (length(trim(idempotency_key)) > 0),
+    request_hash varchar(64) not null check (request_hash ~ '^[a-f0-9]{64}$'),
+    requester_id varchar(128) not null,
+    status varchar(16) not null check (status = 'READY'),
+    created_at timestamptz not null,
+    constraint uq_delivery_request unique(tenant_id,project_id,idempotency_key),
+    constraint fk_delivery_render_scope foreign key(tenant_id,project_id,source_render_job_id)
+        references render_job(tenant_id,project_id,id),
+    constraint fk_delivery_artifact_scope foreign key(tenant_id,project_id,source_render_job_id,artifact_id)
+        references artifact(tenant_id,project_id,render_job_id,id)
+);
+create index ix_delivery_project on delivery(tenant_id,project_id,created_at desc,id desc);
+create function protect_delivery_record() returns trigger language plpgsql as $$
+begin
+    raise exception 'accepted Delivery records are immutable' using errcode='23514';
+end;
+$$;
+create trigger delivery_immutable before update or delete on delivery
+    for each row execute function protect_delivery_record();
