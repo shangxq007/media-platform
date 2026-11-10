@@ -289,4 +289,3 @@ export type {
 } from '../foundation/platformClient'
 
 export default api
-
