@@ -94,15 +94,6 @@ export type {
 export { DeliveryAPI } from './delivery'
 export type { Delivery, CreateDelivery } from './delivery'
 export type {
-  DeliveryDestination,
-  DeliveryJob,
-  DeliveryProtocol,
-  CreateDeliveryDestinationRequest,
-  CreateDeliveryPolicyRequest,
-  ProbeDestinationResponse,
-  DeliveryPolicy
-} from './delivery'
-export type {
   IncrementalRenderPlanResponse,
   GenerateIncrementalPlanRequest,
   SubmitIncrementalRenderRequest,

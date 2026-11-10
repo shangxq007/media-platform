@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import api from './index'
+import { versionlessApi as api } from './app/versionless-api'
 
 export const Delivery = z.object({
   deliveryId: z.string().min(1),

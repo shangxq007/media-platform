@@ -4,6 +4,8 @@ Delivery records an immutable authorized selection of an already completed, boun
 
 ## Product API
 
+The frontend DeliveryAPI uses the existing versionlessApi (/api), including its canonical OIDC/development authentication binding. URL tests assert the actual Axios-resolved backend route, not only a relative string.
+
 Authenticated tenant/workspace scope comes from the canonical identity and project authority; body fields cannot override it. All routes are `/api/projects/{projectId}/deliveries`:
 
 - `POST` with mandatory `Idempotency-Key` (1–200 characters), JSON `sourceRenderJobId` and optional `artifactId`. If supplied, ArtifactId must equal that Job's exact accepted final result. No arbitrary asset selection. New selection returns201; identical normalized replay returns200; different request with same scoped key returns409 `IDEMPOTENCY_CONFLICT`.
@@ -17,7 +19,7 @@ Creation requires existing `delivery.manage`, `delivery.read`, source RenderJob 
 
 The minimal state is READY: selection was accepted and verified atomically. There is no asynchronous work, so no ACCEPTED/PROCESSING/DISPATCH/WORKER/FAILED/CANCELLED state machine or retry worker is invented. Rejected creation leaves no Delivery. READY is an immutable acceptance fact, not a grant of future access: revocation, quarantine, deletion, permission changes or integrity failures are evaluated again on each request. Existing READY metadata can remain queryable by authorized readers while its result is unavailable. No Delivery cancellation or rebinding endpoint exists.
 
-Request normalization binds the accepted source Job and Artifact, so explicitly selecting the accepted Artifact and omitting it are semantically equal. A tenant/project unique key identifies one immutable Delivery; no request hash or idempotency key is exposed in API responses. New keys may intentionally create separate delivery identities for the same source. Replay never changes the original selected result or requester.
+Request normalization binds the accepted source Job and Artifact, so explicitly selecting the accepted Artifact and omitting it are semantically equal. A tenant/project unique key identifies one immutable Delivery; no request hash or idempotency key is exposed in API responses. New keys may intentionally create separate delivery identities for the same source. Replay never changes the original selected result or requester. Live source/Artifact eligibility and authority checks still precede replay: an unavailable/revoked source is rejected without changing the already accepted Delivery record.
 
 ## Transaction and authority
 
