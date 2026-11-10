@@ -19,8 +19,6 @@ app:
     shutdown-await-seconds: ${TEMPORAL_SHUTDOWN_AWAIT_SECONDS:25}
 
 render:
-  execution:
-    mode: temporal
   stale-compensator:
     startup-enabled: true
     skip-on-temporal: true

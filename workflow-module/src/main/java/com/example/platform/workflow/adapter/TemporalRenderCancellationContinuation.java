@@ -12,14 +12,14 @@ import org.springframework.stereotype.Component;
  * Temporal implementation of {@link RenderJobCancellationContinuation}
  * (frozen contract TEPHV1 CONTRACT_V1, W1-GAP-006).
  *
- * <p>Active when {@code render.execution.mode=temporal}: cancels the durable
+ * <p>Active when the formal Temporal runtime is enabled: cancels the durable
  * workflow with the shared tenant/job-scoped Render workflow identity. Cancellation reaches
  * the workflow (cancel signal handler marks CANCELLED) and is distinguishable
  * from failure via the workflow status query. Does NOT mutate Timeline,
  * Product READY, RenderExecutionPlan or Plugin state.</p>
  */
 @Component
-@ConditionalOnProperty(prefix = "render.execution", name = "mode", havingValue = "temporal")
+@ConditionalOnProperty(prefix = "app.temporal", name = "enabled", havingValue = "true")
 public class TemporalRenderCancellationContinuation implements RenderJobCancellationContinuation {
 
     private static final Logger log = LoggerFactory.getLogger(TemporalRenderCancellationContinuation.class);
