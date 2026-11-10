@@ -39,7 +39,10 @@ class DeliveryServiceTest {
         var artifact=mock(Artifact.class);when(artifact.state()).thenReturn(ArtifactState.AVAILABLE);when(artifact.artifactKind()).thenReturn(ArtifactKind.RENDER_MASTER);
         when(artifacts.findArtifact(reference.scope(),reference.artifactId())).thenReturn(Optional.of(artifact));when(output.find(reference.scope())).thenReturn(Optional.of(reference));
         when(output.read(reference)).thenReturn(new ArtifactOutputRead.Content(new byte[]{1},ArtifactMediaType.VIDEO,"video/mp4","output.mp4"));
-        when(repository.byKey("tenant","project","key")).thenReturn(Optional.empty());when(repository.insert(any())).thenReturn(true);
+        when(repository.byKey("tenant","project","key")).thenReturn(Optional.empty());when(repository.insert(any())).thenAnswer(call->{
+            DeliveryRecord saved=call.getArgument(0);
+            when(repository.find(saved.tenantId(),saved.projectId(),saved.id())).thenReturn(Optional.of(saved));return true;
+        });
         when(repository.find("tenant","project","delivery")).thenReturn(Optional.of(record));
     }
     @AfterEach void clear(){TenantContext.clear();}

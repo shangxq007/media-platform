@@ -63,7 +63,7 @@ public class DeliveryService {
                 if(existing.isPresent())return replay(existing.get(),hash);
                 var record=new DeliveryRecord("dlv_"+UUID.randomUUID().toString().replace("-",""),tenant,project,job,
                         selected.artifactId().value(),normalized,hash,actors.resolveCurrentActor().orElseThrow().actorId(),OffsetDateTime.now());
-                if(records.insert(record))return new Accepted(view(record),true);
+                if(records.insert(record))return new Accepted(view(records.find(tenant,project,record.id()).orElseThrow()),true);
                 return replay(records.byKey(tenant,project,normalized).orElseThrow(),hash);
             }); } catch(RuntimeException e) {
                 if(!serializationConflict(e))throw e;
@@ -119,7 +119,7 @@ public class DeliveryService {
     }
     private View view(DeliveryRecord r) {
         return new View(r.id(),r.projectId(),r.sourceRenderJobId(),revisions.getPinnedRevisionId(r.sourceRenderJobId()),
-                r.artifactId(),"READY",r.createdAt(),"/api/projects/"+r.projectId()+"/deliveries/"+r.id()+"/result");
+                r.artifactId(),"READY",r.createdAt(),"/api/projects/"+org.springframework.web.util.UriUtils.encodePathSegment(r.projectId(),StandardCharsets.UTF_8)+"/deliveries/"+r.id()+"/result");
     }
     public static String requestHash(String job,String artifact) {
         try {return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(
