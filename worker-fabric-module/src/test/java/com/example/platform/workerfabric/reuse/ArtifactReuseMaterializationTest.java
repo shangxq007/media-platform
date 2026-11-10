@@ -235,7 +235,7 @@ class ArtifactReuseMaterializationTest {
                 NOW);
         StorageProvider provider = mock(StorageProvider.class);
         when(artifacts.getArtifact("tenant-a", ARTIFACT_ID))
-                .thenReturn(Optional.of(artifact("tenant-a", digest, ArtifactState.AVAILABLE)));
+                .thenReturn(Optional.of(new Artifact(ARTIFACT_ID,"tenant-a",digest,bytes.length,ArtifactMediaType.VIDEO,ArtifactKind.RENDER_MASTER,ArtifactState.AVAILABLE,Artifact.CURRENT_SCHEMA_VERSION,NOW)));
         when(artifacts.listReplicas("tenant-a", ARTIFACT_ID)).thenReturn(List.of(replica));
         when(provider.openRead(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(Optional.of(new ByteArrayInputStream(bytes)));
@@ -304,7 +304,7 @@ class ArtifactReuseMaterializationTest {
         ArtifactReuseIndexPort index = mock(ArtifactReuseIndexPort.class);
         CompletionAuthorityPort completion = mock(CompletionAuthorityPort.class);
         CompletionEvidence completionEvidence = mock(CompletionEvidence.class);
-        ArtifactCommitEvidence commitEvidence = mock(ArtifactCommitEvidence.class);
+        ArtifactCommitEvidence commitEvidence = new ArtifactCommitEvidence(ARTIFACT_ID);
         ReusableArtifactPublication publication = publication();
         when(index.stageWinningPublication(publication))
                 .thenReturn(ReusePublicationResult.STAGED_PENDING);
@@ -326,7 +326,7 @@ class ArtifactReuseMaterializationTest {
         ArtifactReuseIndexPort index = mock(ArtifactReuseIndexPort.class);
         CompletionAuthorityPort completion = mock(CompletionAuthorityPort.class);
         CompletionEvidence completionEvidence = mock(CompletionEvidence.class);
-        ArtifactCommitEvidence commitEvidence = mock(ArtifactCommitEvidence.class);
+        ArtifactCommitEvidence commitEvidence = new ArtifactCommitEvidence(ARTIFACT_ID);
         ReusableArtifactPublication publication = publication();
         when(index.stageWinningPublication(publication))
                 .thenReturn(ReusePublicationResult.STALE_OWNER_REJECTED);
