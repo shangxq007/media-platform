@@ -456,6 +456,7 @@ public final class MediaTaskActivity {
             if (result instanceof FirstRenderGrantMinter.Result.Minted minted) {
                 var grant=grantBoundary.findCurrentGrant(taskId).orElseThrow(()->new TaskRuntimeExecutionConstructionException(
                         "GRANT_NO_LONGER_CURRENT","new grant lost its current ownership"));
+                requireOwnedGrant(grant, renderJobId, taskId, admissionAttempt);
                 grantMinter.requireLocalGrant(grant);
                 return grant;
             }
