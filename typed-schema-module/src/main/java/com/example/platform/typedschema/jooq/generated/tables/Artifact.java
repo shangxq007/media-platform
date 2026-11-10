@@ -14,6 +14,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.Artifa
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ArtifactRelationPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ArtifactReplicaPath;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata.AssetSemanticMetadataPath;
+import com.example.platform.typedschema.jooq.generated.tables.Delivery.DeliveryPath;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing.MarketplaceListingPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation.MediaProbeObservationPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaStream.MediaStreamPath;
@@ -371,6 +372,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _assetSemanticMetadata = new AssetSemanticMetadataPath(this, null, Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ARTIFACT.getInverseKey());
 
         return _assetSemanticMetadata;
+    }
+
+    private transient DeliveryPath _delivery;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.delivery</code>
+     * table
+     */
+    public DeliveryPath delivery() {
+        if (_delivery == null)
+            _delivery = new DeliveryPath(this, null, Keys.DELIVERY__FK_DELIVERY_ARTIFACT_SCOPE.getInverseKey());
+
+        return _delivery;
     }
 
     private transient MarketplaceListingPath _marketplaceListing;

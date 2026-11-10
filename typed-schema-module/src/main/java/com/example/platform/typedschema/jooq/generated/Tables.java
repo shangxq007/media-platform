@@ -42,6 +42,7 @@ import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWalletCommand;
 import com.example.platform.typedschema.jooq.generated.tables.CustomPricingRule;
+import com.example.platform.typedschema.jooq.generated.tables.Delivery;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryJob;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryPolicy;
@@ -420,6 +421,11 @@ public class Tables {
      * The table <code>public.custom_pricing_rule</code>.
      */
     public static final CustomPricingRule CUSTOM_PRICING_RULE = CustomPricingRule.CUSTOM_PRICING_RULE;
+
+    /**
+     * The table <code>public.delivery</code>.
+     */
+    public static final Delivery DELIVERY = Delivery.DELIVERY;
 
     /**
      * The table <code>public.delivery_destination</code>.

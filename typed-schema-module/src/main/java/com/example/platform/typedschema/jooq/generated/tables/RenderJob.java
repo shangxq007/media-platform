@@ -10,6 +10,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph.ArtifactGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode.ArtifactNodePath;
+import com.example.platform.typedschema.jooq.generated.tables.Delivery.DeliveryPath;
 import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext.RenderExecutionContextPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution.RenderGraphExecutionPath;
@@ -332,6 +333,19 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
             _systemCanonicalGraph = new SystemCanonicalGraphPath(this, null, Keys.SYSTEM_CANONICAL_GRAPH__FK_CANONICAL_JOB.getInverseKey());
 
         return _systemCanonicalGraph;
+    }
+
+    private transient DeliveryPath _delivery;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.delivery</code>
+     * table
+     */
+    public DeliveryPath delivery() {
+        if (_delivery == null)
+            _delivery = new DeliveryPath(this, null, Keys.DELIVERY__FK_DELIVERY_RENDER_SCOPE.getInverseKey());
+
+        return _delivery;
     }
 
     private transient UnifiedRequestGraphPath _unifiedRequestGraph;

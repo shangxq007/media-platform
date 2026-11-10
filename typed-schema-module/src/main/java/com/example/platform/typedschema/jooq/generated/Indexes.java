@@ -30,6 +30,7 @@ import com.example.platform.typedschema.jooq.generated.tables.CreditReservation;
 import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
 import com.example.platform.typedschema.jooq.generated.tables.CustomPricingRule;
+import com.example.platform.typedschema.jooq.generated.tables.Delivery;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryJob;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryPolicy;
@@ -262,6 +263,7 @@ public class Indexes {
     public static final Index IX_DELIVERY_JOB_RENDER = Internal.createIndex(DSL.name("ix_delivery_job_render"), DeliveryJob.DELIVERY_JOB, new OrderField[] { DeliveryJob.DELIVERY_JOB.RENDER_JOB_ID }, false);
     public static final Index IX_DELIVERY_JOB_STATUS = Internal.createIndex(DSL.name("ix_delivery_job_status"), DeliveryJob.DELIVERY_JOB, new OrderField[] { DeliveryJob.DELIVERY_JOB.STATUS }, false);
     public static final Index IX_DELIVERY_POLICY_TENANT_PROJECT = Internal.createIndex(DSL.name("ix_delivery_policy_tenant_project"), DeliveryPolicy.DELIVERY_POLICY, new OrderField[] { DeliveryPolicy.DELIVERY_POLICY.TENANT_ID, DeliveryPolicy.DELIVERY_POLICY.PROJECT_ID }, false);
+    public static final Index IX_DELIVERY_PROJECT = Internal.createIndex(DSL.name("ix_delivery_project"), Delivery.DELIVERY, new OrderField[] { Delivery.DELIVERY.TENANT_ID, Delivery.DELIVERY.PROJECT_ID, Delivery.DELIVERY.CREATED_AT.desc(), Delivery.DELIVERY.ID.desc() }, false);
     public static final Index IX_DISCOUNT_POLICY_KEY = Internal.createIndex(DSL.name("ix_discount_policy_key"), DiscountPolicy.DISCOUNT_POLICY, new OrderField[] { DiscountPolicy.DISCOUNT_POLICY.TENANT_ID, DiscountPolicy.DISCOUNT_POLICY.POLICY_KEY, DiscountPolicy.DISCOUNT_POLICY.RULE_VERSION }, false);
     public static final Index IX_DISCOUNT_POLICY_STATUS = Internal.createIndex(DSL.name("ix_discount_policy_status"), DiscountPolicy.DISCOUNT_POLICY, new OrderField[] { DiscountPolicy.DISCOUNT_POLICY.STATUS }, false);
     public static final Index IX_EDGE_GRAPH_ID = Internal.createIndex(DSL.name("ix_edge_graph_id"), UnifiedGraphEdge.UNIFIED_GRAPH_EDGE, new OrderField[] { UnifiedGraphEdge.UNIFIED_GRAPH_EDGE.GRAPH_ID }, false);
