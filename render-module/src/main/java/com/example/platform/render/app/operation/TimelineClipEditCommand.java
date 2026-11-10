@@ -1,0 +1,84 @@
+package com.example.platform.render.app.operation;
+
+import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationRequest;
+import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.timeline.semantics.selection.SelectionSpec;
+import java.util.List;
+
+/** Shared typed transport command; invokes the canonical Operation authority. */
+/** MOVE_CLIP changes time on the existing track. Cross-track moves are not accepted here. */
+    public record TimelineClipEditCommand(String type, String baseRevisionId, String baseContentHash,
+                                  String clipId, String delta, Boolean absolute, String edge,
+                                  String commandId) {
+        public TimelineClipEditCommand {
+            requireId(baseRevisionId, "baseRevisionId");
+            requireHash(baseContentHash, "baseContentHash");
+            requireId(clipId, "clipId");
+            requireId(commandId, "commandId");
+            if (type == null || !List.of("MOVE_CLIP", "TRIM_CLIP", "DELETE_CLIP").contains(type)) {
+                throw new IllegalArgumentException("unsupported clip edit type");
+            }
+            if (!"DELETE_CLIP".equals(type)) {
+                if (delta == null || delta.length() > 64
+                        || !delta.matches("[+]?[0-9]+(?:/[1-9][0-9]*)?")) {
+                    throw new IllegalArgumentException("exact rational delta required");
+                }
+            }
+            if ("MOVE_CLIP".equals(type) && absolute == null) {
+                throw new IllegalArgumentException("absolute flag required for MOVE_CLIP");
+            }
+            if ("MOVE_CLIP".equals(type) && edge != null) {
+                throw new IllegalArgumentException("MOVE_CLIP does not accept trim edge");
+            }
+            if ("TRIM_CLIP".equals(type) && (edge == null || !List.of("START", "END").contains(edge))) {
+                throw new IllegalArgumentException("trim edge must be START or END");
+            }
+            if ("TRIM_CLIP".equals(type) && absolute != null) {
+                throw new IllegalArgumentException("TRIM_CLIP does not accept absolute flag");
+            }
+            if ("DELETE_CLIP".equals(type)
+                    && (delta != null || absolute != null || edge != null)) {
+                throw new IllegalArgumentException("DELETE_CLIP does not accept time parameters");
+            }
+        }
+
+        public OperationRequest toOperationRequest(String projectId) {
+            var definition = switch (type) {
+                case "MOVE_CLIP" -> OperationDefinition.V1.MOVE;
+                case "TRIM_CLIP" -> OperationDefinition.V1.TRIM;
+                case "DELETE_CLIP" -> OperationDefinition.V1.DELETE;
+                default -> throw new IllegalArgumentException("unsupported clip edit type");
+            };
+            OperationParameters parameters = switch (type) {
+                case "MOVE_CLIP" -> new OperationParameters.MoveParameters(parseTime(delta), absolute);
+                case "TRIM_CLIP" -> new OperationParameters.TrimParameters(
+                        OperationParameters.TrimParameters.TrimEdge.valueOf(edge), parseTime(delta));
+                case "DELETE_CLIP" -> new OperationParameters.NoParameters();
+                default -> throw new IllegalArgumentException("unsupported clip edit type");
+            };
+            return new OperationRequest(definition.definitionId(), definition.version(),
+                    new OperationTargetRequest.ClipSelectionTargetRequest(projectId,
+                            new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of(clipId))),
+                            SelectionSpec.ExpansionPolicy.EXACT),
+                    parameters, baseRevisionId, baseContentHash, null);
+        }
+        private static void requireId(String value, String field) {
+        if (value == null || value.length() > 64 || !value.matches("[A-Za-z0-9._:-]+")) {
+            throw new IllegalArgumentException(field + " has invalid syntax");
+        }
+    }
+
+    private static void requireHash(String value, String field) {
+        if (value == null || !value.matches("(?:[A-Za-z0-9+/]{43}=|[0-9a-fA-F]{64})")) {
+            throw new IllegalArgumentException(field + " must be a canonical SHA-256 Timeline hash");
+        }
+    }
+
+    private static MediaTime parseTime(String value) {
+        return MediaTime.parse(value.contains("/") || "0".equals(value) ? value : value + "/1");
+    }
+}

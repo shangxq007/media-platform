@@ -65,7 +65,7 @@ public class FirstRenderSubmissionService {
             var reference = graphs.save(plan);
             if (incremental != null) jobs.pinIncrementalReference(tenant, project, plan.renderJobId(),
                     incremental.referenceRenderJobId(), incremental.referenceRevisionId());
-            String workflow = com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenant, plan.renderJobId());
+            String workflow = com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowIdentity.forJob(tenant, plan.renderJobId());
             String executionPlan = plan.boundGraphInputs().physicalPlan().planId().value();
             if (key != null) idempotency.complete(tenant, project, key, plan.renderJobId(), plan.renderRequestId().value(), executionPlan, workflow, false);
             return new Submission(true, new FirstRenderPlanHttpResponse(plan.renderJobId(), plan.renderRequestId().value(), executionPlan, "PLANNED", workflow, false));

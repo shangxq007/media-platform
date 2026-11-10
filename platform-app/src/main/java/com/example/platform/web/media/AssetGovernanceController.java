@@ -1,7 +1,6 @@
 package com.example.platform.web.media;
 
 import com.example.platform.artifact.app.ArtifactGcService;
-import com.example.platform.render.app.cache.RenderCacheCleanupService;
 import com.example.platform.render.app.timeline.TimelineAssetGcService;
 import com.example.platform.security.AdminAuditHelper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,20 +19,16 @@ public class AssetGovernanceController {
     private final GlobalAssetIntegrityService globalIntegrityService;
     private final TimelineAssetGcService timelineAssetGcService;
     private final ArtifactGcService artifactGcService;
-    private final RenderCacheCleanupService renderCacheCleanupService;
     private final AdminAuditHelper auditHelper;
 
     public AssetGovernanceController(
             GlobalAssetIntegrityService globalIntegrityService,
             TimelineAssetGcService timelineAssetGcService,
             ArtifactGcService artifactGcService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false)
-                    RenderCacheCleanupService renderCacheCleanupService,
             AdminAuditHelper auditHelper) {
         this.globalIntegrityService = globalIntegrityService;
         this.timelineAssetGcService = timelineAssetGcService;
         this.artifactGcService = artifactGcService;
-        this.renderCacheCleanupService = renderCacheCleanupService;
         this.auditHelper = auditHelper;
     }
 
@@ -44,28 +39,6 @@ public class AssetGovernanceController {
         return globalIntegrityService.scanAll(recordProblematicData);
     }
 
-    @PostMapping("/segment-cache/cleanup")
-    @Operation(
-            summary = "段缓存 GC（与制品 catalog 分轨）",
-            description = "清理已完成 render_job 的 segmentCacheIndex 远程对象；需 render.cache.cleanup-enabled=true")
-    public RenderCacheCleanupService.CleanupResult runSegmentCacheCleanup(
-            @RequestParam(required = false) String tenantId,
-            @RequestParam(required = false) String projectId,
-            jakarta.servlet.http.HttpServletRequest request,
-            jakarta.servlet.http.HttpServletResponse response) {
-        // Platform admin operation: cross-tenant cache cleanup requires ADMIN role
-        if (!isAdmin(request)) {
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            auditHelper.log(request, "ADMIN_SEGMENT_CACHE_CLEANUP", "render_cache", null, tenantId, "DENIED");
-            throw new IllegalStateException("Admin role required for segment cache cleanup");
-        }
-        if (renderCacheCleanupService == null) {
-            throw new IllegalStateException("RenderCacheCleanupService is not available");
-        }
-        RenderCacheCleanupService.CleanupResult result = renderCacheCleanupService.runCleanup(tenantId, projectId);
-        auditHelper.log(request, "ADMIN_SEGMENT_CACHE_CLEANUP", "render_cache", null, tenantId, "SUCCESS");
-        return result;
-    }
 
     private static boolean isAdmin(jakarta.servlet.http.HttpServletRequest request) {
         if (request.isUserInRole("ADMIN")) return true;

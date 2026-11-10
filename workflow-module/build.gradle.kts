@@ -8,7 +8,6 @@ dependencies {
     api(project(":shared-kernel"))
     api(project(":policy-governance-module"))
     api(project(":render-module")) // published Render lifecycle ports only
-    implementation(project(":delivery-module")) // published after-render coordination port only
     // UWEV1-FV1: effect execution boundary via extension::runtime (UWE-ADR-025)
     implementation(project(":extension-module"))
     // Neutral runtime identity/operation references live in shared-kernel.

@@ -9,8 +9,6 @@ import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.artifact.api.event.ArtifactCreatedEvent;
 import com.example.platform.render.api.event.RenderCacheHashInvalidatedEvent;
-import com.example.platform.delivery.api.event.DeliveryCompletedEvent;
-import com.example.platform.delivery.api.event.DeliveryFailedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
 import com.example.platform.timeline.api.event.TimelineMergedEvent;
@@ -99,35 +97,7 @@ public class NotificationEventHandler {
         ));
     }
 
-    @EventListener
-    public void onRenderDeliveryCompleted(DeliveryCompletedEvent event) {
-        handleFact(event.factKey(), new NotificationInboundEvent(
-                "render.delivery.completed",
-                event.deliveryJobId(),
-                Map.of(
-                        "deliveryJobId", event.deliveryJobId(),
-                        "renderJobId", event.renderJobId(),
-                        "projectId", event.projectId() != null ? event.projectId() : "",
-                        "tenantId", event.tenantId() != null ? event.tenantId() : "",
-                        "destinationId", event.destinationId() != null ? event.destinationId() : "",
-                        "protocol", event.protocol().name(),
-                        "remoteUri", event.remoteUri() != null ? event.remoteUri() : "")
-        ));
-    }
 
-    @EventListener
-    public void onRenderDeliveryFailed(DeliveryFailedEvent event) {
-        handleFact(event.factKey(), new NotificationInboundEvent(
-                "render.delivery.failed",
-                event.deliveryJobId(),
-                Map.of(
-                        "deliveryJobId", event.deliveryJobId(),
-                        "renderJobId", event.renderJobId(),
-                        "projectId", event.projectId() != null ? event.projectId() : "",
-                        "tenantId", event.tenantId() != null ? event.tenantId() : "",
-                        "errorMessage", event.errorMessage() != null ? event.errorMessage() : "")
-        ));
-    }
 
     @EventListener
     public void onArtifactCreated(ArtifactCreatedEvent event) {

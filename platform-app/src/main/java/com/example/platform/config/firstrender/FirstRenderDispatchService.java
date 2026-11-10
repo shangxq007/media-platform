@@ -36,7 +36,7 @@ public class FirstRenderDispatchService {
                 var deadline = (java.sql.Timestamp) row.get("graph_preparation_deadline");
                 if (deadline == null || !deadline.toInstant().isAfter(java.time.Instant.now())) return false;
                 var reference = new BoundGraphReference(tenant, job, (String) row.get("plan_ref"), (String) row.get("plan_digest"), (String) row.get("expected_etg_digest"));
-                String workflow = com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenant, job);
+                String workflow = com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowIdentity.forJob(tenant, job);
                 boolean started = starter.start(reference, tenant, workflow);
                 if (started) jdbc.update("update first_render_idempotency set workflow_started=true,updated_at=now() where tenant_id=? and render_job_id=?", tenant, job);
                 return started;

@@ -5,15 +5,12 @@ import { EditorPage } from '../editor/EditorPage.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
-import { DevConsolePage } from '../pages/DevConsolePage.js'
 import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
 import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
 import { DevDiagnosticsHubPage } from '../pages/DevDiagnosticsHubPage.js'
 import { DevStorageDeliveryProfileDiagnosticsPage } from '../pages/DevStorageDeliveryProfileDiagnosticsPage.js'
 import { DevIngestPreflightPolicyDiagnosticsPage } from '../pages/DevIngestPreflightPolicyDiagnosticsPage.js'
-import { RenderResultsListPage } from '../routes/app/renders/RenderResultsListPage.js'
-import { RenderResultDetailPage } from '../routes/app/renders/RenderResultDetailPage.js'
 import { CompositionFoundationPage } from '../pages/CompositionFoundationPage.js'
 
 const TimelineHistoryPage = lazy(() => import('../product/timeline-review/TimelineBrowser').then(module => ({ default: module.TimelineHistoryPage })))
@@ -61,8 +58,8 @@ export const implementedRouteInventory = [
 
 export const legacyRouteInventory = [
   '/legacy/editor', '/render-jobs', '/capabilities', '/smoke-editor', '/observability',
-  '/dev/timeline-git', '/app/renders/$productId', '/admin/storage-health', '/app/renders',
-  '/admin/render-jobs', '/dev/preview', '/dev/diagnostics', '/dev/storage-delivery-profiles',
+  '/dev/timeline-git', '/admin/storage-health',
+  '/admin/render-jobs', '/dev/diagnostics', '/dev/storage-delivery-profiles',
   '/dev/ingest/preflight-policy',
 ] as const
 
@@ -105,9 +102,9 @@ const legacyRoutes = [
   route('/legacy/editor', EditorPage), createRoute({ getParentRoute: () => rootRoute, path: '/render-jobs', beforeLoad: () => { throw redirect({ to: '/operations/renders', replace: true }) } }),
   route('/capabilities', CapabilitiesPage), route('/smoke-editor', SmokeEditorPage),
   route('/observability', ObservabilityDashboard), route('/dev/timeline-git', TimelineGitConsolePage),
-  route('/app/renders/$productId', RenderResultDetailPage), route('/admin/storage-health', AdminStorageHealthPage),
-  route('/app/renders', RenderResultsListPage), route('/admin/render-jobs', AdminRenderJobsPage),
-  route('/dev/preview', DevConsolePage), route('/dev/diagnostics', DevDiagnosticsHubPage),
+  route('/admin/storage-health', AdminStorageHealthPage),
+  route('/admin/render-jobs', AdminRenderJobsPage),
+  route('/dev/diagnostics', DevDiagnosticsHubPage),
   route('/dev/storage-delivery-profiles', DevStorageDeliveryProfileDiagnosticsPage),
   route('/dev/ingest/preflight-policy', DevIngestPreflightPolicyDiagnosticsPage),
 ]

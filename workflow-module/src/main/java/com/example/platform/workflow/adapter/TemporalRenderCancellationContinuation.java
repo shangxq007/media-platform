@@ -34,7 +34,7 @@ public class TemporalRenderCancellationContinuation implements RenderJobCancella
     public void cancelAfterJobCancelled(String tenantId, String jobId) {
         log.info("Cancelling Temporal render workflow: jobId={} tenant={}", jobId, tenantId);
         try {
-            WorkflowStub stub = workflowClient.newUntypedWorkflowStub(com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenantId,jobId));
+            WorkflowStub stub = workflowClient.newUntypedWorkflowStub(com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowIdentity.forJob(tenantId,jobId));
             stub.cancel();
         } catch (io.temporal.client.WorkflowNotFoundException notStarted) {
             log.info("Render workflow has not started or is no longer retained: jobId={}",jobId);

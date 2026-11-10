@@ -1,805 +1,205 @@
 package com.example.platform.web.media;
 
-import com.example.platform.timeline.api.composition.TimelineCanonicalization;
-import com.example.platform.timeline.api.composition.TimelineValidation;
-import com.example.platform.timeline.api.composition.TimelinePatches;
-import com.example.platform.render.api.dto.SubmitRenderJobRequest;
-import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.render.app.NleLayerCatalogService;
-import com.example.platform.render.app.timeline.IncrementalPlanExplainer;
-import com.example.platform.render.app.timeline.IncrementalRenderPlanService;
-import com.example.platform.render.app.timeline.RenderImpactAnalyzer;
-import com.example.platform.timeline.api.composition.TimelineSemanticDiff;
-import com.example.platform.render.app.timeline.InternalTimelineAdapter;
-import com.example.platform.timeline.api.serialization.InternalTimelineJson;
-import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
-import com.example.platform.timeline.api.composition.TimelineImport;
-import com.example.platform.render.app.timeline.SegmentPlanFilter;
-import com.example.platform.render.app.timeline.TimelineSpecResolver;
-import com.example.platform.render.domain.planning.IncrementalRenderPlan;
-import com.example.platform.render.domain.planning.RenderImpactResult;
-import com.example.platform.render.domain.planning.ReusableArtifact;
-import com.example.platform.timeline.diff.merge.SemanticDiffResult;
-import com.example.platform.render.app.aaf.AafConversionService;
+import com.example.platform.artifact.app.*;
+import com.example.platform.config.firstrender.*;
+import com.example.platform.delivery.app.DeliveryService;
+import com.example.platform.delivery.app.DeliveryFailure;
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
+import com.example.platform.operation.invocation.*;
+import com.example.platform.render.api.GraphRenderLifecycle;
 import com.example.platform.render.api.request.RenderInitiator;
+import com.example.platform.render.app.RenderJobService;
+import com.example.platform.render.app.operation.TimelineClipEditCommand;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.shared.web.TenantContext;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
+import com.example.platform.web.render.TimelineProjectAuthorizationService;
+import com.fasterxml.jackson.databind.*;
+import jakarta.validation.Valid;
+import jakarta.validation.Validator;
+import jakarta.validation.constraints.*;
+import java.util.*;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
 
-import com.example.platform.render.domain.standards.AafTimelineAdapter;
-import com.example.platform.render.app.planner.PipelineExecutionPlan;
-import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
-import com.example.platform.render.app.planner.RenderPlannerService;
-import com.example.platform.render.domain.interchange.OpenTimelineioAdapter;
-import com.example.platform.render.domain.interchange.TimelineScriptParser;
-import com.example.platform.render.domain.interchange.TimelineOutputSpec;
-import com.example.platform.render.domain.interchange.TimelineSpec;
-import com.example.platform.render.domain.standards.EdlTimelineAdapter;
-import com.example.platform.render.domain.standards.FcpXmlTimelineAdapter;
-import com.example.platform.render.domain.standards.SrtSubtitleAdapter;
-import com.example.platform.render.domain.standards.WebVttSubtitleAdapter;
-import com.example.platform.render.infrastructure.bento4.Bento4PackagingProvider;
-import com.example.platform.render.infrastructure.gpac.GPACPackagingProvider;
-import com.example.platform.render.infrastructure.gpac.PackagingDrmProfile;
-import com.example.platform.render.infrastructure.gpac.PackagingRequest;
-import com.example.platform.render.infrastructure.gpac.PackagingResult;
-import com.example.platform.render.infrastructure.shaka.ShakaPackagingProvider;
-import com.example.platform.web.CallerContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-/**
- * MCP+ fine-grained media tools (whitelist; no arbitrary shell).
- */
+/** Stateless MCP JSON-RPC product ingress. All business authority remains in the existing owners. */
 @RestController
-@RequestMapping({"/api/media/tools", "/api/mcp/media/tools"})
-@Tag(name = "MCP Media Tools", description = "细粒度 MCP 媒体工具")
+@RequestMapping("/api/mcp/media")
 public class McpMediaToolsController {
-
-    private static final Logger log = LoggerFactory.getLogger(McpMediaToolsController.class);
-
-    private final TimelineValidation timelineValidationService;
-    private final TimelineScriptParser timelineScriptParser;
-    private final RenderPlannerService renderPlannerService;
-    private final TimelinePatches timelinePatchService;
-    private final PipelinePlanPersistenceService pipelinePlanPersistence;
-    private final AafConversionService aafConversionService;
-    private final NleLayerCatalogService nleLayerCatalogService;
-    private final Optional<GPACPackagingProvider> gpacPackaging;
-    private final Optional<Bento4PackagingProvider> bento4Packaging;
-    private final Optional<ShakaPackagingProvider> shakaPackaging;
-    private final TimelineCanonicalization timelineCanonicalizer;
-    private final TimelineSemanticDiff timelineSemanticDiffService;
-    private final RenderImpactAnalyzer renderImpactAnalyzer;
-    private final IncrementalPlanExplainer incrementalPlanExplainer;
-    private final IncrementalRenderPlanService incrementalRenderPlanService;
-    private final InternalTimelineAdapter internalTimelineAdapter;
-    private final TimelineSpecImportAdapter timelineSpecImportAdapter;
-    private final TimelineImport timelineImportService;
-    private final TimelineSpecResolver timelineSpecResolver;
-    private final Optional<RenderOrchestratorPort> renderOrchestratorPort;
-    private final SegmentPlanFilter segmentPlanFilter;
-    private final com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization;
-    private final CanonicalActorResolver canonicalActorResolver;
-
-    public McpMediaToolsController(TimelineValidation timelineValidationServiceParam,
-                                   TimelineScriptParser timelineScriptParser,
-                                   RenderPlannerService renderPlannerService,
-                                   TimelinePatches timelinePatchService,
-                                   PipelinePlanPersistenceService pipelinePlanPersistence,
-                                   AafConversionService aafConversionService,
-                                   NleLayerCatalogService nleLayerCatalogService,
-                                   Optional<GPACPackagingProvider> gpacPackaging,
-                                   Optional<Bento4PackagingProvider> bento4Packaging,
-                                   Optional<ShakaPackagingProvider> shakaPackaging,
-                                   TimelineCanonicalization timelineCanonicalizer,
-                                   TimelineSemanticDiff timelineSemanticDiffService,
-                                   RenderImpactAnalyzer renderImpactAnalyzer,
-                                   IncrementalPlanExplainer incrementalPlanExplainer,
-                                   IncrementalRenderPlanService incrementalRenderPlanService,
-                                   InternalTimelineAdapter internalTimelineAdapter,
-                                   TimelineSpecImportAdapter timelineSpecImportAdapter,
-                                   TimelineImport timelineImportService,
-                                   TimelineSpecResolver timelineSpecResolver,
-                                   Optional<RenderOrchestratorPort> renderOrchestratorPort,
-                                   SegmentPlanFilter segmentPlanFilter,
-                                   com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization,
-                                   CanonicalActorResolver canonicalActorResolver) {
-        this.timelineValidationService = timelineValidationServiceParam;
-        this.timelineScriptParser = timelineScriptParser;
-        this.renderPlannerService = renderPlannerService;
-        this.timelinePatchService = timelinePatchService;
-        this.pipelinePlanPersistence = pipelinePlanPersistence;
-        this.aafConversionService = aafConversionService;
-        this.nleLayerCatalogService = nleLayerCatalogService;
-        this.gpacPackaging = gpacPackaging;
-        this.bento4Packaging = bento4Packaging;
-        this.shakaPackaging = shakaPackaging;
-        this.timelineCanonicalizer = timelineCanonicalizer;
-        this.timelineSemanticDiffService = timelineSemanticDiffService;
-        this.renderImpactAnalyzer = renderImpactAnalyzer;
-        this.incrementalPlanExplainer = incrementalPlanExplainer;
-        this.incrementalRenderPlanService = incrementalRenderPlanService;
-        this.internalTimelineAdapter = internalTimelineAdapter;
-        this.timelineSpecImportAdapter = timelineSpecImportAdapter;
-        this.timelineImportService = timelineImportService;
-        this.timelineSpecResolver = timelineSpecResolver;
-        this.renderOrchestratorPort = renderOrchestratorPort;
-        this.segmentPlanFilter = segmentPlanFilter;
-        this.projectAuthorization = projectAuthorization;
-        this.canonicalActorResolver = canonicalActorResolver;
+    private final CanonicalActorResolver actors;
+    private final FirstRenderSubmissionService submissions;
+    private final TimelineRevisionQueries revisions;
+    private final TimelineProjectAuthorizationService projectAccess;
+    private final OperationInvocationPort operations;
+    private final RenderJobService jobs;
+    private final GraphRenderLifecycle lifecycle;
+    private final DeliveryService deliveries;
+    private final ArtifactApplicationService artifacts;
+    private final ArtifactProjectAuthorizationPort artifactAccess;
+    private final ObjectMapper json;
+    private final Validator validator;
+    public McpMediaToolsController(CanonicalActorResolver actors,FirstRenderSubmissionService submissions,
+            TimelineRevisionQueries revisions,TimelineProjectAuthorizationService projectAccess,
+            OperationInvocationPort operations,RenderJobService jobs,GraphRenderLifecycle lifecycle,
+            DeliveryService deliveries,ArtifactApplicationService artifacts,
+            ArtifactProjectAuthorizationPort artifactAccess,ObjectMapper json,Validator validator) {
+        this.actors=actors;this.submissions=submissions;this.revisions=revisions;this.projectAccess=projectAccess;
+        this.operations=operations;this.jobs=jobs;this.lifecycle=lifecycle;this.deliveries=deliveries;
+        this.artifacts=artifacts;this.artifactAccess=artifactAccess;this.json=json;this.validator=validator;
     }
+    public record Rpc(String jsonrpc,JsonNode id,String method,JsonNode params) {}
+    public record RevisionArgs(@NotBlank String projectId,@NotBlank String revisionId) {}
+    public record OperationArgs(@NotBlank String projectId,@NotNull @Valid TimelineClipEditCommand command) {}
+    public record RenderArgs(@NotNull @Valid FirstRenderPlanHttpRequest request,@NotBlank @Size(max=255) String idempotencyKey) {}
+    public record IncrementalArgs(@NotNull @Valid IncrementalRenderHttpRequest request,@NotBlank @Size(max=255) String idempotencyKey) {}
+    public record JobArgs(@NotBlank String projectId,@NotBlank String renderJobId) {}
+    public record DeliveryArgs(@NotBlank String projectId,@NotBlank String sourceRenderJobId,String artifactId,
+            @NotBlank @Size(max=200) String idempotencyKey) {}
+    public record DeliveryResultArgs(@NotBlank String projectId,@NotBlank String deliveryId) {}
+    public record ArtifactArgs(@NotBlank String projectId,@NotBlank String renderJobId,String artifactId) {}
 
-    @PostMapping("/render_timeline")
-    @Operation(summary = "提交 Internal Timeline 1.0 渲染作业（可选 baseJobId 增量）")
-    public ResponseEntity<Map<String, Object>> renderTimeline(
-            @RequestBody RenderTimelineRequest request,
-            HttpServletRequest httpRequest) {
-        if (renderOrchestratorPort.isEmpty()) {
-            return ResponseEntity.status(503).body(Map.of("error", "Render orchestrator not available"));
-        }
-        if (request.tenantId() == null || request.tenantId().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "tenantId is required"));
-        }
-        if (request.projectId() == null || request.projectId().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "projectId is required"));
-        }
-        if (request.timelineJson() == null || request.timelineJson().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "timelineJson is required"));
-        }
-        projectAuthorization.requireWrite(request.tenantId(), request.projectId());
-        if (!timelineSpecResolver.isInternalTimelineJson(request.timelineJson())) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "timelineJson must be Internal Timeline Schema 1.0"));
-        }
-        RenderInitiator initiator = requireInitiator(request.tenantId());
+    @PostMapping
+    public ResponseEntity<?> rpc(@RequestBody Rpc request) {
+        actor();
+        if(!"2.0".equals(request.jsonrpc()))return response(error(request.id(),-32600,"Invalid JSON-RPC request"));
+        if("notifications/initialized".equals(request.method()) && request.id()==null)return ResponseEntity.accepted().build();
+        if(request.id()==null)return response(error(null,-32600,"Request id required"));
         try {
-            var canon = timelineCanonicalizer.canonicalize(request.timelineJson());
-            String timelineJson = canon.timelineJson();
-            String snapshotId = request.timelineSnapshotId();
-            if (snapshotId == null || snapshotId.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "timelineSnapshotId from a canonical Timeline revision is required"));
-            }
-            String profile = request.profile() != null && !request.profile().isBlank()
-                    ? request.profile() : "default_1080p";
-            SubmitRenderJobRequest submit = new SubmitRenderJobRequest(
-                    request.tenantId(),
-                    request.projectId(),
-                    timelineJson,
-                    profile,
-                    snapshotId,
-                    request.baseJobId(),
-                    null,
-                    null,
-                    null,
-                    null);
-            String jobId = renderOrchestratorPort.get().submitRenderJob(
-                    submit, initiator);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("jobId", jobId);
-            body.put("status", "QUEUED");
-            body.put("timelineSnapshotId", snapshotId);
-            body.put("schemaVersion", InternalTimelineJson.SCHEMA_V1);
-            body.put("incremental", request.baseJobId() != null && !request.baseJobId().isBlank());
-            body.put("source", resolveSource(httpRequest));
-            return ResponseEntity.accepted().body(body);
-        } catch (Exception e) {
-            log.warn("render_timeline failed: {}", e.getMessage());
-            return ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
+            Object result=switch(request.method()) {
+                case "initialize" -> Map.of("protocolVersion","2025-03-26","capabilities",Map.of("tools",Map.of("listChanged",false)),
+                        "serverInfo",Map.of("name","media-platform","version","1.0"));
+                case "ping" -> Map.of();
+                case "tools/list" -> Map.of("tools",catalog());
+                case "tools/call" -> call(request.params());
+                default -> null;
+            };
+            return response(result==null?error(request.id(),-32601,"Method not found"):envelope(request.id(),"result",result));
+        } catch(IllegalArgumentException invalid) {
+            return response(error(request.id(),-32602,"Invalid tool arguments"));
         }
     }
-
-    @PostMapping("/render_segment")
-    @Operation(summary = "局部段渲染：预览增量计划或提交作业（segmentIds + 可选 baseJobId）")
-    public ResponseEntity<Map<String, Object>> renderSegment(
-            @RequestBody RenderSegmentRequest request,
-            HttpServletRequest httpRequest) {
-        if (request.timelineJson() == null || request.timelineJson().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "timelineJson is required"));
-        }
-        if (request.segmentIds() == null || request.segmentIds().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "segmentIds is required"));
-        }
+    private Object call(JsonNode params) {
+        if(params==null || !params.hasNonNull("name") || !params.has("arguments"))throw new IllegalArgumentException();
+        String name=params.get("name").asText();JsonNode args=params.get("arguments");
+        if(!TOOL_NAMES.contains(name))throw new IllegalArgumentException("Unknown tool");
         try {
-            var canon = timelineCanonicalizer.canonicalize(request.timelineJson());
-            String timelineJson = canon.timelineJson();
-            Map<String, String> segmentMeta = new LinkedHashMap<>();
-            SegmentPlanFilter.embedTargetSegmentIds(segmentMeta, request.segmentIds());
-            timelineJson = InternalTimelineJson.mergeMetadata(timelineJson, segmentMeta);
-            TimelineSpec spec = internalTimelineAdapter.toSpec(timelineJson)
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid Internal Timeline 1.0 JSON"));
-
-            if (request.submitJob()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "segment submission requires a pre-existing canonical revision snapshot"));
-            }
-
-            if (request.baseJobId() == null || request.oldTimelineJson() == null) {
-                PipelineExecutionPlan plan = renderPlannerService.generatePlan(
-                        spec,
-                        request.profile() != null ? request.profile() : "default_1080p",
-                        request.tier() != null ? request.tier() : "PRO",
-                        request.outputFormat() != null ? request.outputFormat() : "mp4",
-                        timelineJson);
-                plan = segmentPlanFilter.restrictToTargetSegments(
-                        plan, java.util.Set.copyOf(request.segmentIds()));
-                Map<String, Object> body = pipelinePlanBody(plan);
-                body.put("segmentIds", request.segmentIds());
-                body.put("matchingTasks", plan.tasks().stream()
-                        .filter(t -> request.segmentIds().contains(t.taskId()))
-                        .map(t -> t.taskId())
-                        .toList());
-                return ResponseEntity.ok(body);
-            }
-
-            IncrementalRenderPlan plan = incrementalRenderPlanService.generate(
-                    timelineJson,
-                    request.oldTimelineJson(),
-                    request.profile() != null ? request.profile() : "default_1080p",
-                    request.tier() != null ? request.tier() : "PRO",
-                    request.outputFormat() != null ? request.outputFormat() : "mp4",
-                    request.baseJobId(),
-                    List.of(),
-                    request.tenantId());
-            Map<String, Object> body = pipelinePlanBody(plan.pipelinePlan());
-            body.put("mode", plan.mode());
-            body.put("segmentIds", request.segmentIds());
-            body.put("executeTaskIds", plan.executeTaskIds().stream()
-                    .filter(id -> request.segmentIds().contains(id) || "final_compose".equals(id))
-                    .toList());
-            body.put("reuseTaskIds", plan.reuseTaskIds());
-            return ResponseEntity.ok(body);
-        } catch (Exception e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
+            Object value=switch(name) {
+                case "timeline.revision" -> revision(bind(args,RevisionArgs.class),false);
+                case "timeline.export_otio" -> revision(bind(args,RevisionArgs.class),true);
+                case "timeline.apply_operation" -> {
+                    var a=bind(args,OperationArgs.class);var actor=actor();
+                    yield operations.invoke(a.command().toOperationRequest(a.projectId()),
+                            new OperationInvocationContext(actor,a.command().commandId(),null,"mcp-media"));
+                }
+                case "render.submit" -> {
+                    var a=bind(args,RenderArgs.class);
+                    yield submissions.submit(a.request(),a.request().extent().toExtent(),RenderInitiator.from(actor()),a.idempotencyKey()).response();
+                }
+                case "render.submit_incremental" -> {
+                    var a=bind(args,IncrementalArgs.class);
+                    yield submissions.submitIncremental(a.request(),a.request().extent().toExtent(),RenderInitiator.from(actor()),a.idempotencyKey()).response();
+                }
+                case "render.job" -> {
+                    var a=bind(args,JobArgs.class);var job=jobs.getByIdAndProject(tenant(),a.projectId(),a.renderJobId());
+                    var status=lifecycle.find(tenant(),a.projectId(),a.renderJobId());
+                    var result=new LinkedHashMap<String,Object>();result.put("renderJobId",job.id());result.put("projectId",job.projectId());
+                    result.put("status",job.status());result.put("finalArtifactId",status.map(GraphRenderLifecycle.Status::finalArtifactId).orElse(null));
+                    result.put("failureCode",status.map(GraphRenderLifecycle.Status::failureCode).orElse(null));yield result;
+                }
+                case "delivery.create" -> {
+                    var a=bind(args,DeliveryArgs.class);yield deliveries.create(a.projectId(),a.sourceRenderJobId(),a.artifactId(),a.idempotencyKey()).delivery();
+                }
+                case "delivery.result" -> {
+                    var a=bind(args,DeliveryResultArgs.class);var content=deliveries.result(a.projectId(),a.deliveryId());
+                    yield Map.of("delivery",deliveries.get(a.projectId(),a.deliveryId()),"contentType",content.contentType(),"contentLength",content.bytes().length);
+                }
+                case "artifact.query" -> {
+                    var a=bind(args,ArtifactArgs.class);jobs.getByIdAndProject(tenant(),a.projectId(),a.renderJobId());
+                    artifactAccess.requireRead(tenant(),a.projectId());var scope=new ArtifactScope(tenant(),a.projectId(),a.renderJobId());
+                    yield a.artifactId()==null?Map.of("items",artifacts.listArtifacts(scope,100)):
+                            artifacts.requestAccess(scope,new ArtifactId(a.artifactId()));
+                }
+                default -> throw new IllegalArgumentException();
+            };
+            return toolResult(value,false);
+        } catch(IllegalArgumentException invalid) {throw invalid;}
+        catch(RuntimeException failure) {
+            String code=failure instanceof DeliveryFailure d?d.code():
+                    failure instanceof OperationInvocationException o?o.code().name():
+                    failure instanceof com.example.platform.shared.web.PlatformException p?p.getErrorCode().code():
+                    failure instanceof com.example.platform.shared.authorization.AuthorizationDeniedException?"AUTHORIZATION_DENIED":
+                    failure instanceof org.springframework.web.server.ResponseStatusException s?safeStatusCode(s):
+                    failure instanceof ArtifactApplicationService.ArtifactAccessException a?a.failure().name():"TOOL_FAILED";
+            return toolResult(Map.of("code",code),true);
         }
     }
-
-    @PostMapping("/nle_layers")
-    @Operation(summary = "L3–L7 NLE 层能力与健康状态")
-    public ResponseEntity<Map<String, Object>> nleLayers() {
-        return ResponseEntity.ok(nleLayerCatalogService.catalog());
+    private Object revision(RevisionArgs a,boolean otio) {
+        projectAccess.requireRead(tenant(),a.projectId());
+        var info=revisions.findById(a.projectId(),tenant(),a.revisionId()).orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND));
+        if(otio)return Map.of("projectId",a.projectId(),"revisionId",a.revisionId(),"otioJson",new com.example.platform.timeline.otio.TimelineOtioExportService(revisions).export(tenant(),a.projectId(),a.revisionId()));
+        var snapshot=revisions.getRevisionSnapshotPayload(a.projectId(),tenant(),a.revisionId()).orElseThrow();
+        return Map.of("projectId",a.projectId(),"revisionId",info.id(),"contentHash",info.contentHash(),"revisionNumber",info.revisionNumber(),"canonicalTimelineJson",snapshot.canonicalTimelineJson());
     }
-
-    @PostMapping("/get_render_plan")
-    @Operation(summary = "读取作业持久化的 Pipeline DAG 计划")
-    public ResponseEntity<Map<String, Object>> getRenderPlan(@RequestBody GetRenderPlanRequest request) {
-        var planOpt = pipelinePlanPersistence.loadPlan(request.jobId());
-        if (planOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        PipelineExecutionPlan plan = planOpt.get();
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("planId", plan.planId());
-        body.put("timelineId", plan.timelineId());
-        body.put("finalComposer", plan.finalComposer().name().toLowerCase());
-        body.put("metadata", plan.metadata());
-        body.put("tasks", plan.tasks().stream().map(t -> Map.of(
-                "taskId", t.taskId(),
-                "name", t.name(),
-                "type", t.type().name(),
-                "backend", t.backend(),
-                "dependsOn", t.dependsOn() != null ? t.dependsOn() : List.of(),
-                "cacheKey", t.cacheKey() != null ? t.cacheKey() : "")).toList());
-        pipelinePlanPersistence.loadExecutionState(request.jobId())
-                .ifPresent(state -> body.put("executionState", state));
-        return ResponseEntity.ok(body);
-    }
-
-    @PostMapping("/canonicalize_timeline")
-    @Operation(summary = "规范化 Internal Timeline 1.0（按 id 排序、剥离 volatile 字段）")
-    public ResponseEntity<Map<String, Object>> canonicalizeTimeline(
-            @RequestBody TimelineJsonRequest request) {
+    private <T> T bind(JsonNode args,Class<T> type) {
         try {
-            TimelineCanonicalization.CanonicalizeResult result =
-                    timelineCanonicalizer.canonicalize(request.timelineJson());
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("timelineId", result.timelineId());
-            body.put("schemaVersion", result.schemaVersion());
-            body.put("revision", result.revision());
-            body.put("timelineJson", result.timelineJson());
-            return ResponseEntity.ok(body);
-        } catch (Exception e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()));
-        }
+            T value=json.readerFor(type).with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).readValue(args);
+            if(!validator.validate(value).isEmpty())throw new IllegalArgumentException();return value;
+        } catch(java.io.IOException | jakarta.validation.ValidationException e) {throw new IllegalArgumentException("Invalid tool arguments");}
     }
-
-    @PostMapping("/diff_timelines")
-    @Operation(summary = "语义 Diff（按稳定 id，canonicalize 后比较）")
-    public ResponseEntity<Map<String, Object>> diffTimelines(@RequestBody DiffTimelinesRequest request) {
-        try {
-            SemanticDiffResult diff = timelineSemanticDiffService.diff(
-                    request.oldTimelineJson(), request.newTimelineJson());
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("structurallyEqual", diff.structurallyEqual());
-            body.put("hasChanges", diff.hasChanges());
-            body.put("oldTimelineId", diff.oldTimelineId());
-            body.put("newTimelineId", diff.newTimelineId());
-            body.put("oldRevision", diff.oldRevision());
-            body.put("newRevision", diff.newRevision());
-            body.put("schemaVersion", diff.schemaVersion());
-            body.put("changes", diff.changes().stream()
-                    .map(c -> Map.of(
-                            "type", c.type().name(),
-                            "entity", c.entity() != null ? c.entity().key() : "",
-                            "summary", c.summary()))
-                    .toList());
-            return ResponseEntity.ok(body);
-        } catch (Exception e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
-        }
+    private Object toolResult(Object value,boolean failed) {
+        JsonNode data=json.valueToTree(value);
+        return Map.of("content",List.of(Map.of("type","text","text",data.toString())),"structuredContent",data,"isError",failed);
     }
-
-    @PostMapping("/analyze_render_impact")
-    @Operation(summary = "渲染影响分析（dirtyScopes / 增量任务骨架）")
-    public ResponseEntity<Map<String, Object>> analyzeRenderImpact(
-            @RequestBody DiffTimelinesRequest request) {
-        try {
-            SemanticDiffResult diff = timelineSemanticDiffService.diff(
-                    request.oldTimelineJson(), request.newTimelineJson());
-            RenderImpactResult impact = renderImpactAnalyzer.analyze(diff);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("fullReRenderRequired", impact.fullReRenderRequired());
-            body.put("dirtyScopes", impact.dirtyScopes().stream().map(Enum::name).toList());
-            body.put("dirtyEntities", impact.dirtyEntities().stream().map(e -> e.key()).toList());
-            body.put("reusableArtifactHints", impact.reusableArtifactHints());
-            body.put("suggestedTasks", impact.suggestedTasks().stream()
-                    .map(t -> Map.of(
-                            "taskId", t.taskId(),
-                            "type", t.type(),
-                            "target", t.targetEntityKey(),
-                            "dependsOn", t.dependsOn(),
-                            "parameters", t.parameters()))
-                    .toList());
-            return ResponseEntity.ok(body);
-        } catch (Exception e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
-        }
+    private CanonicalActor actor() {
+        var actor=actors.resolveCurrentActor().orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        if(actor.isSystem() || !Objects.equals(actor.tenantId(),TenantContext.get()))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN);
+        return actor;
     }
-
-    @PostMapping("/explain_incremental_plan")
-    @Operation(summary = "增量渲染计划可读解释")
-    public ResponseEntity<Map<String, Object>> explainIncrementalPlan(
-            @RequestBody DiffTimelinesRequest request) {
-        try {
-            SemanticDiffResult diff = timelineSemanticDiffService.diff(
-                    request.oldTimelineJson(), request.newTimelineJson());
-            RenderImpactResult impact = renderImpactAnalyzer.analyze(diff);
-            return ResponseEntity.ok(incrementalPlanExplainer.explain(impact));
-        } catch (Exception e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
-        }
+    private String tenant(){return actor().tenantId();}
+    private ResponseEntity<?> response(Object value){return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL,"private, no-store").body(value);}
+    private static Map<String,Object> envelope(JsonNode id,String field,Object value) {
+        var result=new LinkedHashMap<String,Object>();result.put("jsonrpc","2.0");result.put("id",id);result.put(field,value);return result;
     }
-
-    @PostMapping("/validate_timeline")
-    @Operation(summary = "校验 Internal Timeline JSON")
-    public ResponseEntity<Map<String, Object>> validateTimeline(
-            @RequestBody TimelineJsonRequest request) {
-        TimelineValidation.InternalTimelineValidationResult result =
-                timelineValidationService.validate(request.timelineJson());
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("valid", result.valid());
-        body.put("errors", result.errors());
-        body.put("warnings", result.warnings());
-        return ResponseEntity.ok(body);
+    private static Map<String,Object> error(JsonNode id,int code,String message){return envelope(id,"error",Map.of("code",code,"message",message));}
+    private static String safeStatusCode(org.springframework.web.server.ResponseStatusException failure) {
+        String reason=failure.getReason();return reason!=null && reason.matches("[A-Z][A-Z0-9_]{0,99}")?reason:"HTTP_"+failure.getStatusCode().value();
     }
-
-    @PostMapping("/import_otio")
-    @Operation(summary = "OTIO JSON → Internal Timeline Schema 1.0")
-    public ResponseEntity<Map<String, Object>> importOtio(@RequestBody OtioJsonRequest request) {
-        var imported = OpenTimelineioAdapter.importWithReport(request.otioJson());
-        String timelineJson = timelineImportService.importTimeline(
-                timelineSpecImportAdapter.toRequest(imported.timeline(), imported.extensions()));
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timelineId", imported.timeline().id());
-        body.put("schemaVersion", "1.0");
-        body.put("timelineJson", timelineJson);
-        body.put("warnings", imported.warnings());
-        body.put("finalComposer", imported.extensions().finalComposer().name().toLowerCase());
-        body.put("trackCount", imported.timeline().tracks().size());
-        return ResponseEntity.ok(body);
+    private static final List<String> TOOL_NAMES=List.of("timeline.revision","timeline.export_otio","timeline.apply_operation","render.submit","render.submit_incremental","render.job","delivery.create","delivery.result","artifact.query");
+    private static Map<String,Object> object(Map<String,Object> properties,String... required) {
+        return Map.of("type","object","properties",properties,"required",List.of(required),"additionalProperties",false);
     }
-
-    @PostMapping("/export_otio")
-    @Operation(summary = "Internal Timeline 1.0 → OTIO JSON（交换格式）")
-    public ResponseEntity<Map<String, Object>> exportOtio(@RequestBody TimelineJsonRequest request) {
-        TimelineSpec spec = internalTimelineAdapter.toSpec(request.timelineJson())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid Internal Timeline 1.0 JSON"));
-        String otio = OpenTimelineioAdapter.toOtioJson(spec);
-        return ResponseEntity.ok(Map.of("otioJson", otio));
+    private static Map<String,Object> input(String... fields) {
+        var properties=new LinkedHashMap<String,Object>();for(String field:fields)properties.put(field,Map.of("type","string","minLength",1));
+        return object(properties,fields);
     }
-
-    @PostMapping("/generate_render_plan")
-    @Operation(summary = "生成 Pipeline Render Plan (DAG)")
-    public ResponseEntity<Map<String, Object>> generateRenderPlan(
-            @RequestBody GeneratePlanRequest request) {
-        TimelineSpec spec = internalTimelineAdapter.toSpec(request.timelineJson())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Invalid Internal Timeline 1.0 JSON (requires schemaVersion 1.0 and composition)"));
-        PipelineExecutionPlan plan = renderPlannerService.generatePlan(
-                spec,
-                request.profile() != null ? request.profile() : "default_1080p",
-                request.tier() != null ? request.tier() : "PRO",
-                request.outputFormat() != null ? request.outputFormat() : "mp4",
-                request.timelineJson());
-        return ResponseEntity.ok(pipelinePlanBody(plan));
+    private static Map<String,Object> renderInput(boolean incremental) {
+        var properties=new LinkedHashMap<String,Object>();
+        properties.put("extent",object(Map.of("startMillis",Map.of("type","integer","minimum",0),"endMillis",Map.of("type","integer","minimum",0),
+                "frameRateNumerator",Map.of("type","integer","minimum",1),"frameRateDenominator",Map.of("type","integer","minimum",1)),
+                "startMillis","endMillis","frameRateNumerator","frameRateDenominator"));
+        properties.put("outputFormat",Map.of("type","string","enum",List.of("MP4")));properties.put("profile",Map.of("type","string","minLength",1));
+        List<String> identities=incremental?List.of("targetRevisionId","referenceRevisionId","referenceRenderJobId"):List.of("revisionId");
+        identities.forEach(field->properties.put(field,Map.of("type","string","minLength",1)));
+        return object(Map.of("request",object(properties,properties.keySet().toArray(String[]::new)),"idempotencyKey",Map.of("type","string","minLength",1,"maxLength",255)),"request","idempotencyKey");
     }
-
-    @PostMapping("/generate_incremental_render_plan")
-    @Operation(summary = "基于语义 Diff 生成增量 Render Plan（含 reuse / skipExecution）")
-    public ResponseEntity<Map<String, Object>> generateIncrementalRenderPlan(
-            @RequestBody GenerateIncrementalPlanRequest request) {
-        try {
-            IncrementalRenderPlan plan = incrementalRenderPlanService.generate(
-                    request.newTimelineJson(),
-                    request.oldTimelineJson(),
-                    request.profile() != null ? request.profile() : "default_1080p",
-                    request.tier() != null ? request.tier() : "PRO",
-                    request.outputFormat() != null ? request.outputFormat() : "mp4",
-                    request.baseJobId(),
-                    request.reuseArtifacts() != null ? request.reuseArtifacts() : List.of(),
-                    request.tenantId());
-            Map<String, Object> body = pipelinePlanBody(plan.pipelinePlan());
-            body.put("mode", plan.mode());
-            body.put("fullReRenderRequired", plan.fullReRenderRequired());
-            body.put("baseRevision", plan.baseRevision());
-            body.put("targetRevision", plan.targetRevision());
-            body.put("executeTaskIds", plan.executeTaskIds());
-            body.put("reuseTaskIds", plan.reuseTaskIds());
-            body.put("reuse", plan.reuse().stream().map(a -> Map.of(
-                    "artifactId", a.artifactId(),
-                    "taskId", a.taskId(),
-                    "cacheKey", a.cacheKey() != null ? a.cacheKey() : "")).toList());
-            body.put("dirtyScopes", plan.impact().dirtyScopes().stream().map(Enum::name).toList());
-            body.put("changeCount", plan.diff().changes().size());
-            return ResponseEntity.ok(body);
-        } catch (Exception e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
-        }
+    private static Map<String,Object> operationInput() {
+        var command=new LinkedHashMap<String,Object>();for(String field:List.of("baseRevisionId","baseContentHash","clipId","commandId"))command.put(field,Map.of("type","string","minLength",1));
+        command.put("type",Map.of("type","string","enum",List.of("TRIM_CLIP","MOVE_CLIP","DELETE_CLIP")));
+        command.put("delta",Map.of("type",List.of("string","null")));command.put("absolute",Map.of("type",List.of("boolean","null")));
+        command.put("edge",Map.of("enum",Arrays.asList("START","END",null)));
+        return object(Map.of("projectId",Map.of("type","string","minLength",1),"command",object(command,"type","baseRevisionId","baseContentHash","clipId","commandId")),"projectId","command");
     }
-
-    private Map<String, Object> pipelinePlanBody(PipelineExecutionPlan plan) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("planId", plan.planId());
-        body.put("timelineId", plan.timelineId());
-        body.put("finalComposer", plan.finalComposer().name().toLowerCase());
-        body.put("metadata", plan.metadata());
-        body.put("tasks", plan.tasks().stream().map(t -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("taskId", t.taskId());
-            m.put("name", t.name());
-            m.put("type", t.type().name());
-            m.put("backend", t.backend());
-            m.put("dependsOn", t.dependsOn() != null ? t.dependsOn() : List.of());
-            m.put("cacheKey", t.cacheKey() != null ? t.cacheKey() : "");
-            if (t.parameters() != null && !t.parameters().isEmpty()) {
-                m.put("parameters", t.parameters());
-            }
-            return m;
-        }).toList());
-        return body;
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> artifactInput(boolean create) {
+        String[] required=create?new String[]{"projectId","sourceRenderJobId","idempotencyKey"}:new String[]{"projectId","renderJobId"};
+        var schema=new LinkedHashMap<>(input(required));var properties=new LinkedHashMap<>((Map<String,Object>)schema.get("properties"));
+        properties.put("artifactId",Map.of("type",List.of("string","null")));schema.put("properties",properties);return schema;
     }
-
-    @PostMapping("/import_srt")
-    @Operation(summary = "SRT → Internal Timeline Schema 1.0（含字幕轨）")
-    public ResponseEntity<Map<String, Object>> importSrt(@RequestBody SubtitleTextRequest request) {
-        if (request.fontFamily() == null || request.fontFamily().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "fontFamily is required: SRT carries no font semantics; "
-                            + "an explicit import font policy must be supplied (ROADMAP_19 CORR-2)"));
-        }
-        var overlays = SrtSubtitleAdapter.parse(request.content(),
-                new com.example.platform.fonttext.typography.FontFamilyName(request.fontFamily()));
-        TimelineSpec base = TimelineSpec.create("tl-srt-import", "SRT Import", TimelineOutputSpec.mp4_1080p30());
-        double duration = overlays.stream()
-                .mapToDouble(o -> o.startTime() + o.duration())
-                .max()
-                .orElse(0);
-        TimelineSpec spec = new TimelineSpec(
-                base.id(),
-                base.name(),
-                base.description(),
-                base.tracks(),
-                overlays,
-                base.outputSpec(),
-                duration,
-                Map.of("platform.import.source", "srt"));
-        Map<String, Object> body = internalTimelineBody(spec);
-        body.put("overlayCount", overlays.size());
-        body.put("overlays", overlays);
-        return ResponseEntity.ok(body);
+    private static List<Map<String,Object>> catalog() {
+        var definitions=Map.of("timeline.revision",input("projectId","revisionId"),"timeline.export_otio",input("projectId","revisionId"),
+                "timeline.apply_operation",operationInput(),"render.submit",renderInput(false),"render.submit_incremental",renderInput(true),
+                "render.job",input("projectId","renderJobId"),"delivery.create",artifactInput(true),"delivery.result",input("projectId","deliveryId"),"artifact.query",artifactInput(false));
+        return TOOL_NAMES.stream().map(name->Map.<String,Object>of("name",name,"description","Authorized media product operation: "+name,"inputSchema",definitions.get(name))).toList();
     }
-
-    @PostMapping("/export_webvtt")
-    @Operation(summary = "Internal Timeline 1.0 / 遗留 OTIO → WebVTT")
-    public ResponseEntity<Map<String, Object>> exportWebVtt(@RequestBody TimelineJsonRequest request) {
-        TimelineSpec spec = timelineSpecResolver.resolve(request.timelineJson())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid timeline JSON"));
-        String vtt = WebVttSubtitleAdapter.toWebVtt(
-                spec.textOverlays() != null ? spec.textOverlays() : List.of(),
-                request.language() != null ? request.language() : "en");
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("webVtt", vtt);
-        body.put("schemaVersion", timelineSpecResolver.isInternalTimelineJson(request.timelineJson())
-                ? InternalTimelineJson.SCHEMA_V1 : "legacy");
-        return ResponseEntity.ok(body);
-    }
-
-    @PostMapping("/import_edl")
-    @Operation(summary = "EDL → Internal Timeline Schema 1.0")
-    public ResponseEntity<Map<String, Object>> importEdl(@RequestBody EdlImportRequest request) {
-        TimelineSpec spec = EdlTimelineAdapter.parse(request.edlContent(), request.defaultMediaUri());
-        String timelineJson = timelineImportService.importTimeline(timelineSpecImportAdapter.toRequest(spec));
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timelineId", spec.id());
-        body.put("schemaVersion", "1.0");
-        body.put("timelineJson", timelineJson);
-        body.put("duration", spec.computeDuration());
-        return ResponseEntity.ok(body);
-    }
-
-    @PostMapping("/patch_timeline")
-    @Operation(summary = "JSON Patch 风格修改时间线")
-    public ResponseEntity<Map<String, Object>> patchTimeline(@RequestBody PatchTimelineRequest request) {
-        List<TimelinePatches.PatchOperation> ops = request.operations().stream()
-                .map(o -> new TimelinePatches.PatchOperation(o.op(), o.path(), o.value()))
-                .toList();
-        TimelinePatches.PatchResult result =
-                timelinePatchService.applyPatch(request.timelineJson(), ops);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", result.success());
-        body.put("appliedOps", result.appliedOps());
-        body.put("errors", result.errors());
-        body.put("warnings", result.warnings());
-        if (result.success()) {
-            body.put("timelineJson", result.timelineJson());
-        }
-        return result.success() ? ResponseEntity.ok(body) : ResponseEntity.unprocessableEntity().body(body);
-    }
-
-    @PostMapping("/import_aaf")
-    @Operation(summary = "AAF 导入（JSON/XML manifest、Worker 队列或二进制占位）")
-    public ResponseEntity<Map<String, Object>> importAaf(@RequestBody AafImportRequest request) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        if (request.manifestContent() != null && !request.manifestContent().isBlank()) {
-            TimelineSpec spec = AafTimelineAdapter.importFromSource(
-                    request.aafPath(), request.manifestContent(), request.defaultMediaUri());
-            body.putAll(internalTimelineBody(spec));
-            body.put("status", spec.metadata().getOrDefault("platform.import.status", "UNKNOWN"));
-            body.put("clipCount", spec.tracks().isEmpty() ? 0 : spec.tracks().get(0).clips().size());
-            return ResponseEntity.ok(body);
-        }
-        if (request.aafPath() != null && !request.aafPath().isBlank()
-                && request.queueConversion() && aafConversionService.canAcceptMore()) {
-            String conversionId = aafConversionService.enqueue(
-                    request.aafPath(), request.defaultMediaUri(), request.tenantId());
-            body.put("conversionId", conversionId);
-            body.put("status", "QUEUED");
-            body.put("warnings", List.of("AAF binary queued for worker conversion"));
-            return ResponseEntity.accepted().body(body);
-        }
-        TimelineSpec spec = AafTimelineAdapter.importFromSource(
-                request.aafPath(), null, request.defaultMediaUri());
-        body.putAll(internalTimelineBody(spec));
-        body.put("status", spec.metadata().getOrDefault("platform.import.status", "UNKNOWN"));
-        body.put("clipCount", spec.tracks().isEmpty() ? 0 : spec.tracks().get(0).clips().size());
-        if ("PLACEHOLDER_REQUIRES_WORKER".equals(body.get("status"))) {
-            body.put("warnings", List.of("Supply manifestContent or set queueConversion=true"));
-        }
-        return ResponseEntity.ok(body);
-    }
-
-    @PostMapping("/aaf_conversion_status")
-    @Operation(summary = "查询 AAF Worker 转换结果")
-    public ResponseEntity<Map<String, Object>> aafConversionStatus(@RequestBody AafConversionStatusRequest request) {
-        return aafConversionService.getResult(request.conversionId())
-                .map(result -> {
-                    Map<String, Object> body = new LinkedHashMap<>();
-                    body.put("conversionId", result.conversionId());
-                    body.put("success", result.success());
-                    body.put("status", result.status());
-                    body.put("errorMessage", result.errorMessage());
-                    if (result.manifestJson() != null) {
-                        body.put("manifestJson", result.manifestJson());
-                        TimelineSpec spec = AafTimelineAdapter.importFromSource(
-                                null, result.manifestJson(), null);
-                        body.putAll(internalTimelineBody(spec));
-                        body.put("clipCount", spec.tracks().isEmpty() ? 0 : spec.tracks().get(0).clips().size());
-                    }
-                    return ResponseEntity.ok(body);
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/import_fcpxml")
-    @Operation(summary = "FCPXML → Internal Timeline Schema 1.0")
-    public ResponseEntity<Map<String, Object>> importFcpxml(@RequestBody FcpXmlRequest request) {
-        TimelineSpec spec = FcpXmlTimelineAdapter.parse(request.fcpxml());
-        String timelineJson = timelineImportService.importTimeline(timelineSpecImportAdapter.toRequest(spec));
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timelineId", spec.id());
-        body.put("schemaVersion", "1.0");
-        body.put("timelineJson", timelineJson);
-        body.put("clipCount", spec.tracks().isEmpty() ? 0 : spec.tracks().get(0).clips().size());
-        return ResponseEntity.ok(body);
-    }
-
-    @PostMapping("/package/dash")
-    @Operation(summary = "DASH 打包")
-    public ResponseEntity<Map<String, Object>> packageDash(
-            @RequestBody PackageDashRequest request,
-            HttpServletRequest httpRequest) {
-        log.info("MCP package_dash: input={} packager={} source={}",
-                request.inputUri(), request.packager(), resolveSource(httpRequest));
-
-        Map<String, String> extra = new LinkedHashMap<>();
-        if (request.drm() != null && request.drm().enabled()) {
-            extra.putAll(request.drm().toExtraParams());
-        }
-        PackagingRequest packagingRequest = new PackagingRequest(
-                request.inputUri(),
-                request.outputBase(),
-                "dash",
-                request.segmentDurationSec(),
-                List.of(),
-                extra);
-        PackagingResult result = routePackager(request.packager()).packageMedia(packagingRequest);
-
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", result.success());
-        body.put("manifestUri", result.manifestUri());
-        body.put("format", result.format());
-        body.put("errorMessage", result.errorMessage());
-        return result.success() ? ResponseEntity.ok(body) : ResponseEntity.unprocessableEntity().body(body);
-    }
-
-    private com.example.platform.render.infrastructure.gpac.PackagingProvider routePackager(String packager) {
-        String key = packager != null ? packager.toLowerCase() : "gpac";
-        return switch (key) {
-            case "bento4" -> bento4Packaging.orElseThrow(() -> new IllegalStateException("Bento4 not enabled"));
-            case "shaka" -> shakaPackaging.orElseThrow(() -> new IllegalStateException("Shaka not enabled"));
-            default -> gpacPackaging.orElseThrow(() -> new IllegalStateException("GPAC not enabled"));
-        };
-    }
-
-    private RenderInitiator requireInitiator(String tenantId) {
-        RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
-                .map(RenderInitiator::from)
-                .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
-        if (!tenantId.equals(initiator.tenantId())) {
-            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
-        }
-        return initiator;
-    }
-
-    private Map<String, Object> internalTimelineBody(TimelineSpec spec) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timelineId", spec.id());
-        body.put("schemaVersion", InternalTimelineJson.SCHEMA_V1);
-        body.put("timelineJson", timelineImportService.importTimeline(timelineSpecImportAdapter.toRequest(spec)));
-        body.put("duration", spec.computeDuration());
-        return body;
-    }
-
-    private String resolveSource(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.startsWith("/api/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
-    }
-
-    public record GetRenderPlanRequest(String jobId) {}
-
-    public record PackageDashRequest(
-            String inputUri,
-            String outputBase,
-            int segmentDurationSec,
-            String packager,
-            PackagingDrmProfile drm) {}
-
-    public record TimelineJsonRequest(String timelineJson, String language) {
-        public TimelineJsonRequest(String timelineJson) {
-            this(timelineJson, null);
-        }
-    }
-
-    public record OtioJsonRequest(String otioJson) {}
-
-    public record GeneratePlanRequest(
-            String timelineJson,
-            String profile,
-            String tier,
-            String outputFormat) {}
-
-    public record GenerateIncrementalPlanRequest(
-            String newTimelineJson,
-            String oldTimelineJson,
-            String profile,
-            String tier,
-            String outputFormat,
-            String baseJobId,
-            List<ReusableArtifact> reuseArtifacts,
-            String tenantId) {
-
-        public GenerateIncrementalPlanRequest(
-                String newTimelineJson,
-                String oldTimelineJson,
-                String profile,
-                String tier,
-                String outputFormat,
-                String baseJobId,
-                List<ReusableArtifact> reuseArtifacts) {
-            this(newTimelineJson, oldTimelineJson, profile, tier, outputFormat,
-                    baseJobId, reuseArtifacts, null);
-        }
-    }
-
-    public record RenderTimelineRequest(
-            String tenantId,
-            String projectId,
-            String timelineJson,
-            String timelineSnapshotId,
-            String profile,
-            String baseJobId) {}
-
-    public record RenderSegmentRequest(
-            String tenantId,
-            String projectId,
-            String timelineJson,
-            String oldTimelineJson,
-            List<String> segmentIds,
-            String profile,
-            String tier,
-            String outputFormat,
-            String baseJobId,
-            boolean submitJob) {
-
-        public RenderSegmentRequest(
-                String tenantId,
-                String projectId,
-                String timelineJson,
-                String oldTimelineJson,
-                List<String> segmentIds,
-                String profile,
-                String tier,
-                String outputFormat,
-                String baseJobId) {
-            this(tenantId, projectId, timelineJson, oldTimelineJson, segmentIds,
-                    profile, tier, outputFormat, baseJobId, false);
-        }
-    }
-
-    public record SubtitleTextRequest(String content, String fontFamily) {}
-
-    public record EdlImportRequest(String edlContent, String defaultMediaUri) {}
-
-    public record FcpXmlRequest(String fcpxml) {}
-
-    public record PatchTimelineRequest(String timelineJson, List<PatchOp> operations) {}
-
-    public record PatchOp(String op, String path, JsonNode value) {}
-
-    public record AafImportRequest(
-            String aafPath,
-            String manifestContent,
-            String defaultMediaUri,
-            String tenantId,
-            boolean queueConversion) {}
-
-    public record AafConversionStatusRequest(String conversionId) {}
-
-    public record DiffTimelinesRequest(String oldTimelineJson, String newTimelineJson) {}
-
-
 }

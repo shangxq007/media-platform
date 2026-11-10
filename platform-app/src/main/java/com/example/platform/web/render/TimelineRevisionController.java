@@ -3,9 +3,7 @@ package com.example.platform.web.render;
 import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.app.TimelinePatchOpsJson;
-import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.render.app.timeline.RenderJobStatusService;
 import com.example.platform.render.api.dto.RenderJobResultResponse;
 import com.example.platform.render.api.dto.RenderJobStatusResponse;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery.CompareResult;
@@ -14,8 +12,6 @@ import com.example.platform.timeline.api.revision.TimelineRevisionQueries.Revisi
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionInfo;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionSnapshotPayload;
 import com.example.platform.timeline.api.revision.TimelineMergeOperations;
-import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
-import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
 import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
 import com.example.platform.timeline.diff.merge.TimelineMergeResult;
 import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
@@ -50,8 +46,6 @@ public class TimelineRevisionController {
     private final com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService;
     private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
     private final TimelineMergeOperations mergeEngine;
-    private final TimelineRevisionRenderService renderService;
-    private final RenderJobStatusService renderJobStatusService;
     private final com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService;
     private final com.example.platform.timeline.api.composition.TimelinePayloadCodec timelinePayloadCodec;
     private final TimelineProjectAuthorizationService projectAuthorization;
@@ -60,16 +54,12 @@ public class TimelineRevisionController {
             com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService,
             com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
                                        TimelineMergeOperations mergeEngine,
-                                       @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
-                                       @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService,
                                        com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService,
                                        com.example.platform.timeline.api.composition.TimelinePayloadCodec timelinePayloadCodec,
                                        TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
         this.mergeEngine = mergeEngine;
-        this.renderService = renderService;
-        this.renderJobStatusService = renderJobStatusService;
         this.revisionSaveService = revisionSaveService;
         this.timelinePayloadCodec = timelinePayloadCodec;
         this.projectAuthorization = projectAuthorization;
@@ -204,52 +194,7 @@ public class TimelineRevisionController {
                 "Direct revision merge retired; use a versioned Timeline Operation");
     }
 
-    @PostMapping("/{revisionId}/render")
-    @Operation(summary = "渲染 TimelineRevision 为最终视频 Product",
-            description = "接受 TimelineRevision 引用和输出配置，使用 FFmpeg/libass 基线渲染路径生成最终视频。" +
-                    "不暴露内部 provider/backend/environment 选择。")
-    public ResponseEntity<TimelineRevisionRenderResponse> render(
-            @PathVariable String projectId,
-            @PathVariable String revisionId,
-            @RequestBody TimelineRevisionRenderRequest request) {
-        projectAuthorization.requireWrite(TenantContext.get(), projectId);
-        if (renderService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(TimelineRevisionRenderResponse.failure(revisionId, "Timeline revision render service is not available"));
-        }
 
-        try {
-            TimelineRevisionRenderService.RevisionRenderResult result =
-                    renderService.render(projectId, revisionId, request.profileOrDefault());
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(TimelineRevisionRenderResponse.success(result));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{revisionId}/render-jobs/{renderJobId}")
-    @Operation(summary = "查询渲染作业状态",
-            description = "根据 renderJobId 查询渲染作业状态。" +
-                    "返回 READY/FAILED/RUNNING 状态及输出 Product 引用。" +
-                    "不暴露内部 provider/backend/environment 选择。")
-    public ResponseEntity<RenderJobStatusResponse> getRenderJobStatus(
-            @PathVariable String projectId,
-            @PathVariable String revisionId,
-            @PathVariable String renderJobId) {
-        projectAuthorization.requireRead(TenantContext.get(), projectId);
-        if (renderJobStatusService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
-        }
-
-        return renderJobStatusService.findStatus(projectId, revisionId, renderJobId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
 
     @GetMapping("/{revisionId}/render-jobs/{renderJobId}/result")
     @Operation(summary = "查询渲染作业结果",

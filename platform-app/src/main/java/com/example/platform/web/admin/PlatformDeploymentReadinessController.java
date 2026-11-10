@@ -2,7 +2,6 @@ package com.example.platform.web.admin;
 
 import com.example.platform.app.ai.TenantLitellmKeyService;
 import com.example.platform.app.ai.TenantLitellmKeyVaultMigrationService;
-import com.example.platform.render.infrastructure.RenderCacheProperties;
 import com.example.platform.storage.infrastructure.StorageS3Properties;
 import com.example.platform.workflow.temporal.AppTemporalProperties;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformDeploymentReadinessController {
 
     private final StorageS3Properties storageS3Properties;
-    private final RenderCacheProperties renderCacheProperties;
     private final AppTemporalProperties temporalProperties;
     private final TenantLitellmKeyService litellmKeyService;
     private final TenantLitellmKeyVaultMigrationService litellmKeyVaultMigrationService;
@@ -40,13 +38,11 @@ public class PlatformDeploymentReadinessController {
 
     public PlatformDeploymentReadinessController(
             StorageS3Properties storageS3Properties,
-            RenderCacheProperties renderCacheProperties,
             TenantLitellmKeyService litellmKeyService,
             TenantLitellmKeyVaultMigrationService litellmKeyVaultMigrationService,
             @Autowired(required = false) AppTemporalProperties temporalProperties,
             @Autowired(required = false) io.temporal.worker.WorkerFactory workerFactory) {
         this.storageS3Properties = storageS3Properties;
-        this.renderCacheProperties = renderCacheProperties;
         this.litellmKeyService = litellmKeyService;
         this.litellmKeyVaultMigrationService = litellmKeyVaultMigrationService;
         this.temporalProperties = temporalProperties != null ? temporalProperties : new AppTemporalProperties();
@@ -86,11 +82,6 @@ public class PlatformDeploymentReadinessController {
         storage.put("compatibility", storageS3Properties.getCompatibility().name());
         storage.put("defaultBucket", storageS3Properties.getDefaultBucket());
 
-        Map<String, Object> renderCache = new LinkedHashMap<>();
-        renderCache.put("remoteEnabled", renderCacheProperties.isRemoteEnabled());
-        renderCache.put("uploadEnabled", renderCacheProperties.isUploadEnabled());
-        renderCache.put("cleanupEnabled", renderCacheProperties.isCleanupEnabled());
-        renderCache.put("retentionDays", renderCacheProperties.getRetentionDays());
 
         Map<String, Object> ai = new LinkedHashMap<>();
         ai.put("openaiProviderEnabled", openAiProviderEnabled);
@@ -99,7 +90,6 @@ public class PlatformDeploymentReadinessController {
         ai.put("vaultAvailableForLitellmKeys", litellmKeyService.isVaultAvailable());
 
         boolean storageReady = storageS3Properties.isEnabled();
-        boolean cacheReady = renderCacheProperties.isRemoteEnabled() && renderCacheProperties.isUploadEnabled();
         // W1-GAP-002: when Temporal is enabled, temporalConfigured requires a
         // healthy started worker; when disabled, it is trivially satisfied.
         boolean temporalReady = !temporalEnabled || workerHealthy;
@@ -109,18 +99,16 @@ public class PlatformDeploymentReadinessController {
                 platformEnvironment,
                 temporal,
                 storage,
-                renderCache,
                 ai,
-                new Checks(storageReady, cacheReady, temporalReady, aiReady));
+                new Checks(storageReady, temporalReady, aiReady));
     }
 
-    public record Checks(boolean storageS3, boolean renderCacheRemote, boolean temporalConfigured, boolean aiLitellm) {}
+    public record Checks(boolean storageS3, boolean temporalConfigured, boolean aiLitellm) {}
 
     public record ReadinessReport(
             String platformEnvironment,
             Map<String, Object> temporal,
             Map<String, Object> storage,
-            Map<String, Object> renderCache,
             Map<String, Object> ai,
             Checks checks) {}
 }

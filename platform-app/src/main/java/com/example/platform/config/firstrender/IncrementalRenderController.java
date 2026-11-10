@@ -21,9 +21,7 @@ public class IncrementalRenderController {
     public ResponseEntity<FirstRenderPlanHttpResponse> submit(@Valid @RequestBody IncrementalRenderHttpRequest request,
             @RequestHeader(value="Idempotency-Key",required=false) String key) {
         var actor=actors.resolveCurrentActor().map(RenderInitiator::from).orElseThrow(()->new IllegalStateException("Authenticated actor required"));
-        var e=request.extent();var extent=new RenderExtent(MediaTime.ofMillis(e.startMillis()),MediaTime.ofMillis(e.endMillis()),
-                FrameRate.of(e.frameRateNumerator(),e.frameRateDenominator()));
-        if(!extent.isValid())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"extent start must be before end");
+        var extent=request.extent().toExtent();
         var result=submissions.submitIncremental(request,extent,actor,key);
         return ResponseEntity.status(result.created()?HttpStatus.CREATED:HttpStatus.OK).body(result.response());
     }

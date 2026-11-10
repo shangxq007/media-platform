@@ -44,7 +44,7 @@ public class TimelineClipEditOperationController {
     @PostMapping("/apply")
     public ResponseEntity<OperationInvocationResult> apply(
             @PathVariable String tenantId, @PathVariable String projectId,
-            @RequestBody ClipEditRequest body) {
+            @RequestBody com.example.platform.render.app.operation.TimelineClipEditCommand body) {
         requireId(tenantId, "tenantId");
         requireId(projectId, "projectId");
         CanonicalActor actor = actors.resolveCurrentActor()
@@ -58,64 +58,6 @@ public class TimelineClipEditOperationController {
                 new OperationInvocationContext(actor, body.commandId(), null, "timeline-http"));
         return ResponseEntity.status(result instanceof OperationInvocationResult.Applied
                 ? HttpStatus.CREATED : HttpStatus.OK).body(result);
-    }
-
-    /** MOVE_CLIP changes time on the existing track. Cross-track moves are not accepted here. */
-    public record ClipEditRequest(String type, String baseRevisionId, String baseContentHash,
-                                  String clipId, String delta, Boolean absolute, String edge,
-                                  String commandId) {
-        public ClipEditRequest {
-            requireId(baseRevisionId, "baseRevisionId");
-            requireHash(baseContentHash, "baseContentHash");
-            requireId(clipId, "clipId");
-            requireId(commandId, "commandId");
-            if (type == null || !List.of("MOVE_CLIP", "TRIM_CLIP", "DELETE_CLIP").contains(type)) {
-                throw new IllegalArgumentException("unsupported clip edit type");
-            }
-            if (!"DELETE_CLIP".equals(type)) {
-                if (delta == null || delta.length() > 64
-                        || !delta.matches("[+]?[0-9]+(?:/[1-9][0-9]*)?")) {
-                    throw new IllegalArgumentException("exact rational delta required");
-                }
-            }
-            if ("MOVE_CLIP".equals(type) && absolute == null) {
-                throw new IllegalArgumentException("absolute flag required for MOVE_CLIP");
-            }
-            if ("MOVE_CLIP".equals(type) && edge != null) {
-                throw new IllegalArgumentException("MOVE_CLIP does not accept trim edge");
-            }
-            if ("TRIM_CLIP".equals(type) && (edge == null || !List.of("START", "END").contains(edge))) {
-                throw new IllegalArgumentException("trim edge must be START or END");
-            }
-            if ("TRIM_CLIP".equals(type) && absolute != null) {
-                throw new IllegalArgumentException("TRIM_CLIP does not accept absolute flag");
-            }
-            if ("DELETE_CLIP".equals(type)
-                    && (delta != null || absolute != null || edge != null)) {
-                throw new IllegalArgumentException("DELETE_CLIP does not accept time parameters");
-            }
-        }
-
-        OperationRequest toOperationRequest(String projectId) {
-            var definition = switch (type) {
-                case "MOVE_CLIP" -> OperationDefinition.V1.MOVE;
-                case "TRIM_CLIP" -> OperationDefinition.V1.TRIM;
-                case "DELETE_CLIP" -> OperationDefinition.V1.DELETE;
-                default -> throw new IllegalArgumentException("unsupported clip edit type");
-            };
-            OperationParameters parameters = switch (type) {
-                case "MOVE_CLIP" -> new OperationParameters.MoveParameters(parseTime(delta), absolute);
-                case "TRIM_CLIP" -> new OperationParameters.TrimParameters(
-                        OperationParameters.TrimParameters.TrimEdge.valueOf(edge), parseTime(delta));
-                case "DELETE_CLIP" -> new OperationParameters.NoParameters();
-                default -> throw new IllegalArgumentException("unsupported clip edit type");
-            };
-            return new OperationRequest(definition.definitionId(), definition.version(),
-                    new OperationTargetRequest.ClipSelectionTargetRequest(projectId,
-                            new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of(clipId))),
-                            SelectionSpec.ExpansionPolicy.EXACT),
-                    parameters, baseRevisionId, baseContentHash, null);
-        }
     }
 
     @ExceptionHandler(OperationInvocationException.class)

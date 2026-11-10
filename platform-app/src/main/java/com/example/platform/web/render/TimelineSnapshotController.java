@@ -1,7 +1,6 @@
 package com.example.platform.web.render;
 
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
-import com.example.platform.render.app.timeline.TimelineConversionService;
 import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
@@ -39,19 +38,16 @@ public class TimelineSnapshotController {
 
     private final TimelineRevisionCommands revisionSaveService;
     private final TimelineRevisionQueries revisionQueryService;
-    private final TimelineConversionService conversionService;
     private final TimelineProjectAuthorizationService projectAuthorization;
     private final OperationInvocationPort invocations;
 
     public TimelineSnapshotController(
             TimelineRevisionCommands revisionSaveService,
             TimelineRevisionQueries revisionQueryService,
-            TimelineConversionService conversionService,
             TimelineProjectAuthorizationService projectAuthorization,
             OperationInvocationPort invocations) {
         this.revisionSaveService = revisionSaveService;
         this.revisionQueryService = revisionQueryService;
-        this.conversionService = conversionService;
         this.projectAuthorization = projectAuthorization;
         this.invocations = invocations;
     }
@@ -103,40 +99,13 @@ public class TimelineSnapshotController {
         }
     }
 
-    private com.example.platform.timeline.canonical.TimelineDocument toCanonicalDocument(
-            SaveSnapshotRequest request) {
-        try {
-            if (request.payloadJson() != null && !request.payloadJson().isBlank()) {
-                try {
-                    return TimelineDocumentJsonSerializer.deserialize(request.payloadJson());
-                } catch (IllegalArgumentException importedFormat) {
-                    return importDocument(request.projectId(), request.payloadJson());
-                }
-            }
-            if (request.editorTimeline() != null) {
-                return importDocument(
-                        request.projectId(), MAPPER.writeValueAsString(request.editorTimeline()));
-            }
-            throw new IllegalArgumentException("editorTimeline or payloadJson is required");
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid timeline payload: " + e.getMessage(), e);
-        }
-    }
-
-    private com.example.platform.timeline.canonical.TimelineDocument importDocument(
-            String projectId, String externalJson) {
-        String importProjection = conversionService.ensureInternalTimelineJson(externalJson);
-        var candidate = InternalTimelineCandidateAdapter.map(projectId, importProjection);
-        return TimelineSnapshotConverter.toDocument(
-                TimelineSnapshotConverter.toSnapshot(candidate, "import"));
+    private com.example.platform.timeline.canonical.TimelineDocument toCanonicalDocument(SaveSnapshotRequest request) {
+        return TimelineDocumentJsonSerializer.deserialize(request.payloadJson());
     }
 
     public record SaveSnapshotRequest(
             @NotBlank String projectId,
-            JsonNode editorTimeline,
-            String payloadJson,
+            @NotBlank String payloadJson,
             String expectedCurrentRevisionId) {}
 
     public record SnapshotResponse(String snapshotId, String projectId, String revisionId) {}

@@ -45,18 +45,8 @@ public class FirstRenderController {
         RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
                 .map(RenderInitiator::from)
                 .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
-        var result = submissions.submit(request, toExtent(request.extent()), initiator, idempotencyKey);
+        var result = submissions.submit(request, request.extent().toExtent(), initiator, idempotencyKey);
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.response());
     }
 
-    private static RenderExtent toExtent(FirstRenderExtentHttpRequest extent) {
-        RenderExtent renderExtent = new RenderExtent(
-                MediaTime.ofMillis(extent.startMillis()),
-                MediaTime.ofMillis(extent.endMillis()),
-                FrameRate.of(extent.frameRateNumerator(), extent.frameRateDenominator()));
-        if (!renderExtent.isValid()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "extent start must be before end");
-        }
-        return renderExtent;
-    }
 }

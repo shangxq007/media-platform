@@ -36,7 +36,7 @@ public class TemporalFirstRenderWorkflowStarter implements FirstRenderWorkflowSt
         Objects.requireNonNull(reference, "reference");
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(workflowId, "workflowId");
-        if(!tenantId.equals(reference.tenantId()) || !workflowId.equals(com.example.platform.workflow.temporal.RenderWorkflowIdentity.forJob(tenantId,reference.renderJobId())))throw new IllegalArgumentException("Render workflow identity mismatch");
+        if(!tenantId.equals(reference.tenantId()) || !workflowId.equals(com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowIdentity.forJob(tenantId,reference.renderJobId())))throw new IllegalArgumentException("Render workflow identity mismatch");
         WorkflowClient client = requireClient();
         MediaTaskWorkflow workflow = client.newWorkflowStub(
                 MediaTaskWorkflow.class,

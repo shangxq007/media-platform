@@ -1,6 +1,6 @@
 package com.example.platform.workflow.adapter;
 
-import com.example.platform.workflow.temporal.RenderWorkflowIdentity;
+import com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowIdentity;
 import io.temporal.client.*;
 import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.*;

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Project, RenderJob, UserBehaviorEvent, ErrorResponse, EffectPack } from '@/types'
+import type { Project, UserBehaviorEvent, ErrorResponse, EffectPack } from '@/types'
 import { getErrorMessage } from '@/utils/i18n'
 import { isOidcEnabled } from '@/auth/oidcConfig'
 import { bindOidcRequest, expectOidcRequestBinding, handleOidcResponseError } from './oidc-transport'
@@ -83,24 +83,9 @@ export const ProjectAPI = {
   }
 }
 
-export { IncrementalRenderAPI } from './render-incremental'
-export { AiTimelineAPI } from './ai-timeline'
-export type {
-  AiTimelineEditRequest,
-  AiTimelineEditResponse,
-  AiProposalDto,
-  TimelineInternalPreviewResponse,
-} from './ai-timeline'
 export { DeliveryAPI } from './delivery'
 export type { Delivery, CreateDelivery } from './delivery'
-export type {
-  IncrementalRenderPlanResponse,
-  GenerateIncrementalPlanRequest,
-  SubmitIncrementalRenderRequest,
-  RenderCachePresignResponse,
-  RenderCacheEntryPresign,
-  RenderCacheCleanupResponse
-} from './render-incremental'
+
 
 export { TimelineSyncAPI } from './timelineSync'
 export { TimelineRevisionAPI } from './timelineRevision'
@@ -109,55 +94,6 @@ export type {
   TimelineSyncPullResponse,
   TimelineSyncSyncResponse
 } from './timelineSync'
-
-export const RenderAPI = {
-  async saveTimelineSnapshot(
-    projectId: string,
-    editorTimeline: unknown,
-    options?: { ensureInternal?: boolean }
-  ): Promise<{ snapshotId: string; projectId: string }> {
-    const { data } = await api.post('/render/timeline-snapshots', {
-      projectId,
-      editorTimeline,
-      schemaVersion: '2.0.0',
-      ensureInternal: options?.ensureInternal === true
-    })
-    return data
-  },
-  async createJob(projectId: string, settings: Record<string, string> & { timelineSnapshotId?: string }): Promise<RenderJob> {
-    const cancellation = new AbortController()
-    const stop = isOidcEnabled() ? subscribeOidcSessionRetirement(() => cancellation.abort()) : () => {}
-    try {
-      const binding = isOidcEnabled() ? await getOidcRequestBinding() : undefined
-      const config = { signal: cancellation.signal, expectedOidcBinding: binding ? expectOidcRequestBinding(binding) : undefined }
-      const { data: scope } = await api.get<{ id: string; tenantId: string; workspaceId: string | null }>(
-        `/identity/projects/${encodeURIComponent(projectId)}`, config)
-      if (scope.id !== projectId || !scope.tenantId || !scope.workspaceId) throw new Error('Project scope is unresolved')
-      const { data } = await api.post(`/tenants/${encodeURIComponent(scope.tenantId)}/projects/${encodeURIComponent(projectId)}/render-jobs`, {
-        projectId,
-        workspaceId: scope.workspaceId,
-        allocationMode: 'TENANT_ORGANIZATION',
-        timelineSnapshotId: settings.timelineSnapshotId,
-        profile: settings.profile,
-      }, config)
-      return data
-    } finally {
-      stop()
-    }
-  },
-  async executeJob(jobId: string): Promise<{ jobId: string; status: string }> {
-    const { data } = await api.post(`/render/jobs/${jobId}/execute`)
-    return data
-  },
-  async getJob(jobId: string): Promise<RenderJob> {
-    const { data } = await api.get(`/render/jobs/${jobId}`)
-    return data
-  },
-  async listJobs(): Promise<RenderJob[]> {
-    const { data } = await api.get('/render/jobs')
-    return data
-  }
-}
 
 export const AnalyticsAPI = {
   async trackEvent(userId: string, eventType: string, action?: string, resourceType?: string, metadata?: Record<string, string>): Promise<UserBehaviorEvent> {
@@ -280,3 +216,6 @@ export type {
 } from '../foundation/platformClient'
 
 export default api
+
+export { FormalRenderAPI } from './formal-render'
+export type { RenderIntent, IncrementalIntent, ClipEdit, RenderResult } from './formal-render'
