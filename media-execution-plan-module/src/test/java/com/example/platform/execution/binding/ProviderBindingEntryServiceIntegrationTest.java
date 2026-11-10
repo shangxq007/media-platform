@@ -163,11 +163,13 @@ class ProviderBindingEntryServiceIntegrationTest {
                 contractVersion,
                 List.of(
                         new ProviderCapabilityContractReference(DECODE, RANGE_1_0),
+                        new ProviderCapabilityContractReference(CapabilityId.of("render.composite"), RANGE_1_0),
                         new ProviderCapabilityContractReference(ENCODE, RANGE_1_0)));
         ProviderCapabilityProfile profile = new ProviderCapabilityProfile(
                 profileReference,
                 List.of(
                         ProviderCapabilitySupport.unpinned(DECODE, RANGE_1_0),
+                        ProviderCapabilitySupport.unpinned(CapabilityId.of("render.composite"), RANGE_1_0),
                         ProviderCapabilitySupport.unpinned(ENCODE, RANGE_1_0)));
         ProviderStaticCompatibility staticCompatibility = new ProviderStaticCompatibility(
                 ProviderStaticCompatibility.Knowledge.DECLARED,
