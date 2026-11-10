@@ -14,7 +14,13 @@ import static org.mockito.Mockito.*;
 
 class IncrementalInputReuseTest {
     final String tenant="tenant",project="project";
-    final ExecutionReuseKey key=ExecutionReuseKey.fromCanonical("unit-only-semantic-key");
+    final ExecutionReuseKey key=unitKey();
+    static ExecutionReuseKey unitKey() {
+        String canonical="roadmap22.execution-reuse-key.v1/unit-only-semantic-key";
+        try {return new ExecutionReuseKey(ExecutionReuseKey.VERSION,canonical,java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8))));}
+        catch(java.security.NoSuchAlgorithmException impossible) {throw new IllegalStateException(impossible);}
+    }
     final ExecutableTaskId task=new ExecutableTaskId("a".repeat(64));
     final ArtifactId id=new ArtifactId("derived");
     final ContentDigest digest=ContentDigest.sha256("b".repeat(64));
