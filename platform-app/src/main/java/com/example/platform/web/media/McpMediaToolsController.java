@@ -128,7 +128,7 @@ public class McpMediaToolsController {
             String code=failure instanceof DeliveryFailure d?d.code():
                     failure instanceof OperationInvocationException o?o.code().name():
                     failure instanceof com.example.platform.shared.web.PlatformException p?p.getErrorCode().code():
-                    failure instanceof com.example.platform.shared.authorization.AuthorizationDeniedException?"AUTHORIZATION_DENIED":
+                    failure instanceof com.example.platform.identity.api.authorization.AuthorizationDeniedException?"AUTHORIZATION_DENIED":
                     failure instanceof org.springframework.web.server.ResponseStatusException s?safeStatusCode(s):
                     failure instanceof ArtifactApplicationService.ArtifactAccessException a?a.failure().name():"TOOL_FAILED";
             return toolResult(Map.of("code",code),true);

@@ -4,8 +4,6 @@ import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.app.TimelinePatchOpsJson;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.render.api.dto.RenderJobResultResponse;
-import com.example.platform.render.api.dto.RenderJobStatusResponse;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery.CompareResult;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries.EditSessionInfo;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionDetail;
@@ -196,24 +194,6 @@ public class TimelineRevisionController {
 
 
 
-    @GetMapping("/{revisionId}/render-jobs/{renderJobId}/result")
-    @Operation(summary = "查询渲染作业结果",
-            description = "根据 renderJobId 查询渲染作业的输出 Product 结果摘要。" +
-                    "返回输出 Product 的安全元数据（格式、分辨率、时长等）。" +
-                    "不暴露内部 provider/backend/environment 选择，不暴露 signed URL 或本地路径。")
-    public ResponseEntity<RenderJobResultResponse> getRenderJobResult(
-            @PathVariable String projectId,
-            @PathVariable String revisionId,
-            @PathVariable String renderJobId) {
-        projectAuthorization.requireRead(TenantContext.get(), projectId);
-        if (renderJobStatusService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
-        }
-
-        return renderJobStatusService.findResult(projectId, revisionId, renderJobId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
 
     private static RevisionListItem toListItem(RevisionInfo r) {
         ChangeSummaryDto summary = parseChangeSummary(r.changeSummaryJson());
