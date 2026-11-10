@@ -140,6 +140,11 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     public final TableField<RenderJobRecord, Instant> GRAPH_PREPARATION_DEADLINE = createField(DSL.name("graph_preparation_deadline"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
+     * The column <code>public.render_job.incremental_reference_job_id</code>.
+     */
+    public final TableField<RenderJobRecord, String> INCREMENTAL_REFERENCE_JOB_ID = createField(DSL.name("incremental_reference_job_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
      * The column <code>public.render_job.base_job_id</code>.
      */
     public final TableField<RenderJobRecord, String> BASE_JOB_ID = createField(DSL.name("base_job_id"), SQLDataType.VARCHAR(64), this, "");
@@ -263,7 +268,19 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
 
     @Override
     public List<ForeignKey<RenderJobRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT);
+        return Arrays.asList(Keys.RENDER_JOB__FK_RENDER_INCREMENTAL_REFERENCE_SCOPE, Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT);
+    }
+
+    private transient RenderJobPath _renderJob;
+
+    /**
+     * Get the implicit join path to the <code>public.render_job</code> table.
+     */
+    public RenderJobPath renderJob() {
+        if (_renderJob == null)
+            _renderJob = new RenderJobPath(this, Keys.RENDER_JOB__FK_RENDER_INCREMENTAL_REFERENCE_SCOPE, null);
+
+        return _renderJob;
     }
 
     private transient ProjectPath _project;

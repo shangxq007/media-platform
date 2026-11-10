@@ -218,115 +218,129 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
     }
 
     /**
+     * Setter for <code>public.render_job.incremental_reference_job_id</code>.
+     */
+    public void setIncrementalReferenceJobId(String value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for <code>public.render_job.incremental_reference_job_id</code>.
+     */
+    public String getIncrementalReferenceJobId() {
+        return (String) get(14);
+    }
+
+    /**
      * Setter for <code>public.render_job.base_job_id</code>.
      */
     public void setBaseJobId(String value) {
-        set(14, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.render_job.base_job_id</code>.
      */
     public String getBaseJobId() {
-        return (String) get(14);
+        return (String) get(15);
     }
 
     /**
      * Setter for <code>public.render_job.trace_id</code>.
      */
     public void setTraceId(String value) {
-        set(15, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.render_job.trace_id</code>.
      */
     public String getTraceId() {
-        return (String) get(15);
+        return (String) get(16);
     }
 
     /**
      * Setter for <code>public.render_job.initiator_type</code>.
      */
     public void setInitiatorType(String value) {
-        set(16, value);
+        set(17, value);
     }
 
     /**
      * Getter for <code>public.render_job.initiator_type</code>.
      */
     public String getInitiatorType() {
-        return (String) get(16);
+        return (String) get(17);
     }
 
     /**
      * Setter for <code>public.render_job.initiator_id</code>.
      */
     public void setInitiatorId(String value) {
-        set(17, value);
+        set(18, value);
     }
 
     /**
      * Getter for <code>public.render_job.initiator_id</code>.
      */
     public String getInitiatorId() {
-        return (String) get(17);
+        return (String) get(18);
     }
 
     /**
      * Setter for <code>public.render_job.initiator_tenant_id</code>.
      */
     public void setInitiatorTenantId(String value) {
-        set(18, value);
+        set(19, value);
     }
 
     /**
      * Getter for <code>public.render_job.initiator_tenant_id</code>.
      */
     public String getInitiatorTenantId() {
-        return (String) get(18);
+        return (String) get(19);
     }
 
     /**
      * Setter for <code>public.render_job.timeline_revision_id</code>.
      */
     public void setTimelineRevisionId(String value) {
-        set(19, value);
+        set(20, value);
     }
 
     /**
      * Getter for <code>public.render_job.timeline_revision_id</code>.
      */
     public String getTimelineRevisionId() {
-        return (String) get(19);
+        return (String) get(20);
     }
 
     /**
      * Setter for <code>public.render_job.selected_provider</code>.
      */
     public void setSelectedProvider(String value) {
-        set(20, value);
+        set(21, value);
     }
 
     /**
      * Getter for <code>public.render_job.selected_provider</code>.
      */
     public String getSelectedProvider() {
-        return (String) get(20);
+        return (String) get(21);
     }
 
     /**
      * Setter for <code>public.render_job.updated_at</code>.
      */
     public void setUpdatedAt(Instant value) {
-        set(21, value);
+        set(22, value);
     }
 
     /**
      * Getter for <code>public.render_job.updated_at</code>.
      */
     public Instant getUpdatedAt() {
-        return (Instant) get(21);
+        return (Instant) get(22);
     }
 
     // -------------------------------------------------------------------------
@@ -352,7 +366,7 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
     /**
      * Create a detached, initialised RenderJobRecord
      */
-    public RenderJobRecord(String id, String projectId, String timelineSnapshotId, String profile, String status, LocalDateTime createdAt, String aiScript, String artifactUri, String errorMessage, String tenantId, String pipelinePlanJson, String pipelineExecutionJson, String graphPreparationStage, Instant graphPreparationDeadline, String baseJobId, String traceId, String initiatorType, String initiatorId, String initiatorTenantId, String timelineRevisionId, String selectedProvider, Instant updatedAt) {
+    public RenderJobRecord(String id, String projectId, String timelineSnapshotId, String profile, String status, LocalDateTime createdAt, String aiScript, String artifactUri, String errorMessage, String tenantId, String pipelinePlanJson, String pipelineExecutionJson, String graphPreparationStage, Instant graphPreparationDeadline, String incrementalReferenceJobId, String baseJobId, String traceId, String initiatorType, String initiatorId, String initiatorTenantId, String timelineRevisionId, String selectedProvider, Instant updatedAt) {
         super(RenderJob.RENDER_JOB);
 
         setId(id);
@@ -369,6 +383,7 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
         setPipelineExecutionJson(pipelineExecutionJson);
         setGraphPreparationStage(graphPreparationStage);
         setGraphPreparationDeadline(graphPreparationDeadline);
+        setIncrementalReferenceJobId(incrementalReferenceJobId);
         setBaseJobId(baseJobId);
         setTraceId(traceId);
         setInitiatorType(initiatorType);
