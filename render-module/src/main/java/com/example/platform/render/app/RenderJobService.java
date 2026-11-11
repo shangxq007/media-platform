@@ -9,7 +9,6 @@ import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.request.RenderInitiator;
-import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
@@ -33,20 +32,18 @@ public class RenderJobService {
     private static final AuthorizationAction READ_JOB = new AuthorizationAction("READ", AuthorizationResourceType.RENDER_JOB, "Read Render job");
     private static final AuthorizationAction MUTATE_JOB = new AuthorizationAction("WRITE", AuthorizationResourceType.RENDER_JOB, "Mutate Render job");
     private final RenderJobRepository renderJobRepository;
-    private final RenderPolicyEngine policyEngine;
     private final RenderLifecyclePublisher publisher;
     private final RenderJobStateMachine stateMachine;
     private final RenderJobStatusHistoryRepository historyRepository;
     private final RenderJobCancellationContinuation cancellationContinuation;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
+    public RenderJobService(RenderJobRepository renderJobRepository,
             RenderLifecyclePublisher publisher,
             RenderJobStatusHistoryRepository historyRepository,
             @Autowired(required = false) RenderJobCancellationContinuation cancellationContinuation, ProjectReadQuery projects, CanonicalActorResolver actors, AuthorizationDecisionPort authorization, RenderAcceptanceContextService acceptance) {
         this.renderJobRepository = renderJobRepository;
         this.acceptance = acceptance;
-        this.policyEngine = policyEngine;
         this.publisher = publisher;
         this.historyRepository = historyRepository;
         this.stateMachine = new RenderJobStateMachine();
@@ -197,32 +194,13 @@ public class RenderJobService {
         stateMachine.validateTransition(currentStatus, RenderJobStatus.CANCELLED);
         new RenderStateTransitions(renderJobRepository,historyRepository,publisher).transition(jobId,job.projectId(),currentStatus,RenderJobStatus.CANCELLED,"USER_CANCELLED");
         // W1-GAP-006 (frozen contract TEPHV1 CONTRACT_V1): propagate the
-        // application cancellation to the durable execution mechanism
-        // (Temporal workflow cancel in temporal mode; no-op in local mode).
+        // application cancellation to the bound Temporal execution.
         if (cancellationContinuation != null) {
             cancellationContinuation.cancelAfterJobCancelled(tenantId, jobId);
         }
         return mutationJob(jobId);
     }
 
-    @Transactional
-    public RenderJobResponse retry(String jobId, String tenantId) {
-        assertTenantAccess(tenantId);
-        RenderJobResponse job = authorizeJobMutation(jobId, tenantId);
-        RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
-
-        // Retry creates a new RenderJob — old job remains in its terminal state
-        if (!currentStatus.isTerminal()) {
-            throw new PlatformException(CommonErrorCode.CONFLICT,
-                    "Cannot retry non-terminal job: " + currentStatus);
-        }
-
-        var newId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-        renderJobRepository.createRetryJob(newId, jobId);
-        historyRepository.record(newId, null, "QUEUED",
-                "Retry of failed job " + jobId, null);
-        return mutationJob(newId);
-    }
 
     public List<StatusHistoryResponse> getStatusHistory(String jobId, String tenantId) {
         assertTenantAccess(tenantId);

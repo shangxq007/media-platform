@@ -87,16 +87,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
         assertFalse(found.isPresent());
     }
 
-    @Test
-    void listByTenant() {
-        repository.create("rj-5a", "proj-5", "tenant-5", "snap-5a", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-5"), OffsetDateTime.now());
-        repository.create("rj-5b", "proj-5", "tenant-5", "snap-5b", "social_1080p", "RUNNING", RenderInitiatorFixtures.user("tenant-5"), OffsetDateTime.now());
-        repository.create("rj-6", "proj-6", "tenant-6", "snap-6", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-6"), OffsetDateTime.now());
 
-        List<RenderJobResponse> tenant5Jobs = repository.listByTenant("tenant-5");
-        assertEquals(2, tenant5Jobs.size());
-        assertTrue(tenant5Jobs.stream().allMatch(j -> j.id().startsWith("rj-5")));
-    }
 
     @Test
     void listByProjectAndTenant() {
@@ -109,35 +100,11 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
         assertTrue(proj7Jobs.stream().allMatch(j -> j.projectId().equals("proj-7")));
     }
 
-    @Test
-    void updateStatus() {
-        repository.create("rj-9", "proj-9", "tenant-9", "snap-9", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-9"), OffsetDateTime.now());
-        repository.updateStatus("rj-9", "RUNNING");
 
-        Optional<RenderJobResponse> found = repository.findById("rj-9");
-        assertTrue(found.isPresent());
-        assertEquals("RUNNING", found.get().status());
-    }
 
-    @Test
-    void updateStatusAndClearError() {
-        repository.create("rj-10", "proj-10", "tenant-10", "snap-10", "standard", "FAILED", RenderInitiatorFixtures.user("tenant-10"), OffsetDateTime.now());
-        repository.updateStatusWithError("rj-10", "FAILED", "Something went wrong");
-        repository.updateStatusAndClearError("rj-10", "QUEUED");
 
-        Optional<RenderJobResponse> found = repository.findById("rj-10");
-        assertTrue(found.isPresent());
-        assertEquals("QUEUED", found.get().status());
-    }
 
-    @Test
-    void existsByIdAndTenant() {
-        repository.create("rj-11", "proj-11", "tenant-11", "snap-11", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-11"), OffsetDateTime.now());
 
-        assertTrue(repository.existsByIdAndTenant("rj-11", "tenant-11"));
-        assertFalse(repository.existsByIdAndTenant("rj-11", "wrong-tenant"));
-        assertFalse(repository.existsByIdAndTenant("nonexistent", "tenant-11"));
-    }
 
     @Test
     void findTenantIdById() {
@@ -154,31 +121,18 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
         assertFalse(tenantId.isPresent());
     }
 
-    @Test
-    void findProjectTenantId() {
-        dsl.insertInto(DSL.table("project"))
-                .columns(DSL.field("id"), DSL.field("tenant_id"), DSL.field("name"),
-                        DSL.field("description"), DSL.field("status"), DSL.field("created_at"))
-                .values("proj-13", "tenant-13", "Test", "", "ACTIVE", OffsetDateTime.now())
-                .execute();
 
-        Optional<String> tenantId = repository.findProjectTenantId("proj-13");
-        assertTrue(tenantId.isPresent());
-        assertEquals("tenant-13", tenantId.get());
-    }
 
-    @Test
-    void findProjectTenantIdReturnsEmptyForMissing() {
-        Optional<String> tenantId = repository.findProjectTenantId("nonexistent");
-        assertFalse(tenantId.isPresent());
-    }
 
-    @Test
-    void listAll() {
-        repository.create("rj-14a", "proj-14", "tenant-14", "snap-14a", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-14"), OffsetDateTime.now());
-        repository.create("rj-14b", "proj-15", "tenant-15", "snap-14b", "social_1080p", "RUNNING", RenderInitiatorFixtures.user("tenant-15"), OffsetDateTime.now());
 
-        List<RenderJobResponse> all = repository.listAll();
-        assertTrue(all.size() >= 2);
+
+    @Test void compareAndSetRequiresExactOwnerAndExpectedStatus() {
+        repository.create("cas-job","cas-project","cas-tenant","snapshot","default","QUEUED",RenderInitiatorFixtures.user("cas-tenant"),OffsetDateTime.now());
+        assertEquals(0,repository.compareAndSetStatus("cas-job","cas-project","foreign","QUEUED","CANCELLED"));
+        assertEquals(0,repository.compareAndSetStatus("cas-job","foreign","cas-tenant","QUEUED","CANCELLED"));
+        assertEquals(0,repository.compareAndSetStatus("cas-job","cas-project","cas-tenant","EXECUTING","CANCELLED"));
+        assertEquals(1,repository.compareAndSetStatus("cas-job","cas-project","cas-tenant","QUEUED","CANCELLED"));
+        assertEquals(0,repository.compareAndSetStatus("cas-job","cas-project","cas-tenant","QUEUED","EXECUTING"));
+        assertEquals("CANCELLED",repository.findById("cas-job").orElseThrow().status());
     }
 }

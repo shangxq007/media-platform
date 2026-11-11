@@ -57,10 +57,5 @@ class RenderTimeBoundaryTest {
   assertThrows(Exception.class,()->mapper.readValue(principal.replace("\"tenant\"","\"\""),RenderInitiator.class));
   assertThrows(NullPointerException.class,()->RenderInitiator.from(null));
  }
- @Test void invalidRateCannotBecomeAnAbsentOptionalSegmentPlan() {
-  var planner=new com.example.platform.render.app.timeline.SegmentTimelinePlanner();
-  String json="{\"schemaVersion\":\"1.0\",\"id\":\"timeline\",\"project\":{\"frameRate\":{\"num\":30,\"den\":0},\"duration\":{\"frame\":60}},\"renderGraph\":{\"segmentPolicy\":{\"enabled\":true,\"segmentDuration\":{\"frame\":30}}}}";
-  assertThrows(TimelineFrameRateCodec.InvalidCanonicalRateException.class,()->planner.planFromTimelineJson(json));
-  assertTrue(planner.planFromTimelineJson(json.replace("\"den\":0","\"den\":1")).isPresent());
- }
+
 }

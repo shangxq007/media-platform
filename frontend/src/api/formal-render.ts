@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import axios from 'axios'
 import { versionlessApi } from './app/versionless-api'
 import { isOidcEnabled } from '../auth/oidcConfig'
 import { getOidcRequestBinding, subscribeOidcSessionRetirement } from '../auth/oidcClient'
@@ -13,7 +14,7 @@ export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP'; bas
 const Submission = z.object({ renderJobId: id, requestId: id, executionPlanId: id, status: z.literal('PLANNED'), workflowId: id, workflowStarted: z.boolean() })
 const Result = z.object({ renderJobId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
 export type RenderResult = z.infer<typeof Result>
-const Revision = z.object({ revisionId: id, productId: id, contentDigest: id })
+const Revision = z.object({ revisionId: id, productId: id, contentDigest: id, timelineContentHash: id })
 const Head = z.object({ revisionId: id, revision: z.object({ revisionId: id, productId: id, semanticContext: z.object({ timelineContentDigest: id }) }) })
 const Lifecycle = z.object({ renderJobId: id, timelineRevisionId: id, projectId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable() })
 
@@ -26,6 +27,11 @@ async function request<T>(run: (config: { signal: AbortSignal; expectedOidcBindi
     const binding = isOidcEnabled() ? await getOidcRequestBinding() : undefined
     active.throwIfAborted()
     const { data } = await run({ signal: active, expectedOidcBinding: binding ? expectOidcRequestBinding(binding) : undefined })
+    active.throwIfAborted()
+    if (binding) {
+      const current = await getOidcRequestBinding()
+      if (current.retired || current.revision !== binding.revision || current.credential !== binding.credential) throw new axios.CanceledError('OIDC request binding retired')
+    }
     active.throwIfAborted()
     return data
   } finally { stop() }
@@ -40,7 +46,7 @@ export const FormalRenderAPI = {
   async revision(project: string, revision: string, signal?: AbortSignal) {
     const result = Revision.parse(await request(c => versionlessApi.get(`/timeline-git/products/${part(project)}/revisions/${part(revision)}`, c), signal))
     if (result.productId !== project || result.revisionId !== revision) throw new Error('REVISION_SCOPE_MISMATCH')
-    return { projectId: project, revisionId: revision, contentHash: result.contentDigest }
+    return { projectId: project, revisionId: revision, contentHash: result.timelineContentHash }
   },
   async snapshot(project: string, revision: string, signal?: AbortSignal) {
     const schema = z.object({ canonicalTimelineJson: z.string(), schemaVersion: z.string() })
@@ -48,6 +54,7 @@ export const FormalRenderAPI = {
   },
   async applyOperation(tenant: string, project: string, command: ClipEdit, signal?: AbortSignal) {
     const value = z.object({ newRevisionId: id.optional(), baseRevisionId: id, resultContentHash: id.optional(), unchangedContentHash: id.optional() })
+      .refine(v => (v.newRevisionId !== undefined && v.resultContentHash !== undefined && v.unchangedContentHash === undefined) || (v.newRevisionId === undefined && v.resultContentHash === undefined && v.unchangedContentHash !== undefined), 'Invalid Operation outcome')
       .parse(await request(c => versionlessApi.post(`/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/apply`, command, c), signal))
     return { revisionId: value.newRevisionId ?? value.baseRevisionId, contentHash: value.resultContentHash ?? value.unchangedContentHash ?? '' }
   },

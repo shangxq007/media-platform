@@ -30,13 +30,13 @@ export function RenderWorkbench() {
   async function action(run: (signal: AbortSignal) => Promise<void>) {
     const signal = scope.current.signal; setBusy(true); setError('')
     try { await run(signal); signal.throwIfAborted() }
-    catch (failure) { if (!signal.aborted) setError(failure instanceof Error ? failure.message : 'Request failed') }
+    catch (failure) { if (!signal.aborted) { const status = (failure as { response?: { status?: number } })?.response?.status; if (status === 401 || status === 403) { setProject(''); setProjects([]); setTenant(''); setJob(null); setDelivery(null); setReference(null); setJobs([]); setDeliveries([]); setRevision(''); setHash(''); setClips([]); keys.current.clear() }; setError(status === 401 || status === 403 ? 'Project access is unavailable. Sign in again or select an authorized workspace.' : failure instanceof Error ? failure.message : 'Request failed') } }
     finally { if (!signal.aborted) setBusy(false) }
   }
   useEffect(() => {
     const abort = new AbortController()
     void (async () => { try { const t = await renderReadSource.tenant(abort.signal); const p = await renderReadSource.projects(t, abort.signal); abort.signal.throwIfAborted(); setTenant(t); setProjects(p); setProject(p[0]?.id ?? '') } catch (e) { if (!abort.signal.aborted) setError(e instanceof Error ? e.message : 'Workspace unavailable') } })()
-    const stop = subscribeOidcSessionRetirement(() => { abort.abort(); scope.current.abort(); setProject(''); setProjects([]); setTenant(''); setJob(null); setReference(null); setJobs([]); setDelivery(null); setDeliveries([]); setRevision(''); setHash(''); setBusy(false) })
+    const stop = subscribeOidcSessionRetirement(() => { abort.abort(); scope.current.abort(); keys.current.clear(); setProject(''); setProjects([]); setTenant(''); setJob(null); setReference(null); setJobs([]); setDelivery(null); setDeliveries([]); setRevision(''); setHash(''); setBusy(false) })
     return () => { abort.abort(); scope.current.abort(); stop() }
   }, [])
   useEffect(() => {

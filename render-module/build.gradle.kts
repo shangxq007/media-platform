@@ -33,7 +33,6 @@ dependencies {
     api("org.springframework.boot:spring-boot-starter-jdbc")
     api("org.springframework.boot:spring-boot-starter-jooq")
     api("org.springframework.boot:spring-boot-starter-validation")
-    api("com.yomahub:liteflow-spring-boot-starter:2.15.3.2")
     api("com.fasterxml.jackson.core:jackson-databind")
     api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     compileOnly("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")

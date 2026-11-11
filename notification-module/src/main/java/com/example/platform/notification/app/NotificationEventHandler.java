@@ -8,7 +8,6 @@ import com.example.platform.notification.domain.*;
 import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.artifact.api.event.ArtifactCreatedEvent;
-import com.example.platform.render.api.event.RenderCacheHashInvalidatedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
 import com.example.platform.timeline.api.event.TimelineMergedEvent;
@@ -79,23 +78,6 @@ public class NotificationEventHandler {
         ));
     }
 
-    @EventListener
-    public void onRenderCacheHashInvalidated(RenderCacheHashInvalidatedEvent event) {
-        log.info("NotificationEventHandler: cache hash invalidated job={} tasks={}",
-                event.renderJobId(), event.invalidatedCount());
-        handleFact(event.factKey(), new NotificationInboundEvent(
-                "render.cache.hash_invalidated",
-                event.renderJobId(),
-                Map.of(
-                        "renderJobId", event.renderJobId(),
-                        "projectId", event.projectId(),
-                        "tenantId", event.tenantId(),
-                        "baseJobId", event.baseJobId(),
-                        "invalidatedTaskIds", event.invalidatedTaskIds(),
-                        "invalidatedCount", event.invalidatedCount(),
-                        "detectedAt", event.detectedAt().toString())
-        ));
-    }
 
 
 

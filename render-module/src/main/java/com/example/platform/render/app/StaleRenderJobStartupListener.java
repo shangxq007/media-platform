@@ -9,7 +9,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * On cold start, fails in-flight local render jobs left by abrupt shutdown (skipped when {@code render.execution.mode=temporal}).
+ * On cold start, applies the bounded stale recovery policy; Temporal owns active workflow recovery.
  */
 @Component
 @ConditionalOnProperty(prefix = "render.stale-compensator", name = "startup-enabled", havingValue = "true", matchIfMissing = true)
@@ -19,8 +19,8 @@ public class StaleRenderJobStartupListener {
 
     private final StaleRenderJobCompensationService compensationService;
 
-    @Value("${render.execution.mode:local}")
-    private String executionMode;
+    @Value("${app.temporal.enabled:false}")
+    private boolean temporalEnabled;
 
     @Value("${render.stale-compensator.skip-on-temporal:true}")
     private boolean skipOnTemporal;
@@ -34,13 +34,13 @@ public class StaleRenderJobStartupListener {
 
     @EventListener(ApplicationReadyEvent.class)
     public void compensateOnStartup() {
-        if (skipOnTemporal && "temporal".equalsIgnoreCase(executionMode)) {
-            log.info("Skipping startup stale render compensation (execution.mode=temporal)");
+        if (skipOnTemporal && temporalEnabled) {
+            log.info("Skipping startup stale render compensation (Temporal enabled)");
             return;
         }
         var result = compensationService.compensate(
                 StaleRenderJobCompensationService.CompensationRequest.startup(
-                        startupIncludeQueued, executionMode));
+                        startupIncludeQueued, "temporal"));
         log.info(
                 "Startup stale render compensation: scanned={} compensated={}",
                 result.scanned(),

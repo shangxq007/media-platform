@@ -7,7 +7,6 @@ import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
 import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
@@ -50,7 +49,6 @@ public class TimelineGitV1Controller {
 
     private final TimelineRevisionCommands saveService;
     private final TimelineRevisionQueries revisionQueryService;
-    private final RenderJobRevisionPinningService pinningService;
     private final TimelineContentDigester contentDigester;
     private final TimelineRevisionDiffQuery diffQuery;
     private final TimelinePatchApplicationService patchService;
@@ -59,7 +57,6 @@ public class TimelineGitV1Controller {
 
     public TimelineGitV1Controller(TimelineRevisionCommands saveService,
                                    TimelineRevisionQueries revisionQueryService,
-                                   RenderJobRevisionPinningService pinningService,
                                    TimelineContentDigester contentDigester,
                                    TimelineRevisionDiffQuery diffQuery,
                                    TimelinePatchApplicationService patchService,
@@ -67,7 +64,6 @@ public class TimelineGitV1Controller {
                                    CanonicalActorResolver canonicalActorResolver) {
         this.saveService = saveService;
         this.revisionQueryService = revisionQueryService;
-        this.pinningService = pinningService;
         this.contentDigester = contentDigester;
         this.diffQuery = diffQuery;
         this.patchService = patchService;
@@ -130,19 +126,6 @@ public class TimelineGitV1Controller {
                 "Direct revision restore retired; use a versioned Timeline Operation");
     }
 
-    @PostMapping("/render-jobs")
-    @Operation(summary = "Create RenderJob pinned to a revision")
-    public ResponseEntity<RenderJobResponse> createRenderJob(
-            @RequestBody CreateRenderJobRequest request) {
-        projectAuthorization.requireWrite(TenantContext.get(), request.productId());
-        String jobId = UUID.randomUUID().toString();
-        RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
-                .map(RenderInitiator::from)
-                .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
-        pinningService.createRenderJobWithRevision(jobId, request.productId(),
-                request.timelineRevisionId(), request.backend(), initiator);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new RenderJobResponse(jobId));
-    }
 
     @GetMapping("/products/{productId}/diff")
     @Operation(summary = "Compute semantic diff between two revisions")
@@ -263,7 +246,6 @@ public class TimelineGitV1Controller {
 
     public record RestoreRequest(String expectedCurrentRevisionId) {}
 
-    public record CreateRenderJobRequest(String productId, String timelineRevisionId, String backend) {}
 
     public record RevisionResponse(
             String revisionId,
@@ -271,19 +253,19 @@ public class TimelineGitV1Controller {
             String parentRevisionId,
             String schemaVersion,
             String contentDigest,
+            String timelineContentHash,
             Instant createdAt,
             String createdBy) {
         static RevisionResponse from(TimelineRevision revision) {
             return new RevisionResponse(
                     revision.revisionId(), revision.productId(), revision.parentRevisionId(),
-                    revision.timelineSchemaVersion(), revision.contentDigest(),
+                    revision.timelineSchemaVersion(), revision.contentDigest(), revision.semanticContext().timelineContentDigest(),
                     revision.createdAt(), revision.createdBy());
         }
     }
 
     public record CurrentRevisionResponse(String revisionId, TimelineRevision revision) {}
 
-    public record RenderJobResponse(String jobId) {}
 
     public record ConflictError(
             String code,

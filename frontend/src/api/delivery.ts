@@ -15,7 +15,7 @@ export type Delivery = z.infer<typeof Delivery>
 export interface CreateDelivery { sourceRenderJobId: string; artifactId?: string }
 const root = (projectId: string) => `/projects/${encodeURIComponent(projectId)}/deliveries`
 
-/** Formal delivery records; outbound transfer administration remains a separate legacy capability. */
+/** Formal authorized delivery records; no outbound transfer or storage locator. */
 export const DeliveryAPI = {
   async create(projectId: string, request: CreateDelivery, idempotencyKey: string): Promise<Delivery> {
     const { data } = await api.post(root(projectId), request, { headers: { 'Idempotency-Key': idempotencyKey } })

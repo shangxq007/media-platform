@@ -19,7 +19,6 @@ import com.example.platform.render.app.RenderJobStatusHistoryRepository;
 import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.infrastructure.RenderJobRepository;
-import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
@@ -105,7 +104,7 @@ class FirstRenderPlanningApplicationServicePersistenceIT extends PostgresTestCon
     void servicePersistsTheRenderJobRowAndKeepsIdsIndependent() {
         RenderJobService renderJobService = new RenderJobService(
                 new RenderJobRepository(dsl),
-                mock(RenderPolicyEngine.class),
+
                 mock(RenderLifecyclePublisher.class),
                 new RenderJobStatusHistoryRepository(dsl),
                 null,

@@ -2,7 +2,6 @@ package com.example.platform;
 
 import com.example.platform.ai.app.AiGatewayService;
 import com.example.platform.extension.runtime.PluginRuntime;
-import com.example.platform.render.app.RenderStepExecutionService;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.usage.api.*;
 import com.example.platform.usage.app.ObservedRuntimeUsageEmissionService;
@@ -51,7 +50,7 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
         assertEquals(1, context.getBeansOfType(ObservedRuntimeUsageJdbcRepository.class).size());
         assertEquals(1, context.getBeansOfType(ObservedRuntimeUsageOutboxPublisher.class).size());
         assertInstanceOf(ObservedRuntimeUsageEmissionService.class, AopTestUtils.getUltimateTargetObject(emission));
-        for (Class<?> consumer : new Class<?>[]{AiGatewayService.class, RenderStepExecutionService.class}) {
+        for (Class<?> consumer : new Class<?>[]{AiGatewayService.class}) {
             Object target = AopTestUtils.getUltimateTargetObject(context.getBean(consumer));
             assertSame(emission, ReflectionTestUtils.getField(target, "emissionPort"));
         }

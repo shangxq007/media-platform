@@ -1,7 +1,5 @@
 package com.example.platform.ingest.api;
 
-import com.example.platform.render.app.input.RenderInputMaterialization;
-import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
@@ -75,8 +73,6 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
     @Autowired
     private BlobStorage blobStorage;
 
-    @Autowired
-    private RenderInputMaterializationService materializationService;
 
     private final ObjectMapper mapper = new ObjectMapper();
     private HttpClient client;
@@ -136,14 +132,7 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
         Assertions.assertTrue(storedBytes.isPresent(), "uploaded bytes must be retrievable through BlobStorage");
         Assertions.assertArrayEquals(PAYLOAD, storedBytes.orElseThrow());
 
-        RenderInputMaterialization materialization = materializationService.materialize(
-                product.productId(), asset.id(), "clip-f2a-" + unique);
-        Assertions.assertTrue(materialization.valid(), "uploaded RAW_MEDIA must materialize: "
-                + materialization.failureReason());
-        Assertions.assertEquals(product.productId(), materialization.inputProductId());
-        Assertions.assertEquals(product.storageReferenceId(), materialization.storageReferenceId());
-        Assertions.assertTrue(materialization.materializedPath().toString().contains(asset.storageKey()));
-        Assertions.assertArrayEquals(PAYLOAD, java.nio.file.Files.readAllBytes(materialization.materializedPath()));
+        // Worker materialization is covered through the formal bound-graph real upload E2E.
 
         var listRequest=HttpRequest.newBuilder(URI.create(baseUrl+"/api/projects/"+projectId+"/assets"))
                 .header("Authorization","Bearer "+token(tenantId,"uploader")).GET().build();

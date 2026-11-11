@@ -37,8 +37,6 @@ public final class RenderTestSchemaFixture {
                 client_export_session,
                 quota_usage_operation,
                 quota_usage,
-                render_job_lease,
-                render_worker,
                 render_job_status_history,
                 render_job,
                 product,
@@ -89,18 +87,11 @@ public final class RenderTestSchemaFixture {
                 profile varchar(128),
                 status varchar(32),
                 created_at timestamp,
-                ai_script text,
-                artifact_uri text,
                 error_message text,
                 tenant_id varchar(64),
-                pipeline_plan_json text,
-                pipeline_execution_json text,
-                base_job_id varchar(64),
-                trace_id varchar(128),
                 initiator_type varchar(32) not null,
                 initiator_id varchar(128) not null,
                 initiator_tenant_id varchar(64) not null,
-                selected_provider varchar(128),
                 timeline_revision_id varchar(64),
                 updated_at timestamp with time zone
             )
@@ -118,58 +109,7 @@ public final class RenderTestSchemaFixture {
             )
         """);
 
-        dsl.execute("""
-            CREATE TABLE IF NOT EXISTS render_worker (
-                id varchar(64) primary key,
-                worker_id varchar(128) not null unique,
-                worker_type varchar(32) not null default 'RENDER',
-                status varchar(32) not null default 'STARTING',
-                version varchar(64),
-                image_tag varchar(128),
-                hostname varchar(256),
-                zone varchar(64),
-                provider_ids text,
-                capabilities_json text,
-                max_concurrent_jobs int not null default 1,
-                active_job_count int not null default 0,
-                cpu_cores int,
-                memory_mb int,
-                gpu_count int not null default 0,
-                gpu_type varchar(64),
-                disk_free_mb bigint,
-                last_heartbeat_at timestamp not null,
-                registered_at timestamp not null,
-                expires_at timestamp,
-                metadata_json text,
-                created_at timestamp not null default now(),
-                updated_at timestamp not null default now()
-            )
-        """);
 
-        dsl.execute("""
-            CREATE TABLE IF NOT EXISTS render_job_lease (
-                id varchar(64) primary key,
-                lease_id varchar(128) not null unique,
-                job_id varchar(64) not null,
-                tenant_id varchar(64) not null,
-                worker_id varchar(128) not null,
-                provider_id varchar(64),
-                status varchar(32) not null default 'CLAIMED',
-                lease_version bigint not null default 1,
-                claimed_at timestamp not null,
-                lease_until timestamp not null,
-                renewed_at timestamp,
-                released_at timestamp,
-                attempt int not null default 1,
-                max_attempts int not null default 3,
-                heartbeat_token_hash varchar(128),
-                failure_reason text,
-                failure_error_code varchar(64),
-                created_by_scheduler varchar(64),
-                created_at timestamp not null default now(),
-                updated_at timestamp not null default now()
-            )
-        """);
 
         dsl.execute("""
             CREATE TABLE IF NOT EXISTS quota_usage (
@@ -575,8 +515,6 @@ public final class RenderTestSchemaFixture {
                 client_export_session,
                 quota_usage_operation,
                 quota_usage,
-                render_job_lease,
-                render_worker,
                 render_job_status_history,
                 render_job,
                 product,

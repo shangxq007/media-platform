@@ -11,7 +11,7 @@ class TemporalRenderCancellationContinuationTest {
         var client=mock(WorkflowClient.class);var stub=mock(WorkflowStub.class);
         when(client.newUntypedWorkflowStub("render:tenant:job")).thenReturn(stub);
         new TemporalRenderCancellationContinuation(client).cancelAfterJobCancelled("tenant","job");
-        verify(client).newUntypedWorkflowStub(RenderWorkflowIdentity.forJob("tenant","job"));verify(stub).cancel();verifyNoMoreInteractions(client,stub);
+        verify(client).newUntypedWorkflowStub(MediaTaskWorkflowIdentity.forJob("tenant","job"));verify(stub).cancel();verifyNoMoreInteractions(client,stub);
     }
     @Test void transportFailureIsReportedInsteadOfPretendingToCancel() {
         var client=mock(WorkflowClient.class);var stub=mock(WorkflowStub.class);when(client.newUntypedWorkflowStub("render:tenant:job")).thenReturn(stub);

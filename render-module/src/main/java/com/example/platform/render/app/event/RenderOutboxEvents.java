@@ -13,6 +13,5 @@ public final class RenderOutboxEvents implements OutboxEventCatalog {
     public static final OutboxEventType<RenderJobStatusChangedEvent> RENDERJOBSTATUSCHANGEDEVENT = new OutboxEventType<>("render.job.status.changed", 2, "render_job", RenderJobStatusChangedEvent.class, RenderJobStatusChangedEvent::renderJobId, RenderJobStatusChangedEvent::tenantId);
     public static final OutboxEventType<RenderJobCompletedEvent> RENDERJOBCOMPLETEDEVENT = new OutboxEventType<>("render.job.completed", 2, "render_job", RenderJobCompletedEvent.class, RenderJobCompletedEvent::renderJobId, event -> event.initiator().tenantId());
     public static final OutboxEventType<RenderJobFailedEvent> RENDERJOBFAILEDEVENT = new OutboxEventType<>("render.job.failed", 2, "render_job", RenderJobFailedEvent.class, RenderJobFailedEvent::renderJobId, event -> event.initiator().tenantId());
-    public static final OutboxEventType<RenderCacheHashInvalidatedEvent> CACHE_INVALIDATED = new OutboxEventType<>("render.cache.hash.invalidated", 1, "render_job", RenderCacheHashInvalidatedEvent.class, RenderCacheHashInvalidatedEvent::renderJobId, RenderCacheHashInvalidatedEvent::tenantId);
-    @Override public List<OutboxEventType<?>> types() { return List.of(RENDERJOBCREATEDEVENT, RENDERJOBSTATUSCHANGEDEVENT, RENDERJOBCOMPLETEDEVENT, RENDERJOBFAILEDEVENT, CACHE_INVALIDATED); }
+    @Override public List<OutboxEventType<?>> types() { return List.of(RENDERJOBCREATEDEVENT, RENDERJOBSTATUSCHANGEDEVENT, RENDERJOBCOMPLETEDEVENT, RENDERJOBFAILEDEVENT); }
 }

@@ -17,7 +17,7 @@ import io.temporal.workflow.WorkflowMethod;
  * the workflow is <b>not registered</b> in any production worker. The whole-graph execution call
  * ({@code executeTask}) is a declared placeholder owned by P2-5b-2.
  *
- * <p>Independent of {@code RenderWorkflow} — the legacy render chain is not switched or retired.
+ * <p>Executes the formally bound media task graph; this is the sole Render workflow path.
  */
 @WorkflowInterface
 public interface MediaTaskWorkflow {

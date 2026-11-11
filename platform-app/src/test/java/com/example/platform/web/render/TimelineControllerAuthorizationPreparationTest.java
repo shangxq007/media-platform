@@ -29,8 +29,7 @@ class TimelineControllerAuthorizationPreparationTest {
                 .thenThrow(new ResponseStatusException(
                         org.springframework.http.HttpStatus.FORBIDDEN, "denied"));
         TimelineRevisionController controller = new TimelineRevisionController(
-                query, mock(TimelineRevisionDiffQuery.class), null,
-                null, null, null, null, authorization);
+                query, mock(TimelineRevisionDiffQuery.class), null, null, null, authorization);
 
         assertThrows(ResponseStatusException.class,
                 () -> controller.list("project-1", 30, null, null, null));
@@ -49,7 +48,6 @@ class TimelineControllerAuthorizationPreparationTest {
         TimelineGitV1Controller controller = new TimelineGitV1Controller(
                 mock(com.example.platform.timeline.app.TimelineRevisionSaveService.class),
                 query,
-                mock(com.example.platform.render.app.timeline.RenderJobRevisionPinningService.class),
                 new com.example.platform.timeline.canonical.TimelineContentDigester(),
                 mock(com.example.platform.timeline.app.TimelineRevisionDiffQuery.class),
                 mock(com.example.platform.timeline.app.TimelinePatchApplicationService.class),

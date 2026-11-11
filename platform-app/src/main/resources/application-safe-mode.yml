@@ -28,47 +28,6 @@ app:
     api-key:
       enabled: false
 render:
-  providers:
-    # Stable providers only
-    libass:
-      enabled: true
-    # Experimental providers DISABLED
-    remotion:
-      enabled: false
-    natron:
-      enabled: false
-    blender:
-      enabled: false
-    vapoursynth:
-      enabled: false
-    shotstack:
-      enabled: false
-    # Other providers disabled for safe mode
-    javacv:
-      enabled: false
-    ofx:
-      enabled: false
-    gstreamer:
-      enabled: false
-    gpac:
-      enabled: false
-    mlt:
-      enabled: false
-    bento4:
-      enabled: false
-    shaka:
-      enabled: false
-    skia:
-      enabled: false
-  subtitle:
-    libass:
-      enabled: true
-  pipeline:
-    dag:
-      enabled: true
-      parallel-external: false  # Conservative: no parallel execution in safe mode
-
-# Platform configuration for safe mode
 platform:
   environment: prod
   runtime:

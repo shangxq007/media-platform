@@ -8,10 +8,3 @@ storage:
     default-bucket: ${STORAGE_S3_DEFAULT_BUCKET:render-cache}
 
 render:
-  cache:
-    remote-enabled: true
-    upload-enabled: true
-    content-hash-enabled: true
-    cleanup-enabled: true
-    retention-days: ${RENDER_CACHE_RETENTION_DAYS:30}
-    cleanup-interval: ${RENDER_CACHE_CLEANUP_INTERVAL:PT24H}

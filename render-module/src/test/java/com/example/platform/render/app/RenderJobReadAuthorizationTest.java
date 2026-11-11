@@ -5,7 +5,6 @@ import com.example.platform.identity.api.project.ProjectReadQuery;
 import com.example.platform.identity.api.dto.ProjectResponse;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.app.dto.RenderJobResponse;
-import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.authorization.*;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.web.PlatformException;
@@ -21,7 +20,7 @@ class RenderJobReadAuthorizationTest {
     final ProjectReadQuery projects = mock(ProjectReadQuery.class);
     final CanonicalActorResolver actors = mock(CanonicalActorResolver.class);
     final AuthorizationDecisionPort authorization = mock(AuthorizationDecisionPort.class, CALLS_REAL_METHODS);
-    final RenderJobService service = new RenderJobService(jobs, mock(RenderPolicyEngine.class), mock(com.example.platform.render.app.event.RenderLifecyclePublisher.class), mock(RenderJobStatusHistoryRepository.class), null, projects, actors, authorization, org.mockito.Mockito.mock(com.example.platform.render.app.RenderAcceptanceContextService.class));
+    final RenderJobService service = new RenderJobService(jobs,  mock(com.example.platform.render.app.event.RenderLifecyclePublisher.class), mock(RenderJobStatusHistoryRepository.class), null, projects, actors, authorization, org.mockito.Mockito.mock(com.example.platform.render.app.RenderAcceptanceContextService.class));
     @AfterEach void clear() { TenantContext.clear(); }
     void context() {
         TenantContext.set("tenant");

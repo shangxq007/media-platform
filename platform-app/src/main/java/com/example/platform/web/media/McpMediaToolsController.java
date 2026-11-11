@@ -62,7 +62,7 @@ public class McpMediaToolsController {
     @PostMapping
     public ResponseEntity<?> rpc(@RequestBody Rpc request) {
         actor();
-        if(!"2.0".equals(request.jsonrpc()))return response(error(request.id(),-32600,"Invalid JSON-RPC request"));
+        if(!"2.0".equals(request.jsonrpc()) || request.method()==null || request.method().isBlank() || (request.id()!=null && !request.id().isTextual() && !request.id().isNumber() && !request.id().isNull()))return response(error(request.id(),-32600,"Invalid JSON-RPC request"));
         if("notifications/initialized".equals(request.method()) && request.id()==null)return ResponseEntity.accepted().build();
         if(request.id()==null)return response(error(null,-32600,"Request id required"));
         try {

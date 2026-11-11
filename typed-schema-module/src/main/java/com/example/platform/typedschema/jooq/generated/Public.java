@@ -43,9 +43,6 @@ import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWalletCommand;
 import com.example.platform.typedschema.jooq.generated.tables.CustomPricingRule;
 import com.example.platform.typedschema.jooq.generated.tables.Delivery;
-import com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination;
-import com.example.platform.typedschema.jooq.generated.tables.DeliveryJob;
-import com.example.platform.typedschema.jooq.generated.tables.DeliveryPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.DiscountPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.EffectPack;
 import com.example.platform.typedschema.jooq.generated.tables.EffectPackEffect;
@@ -132,11 +129,8 @@ import com.example.platform.typedschema.jooq.generated.tables.RenderBindingInput
 import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext;
 import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
-import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
-import com.example.platform.typedschema.jooq.generated.tables.RenderJobQueue;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
-import com.example.platform.typedschema.jooq.generated.tables.RenderWorker;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewThread;
 import com.example.platform.typedschema.jooq.generated.tables.Role;
@@ -441,21 +435,6 @@ public class Public extends SchemaImpl {
      * The table <code>public.delivery</code>.
      */
     public final Delivery DELIVERY = Delivery.DELIVERY;
-
-    /**
-     * The table <code>public.delivery_destination</code>.
-     */
-    public final DeliveryDestination DELIVERY_DESTINATION = DeliveryDestination.DELIVERY_DESTINATION;
-
-    /**
-     * The table <code>public.delivery_job</code>.
-     */
-    public final DeliveryJob DELIVERY_JOB = DeliveryJob.DELIVERY_JOB;
-
-    /**
-     * The table <code>public.delivery_policy</code>.
-     */
-    public final DeliveryPolicy DELIVERY_POLICY = DeliveryPolicy.DELIVERY_POLICY;
 
     /**
      * The table <code>public.discount_policy</code>.
@@ -888,29 +867,14 @@ public class Public extends SchemaImpl {
     public final RenderJob RENDER_JOB = RenderJob.RENDER_JOB;
 
     /**
-     * The table <code>public.render_job_lease</code>.
-     */
-    public final RenderJobLease RENDER_JOB_LEASE = RenderJobLease.RENDER_JOB_LEASE;
-
-    /**
      * The table <code>public.render_job_lifecycle_events</code>.
      */
     public final RenderJobLifecycleEvents RENDER_JOB_LIFECYCLE_EVENTS = RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
 
     /**
-     * The table <code>public.render_job_queue</code>.
-     */
-    public final RenderJobQueue RENDER_JOB_QUEUE = RenderJobQueue.RENDER_JOB_QUEUE;
-
-    /**
      * The table <code>public.render_job_status_history</code>.
      */
     public final RenderJobStatusHistory RENDER_JOB_STATUS_HISTORY = RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
-
-    /**
-     * The table <code>public.render_worker</code>.
-     */
-    public final RenderWorker RENDER_WORKER = RenderWorker.RENDER_WORKER;
 
     /**
      * The table <code>public.review_decision</code>.
@@ -1402,9 +1366,6 @@ public class Public extends SchemaImpl {
             CreditWalletCommand.CREDIT_WALLET_COMMAND,
             CustomPricingRule.CUSTOM_PRICING_RULE,
             Delivery.DELIVERY,
-            DeliveryDestination.DELIVERY_DESTINATION,
-            DeliveryJob.DELIVERY_JOB,
-            DeliveryPolicy.DELIVERY_POLICY,
             DiscountPolicy.DISCOUNT_POLICY,
             EffectPack.EFFECT_PACK,
             EffectPackEffect.EFFECT_PACK_EFFECT,
@@ -1491,11 +1452,8 @@ public class Public extends SchemaImpl {
             RenderExecutionContext.RENDER_EXECUTION_CONTEXT,
             RenderGraphExecution.RENDER_GRAPH_EXECUTION,
             RenderJob.RENDER_JOB,
-            RenderJobLease.RENDER_JOB_LEASE,
             RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS,
-            RenderJobQueue.RENDER_JOB_QUEUE,
             RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY,
-            RenderWorker.RENDER_WORKER,
             ReviewDecision.REVIEW_DECISION,
             ReviewThread.REVIEW_THREAD,
             Role.ROLE,

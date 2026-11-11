@@ -91,3 +91,5 @@ workspace never authorizes remote push or disposal of historical files.
 `DEPLOYMENT_ISOLATION_NOT_VERIFIED`: formal protected runner/executor/cgroup containment, sustained
 native RECOVERY_HOLD capacity recovery, production Neon/BWS permission scopes and production readiness
 remain separate gates. BMF/advanced editing are outside the minimum FFmpeg closure.
+
+Formal product ingress and legacy retirement: [Unified execution](../testing/unified-execution-r1e.md).

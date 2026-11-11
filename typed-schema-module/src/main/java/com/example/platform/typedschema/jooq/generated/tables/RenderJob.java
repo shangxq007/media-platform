@@ -101,16 +101,6 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     public final TableField<RenderJobRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
     /**
-     * The column <code>public.render_job.ai_script</code>.
-     */
-    public final TableField<RenderJobRecord, String> AI_SCRIPT = createField(DSL.name("ai_script"), SQLDataType.CLOB, this, "");
-
-    /**
-     * The column <code>public.render_job.artifact_uri</code>.
-     */
-    public final TableField<RenderJobRecord, String> ARTIFACT_URI = createField(DSL.name("artifact_uri"), SQLDataType.CLOB, this, "");
-
-    /**
      * The column <code>public.render_job.error_message</code>.
      */
     public final TableField<RenderJobRecord, String> ERROR_MESSAGE = createField(DSL.name("error_message"), SQLDataType.CLOB, this, "");
@@ -119,16 +109,6 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      * The column <code>public.render_job.tenant_id</code>.
      */
     public final TableField<RenderJobRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.render_job.pipeline_plan_json</code>.
-     */
-    public final TableField<RenderJobRecord, String> PIPELINE_PLAN_JSON = createField(DSL.name("pipeline_plan_json"), SQLDataType.CLOB, this, "");
-
-    /**
-     * The column <code>public.render_job.pipeline_execution_json</code>.
-     */
-    public final TableField<RenderJobRecord, String> PIPELINE_EXECUTION_JSON = createField(DSL.name("pipeline_execution_json"), SQLDataType.CLOB, this, "");
 
     /**
      * The column <code>public.render_job.graph_preparation_stage</code>.
@@ -144,16 +124,6 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      * The column <code>public.render_job.incremental_reference_job_id</code>.
      */
     public final TableField<RenderJobRecord, String> INCREMENTAL_REFERENCE_JOB_ID = createField(DSL.name("incremental_reference_job_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.render_job.base_job_id</code>.
-     */
-    public final TableField<RenderJobRecord, String> BASE_JOB_ID = createField(DSL.name("base_job_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.render_job.trace_id</code>.
-     */
-    public final TableField<RenderJobRecord, String> TRACE_ID = createField(DSL.name("trace_id"), SQLDataType.VARCHAR(128), this, "");
 
     /**
      * The column <code>public.render_job.initiator_type</code>.
@@ -174,11 +144,6 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      * The column <code>public.render_job.timeline_revision_id</code>.
      */
     public final TableField<RenderJobRecord, String> TIMELINE_REVISION_ID = createField(DSL.name("timeline_revision_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.render_job.selected_provider</code>.
-     */
-    public final TableField<RenderJobRecord, String> SELECTED_PROVIDER = createField(DSL.name("selected_provider"), SQLDataType.VARCHAR(128), this, "");
 
     /**
      * The column <code>public.render_job.updated_at</code>.
@@ -254,7 +219,7 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_RENDER_JOB_BASE_JOB_ID, Indexes.IX_RENDER_JOB_PROJECT_ID, Indexes.IX_RENDER_JOB_STATUS, Indexes.IX_RENDER_JOB_TIMELINE_REVISION, Indexes.IX_RENDER_JOB_TRACE_ID);
+        return Arrays.asList(Indexes.IX_RENDER_JOB_PROJECT_ID, Indexes.IX_RENDER_JOB_STATUS, Indexes.IX_RENDER_JOB_TIMELINE_REVISION);
     }
 
     @Override

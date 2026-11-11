@@ -1,183 +1,68 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { RenderResultDetailPage } from '../routes/app/renders/RenderResultDetailPage'
-import { RenderResultsListPage } from '../routes/app/renders/RenderResultsListPage'
-import { StrictMode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, waitFor, within } from '@testing-library/react'
-import { WorkspaceSessionProvider } from '../foundation/workspaceSession'
-import { RenderBrowser } from './RenderJobDashboard'
-import type { RenderReadSource } from '../api/render-jobs'
+import { RenderWorkbench } from '../product/render/RenderWorkbench'
 
-const hooks = vi.hoisted(() => ({
-  useRenderWorkspaceScope: vi.fn(),
-  useProducts: vi.fn(),
-  useProductDetail: vi.fn(),
+const mock = vi.hoisted(() => ({
+  tenant: vi.fn(), projects: vi.fn(), jobs: vi.fn(), head: vi.fn(), revision: vi.fn(), snapshot: vi.fn(), applyOperation: vi.fn(),
+  submit: vi.fn(), incremental: vi.fn(), result: vi.fn(), lifecycle: vi.fn(), cancel: vi.fn(), download: vi.fn(),
+  create: vi.fn(), get: vi.fn(), list: vi.fn(), deliveryDownload: vi.fn(), listeners: new Set<() => void>(),
 }))
-
-vi.mock('../api/render-jobs', async original => ({
-  ...await original<typeof import('../api/render-jobs')>(),
-  useRenderWorkspaceScope: hooks.useRenderWorkspaceScope,
-}))
-
-vi.mock('../query/app/useProducts', () => ({
-  useProducts: hooks.useProducts,
-  useProductDetail: hooks.useProductDetail,
-}))
-
-describe('H4 bounded correction product surfaces', () => {
-  beforeEach(() => {
-    hooks.useRenderWorkspaceScope.mockReturnValue({ data: null, isLoading: false, error: null })
-    hooks.useProducts.mockReturnValue({ data: undefined, isLoading: false, error: null })
-    hooks.useProductDetail.mockReturnValue({ data: undefined, isLoading: false, error: null })
-  })
-
-  afterEach(() => {
-    cleanup()
-    window.history.pushState({}, '', '/')
-    vi.clearAllMocks()
-  })
-
-  it('fails both registered Product routes closed without authenticated workspace scope', () => {
-    const list = render(<RenderResultsListPage />)
-    expect(screen.getByText(/authenticated workspace with a recent project is required/i)).toBeTruthy()
-    expect(hooks.useProducts).toHaveBeenCalledWith({ tenantId: undefined, projectId: undefined })
-    list.unmount()
-
-    window.history.pushState({}, '', '/app/renders/product-1')
-    render(<RenderResultDetailPage />)
-    expect(screen.getByText(/authenticated workspace with a recent project is required/i)).toBeTruthy()
-    expect(hooks.useProductDetail).toHaveBeenCalledWith(
-      { tenantId: undefined, projectId: undefined },
-      'product-1'
-    )
-  })
-
-  it('passes only authenticated workspace and recent-project IDs to Product queries', () => {
-    hooks.useRenderWorkspaceScope.mockReturnValue({
-      data: { tenantId: 'tenant-1', recentProjects: [{ id: 'project-1', name: 'Project' }] },
-      isLoading: false,
-      error: null,
-    })
-
-    const list = render(<RenderResultsListPage />)
-    expect(hooks.useProducts).toHaveBeenCalledWith({ tenantId: 'tenant-1', projectId: 'project-1' })
-    list.unmount()
-
-    window.history.pushState({}, '', '/app/renders/product-1')
-    render(<RenderResultDetailPage />)
-    expect(hooks.useProductDetail).toHaveBeenCalledWith(
-      { tenantId: 'tenant-1', projectId: 'project-1' },
-      'product-1'
-    )
-  })
-
+vi.mock('../api/render-jobs', () => ({ renderReadSource: { tenant: mock.tenant, projects: mock.projects, jobs: mock.jobs } }))
+vi.mock('../api/formal-render', () => ({ FormalRenderAPI: mock }))
+vi.mock('../api/delivery', () => ({ DeliveryAPI: { create: mock.create, get: mock.get, list: mock.list, download: mock.deliveryDownload } }))
+vi.mock('../auth/oidcClient', () => ({ subscribeOidcSessionRetirement: (listener: () => void) => { mock.listeners.add(listener); return () => { mock.listeners.delete(listener) } } }))
+const complete = { renderJobId: 'j', status: 'COMPLETED', finalArtifactId: 'artifact', failureCode: null }
+const delivery = { deliveryId: 'delivery', projectId: 'p', sourceRenderJobId: 'j', timelineRevisionId: 'r', artifactId: 'artifact', status: 'READY', createdAt: 'now', resultPath: '/api/projects/p/deliveries/delivery/result' }
+async function ready() { render(<RenderWorkbench />); await screen.findByText('r'); await waitFor(() => expect(screen.getByRole('button', { name: 'Submit render' }).closest('fieldset')?.disabled).toBe(false)) }
+afterEach(() => { cleanup(); mock.listeners.clear(); vi.clearAllMocks() })
+beforeEach(() => {
+  mock.tenant.mockResolvedValue('t'); mock.projects.mockResolvedValue([{ id: 'p', tenantId: 't', name: 'Film' }, { id: 'q', tenantId: 't', name: 'Second' }]); mock.jobs.mockResolvedValue([])
+  mock.head.mockResolvedValue({ revisionId: 'r', contentHash: 'hash' }); mock.revision.mockResolvedValue({ revisionId: 'r2', contentHash: 'hash2' }); mock.snapshot.mockResolvedValue({ canonicalTimelineJson: JSON.stringify({ tracks: [{ clips: [{ clipId: 'clip' }] }] }) })
+  mock.list.mockResolvedValue([]); mock.result.mockResolvedValue(complete); mock.submit.mockResolvedValue({ renderJobId: 'j' }); mock.incremental.mockResolvedValue({ renderJobId: 'j2' }); mock.lifecycle.mockResolvedValue({ renderJobId: 'j', timelineRevisionId: 'r', projectId: 'p' }); mock.create.mockResolvedValue(delivery)
 })
-
-
-const oidc = vi.hoisted(() => ({ listeners: new Set<() => void>() }))
-vi.mock('../auth/oidcClient', async original => ({ ...await original<typeof import('../auth/oidcClient')>(), subscribeOidcSessionRetirement: (listener: () => void) => { oidc.listeners.add(listener); return () => { oidc.listeners.delete(listener) } } }))
-const project = (id = 'p') => ({ id, tenantId: 't', name: id === 'p' ? 'Film' : 'Second film', description: null, status: 'ACTIVE', createdAt: '2026-09-13T00:00:00Z' })
-const job = (id = 'j', projectId = 'p') => ({ id, projectId, timelineSnapshotId: 'snapshot', profile: 'preview', status: 'FAILED' as const })
-function source() { return { tenant: vi.fn<RenderReadSource['tenant']>(async () => 't'), projects: vi.fn<RenderReadSource['projects']>(async () => [project(), project('p2')]), project: vi.fn<RenderReadSource['project']>(async (_t, p) => project(p)), jobs: vi.fn<RenderReadSource['jobs']>(async (_t, p) => [job(p === 'p' ? 'j' : 'j2', p)]), job: vi.fn<RenderReadSource['job']>(async (_t, p, id) => job(id, p)) } }
-function setup(value: RenderReadSource = source()) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const element = (s: RenderReadSource) => <StrictMode><QueryClientProvider client={client}><WorkspaceSessionProvider><RenderBrowser source={s} /></WorkspaceSessionProvider></QueryClientProvider></StrictMode>
-  const view = render(element(value)); return { client, ...view, changeSource: (s: RenderReadSource) => view.rerender(element(s)) }
-}
-const select = async (id = 'p') => fireEvent.change(await screen.findByLabelText('Project'), { target: { value: id } })
-const failure = (status: number) => ({ response: { status, data: { message: 'SECRET STACK TRACE' } } })
-afterEach(() => { cleanup(); oidc.listeners.clear(); vi.restoreAllMocks() })
-
-describe('Render core authorized read flow (explicit isolated sources)', () => {
-  it('filters and sorts returned fields locally without more reads or carrying filters to another Project', async () => {
-    const value = source(); value.jobs.mockResolvedValueOnce([job('z'), { ...job('a'), status: 'COMPLETED', profile: 'final' }])
-    setup(value); await select(); await screen.findByRole('button', { name: 'Inspect a' })
-    const rows = () => screen.queryAllByRole('button', { name: /^Inspect / }).map(row => row.textContent)
-    expect(rows()).toEqual(['Inspect a', 'Inspect z'])
-    fireEvent.change(screen.getByLabelText('Sort by job ID'), { target: { value: 'descending' } })
-    expect(rows()).toEqual(['Inspect z', 'Inspect a'])
-    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'COMPLETED' } })
-    expect(rows()).toEqual(['Inspect a'])
-    fireEvent.change(screen.getByLabelText('Search returned jobs'), { target: { value: 'missing' } })
-    expect(screen.getByText('No returned jobs match these filters.')).toBeTruthy()
-    expect(value.jobs).toHaveBeenCalledTimes(1)
-    await select('p2'); await screen.findByRole('button', { name: 'Inspect j2' })
-    expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('ALL')
+describe('Formal render workbench product and authorization boundaries', () => {
+  it('reads only the authenticated catalogue and does not submit when scope is unavailable', async () => {
+    mock.tenant.mockRejectedValue(new Error('Authentication required')); render(<RenderWorkbench />)
+    await screen.findByRole('alert'); expect(mock.projects).not.toHaveBeenCalled(); expect(mock.head).not.toHaveBeenCalled(); expect(mock.submit).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Submit render' })).toBeNull()
   })
-  it('rediscovers authorization after 403 and requires a fresh explicit Project selection', async () => {
-    const value = source(); value.jobs.mockRejectedValueOnce(failure(403)); setup(value); await select()
-    fireEvent.click(await screen.findByRole('button', { name: 'Reload authorized projects' }))
-    expect((await screen.findByLabelText('Project') as HTMLSelectElement).value).toBe('')
-    expect(value.jobs).toHaveBeenCalledTimes(1)
-    const resolutionsBeforeSelection = value.project.mock.calls.length
-    await select(); await screen.findByRole('button', { name: 'Inspect j' })
-    expect(value.project.mock.calls.length).toBeGreaterThan(resolutionsBeforeSelection)
+  it('edits through Operation, submits a pinned formal job and creates an authorized delivery', async () => {
+    await ready(); mock.applyOperation.mockResolvedValue({ revisionId: 'r2', contentHash: 'hash2' })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply operation' })); await screen.findByText('r2')
+    expect(mock.applyOperation).toHaveBeenCalledWith('t', 'p', expect.objectContaining({ type: 'TRIM_CLIP', baseRevisionId: 'r', baseContentHash: 'hash', clipId: 'clip', delta: '1/4', edge: 'END', commandId: expect.any(String) }), expect.any(AbortSignal))
+    fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
+    expect(mock.submit).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2', extent: { startMillis: 0, endMillis: 3000, frameRateNumerator: 4, frameRateDenominator: 1 } }), expect.any(String), expect.any(AbortSignal))
+    fireEvent.click(screen.getByRole('button', { name: 'Create delivery' })); await screen.findByText('delivery')
+    expect(mock.create).toHaveBeenCalledWith('p', { sourceRenderJobId: 'j', artifactId: 'artifact' }, expect.any(String))
+    expect(screen.getByRole('button', { name: 'Download delivery' })).toBeTruthy()
   })
-  it('does not read jobs when Project resolution returns 404', async () => {
-    const value = source(); value.project.mockRejectedValue(failure(404)); setup(value); await select()
-    await screen.findByText('Project not found in the current scope.'); expect(value.jobs).not.toHaveBeenCalled()
-    value.project.mockImplementation(async (_t, p) => project(p))
-    fireEvent.click(screen.getByRole('button', { name: 'Retry job read' })); await screen.findByRole('button', { name: 'Inspect j' })
+  it('uses the completed job and its exact revision as incremental reference', async () => {
+    await ready(); fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Submit incremental render' }) as HTMLButtonElement).disabled).toBe(false))
+    mock.result.mockResolvedValue({ ...complete, renderJobId: 'j2' }); fireEvent.click(screen.getByRole('button', { name: 'Submit incremental render' }))
+    await waitFor(() => expect(mock.incremental).toHaveBeenCalledWith(expect.objectContaining({ targetRevisionId: 'r', referenceRevisionId: 'r', referenceRenderJobId: 'j' }), expect.any(String), expect.any(AbortSignal)))
   })
-  it('aborts route teardown reads and clears their cached records', async () => {
-    const value = source(); let resolve!: (rows: ReturnType<typeof job>[]) => void
-    value.jobs.mockImplementation(() => new Promise(done => { resolve = done }))
-    const view = setup(value); await select(); await waitFor(() => expect(resolve).toBeDefined())
-    const signal = value.jobs.mock.calls[0][2]; view.unmount()
-    expect(signal.aborted).toBe(true); await act(async () => resolve([job('late-secret')]))
-    expect(view.client.getQueryCache().getAll()).toHaveLength(0)
+  it('retains the same idempotency identity for an uncertain submit response', async () => {
+    await ready(); mock.submit.mockRejectedValueOnce(new Error('Connection interrupted'))
+    fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('alert')
+    fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
+    expect(mock.submit.mock.calls[0][1]).toBe(mock.submit.mock.calls[1][1])
   })
-  it('requires explicit Project selection, resolves before list, and displays only actual detail fields', async () => {
-    const value = source(); setup(value); await screen.findByLabelText('Project')
-    expect(value.project).not.toHaveBeenCalled(); expect(value.jobs).not.toHaveBeenCalled()
-    await select(); const row = await screen.findByRole('button', { name: 'Inspect j' })
-    expect(value.project).toHaveBeenCalledWith('t', 'p', expect.any(AbortSignal))
-    expect(value.jobs).toHaveBeenCalledWith('t', 'p', expect.any(AbortSignal))
-    fireEvent.click(row); await within(screen.getByRole('dialog')).findByText('snapshot')
-    expect(value.job).toHaveBeenCalledWith('t', 'p', 'j', expect.any(AbortSignal))
-    expect(screen.getByText(/Progress, times, failure details and Artifact availability are not provided/)).toBeTruthy()
-    expect(screen.queryByRole('link', { name: /artifact/i })).toBeNull()
+  it('retires old project reads and ignores their late results after a project switch', async () => {
+    let finish!: (value: unknown) => void; mock.snapshot.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    render(<RenderWorkbench />); await waitFor(() => expect(finish).toBeDefined()); const signal = mock.snapshot.mock.calls[0][2] as AbortSignal
+    fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), { target: { value: 'q' } }); await screen.findByText('r'); expect(signal.aborted).toBe(true)
+    await act(async () => finish({ canonicalTimelineJson: JSON.stringify({ tracks: [{ clips: [{ clipId: 'late-secret' }] }] }) })); expect(screen.queryByText('late-secret')).toBeNull()
   })
-  it('distinguishes empty discovery and empty authorized job results', async () => {
-    const value = source(); value.projects.mockResolvedValue([]); setup(value)
-    await screen.findByText('No authorized projects were returned.'); expect(value.jobs).not.toHaveBeenCalled()
-    cleanup(); const empty = source(); empty.jobs.mockResolvedValue([]); setup(empty); await select()
-    await screen.findByText('No Render jobs were returned for this authorized Project.')
+  it('clears private results on session retirement and aborts the request domain', async () => {
+    await ready(); fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status'); const signal = mock.submit.mock.calls[0][2] as AbortSignal
+    act(() => mock.listeners.forEach(listener => listener())); expect(signal.aborted).toBe(true)
+    expect(screen.queryByText('j')).toBeNull(); expect(screen.queryByText('r')).toBeNull(); expect(screen.queryByRole('button', { name: 'Create delivery' })).toBeNull()
   })
-  it.each([401, 403])('clears records, selection and caches when detail returns %i', async status => {
-    const value = source(), { client } = setup(value); await select(); fireEvent.click(await screen.findByRole('button', { name: 'Inspect j' })); await screen.findByText('snapshot')
-    value.job.mockRejectedValue(failure(status)); fireEvent.click(screen.getByRole('button', { name: 'Refresh detail' }))
-    await screen.findByRole('alert'); await waitFor(() => expect(screen.queryByText('snapshot')).toBeNull())
-    expect(screen.queryByRole('button', { name: 'Inspect j' })).toBeNull(); expect(screen.queryByLabelText('Project')).toBeNull()
-    expect(client.getQueryCache().getAll().filter(q => q.queryKey[1] === 'render').every(q => q.state.data === undefined)).toBe(true)
-    expect(screen.queryByText('SECRET STACK TRACE')).toBeNull()
-  })
-  it('handles detail 404 by removing the old detail and unavailable selection/row', async () => {
-    const value = source(); setup(value); await select(); fireEvent.click(await screen.findByRole('button', { name: 'Inspect j' })); await screen.findByText('snapshot')
-    value.job.mockRejectedValue(failure(404)); fireEvent.click(screen.getByRole('button', { name: 'Refresh detail' }))
-    await screen.findByText('This Render job is no longer available in this Project.')
-    expect(screen.queryByText('snapshot')).toBeNull(); expect(screen.queryByRole('button', { name: 'Inspect j' })).toBeNull()
-  })
-  it('retries recoverable list/detail reads without exposing response error bodies', async () => {
-    const value = source(); value.jobs.mockRejectedValueOnce(failure(503)); setup(value); await select()
-    fireEvent.click(await screen.findByRole('button', { name: 'Retry job read' })); fireEvent.click(await screen.findByRole('button', { name: 'Inspect j' })); await screen.findByText('snapshot')
-    value.job.mockRejectedValueOnce(failure(503)); fireEvent.click(screen.getByRole('button', { name: 'Refresh detail' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Retry detail read' })); await screen.findByText('snapshot'); expect(screen.queryByText('SECRET STACK TRACE')).toBeNull()
-  })
-  it('cancels a Project read and rejects its late response after a Project switch', async () => {
-    const value = source(); let resolve!: (rows: ReturnType<typeof job>[]) => void
-    value.jobs.mockImplementationOnce(() => new Promise(done => { resolve = done })); setup(value); await select(); await waitFor(() => expect(resolve).toBeDefined())
-    const signal = value.jobs.mock.calls[0][2] as AbortSignal
-    await select('p2'); await screen.findByRole('button', { name: 'Inspect j2' }); expect(signal.aborted).toBe(true)
-    await act(async () => resolve([job('late-secret')]))
-    expect(screen.queryByRole('button', { name: 'Inspect late-secret' })).toBeNull()
-  })
-  it('retires in-flight responses on OIDC logout and route teardown', async () => {
-    const value = source(); let resolve!: (rows: ReturnType<typeof job>[]) => void
-    value.jobs.mockImplementation(() => new Promise(done => { resolve = done })); const view = setup(value); await select(); await waitFor(() => expect(resolve).toBeDefined())
-    const signal = value.jobs.mock.calls[0][2] as AbortSignal
-    act(() => oidc.listeners.forEach(listener => listener())); expect(signal.aborted).toBe(true)
-    await act(async () => resolve([job('late-secret')])); expect(screen.queryByRole('button', { name: 'Inspect late-secret' })).toBeNull(); view.unmount()
+  it('removes private state when a refreshed read denies project access', async () => {
+    await ready(); fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
+    mock.head.mockRejectedValue(Object.assign(new Error('Request failed'), { response: { status: 403 } }))
+    fireEvent.click(screen.getByRole('button', { name: 'Load current revision' })); await screen.findByRole('alert')
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull()); expect(screen.queryByRole('button', { name: 'Create delivery' })).toBeNull()
   })
 })

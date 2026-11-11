@@ -90,7 +90,6 @@ class TimelineRevisionControllerRestoreResponseTest {
                 revisionQueryService,
                 mock(TimelineRevisionDiffQuery.class),
                 null,
-                null, null,
                 saveService, codec, authorization);
     }
 
@@ -172,7 +171,6 @@ class TimelineRevisionControllerRestoreResponseTest {
                 revisionQueryService,
                 mock(TimelineRevisionDiffQuery.class),
                 null,
-                null, null,
                 saveService, codec, authorization);
         c.restore("prj_r", "trev_restored");
 

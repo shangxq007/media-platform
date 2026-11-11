@@ -1427,10 +1427,6 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
         require(file(timelineAppDir.resolve("InternalTimelineValidationService.java")).exists()) {
             "FAIL: timeline InternalTimelineValidationService missing (sole canonical validator)"
         }
-        // Boundary adapter allowed at render (mechanical mapping only)
-        require(file(renderTimelineDir.resolve("TimelineSpecImportAdapter.java")).exists()) {
-            "FAIL: TimelineSpecImportAdapter missing (render boundary adapter)"
-        }
         // TimelineImportService must not reference render-domain types
         val importSrc = file(timelineAppDir.resolve("TimelineImportService.java")).readText()
         require(!importSrc.contains("com.example.platform.render.")) {
@@ -1447,13 +1443,15 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
             "FAIL: timeline-module depends on render-module"
         }
 
-        // ── Conversion coordinator delegates (no writer-backed construction) ──
-        val conversion = file(renderTimelineDir.resolve("TimelineConversionService.java")).readText()
-        require(conversion.contains("TimelineImport timelineImportService") && conversion.contains("importTimeline") && importSrc.contains("implements TimelineImport")) {
-            "FAIL: TimelineConversionService does not delegate canonical construction to TimelineImportService"
+        // Canonical import now uses the same typed Operation ingress as other Timeline mutations.
+        val snapshotIngress = file("platform-app/src/main/java/com/example/platform/web/render/TimelineSnapshotController.java").readText()
+        require(snapshotIngress.contains("OperationInvocationPort") && snapshotIngress.contains("ImportTimelineParameters")
+                && !snapshotIngress.contains("TimelineConversionService")) {
+            "FAIL: canonical snapshot import must enter the formal Operation authority"
         }
-        require(!conversion.contains("InternalTimelineWriter")) {
-            "FAIL: TimelineConversionService still references render writer"
+        require(!file(renderTimelineDir.resolve("TimelineConversionService.java")).exists()
+                && !file(renderTimelineDir.resolve("TimelineSpecImportAdapter.java")).exists()) {
+            "FAIL: legacy Timeline conversion ingress reintroduced"
         }
 
         println("OK: GCR-1 CORRECTION V2 ingress authority verified (render validation/write/conversion authority = 0; timeline sole constructor+validator; adapter boundary; no timeline->render dep)")
@@ -1603,7 +1601,7 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
             .digest(file(migrationDir.resolve("V1__baseline.sql")).readBytes())
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        require(appliedV1Hash == "3b292b02f9454dafa2841f1f9319c48002412e6be17175835aaa326870575fe9") {
+        require(appliedV1Hash == "4e8a539025794c45b67964407e5270ef48606296ad65d77c90db32e0c2278450") {
             "FAIL: canonical V1 differs from the Owner-approved consolidated greenfield baseline"
         }
         require(file(migrationDir.resolve("V1__baseline.sql")).exists()) {

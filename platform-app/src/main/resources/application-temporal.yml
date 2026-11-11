@@ -23,11 +23,6 @@ render:
     startup-enabled: true
     skip-on-temporal: true
 
-delivery:
-  temporal:
-    activity-enabled: true
-
-# namespace resolved by TemporalNamespaceEnvironmentPostProcessor when TEMPORAL_NAMESPACE is unset
 spring.temporal:
   connection:
     target: ${TEMPORAL_TARGET:127.0.0.1:7233}

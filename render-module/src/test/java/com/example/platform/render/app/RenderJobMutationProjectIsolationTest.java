@@ -12,7 +12,6 @@ import com.example.platform.identity.api.authorization.AuthorizationDeniedExcept
 import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import com.example.platform.render.infrastructure.RenderJobRepository;
-import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.authorization.AuthorizationDecision;
@@ -90,7 +89,7 @@ class RenderJobMutationProjectIsolationTest extends PostgresTestContainerSupport
         TenantContext.set(TENANT);
         service = new RenderJobService(
                 repository,
-                mock(RenderPolicyEngine.class),
+
                 mock(RenderLifecyclePublisher.class),
                 mock(RenderJobStatusHistoryRepository.class),
                 null,
@@ -120,10 +119,7 @@ class RenderJobMutationProjectIsolationTest extends PostgresTestContainerSupport
                 "a cross-project cancel must not mutate project B's job");
     }
 
-    @Test
-    void actorAuthorizedForProjectACannotRetryProjectBJob() {
-        assertThrows(AuthorizationDeniedException.class, () -> service.retry(JOB_B, TENANT));
-    }
+
 
     @Test
     void unauthorizedProjectBJobIsDeniedEvenWhenAuthorizationWouldAllowProjectA() {

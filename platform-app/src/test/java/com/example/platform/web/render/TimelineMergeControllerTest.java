@@ -50,8 +50,7 @@ class TimelineMergeControllerTest {
         projectAuthorization = mock(TimelineProjectAuthorizationService.class);
         when(projectAuthorization.requireWrite(TENANT_ID, PROJECT_ID)).thenReturn(SERVER_ACTOR);
         controller = new TimelineRevisionController(
-                revisionQueryService, revisionDiffQuery, mergeEngine,
-                null, null, null, null, projectAuthorization);
+                revisionQueryService, revisionDiffQuery, mergeEngine, null, null, projectAuthorization);
     }
 
     @AfterEach

@@ -54,7 +54,6 @@ class TimelineMutationControllersMockMvcTest {
         var controller = new TimelineGitV1Controller(
                 saveService,
                 mock(TimelineRevisionQueryService.class),
-                mock(RenderJobRevisionPinningService.class),
                 new TimelineContentDigester(),
                 mock(TimelineRevisionDiffQuery.class),
                 patchService,
@@ -155,7 +154,6 @@ class TimelineMutationControllersMockMvcTest {
         var snapshotController = new TimelineSnapshotController(
                 saveService,
                 mock(TimelineRevisionQueryService.class),
-                mock(com.example.platform.render.app.timeline.TimelineConversionService.class),
                 authorization, invocations);
         MockMvc snapshotMvc = mvc(snapshotController);
         when(invocations.invoke(any(), any())).thenThrow(canonicalRejection());
@@ -188,7 +186,6 @@ class TimelineMutationControllersMockMvcTest {
                     "revision-1", "timeline-hash", context.invocationId(), null);
         });
         var controller = new TimelineSnapshotController(saveService, queries,
-                mock(com.example.platform.render.app.timeline.TimelineConversionService.class),
                 authorization, invocations);
         String payload = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.serialize(
                 new com.example.platform.timeline.canonical.TimelineDocument(
@@ -211,12 +208,10 @@ class TimelineMutationControllersMockMvcTest {
 
     @Test
     void snapshotAuthorizationDenialPrecedesPayloadImportAndMutation() throws Exception {
-        var conversion = mock(com.example.platform.render.app.timeline.TimelineConversionService.class);
         var invocations = mock(com.example.platform.operation.invocation.OperationInvocationPort.class);
         var snapshotController = new TimelineSnapshotController(
                 saveService,
                 mock(TimelineRevisionQueryService.class),
-                conversion,
                 authorization, invocations);
         when(authorization.requireWrite("tenant-a", "project-a"))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "denied"));
@@ -225,7 +220,7 @@ class TimelineMutationControllersMockMvcTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"projectId\":\"project-a\",\"payloadJson\":\"{}\"}"))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(saveService, conversion, invocations);
+        verifyNoInteractions(saveService, invocations);
     }
 
     @Test
@@ -235,8 +230,6 @@ class TimelineMutationControllersMockMvcTest {
                 mock(TimelineRevisionQueryService.class),
                 mock(TimelineRevisionDiffQuery.class),
                 mergeEngine,
-                null,
-                null,
                 saveService,
                 mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);
@@ -261,7 +254,7 @@ class TimelineMutationControllersMockMvcTest {
         var mergeEngine = mock(com.example.platform.timeline.app.TimelineMergeEngine.class);
         var queries = mock(TimelineRevisionQueryService.class);
         var controller = new TimelineRevisionController(queries,
-                mock(TimelineRevisionDiffQuery.class), mergeEngine, null, null, saveService,
+                mock(TimelineRevisionDiffQuery.class), mergeEngine, saveService,
                 mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);
         mvc(controller).perform(post("/api/render/projects/project-a/timeline/revisions/history-1/restore"))
@@ -276,8 +269,6 @@ class TimelineMutationControllersMockMvcTest {
                 mock(TimelineRevisionQueryService.class),
                 mock(TimelineRevisionDiffQuery.class),
                 mergeEngine,
-                null,
-                null,
                 saveService,
                 mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);

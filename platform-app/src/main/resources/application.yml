@@ -124,10 +124,6 @@ app:
   identity:
     api-key-auth-enabled: false
   render:
-    worker-queue:
-      enabled: false
-      consume-enabled: false
-      poll-interval-ms: 5000
   security:
     enabled: true
     dev-auth-endpoint: false
@@ -249,8 +245,6 @@ app:
   ai.stub.retry-delay-ms: 1000
 
 render:
-  execution:
-    mode: local
   stale-compensator:
     enabled: true
     threshold: PT30M
@@ -258,92 +252,12 @@ render:
     startup-enabled: true
     startup-include-queued: false
     skip-on-temporal: true
-  pipeline:
-    dag:
-      enabled: true
-      parallel-external: true
   aaf:
     converter-enabled: true
     worker-enabled: true
     poll-interval-ms: 3000
     queue-max-depth: 32
     converter-command: ""
-  providers:
-    javacv:
-      enabled: true
-    ofx:
-      enabled: true
-    gstreamer:
-      enabled: true
-    gpac:
-      enabled: true
-    mlt:
-      enabled: true
-    mock:
-      enabled: false
-    natron:
-      enabled: false
-      supported-effect-keys:
-        - video.natron_vignette
-        - video.natron_color_grade
-    bento4:
-      enabled: true
-      mp4fragment-bin: mp4fragment
-      mp4dash-bin: mp4dash
-    shotstack:
-      enabled: false
-      api-url: https://api.shotstack.io/edit/v1
-      environment: stage
-      api-key: ${SHOTSTACK_API_KEY:}
-    libass:
-      enabled: true
-    remotion:
-      enabled: true
-      cli: npx
-      remotion-args: remotion
-      composition-id: Main
-      stub-on-missing-cli: true
-    blender:
-      enabled: true
-      binary: blender
-      stub-on-missing-binary: true
-    vapoursynth:
-      enabled: true
-      binary: vspipe
-      stub-on-missing-binary: true
-    shaka:
-      enabled: true
-      packager-bin: packager
-      stub-on-missing-binary: true
-    skia:
-      enabled: true
-      timeout-ms: 300000
-  subtitle:
-    libass:
-      enabled: true
-  timeline:
-    mlt-multitrack-min-tracks: 2
-  cache:
-    remote-enabled: ${RENDER_CACHE_REMOTE_ENABLED:false}
-    remote-uri-prefix: ${RENDER_CACHE_REMOTE_PREFIX:s3://tenant-cache/render}
-    upload-enabled: ${RENDER_CACHE_UPLOAD_ENABLED:false}
-    content-hash-enabled: ${RENDER_CACHE_CONTENT_HASH_ENABLED:false}
-    invalidate-on-hash-mismatch: ${RENDER_CACHE_INVALIDATE_ON_HASH_MISMATCH:true}
-    cleanup-enabled: ${RENDER_CACHE_CLEANUP_ENABLED:false}
-    retention-days: ${RENDER_CACHE_RETENTION_DAYS:30}
-    cleanup-interval: ${RENDER_CACHE_CLEANUP_INTERVAL:PT24H}
-    webhook-enabled: ${RENDER_CACHE_WEBHOOK_ENABLED:false}
-    webhook-url: ${RENDER_CACHE_WEBHOOK_URL:}
-    webhook-secret: ${RENDER_CACHE_WEBHOOK_SECRET:}
-
-delivery:
-  enabled: ${DELIVERY_ENABLED:true}
-  worker-enabled: ${DELIVERY_WORKER_ENABLED:true}
-  poll-interval-ms: ${DELIVERY_POLL_INTERVAL_MS:5000}
-  max-attempts: ${DELIVERY_MAX_ATTEMPTS:3}
-  temporal:
-    activity-enabled: ${DELIVERY_TEMPORAL_ACTIVITY_ENABLED:false}
-
 storage:
   s3:
     enabled: ${STORAGE_S3_ENABLED:false}

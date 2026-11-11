@@ -44,7 +44,7 @@ describe('runtime route registration and deep-link restoration', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/render-jobs'] }), context: { queryClient } })
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>)
-    await screen.findByText('No authorized projects were returned.')
+    await screen.findByText('Select an authorized project with a Timeline revision.')
     expect(router.state.location.pathname).toBe('/operations/renders')
     expect(jobs).not.toHaveBeenCalled()
   })

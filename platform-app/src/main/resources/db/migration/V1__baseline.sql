@@ -42,12 +42,8 @@ create table render_job (
     profile varchar(128) not null,
     status varchar(32) not null,
     created_at timestamp not null,
-    ai_script text,
-    artifact_uri text,
     error_message text,
     tenant_id varchar(64),
-    pipeline_plan_json text,
-    pipeline_execution_json text,
     graph_preparation_stage varchar(32),
     graph_preparation_deadline timestamptz,
     constraint ck_render_graph_preparation_pair check (
@@ -55,8 +51,6 @@ create table render_job (
         or (graph_preparation_stage in ('INPUTS','SNAPSHOT','PLANNING','BINDING','BOUND_GRAPH_SAVE','DISPATCH')
             and graph_preparation_deadline is not null)),
     incremental_reference_job_id varchar(64),
-    base_job_id varchar(64),
-    trace_id varchar(128),
     initiator_type varchar(32) not null,
     initiator_id varchar(128) not null,
     initiator_tenant_id varchar(64) not null
@@ -81,8 +75,6 @@ create table first_render_idempotency (
     primary key (tenant_id, project_id, idempotency_key)
 );
 create index ix_render_job_status on render_job(status);
-create index ix_render_job_base_job_id on render_job(base_job_id);
-create index ix_render_job_trace_id on render_job(trace_id);
 
 create table outbox_events (
     id varchar(64) primary key,
@@ -2817,57 +2809,11 @@ create index ix_notification_user_inbox_user on notification_user_inbox(user_id)
 -- delivery_destination, delivery_policy, delivery_job,
 -- social_connected_platform, social_post, social_post_analytics
 
-create table delivery_destination (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    user_id varchar(64),
-    name varchar(255) not null,
-    protocol varchar(32) not null,
-    config_json text,
-    credential_json text,
-    enabled boolean default true,
-    verified_at timestamp,
-    created_at timestamp not null,
-    credential_ref varchar(512)
-);
 
-create index ix_delivery_destination_tenant on delivery_destination(tenant_id);
-create index ix_delivery_destination_credential_ref on delivery_destination(credential_ref);
 
-create table delivery_policy (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    project_id varchar(64),
-    destination_id varchar(64) not null,
-    artifact_selector varchar(32) not null default 'FINAL_ONLY',
-    path_template varchar(512) not null,
-    trigger_mode varchar(16) not null default 'AUTO',
-    enabled boolean default true,
-    created_at timestamp not null
-);
 
-create index ix_delivery_policy_tenant_project on delivery_policy(tenant_id, project_id);
 
-create table delivery_job (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    project_id varchar(64) not null,
-    render_job_id varchar(64) not null,
-    destination_id varchar(64) not null,
-    status varchar(32) not null,
-    artifact_id varchar(64) not null,
-    remote_path varchar(1024),
-    remote_uri varchar(1024),
-    bytes_transferred bigint,
-    attempt_count int not null default 0,
-    error_code varchar(64),
-    error_message varchar(2048),
-    created_at timestamp not null,
-    completed_at timestamp
-);
 
-create index ix_delivery_job_render on delivery_job(render_job_id);
-create index ix_delivery_job_status on delivery_job(status);
 
 create table social_connected_platform (
     id varchar(36) primary key,
@@ -3059,63 +3005,9 @@ create index ix_tenant_litellm_vault_ref on tenant_litellm_virtual_key(vault_ref
 -- RENDER FARM: Worker Registry + Job Lease
 -- ============================================================
 
-create table render_worker (
-    id varchar(64) primary key,
-    worker_id varchar(128) not null unique,
-    worker_type varchar(32) not null default 'RENDER',
-    status varchar(32) not null default 'STARTING',
-    version varchar(64),
-    image_tag varchar(128),
-    hostname varchar(256),
-    zone varchar(64),
-    provider_ids text,
-    capabilities_json text,
-    max_concurrent_jobs int not null default 1,
-    active_job_count int not null default 0,
-    cpu_cores int,
-    memory_mb int,
-    gpu_count int not null default 0,
-    gpu_type varchar(64),
-    disk_free_mb bigint,
-    last_heartbeat_at timestamp not null,
-    registered_at timestamp not null,
-    expires_at timestamp,
-    metadata_json text,
-    created_at timestamp not null default current_timestamp,
-    updated_at timestamp not null default current_timestamp
-);
 
-create index ix_render_worker_status on render_worker(status);
-create index ix_render_worker_heartbeat on render_worker(last_heartbeat_at);
-create index ix_render_worker_type on render_worker(worker_type);
 
-create table render_job_lease (
-    id varchar(64) primary key,
-    lease_id varchar(128) not null unique,
-    job_id varchar(64) not null,
-    tenant_id varchar(64) not null,
-    worker_id varchar(128) not null,
-    provider_id varchar(64),
-    status varchar(32) not null default 'CLAIMED',
-    lease_version bigint not null default 1,
-    claimed_at timestamp not null,
-    lease_until timestamp not null,
-    renewed_at timestamp,
-    released_at timestamp,
-    attempt int not null default 1,
-    max_attempts int not null default 3,
-    heartbeat_token_hash varchar(128),
-    failure_reason text,
-    failure_error_code varchar(64),
-    created_by_scheduler varchar(64),
-    created_at timestamp not null default current_timestamp,
-    updated_at timestamp not null default current_timestamp
-);
 
-create index ix_lease_job_id on render_job_lease(job_id);
-create index ix_lease_worker_id on render_job_lease(worker_id);
-create index ix_lease_status on render_job_lease(status);
-create index ix_lease_until on render_job_lease(lease_until);
 
 -- ============================================================
 -- MEDIA SOURCE TRUTH (Artifact-keyed)
@@ -3420,19 +3312,7 @@ create index ix_canonical_edge_target on system_canonical_edge(target_event_id);
 -- RENDER JOB QUEUE TABLE
 -- ============================================================
 
-create table render_job_queue (
-    id bigint generated by default as identity primary key,
-    job_id varchar(64) not null unique,
-    tenant_id varchar(64) not null,
-    status varchar(32) not null default 'QUEUED',
-    priority int not null default 0,
-    created_at timestamp not null,
-    updated_at timestamp not null
-);
 
-create index ix_queue_status on render_job_queue(status);
-create index ix_queue_priority on render_job_queue(priority desc, created_at asc);
-create index ix_queue_job_id on render_job_queue(job_id);
 
 -- ============================================================
 -- PROJECT IMPORT METADATA (from V6)
@@ -3666,8 +3546,7 @@ CREATE INDEX idx_preflight_safe_lifecycle ON ingest_preflight_safe_report_record
 CREATE INDEX idx_preflight_safe_policy_decision ON ingest_preflight_safe_report_records(policy_decision);
 CREATE INDEX idx_preflight_safe_overall_decision ON ingest_preflight_safe_report_records(overall_decision);
 
--- V4: Add selected_provider to render_job
-ALTER TABLE render_job ADD COLUMN selected_provider VARCHAR(128);
+-- Provider identity is frozen in the bound graph, never selected by RenderJob.
 
 -- V4: Add updated_at to render_job
 ALTER TABLE render_job ADD COLUMN updated_at TIMESTAMPTZ;
@@ -4969,7 +4848,7 @@ create table render_graph_execution (
     check (final_artifact_id is null or final_artifact_id = expected_artifact_id)
 );
 
--- R1D: immutable authorized delivery selection; outbound delivery_job remains a separate legacy consumer.
+-- R1D: immutable authorized delivery selection; legacy outbound delivery has been retired.
 create table delivery (
     id varchar(64) primary key,
     tenant_id varchar(128) not null,

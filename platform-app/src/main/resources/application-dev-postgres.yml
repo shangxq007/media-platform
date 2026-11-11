@@ -41,19 +41,10 @@ app:
     vault:
       enabled: false
   render:
-    worker-queue:
-      enabled: false
-      consume-enabled: false
   sandbox:
     enabled: false
 
 render:
-  providers:
-    natron:
-      enabled: true
-    vapoursynth:
-      enabled: false
-
 platform:
   preview:
     enabled: true

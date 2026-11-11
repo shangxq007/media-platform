@@ -40,30 +40,16 @@ class RenderJobInitiatorRepositoryTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void acceptedAndRejectedJobsRoundTripExactPrincipal() {
+    void acceptedJobRoundTripsExactPrincipal() {
         RenderInitiator p1 = RenderInitiator.from(
                 CanonicalActor.user("principal-p1", "tenant-1", Set.of("ADMIN"), "jwt"));
 
         repository.create("rj-accepted", "project-1", "tenant-1", "snapshot-1",
                 "default", "QUEUED", p1, OffsetDateTime.now());
-        repository.createRejected("rj-rejected", "project-1", "tenant-1", "snapshot-2",
-                "default", "quota", p1, OffsetDateTime.now());
-
-        assertEquals(p1, repository.requireInitiator("rj-accepted"));
-        assertEquals(p1, repository.requireInitiator("rj-rejected"));
+        assertEquals(p1, RenderJobRepository.initiatorFrom(repository.requireJobRecord("rj-accepted")));
     }
 
-    @Test
-    void retryCopiesOriginalInitiatorExactly() {
-        RenderInitiator original = RenderInitiator.from(
-                CanonicalActor.apiKey("api-key-1", "tenant-1", Set.of(), "api-key"));
-        repository.create("rj-original", "project-1", "tenant-1", "snapshot-1",
-                "default", "FAILED", original, OffsetDateTime.now());
 
-        repository.createRetryJob("rj-retry", "rj-original");
-
-        assertEquals(original, repository.requireInitiator("rj-retry"));
-    }
 
     @Test
     void explicitSystemIsPersistedWithoutFabricatingHumanPrincipal() {
@@ -73,6 +59,6 @@ class RenderJobInitiatorRepositoryTest extends PostgresTestContainerSupport {
         repository.create("rj-system", "project-1", "tenant-1", "snapshot-1",
                 "default", "QUEUED", system, OffsetDateTime.now());
 
-        assertEquals(system, repository.requireInitiator("rj-system"));
+        assertEquals(system, RenderJobRepository.initiatorFrom(repository.requireJobRecord("rj-system")));
     }
 }

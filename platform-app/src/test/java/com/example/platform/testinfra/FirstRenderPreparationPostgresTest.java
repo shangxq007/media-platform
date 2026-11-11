@@ -13,7 +13,6 @@ import com.example.platform.render.app.*;
 import com.example.platform.render.app.dto.*;
 import com.example.platform.render.app.event.*;
 import com.example.platform.render.app.renderplan.RenderPlanningEntryService;
-import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.identity.api.authorization.*;
 import com.example.platform.identity.api.project.ProjectReadQuery;
 import com.example.platform.artifact.domain.ArtifactQueryService;
@@ -67,7 +66,7 @@ class FirstRenderPreparationPostgresTest {
                             throw new IllegalStateException(e.getCause());
                         } catch(ReflectiveOperationException e) { throw new IllegalStateException(e); }
                     }));
-            var render=new RenderJobService(world.jobs,mock(RenderPolicyEngine.class),events,
+            var render=new RenderJobService(world.jobs,events,
                     new RenderJobStatusHistoryRepository(db),null,mock(ProjectReadQuery.class),
                     mock(CanonicalActorResolver.class),mock(AuthorizationDecisionPort.class),
                     mock(RenderAcceptanceContextService.class)) {

@@ -34,9 +34,6 @@ app:
     vault:
       enabled: false
   render:
-    worker-queue:
-      enabled: false
-      consume-enabled: false
   sandbox:
     enabled: false
 

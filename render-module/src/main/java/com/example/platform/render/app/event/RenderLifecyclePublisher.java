@@ -11,5 +11,4 @@ public class RenderLifecyclePublisher {
  public void publishEvent(RenderJobStatusChangedEvent e){outbox.append(RenderOutboxEvents.RENDERJOBSTATUSCHANGEDEVENT.append(e.tenantId(),e,e.factKey()));}
  public void publishEvent(RenderJobCompletedEvent e){outbox.append(RenderOutboxEvents.RENDERJOBCOMPLETEDEVENT.append(e.tenantId(),e,e.factKey()));}
  public void publishEvent(RenderJobFailedEvent e){outbox.append(RenderOutboxEvents.RENDERJOBFAILEDEVENT.append(e.tenantId(),e,e.factKey()));}
- public void publishEvent(RenderCacheHashInvalidatedEvent e){outbox.append(RenderOutboxEvents.CACHE_INVALIDATED.append(e.tenantId(),e,e.factKey()));}
 }

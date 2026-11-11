@@ -106,241 +106,143 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
     }
 
     /**
-     * Setter for <code>public.render_job.ai_script</code>.
-     */
-    public void setAiScript(String value) {
-        set(6, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.ai_script</code>.
-     */
-    public String getAiScript() {
-        return (String) get(6);
-    }
-
-    /**
-     * Setter for <code>public.render_job.artifact_uri</code>.
-     */
-    public void setArtifactUri(String value) {
-        set(7, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.artifact_uri</code>.
-     */
-    public String getArtifactUri() {
-        return (String) get(7);
-    }
-
-    /**
      * Setter for <code>public.render_job.error_message</code>.
      */
     public void setErrorMessage(String value) {
-        set(8, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.render_job.error_message</code>.
      */
     public String getErrorMessage() {
-        return (String) get(8);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.render_job.tenant_id</code>.
      */
     public void setTenantId(String value) {
-        set(9, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.render_job.tenant_id</code>.
      */
     public String getTenantId() {
-        return (String) get(9);
-    }
-
-    /**
-     * Setter for <code>public.render_job.pipeline_plan_json</code>.
-     */
-    public void setPipelinePlanJson(String value) {
-        set(10, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.pipeline_plan_json</code>.
-     */
-    public String getPipelinePlanJson() {
-        return (String) get(10);
-    }
-
-    /**
-     * Setter for <code>public.render_job.pipeline_execution_json</code>.
-     */
-    public void setPipelineExecutionJson(String value) {
-        set(11, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.pipeline_execution_json</code>.
-     */
-    public String getPipelineExecutionJson() {
-        return (String) get(11);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.render_job.graph_preparation_stage</code>.
      */
     public void setGraphPreparationStage(String value) {
-        set(12, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.render_job.graph_preparation_stage</code>.
      */
     public String getGraphPreparationStage() {
-        return (String) get(12);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.render_job.graph_preparation_deadline</code>.
      */
     public void setGraphPreparationDeadline(Instant value) {
-        set(13, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.render_job.graph_preparation_deadline</code>.
      */
     public Instant getGraphPreparationDeadline() {
-        return (Instant) get(13);
+        return (Instant) get(9);
     }
 
     /**
      * Setter for <code>public.render_job.incremental_reference_job_id</code>.
      */
     public void setIncrementalReferenceJobId(String value) {
-        set(14, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.render_job.incremental_reference_job_id</code>.
      */
     public String getIncrementalReferenceJobId() {
-        return (String) get(14);
-    }
-
-    /**
-     * Setter for <code>public.render_job.base_job_id</code>.
-     */
-    public void setBaseJobId(String value) {
-        set(15, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.base_job_id</code>.
-     */
-    public String getBaseJobId() {
-        return (String) get(15);
-    }
-
-    /**
-     * Setter for <code>public.render_job.trace_id</code>.
-     */
-    public void setTraceId(String value) {
-        set(16, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.trace_id</code>.
-     */
-    public String getTraceId() {
-        return (String) get(16);
+        return (String) get(10);
     }
 
     /**
      * Setter for <code>public.render_job.initiator_type</code>.
      */
     public void setInitiatorType(String value) {
-        set(17, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.render_job.initiator_type</code>.
      */
     public String getInitiatorType() {
-        return (String) get(17);
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.render_job.initiator_id</code>.
      */
     public void setInitiatorId(String value) {
-        set(18, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.render_job.initiator_id</code>.
      */
     public String getInitiatorId() {
-        return (String) get(18);
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.render_job.initiator_tenant_id</code>.
      */
     public void setInitiatorTenantId(String value) {
-        set(19, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.render_job.initiator_tenant_id</code>.
      */
     public String getInitiatorTenantId() {
-        return (String) get(19);
+        return (String) get(13);
     }
 
     /**
      * Setter for <code>public.render_job.timeline_revision_id</code>.
      */
     public void setTimelineRevisionId(String value) {
-        set(20, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.render_job.timeline_revision_id</code>.
      */
     public String getTimelineRevisionId() {
-        return (String) get(20);
-    }
-
-    /**
-     * Setter for <code>public.render_job.selected_provider</code>.
-     */
-    public void setSelectedProvider(String value) {
-        set(21, value);
-    }
-
-    /**
-     * Getter for <code>public.render_job.selected_provider</code>.
-     */
-    public String getSelectedProvider() {
-        return (String) get(21);
+        return (String) get(14);
     }
 
     /**
      * Setter for <code>public.render_job.updated_at</code>.
      */
     public void setUpdatedAt(Instant value) {
-        set(22, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.render_job.updated_at</code>.
      */
     public Instant getUpdatedAt() {
-        return (Instant) get(22);
+        return (Instant) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -366,7 +268,7 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
     /**
      * Create a detached, initialised RenderJobRecord
      */
-    public RenderJobRecord(String id, String projectId, String timelineSnapshotId, String profile, String status, LocalDateTime createdAt, String aiScript, String artifactUri, String errorMessage, String tenantId, String pipelinePlanJson, String pipelineExecutionJson, String graphPreparationStage, Instant graphPreparationDeadline, String incrementalReferenceJobId, String baseJobId, String traceId, String initiatorType, String initiatorId, String initiatorTenantId, String timelineRevisionId, String selectedProvider, Instant updatedAt) {
+    public RenderJobRecord(String id, String projectId, String timelineSnapshotId, String profile, String status, LocalDateTime createdAt, String errorMessage, String tenantId, String graphPreparationStage, Instant graphPreparationDeadline, String incrementalReferenceJobId, String initiatorType, String initiatorId, String initiatorTenantId, String timelineRevisionId, Instant updatedAt) {
         super(RenderJob.RENDER_JOB);
 
         setId(id);
@@ -375,22 +277,15 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
         setProfile(profile);
         setStatus(status);
         setCreatedAt(createdAt);
-        setAiScript(aiScript);
-        setArtifactUri(artifactUri);
         setErrorMessage(errorMessage);
         setTenantId(tenantId);
-        setPipelinePlanJson(pipelinePlanJson);
-        setPipelineExecutionJson(pipelineExecutionJson);
         setGraphPreparationStage(graphPreparationStage);
         setGraphPreparationDeadline(graphPreparationDeadline);
         setIncrementalReferenceJobId(incrementalReferenceJobId);
-        setBaseJobId(baseJobId);
-        setTraceId(traceId);
         setInitiatorType(initiatorType);
         setInitiatorId(initiatorId);
         setInitiatorTenantId(initiatorTenantId);
         setTimelineRevisionId(timelineRevisionId);
-        setSelectedProvider(selectedProvider);
         setUpdatedAt(updatedAt);
         resetTouchedOnNotNull();
     }
