@@ -19,9 +19,11 @@ import {
   timelineId,
 } from './types'
 
-const HASH_A = 'a'.repeat(64)
-const HASH_B = 'b'.repeat(64)
+const HASH_A = 'A'.repeat(43) + '='
+const HASH_B = 'B'.repeat(42) + 'E='
 const HASH_C = 'c'.repeat(64)
+const TIMELINE_C = 'C'.repeat(42) + 'I='
+const SOURCE_DIGEST = 'b'.repeat(64)
 const head = { projectId: projectId('project-1'), timelineId: timelineId('project-1'), revisionId: revisionId('revision-R0'), contentHash: contentHash(HASH_A) }
 const revision: RevisionListEntry = { id: head.revisionId, revisionNumber: 1, parentRevisionId: null, source: 'OPERATION', message: 'Base', labels: [], authorUserId: null, createdAt: '2026-01-01T00:00:00Z', isMerge: false }
 const detail: RevisionDetail = { revision, changeSummary: { supported: true, tracksAdded: 0, tracksRemoved: 0, tracksModified: 0, clipsAdded: 0, clipsRemoved: 0, clipsModified: 0, assetsAdded: 0, assetsRemoved: 0 }, changeCount: 0 }
@@ -47,7 +49,7 @@ function renderWorkspace(commandGateway: ScriptedOperationGateway, queries = que
 function fillManualPin() {
   const values: Record<string, string> = {
     'Track ID': 'video-1', 'Clip ID': 'clip-1', 'Media Asset ID': 'media-1', 'Media Stream ID': 'stream-1',
-    'Artifact ID': 'artifact-1', 'Source content digest': HASH_B, 'Source start (exact rational)': '0/1',
+    'Artifact ID': 'artifact-1', 'Source content digest': SOURCE_DIGEST, 'Source start (exact rational)': '0/1',
     'Source end (exact rational)': '10/1', 'Timeline start (exact rational)': '0/1', 'Timeline end (exact rational)': '10/1',
     'Rate numerator': '1', 'Rate denominator': '1', Direction: 'FORWARD',
   }
@@ -112,7 +114,7 @@ describe('runtime NLE operation workspace', () => {
     const second = deferred<GatewayResult<CanonicalHeadReference>>()
     const project2Head: CanonicalHeadReference = {
       projectId: projectId('project-2'), timelineId: timelineId('project-2'),
-      revisionId: revisionId('revision-P2'), contentHash: contentHash('d'.repeat(64)),
+      revisionId: revisionId('revision-P2'), contentHash: contentHash('D'.repeat(42) + 'M='),
     }
     const headCalls: string[] = []
     const queries: TimelineQueryGateway = {
@@ -183,7 +185,7 @@ describe('runtime NLE operation workspace', () => {
     const deferredProjectHistory = deferred<GatewayResult<readonly RevisionListEntry[]>>()
     const project2Head: CanonicalHeadReference = {
       projectId: projectId('project-2'), timelineId: timelineId('project-2'),
-      revisionId: revisionId('revision-P2'), contentHash: contentHash('d'.repeat(64)),
+      revisionId: revisionId('revision-P2'), contentHash: contentHash('D'.repeat(42) + 'M='),
     }
     const project2Revision: RevisionListEntry = { ...revision, id: project2Head.revisionId, message: 'Project 2 HEAD' }
     const authorityCalls: string[] = []
@@ -299,7 +301,7 @@ describe('runtime NLE operation workspace', () => {
       'Artifact ID', 'Source content digest', 'Source start', 'Source end', 'Timeline start', 'Timeline end',
       'Rate numerator', 'Rate denominator', 'Direction',
     ]) expect(within(frozenDraft).getByText(label)).toBeTruthy()
-    for (const value of ['revision-R0', HASH_A, 'video-1', 'clip-1', 'media-1', 'stream-1', 'artifact-1', HASH_B, '0/1', '10/1', 'FORWARD']) {
+    for (const value of ['revision-R0', HASH_A, 'video-1', 'clip-1', 'media-1', 'stream-1', 'artifact-1', SOURCE_DIGEST, '0/1', '10/1', 'FORWARD']) {
       expect(within(frozenDraft).getAllByText(value).length).toBeGreaterThan(0)
     }
 
@@ -345,7 +347,7 @@ describe('runtime NLE operation workspace', () => {
     expect((screen.getByText('Base').closest('button') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getAllByText('revision-R1').length).toBeGreaterThan(0)
 
-    queries.headResult = { ok: true, value: { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(HASH_C) } }
+    queries.headResult = { ok: true, value: { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(TIMELINE_C) } }
     queries.historyResult = { ok: true, value: [{ ...revision, id: revisionId('revision-R2'), revisionNumber: 3 }] }
     fireEvent.click(retry)
     await waitFor(() => expect(queries.headCalls).toHaveLength(3))

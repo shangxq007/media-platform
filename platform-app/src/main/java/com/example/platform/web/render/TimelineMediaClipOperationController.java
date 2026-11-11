@@ -213,8 +213,10 @@ public class TimelineMediaClipOperationController {
     }
 
     private static void requireTimelineHash(String value, String field) {
-        if (value == null || !value.matches("(?:[A-Za-z0-9+/]{43}=|[0-9a-fA-F]{64})")) {
-            throw new TimelineTransportException(field + " must be a canonical SHA-256 Timeline hash");
+        // SHA-256 is 32 bytes: 42 full Base64 characters, a final character
+        // with zero pad bits, and one required '=' padding character.
+        if (value == null || !value.matches("[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=")) {
+            throw new TimelineTransportException(field + " must be a canonical padded Base64 SHA-256 Timeline digest");
         }
     }
 

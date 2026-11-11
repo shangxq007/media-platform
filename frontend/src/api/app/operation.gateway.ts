@@ -3,6 +3,7 @@ import type { AcceptedOperationResult, AddMediaClipCommandDraft, OperationGatewa
 import {
   ADD_MEDIA_CLIP_PREVIEW_OPERATION,
   contentHash,
+  isContentHash,
   planDigest,
   revisionId,
   timelineId,
@@ -13,23 +14,24 @@ import { versionlessTransport, type VersionlessTransport } from './versionless-a
 
 const IdSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9._:-]+$/)
 const HashSchema = z.string().regex(/^[0-9a-fA-F]{64}$/)
+const TimelineDigestSchema = z.string().refine(isContentHash)
 
 const PreviewSchema = z.object({
   operation: z.literal(ADD_MEDIA_CLIP_PREVIEW_OPERATION),
-  planDigest: HashSchema, targetTimelineId: IdSchema, baseRevisionId: IdSchema, baseContentHash: HashSchema,
+  planDigest: HashSchema, targetTimelineId: IdSchema, baseRevisionId: IdSchema, baseContentHash: TimelineDigestSchema,
   expectedChangedCanonicalObjects: z.array(z.string()), validation: z.array(z.string()),
   capabilityRequirements: z.array(z.string()), warnings: z.array(z.string()), failures: z.array(z.string()),
-  candidateContentHash: HashSchema,
+  candidateContentHash: TimelineDigestSchema,
 })
 
 const ApplySchema = z.object({
   status: z.enum(['APPLIED', 'NO_OP']), planDigest: HashSchema, baseRevisionId: IdSchema,
-  newRevisionId: IdSchema.nullable(), newTimelineContentHash: HashSchema, parentRevisionId: IdSchema.nullable(),
+  newRevisionId: IdSchema.nullable(), newTimelineContentHash: TimelineDigestSchema, parentRevisionId: IdSchema.nullable(),
   semanticDiff: z.array(z.string()),
   renderHandoff: z.object({
     projectId: IdSchema,
     timelineRevisionId: IdSchema.nullable(),
-    timelineContentHash: HashSchema,
+    timelineContentHash: TimelineDigestSchema,
   }),
 })
 

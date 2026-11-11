@@ -21,12 +21,13 @@ import {
   planDigest,
   projectId,
   revisionId,
+  sourceContentDigest,
   timelineId,
   trackId,
 } from './types'
 
-const HASH_A = 'a'.repeat(64)
-const HASH_B = 'b'.repeat(64)
+const HASH_A = 'A'.repeat(43) + '='
+const HASH_B = 'B'.repeat(42) + 'E='
 const commandId = applyCommandId('apply-command-1')
 const wrongCommandId = applyCommandId('apply-command-2')
 const head = {
@@ -36,7 +37,7 @@ const head = {
 const command: AddMediaClipCommandDraft = {
   baseRevisionId: head.revisionId, baseContentHash: head.contentHash, trackId: trackId('video-1'),
   clipId: clipId('clip-1'), mediaAssetId: mediaAssetId('media-1'), mediaStreamId: mediaStreamId('stream-1'),
-  artifactId: artifactId('artifact-1'), contentDigest: contentHash(HASH_B), sourceStart: exactMediaTime('0/1'),
+  artifactId: artifactId('artifact-1'), contentDigest: sourceContentDigest('b'.repeat(64)), sourceStart: exactMediaTime('0/1'),
   sourceEnd: exactMediaTime('10/1'), timelineStart: exactMediaTime('0/1'), timelineEnd: exactMediaTime('10/1'),
   rateNumerator: 1, rateDenominator: 1, direction: 'FORWARD',
 }
@@ -170,7 +171,7 @@ describe('pure Timeline revision and operation state machine', () => {
   })
 
   it('hostile A: PendingApply rejects an ordinary HEAD replacement and retains apply ownership', () => {
-    const newerHead = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash('d'.repeat(64)) }
+    const newerHead = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash('D'.repeat(42) + 'M=') }
     const reloaded = timelineEditorReducer(pending(), { type: 'HEAD_LOADED', head: newerHead, revisions: [] })
     const state = timelineEditorReducer(reloaded, { type: 'APPLY_ACCEPTED', commandId, accepted: applied })
     expect(reloaded.phase.kind).toBe('PendingApply')
@@ -195,7 +196,7 @@ describe('pure Timeline revision and operation state machine', () => {
     ['project', { projectId: projectId('project-other') }],
     ['timeline', { timelineId: timelineId('timeline-other') }],
     ['revision', { revisionId: revisionId('revision-other') }],
-    ['hash', { contentHash: contentHash('d'.repeat(64)) }],
+    ['hash', { contentHash: contentHash('D'.repeat(42) + 'M=') }],
   ])('rejects APPLIED readback with a mismatched %s without replacing the accepted projection', (_label, mutation) => {
     const before = acceptedApplied()
     const acceptedHead = before.server.head
@@ -320,7 +321,7 @@ describe('pure Timeline revision and operation state machine', () => {
   it('keeps failed readback ownership through hostile reloads and mismatches until an exact retry verifies', () => {
     const staleRequest = selectionRequest(1)
     const currentRequest = selectionRequest(2)
-    const hostileHead = { ...head, revisionId: revisionId('revision-hostile'), contentHash: contentHash('d'.repeat(64)) }
+    const hostileHead = { ...head, revisionId: revisionId('revision-hostile'), contentHash: contentHash('D'.repeat(42) + 'M=') }
     let state = timelineEditorReducer(acceptedApplied(), {
       type: 'APPLY_READBACK_FAILED', failure: failure('UNAVAILABLE'),
     })

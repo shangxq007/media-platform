@@ -28,11 +28,11 @@ import {
   applyCommandId,
   artifactId,
   clipId,
-  contentHash,
   exactMediaTime,
   mediaAssetId,
   mediaStreamId,
   projectId,
+  sourceContentDigest,
   trackId,
 } from './types'
 
@@ -80,7 +80,7 @@ function buildDraft(fields: ManualFields, head: CanonicalHeadReference): AddMedi
     mediaAssetId: mediaAssetId(fields.mediaAssetId),
     mediaStreamId: mediaStreamId(fields.mediaStreamId),
     artifactId: artifactId(fields.artifactId),
-    contentDigest: contentHash(fields.contentDigest),
+    contentDigest: sourceContentDigest(fields.contentDigest),
     sourceStart: exactMediaTime(fields.sourceStart),
     sourceEnd: exactMediaTime(fields.sourceEnd),
     timelineStart: exactMediaTime(fields.timelineStart),

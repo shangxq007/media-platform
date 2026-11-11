@@ -99,7 +99,7 @@ describe('runtime route registration and deep-link restoration', () => {
     })
     vi.spyOn(timelineQueryGateway, 'getHead').mockResolvedValue({ ok: true, value: {
       projectId: projectId('project-1'), timelineId: timelineId('project-1'),
-      revisionId: revisionId('revision-R0'), contentHash: contentHash('a'.repeat(64)),
+      revisionId: revisionId('revision-R0'), contentHash: contentHash('A'.repeat(43) + '='),
     } })
     vi.spyOn(timelineQueryGateway, 'listRevisions').mockResolvedValue({ ok: true, value: [] })
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })

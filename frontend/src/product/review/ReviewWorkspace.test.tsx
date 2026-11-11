@@ -12,7 +12,7 @@ import { ReviewWorkspace } from './ReviewWorkspace'
 
 const head = {
   projectId: projectId('project-1'), timelineId: timelineId('project-1'),
-  revisionId: revisionId('revision-R1'), contentHash: contentHash('a'.repeat(64)),
+  revisionId: revisionId('revision-R1'), contentHash: contentHash('A'.repeat(43) + '='),
 }
 const summary = {
   supported: true, tracksAdded: 0, tracksRemoved: 0, tracksModified: 0,

@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import type { RevisionChangeSummary, RevisionComparison, RevisionDetail, RevisionListEntry, TimelineQueryGateway } from '../../product/timeline/gateways'
-import { contentHash, projectId, revisionId, timelineId, type ProjectId } from '../../product/timeline/types'
+import { contentHash, isContentHash, projectId, revisionId, timelineId, type ProjectId } from '../../product/timeline/types'
 import { gatewayFailure, responseValidationFailure } from './gateway-error'
 import { versionlessTransport, type VersionlessTransport } from './versionless-api'
 
 const IdSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9._:-]+$/)
-const HashSchema = z.string().regex(/^[0-9a-fA-F]{64}$/)
+const TimelineDigestSchema = z.string().refine(isContentHash)
 
 const RevisionSchema = z.object({
   id: IdSchema,
@@ -36,7 +36,7 @@ const CurrentSchema = z.object({
   revision: z.object({
     revisionId: IdSchema,
     productId: IdSchema,
-    semanticContext: z.object({ timelineContentDigest: HashSchema }),
+    semanticContext: z.object({ timelineContentDigest: TimelineDigestSchema }),
   }),
 })
 

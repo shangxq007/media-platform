@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { EffectiveAccessEntry } from '../../foundation/effectiveAccess'
 import type { CanonicalHeadReference } from './gateways'
-import { exactMediaTime, isBoundedId, isContentHash, isExactMediaTime } from './types'
+import { exactMediaTime, isBoundedId, isContentHash, isExactMediaTime, isSourceContentDigest } from './types'
 
 // Frontend-local verification contract only. TimelineQueryGateway has no geometry
 // read method. No endpoint, server DTO, permission or real adapter is established.
@@ -50,7 +50,7 @@ const targetSchema = z.object({ projectId: id, timelineId: id, revisionId: id, c
 const clipSchema = z.object({
   id, trackId: id, name: name.optional(), type: name.optional(), version: id.optional(),
   timelineRange: range.optional(), sourceRange: range.optional(),
-  source: z.object({ mediaAssetId: id, mediaStreamId: id.optional(), artifactId: id.optional(), contentDigest: z.string().refine(isContentHash).optional() }).strict().optional(),
+  source: z.object({ mediaAssetId: id, mediaStreamId: id.optional(), artifactId: id.optional(), contentDigest: z.string().refine(isSourceContentDigest).optional() }).strict().optional(),
 }).strict()
 const trackSchema = z.object({ id, name: name.optional(), type: name.optional(), clips: z.array(clipSchema).max(500) }).strict()
 const receipt = { requestId: id, scope: scopeSchema, target: targetSchema }

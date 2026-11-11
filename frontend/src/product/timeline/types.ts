@@ -4,6 +4,7 @@ type Brand<T, Name extends string> = T & { readonly [brand]: Name }
 
 export type RevisionId = Brand<string, 'RevisionId'>
 export type ContentHash = Brand<string, 'ContentHash'>
+export type SourceContentDigest = Brand<string, 'SourceContentDigest'>
 export type TimelineId = Brand<string, 'TimelineId'>
 export type ProjectId = Brand<string, 'ProjectId'>
 export type TrackId = Brand<string, 'TrackId'>
@@ -17,7 +18,10 @@ export type ApplyCommandId = Brand<string, 'ApplyCommandId'>
 export type ExactMediaTime = Brand<string, 'ExactMediaTime'>
 
 const ID_PATTERN = /^[A-Za-z0-9._:-]+$/
-const DIGEST_PATTERN = /^[0-9a-fA-F]{64}$/
+// SHA-256 is 32 bytes. Canonical padded Base64 has 43 data characters,
+// a final character with zero pad bits, and one '=' padding character.
+const TIMELINE_DIGEST_PATTERN = /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/
+const HEX_DIGEST_PATTERN = /^[0-9a-fA-F]{64}$/
 const RATIONAL_PATTERN = /^[+-]?[0-9]+(?:\/[1-9][0-9]*)?$/
 
 function boundedId<Name extends string>(value: string, label: string): Brand<string, Name> {
@@ -27,8 +31,8 @@ function boundedId<Name extends string>(value: string, label: string): Brand<str
   return value as Brand<string, Name>
 }
 
-function digest<Name extends string>(value: string, label: string): Brand<string, Name> {
-  if (!DIGEST_PATTERN.test(value)) throw new Error(`${label} must be an exact 64-character hexadecimal digest.`)
+function hexDigest<Name extends string>(value: string, label: string): Brand<string, Name> {
+  if (!HEX_DIGEST_PATTERN.test(value)) throw new Error(`${label} must be an exact 64-character hexadecimal digest.`)
   return value.toLowerCase() as Brand<string, Name>
 }
 
@@ -42,8 +46,12 @@ export const mediaStreamId = (value: string) => boundedId<'MediaStreamId'>(value
 export const artifactId = (value: string) => boundedId<'ArtifactId'>(value, 'Artifact ID')
 export const operationDefinitionId = (value: string) => boundedId<'OperationDefinitionId'>(value, 'Operation Definition ID')
 export const applyCommandId = (value: string) => boundedId<'ApplyCommandId'>(value, 'Apply Command ID')
-export const contentHash = (value: string) => digest<'ContentHash'>(value, 'Content hash')
-export const planDigest = (value: string) => digest<'PlanDigest'>(value, 'Plan digest')
+export function contentHash(value: string): ContentHash {
+  if (!isContentHash(value)) throw new Error('Timeline content digest must be canonical padded Base64 for 32 SHA-256 bytes.')
+  return value as ContentHash
+}
+export const sourceContentDigest = (value: string) => hexDigest<'SourceContentDigest'>(value, 'Source content digest')
+export const planDigest = (value: string) => hexDigest<'PlanDigest'>(value, 'Plan digest')
 
 export function exactMediaTime(value: string): ExactMediaTime {
   if (!value || value.length > 64 || !RATIONAL_PATTERN.test(value)) {
@@ -53,7 +61,11 @@ export function exactMediaTime(value: string): ExactMediaTime {
 }
 
 export function isContentHash(value: string): boolean {
-  return DIGEST_PATTERN.test(value)
+  return TIMELINE_DIGEST_PATTERN.test(value)
+}
+
+export function isSourceContentDigest(value: string): boolean {
+  return HEX_DIGEST_PATTERN.test(value)
 }
 
 export function isExactMediaTime(value: string): boolean {

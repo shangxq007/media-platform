@@ -27,6 +27,8 @@ const summary = {
   assetsRemoved: 0,
 }
 
+const TIMELINE_DIGEST = 'eG8ZsqM+61OsmW3OP9947mvQOtgmJetUT0BqxQd5m38='
+
 describe('canonical Timeline query mapping', () => {
   it('uses the nested Timeline semantic digest as the editing-base hash instead of the revision digest', async () => {
     const calls: string[] = []
@@ -35,14 +37,14 @@ describe('canonical Timeline query mapping', () => {
         calls.push(path)
         return { data: { revisionId: 'revision-R1', revision: {
           revisionId: 'revision-R1', productId: 'project-1', contentDigest: 'a'.repeat(64),
-          semanticContext: { timelineContentDigest: 'b'.repeat(64) },
+          semanticContext: { timelineContentDigest: TIMELINE_DIGEST },
         } } }
       },
       post: async () => ({ data: {} }),
     }
     const result = await createTimelineQueryGateway(transport).getHead(projectId('project-1'))
     expect(result).toEqual({ ok: true, value: {
-      projectId: 'project-1', timelineId: 'project-1', revisionId: 'revision-R1', contentHash: 'b'.repeat(64),
+      projectId: 'project-1', timelineId: 'project-1', revisionId: 'revision-R1', contentHash: TIMELINE_DIGEST,
     } })
     expect(calls).toEqual(['/timeline-git/products/project-1/revisions/current'])
   })
@@ -63,7 +65,27 @@ describe('canonical Timeline query mapping', () => {
     const transport: VersionlessTransport = {
       get: async () => ({ data: { revisionId: 'revision-R1', revision: {
         revisionId: 'revision-R2', productId: 'project-1',
-        semanticContext: { timelineContentDigest: 'a'.repeat(64) },
+        semanticContext: { timelineContentDigest: TIMELINE_DIGEST },
+      } } }),
+      post: async () => ({ data: {} }),
+    }
+    const result = await createTimelineQueryGateway(transport).getHead(projectId('project-1'))
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.code).toBe('VALIDATION')
+  })
+
+  it.each([
+    ['hex', 'a'.repeat(64)],
+    ['unpadded', TIMELINE_DIGEST.slice(0, -1)],
+    ['noncanonical pad bits', TIMELINE_DIGEST.slice(0, -2) + '9='],
+    ['extra data', TIMELINE_DIGEST + 'A'],
+    ['invalid alphabet', TIMELINE_DIGEST.slice(0, -2) + '-='],
+    ['wrong decoded length', 'AAAA='],
+  ])('rejects %s Timeline digest', async (_label, digest) => {
+    const transport: VersionlessTransport = {
+      get: async () => ({ data: { revisionId: 'revision-R1', revision: {
+        revisionId: 'revision-R1', productId: 'project-1',
+        semanticContext: { timelineContentDigest: digest },
       } } }),
       post: async () => ({ data: {} }),
     }

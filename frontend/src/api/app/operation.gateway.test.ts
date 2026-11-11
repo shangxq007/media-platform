@@ -12,20 +12,22 @@ import {
   mediaStreamId,
   planDigest,
   projectId,
+  sourceContentDigest,
   revisionId,
   timelineId,
   trackId,
 } from '../../product/timeline/types'
 import type { AddMediaClipCommandDraft, OperationPreview } from '../../product/timeline/gateways'
 
-const HASH_A = 'a'.repeat(64)
-const HASH_B = 'b'.repeat(64)
+const HASH_A = 'A'.repeat(43) + '='
+const HASH_B = 'B'.repeat(42) + 'E='
 const HASH_C = 'c'.repeat(64)
+const SOURCE_DIGEST = 'b'.repeat(64)
 
 const draft: AddMediaClipCommandDraft = {
   baseRevisionId: revisionId('revision-R0'), baseContentHash: contentHash(HASH_A), trackId: trackId('video-1'),
   clipId: clipId('clip-1'), mediaAssetId: mediaAssetId('media-1'), mediaStreamId: mediaStreamId('stream-1'),
-  artifactId: artifactId('artifact-1'), contentDigest: contentHash(HASH_B), sourceStart: exactMediaTime('0/1'),
+  artifactId: artifactId('artifact-1'), contentDigest: sourceContentDigest(SOURCE_DIGEST), sourceStart: exactMediaTime('0/1'),
   sourceEnd: exactMediaTime('10/1'), timelineStart: exactMediaTime('0/1'), timelineEnd: exactMediaTime('10/1'),
   rateNumerator: 1, rateDenominator: 1, direction: 'FORWARD',
 }
@@ -104,6 +106,17 @@ describe('Add Media Clip transport mapping', () => {
     expect(capturedBody).not.toHaveProperty('tenantId')
     expect(capturedBody).not.toHaveProperty('actorId')
     expect(JSON.stringify(capturedBody)).not.toContain('1.5')
+  })
+
+  it.each([
+    ['Hex Timeline base', { baseContentHash: 'a'.repeat(64) }],
+    ['noncanonical Timeline candidate', { candidateContentHash: HASH_B.slice(0, -2) + 'F=' }],
+    ['Base64 plan digest', { planDigest: HASH_A }],
+  ])('rejects %s while preserving distinct digest contracts', async (_label, mutation) => {
+    const result = await createOperationGateway(postTransport({ ...previewResponse, ...mutation }))
+      .previewAddMediaClip('tenant-1', projectId('project-1'), draft)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.code).toBe('VALIDATION')
   })
 
   it.each([

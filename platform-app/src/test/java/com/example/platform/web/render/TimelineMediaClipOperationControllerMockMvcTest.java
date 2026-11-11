@@ -32,6 +32,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class TimelineMediaClipOperationControllerMockMvcTest {
 
+    private static final String TIMELINE_DIGEST = "A".repeat(43) + "=";
+
     private static final String APPLY_JSON = """
             {
               "request": {
@@ -54,7 +56,7 @@ class TimelineMediaClipOperationControllerMockMvcTest {
               "expectedPlanDigest": "%s",
               "applyCommandId": "apply-1"
             }
-            """.formatted("a".repeat(64), "b".repeat(64), "c".repeat(64));
+            """.formatted(TIMELINE_DIGEST, "b".repeat(64), "c".repeat(64));
 
     private TimelineMediaClipOperationService service;
     private CanonicalActorResolver actorResolver;
@@ -109,7 +111,22 @@ class TimelineMediaClipOperationControllerMockMvcTest {
     void malformedTransportIs400() throws Exception {
         mvc.perform(post("/api/tenants/tenant-a/projects/project-a/timeline-operations/add-media-clip/apply")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(APPLY_JSON.replace("a".repeat(64), "not-a-digest")))
+                        .content(APPLY_JSON.replace(TIMELINE_DIGEST, "not-a-digest")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("MALFORMED_INPUT"));
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB=",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    })
+    void rejectsNoncanonicalTimelineDigest(String digest) throws Exception {
+        mvc.perform(post("/api/tenants/tenant-a/projects/project-a/timeline-operations/add-media-clip/apply")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(APPLY_JSON.replace(TIMELINE_DIGEST, digest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("MALFORMED_INPUT"));
     }

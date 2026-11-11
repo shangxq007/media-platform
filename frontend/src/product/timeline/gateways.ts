@@ -9,6 +9,7 @@ import type {
   PlanDigest,
   ProjectId,
   RevisionId,
+  SourceContentDigest,
   TimelineId,
   TrackId,
 } from './types'
@@ -105,7 +106,7 @@ export interface AddMediaClipCommandDraft {
   readonly mediaAssetId: MediaAssetId
   readonly mediaStreamId: MediaStreamId
   readonly artifactId: ArtifactId
-  readonly contentDigest: ContentHash
+  readonly contentDigest: SourceContentDigest
   readonly sourceStart: ExactMediaTime
   readonly sourceEnd: ExactMediaTime
   readonly timelineStart: ExactMediaTime
@@ -154,7 +155,7 @@ export interface AssetSourcePin {
   readonly mediaAssetId: MediaAssetId
   readonly mediaStreamId: MediaStreamId
   readonly artifactId: ArtifactId
-  readonly contentDigest: ContentHash
+  readonly contentDigest: SourceContentDigest
 }
 
 export interface AssetGateway {

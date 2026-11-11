@@ -6,7 +6,9 @@ import {
   applyCommandId,
   contentHash,
   exactMediaTime,
+  planDigest,
   revisionId,
+  sourceContentDigest,
   trackId,
 } from './types'
 
@@ -15,7 +17,19 @@ describe('opaque Timeline identifiers and exact media time', () => {
     expect(revisionId('revision-R0')).toBe('revision-R0')
     expect(trackId('video:1')).toBe('video:1')
     expect(applyCommandId('apply-1')).toBe('apply-1')
-    expect(contentHash('A'.repeat(64))).toBe('a'.repeat(64))
+    expect(contentHash('A'.repeat(43) + '=')).toBe('A'.repeat(43) + '=')
+    expect(sourceContentDigest('B'.repeat(64))).toBe('b'.repeat(64))
+    expect(planDigest('C'.repeat(64))).toBe('c'.repeat(64))
+  })
+
+  it.each(['a'.repeat(64), 'A'.repeat(43), 'A'.repeat(42) + 'B=', 'A'.repeat(43) + '==', 'A'.repeat(42) + '-='])
+    ('rejects noncanonical Timeline SHA-256 Base64 %s', value => {
+      expect(() => contentHash(value)).toThrow()
+    })
+
+  it('keeps source and plan Hex digests separate from Timeline Base64', () => {
+    expect(() => sourceContentDigest('A'.repeat(43) + '=')).toThrow()
+    expect(() => planDigest('A'.repeat(43) + '=')).toThrow()
   })
 
   it.each(['1.5', '1/0', '1/-2', '', '1/2/3'])('rejects non-canonical rational media time %s', value => {
