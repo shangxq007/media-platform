@@ -48,7 +48,7 @@ public class McpMediaToolsController {
         this.operations=operations;this.jobs=jobs;this.lifecycle=lifecycle;this.deliveries=deliveries;
         this.artifacts=artifacts;this.artifactAccess=artifactAccess;this.json=json;this.validator=validator;
     }
-    public record Rpc(String jsonrpc,JsonNode id,String method,JsonNode params) {}
+    public record Rpc(String jsonrpc,Object id,String method,Map<String,Object> params) {}
     public record RevisionArgs(@NotBlank String projectId,@NotBlank String revisionId) {}
     public record OperationArgs(@NotBlank String projectId,@NotNull @Valid TimelineClipEditCommand command) {}
     public record RenderArgs(@NotNull @Valid FirstRenderPlanHttpRequest request,@NotBlank @Size(max=255) String idempotencyKey) {}
@@ -62,7 +62,7 @@ public class McpMediaToolsController {
     @PostMapping
     public ResponseEntity<?> rpc(@RequestBody Rpc request) {
         actor();
-        if(!"2.0".equals(request.jsonrpc()) || request.method()==null || request.method().isBlank() || (request.id()!=null && !request.id().isTextual() && !request.id().isNumber() && !request.id().isNull()))return response(error(request.id(),-32600,"Invalid JSON-RPC request"));
+        if(!"2.0".equals(request.jsonrpc()) || request.method()==null || request.method().isBlank() || (request.id()!=null && !(request.id() instanceof String) && !(request.id() instanceof Number)))return response(error(request.id(),-32600,"Invalid JSON-RPC request"));
         if("notifications/initialized".equals(request.method()) && request.id()==null)return ResponseEntity.accepted().build();
         if(request.id()==null)return response(error(null,-32600,"Request id required"));
         try {
@@ -71,7 +71,7 @@ public class McpMediaToolsController {
                         "serverInfo",Map.of("name","media-platform","version","1.0"));
                 case "ping" -> Map.of();
                 case "tools/list" -> Map.of("tools",catalog());
-                case "tools/call" -> call(request.params());
+                case "tools/call" -> call(json.valueToTree(request.params()));
                 default -> null;
             };
             return response(result==null?error(request.id(),-32601,"Method not found"):envelope(request.id(),"result",result));
@@ -149,7 +149,7 @@ public class McpMediaToolsController {
     }
     private Object toolResult(Object value,boolean failed) {
         JsonNode data=json.valueToTree(value);
-        return Map.of("content",List.of(Map.of("type","text","text",data.toString())),"structuredContent",data,"isError",failed);
+        return Map.of("content",List.of(Map.of("type","text","text",data.toString())),"structuredContent",json.convertValue(data,Object.class),"isError",failed);
     }
     private CanonicalActor actor() {
         var actor=actors.resolveCurrentActor().orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED));
@@ -158,10 +158,10 @@ public class McpMediaToolsController {
     }
     private String tenant(){return actor().tenantId();}
     private ResponseEntity<?> response(Object value){return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL,"private, no-store").body(value);}
-    private static Map<String,Object> envelope(JsonNode id,String field,Object value) {
+    private static Map<String,Object> envelope(Object id,String field,Object value) {
         var result=new LinkedHashMap<String,Object>();result.put("jsonrpc","2.0");result.put("id",id);result.put(field,value);return result;
     }
-    private static Map<String,Object> error(JsonNode id,int code,String message){return envelope(id,"error",Map.of("code",code,"message",message));}
+    private static Map<String,Object> error(Object id,int code,String message){return envelope(id,"error",Map.of("code",code,"message",message));}
     private static String safeStatusCode(org.springframework.web.server.ResponseStatusException failure) {
         String reason=failure.getReason();return reason!=null && reason.matches("[A-Z][A-Z0-9_]{0,99}")?reason:"HTTP_"+failure.getStatusCode().value();
     }

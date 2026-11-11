@@ -26,7 +26,7 @@ class McpMediaToolsControllerTest {
         mock(com.example.platform.artifact.app.ArtifactProjectAuthorizationPort.class),json,validators.getValidator());
     @BeforeEach void context(){TenantContext.set("tenant");when(actors.resolveCurrentActor()).thenReturn(Optional.of(CanonicalActor.user("editor","tenant",Set.of(),"unit")));}
     @AfterEach void clear(){TenantContext.clear();validators.close();}
-    JsonNode rpc(String method,Map<String,Object> params){var result=controller.rpc(new McpMediaToolsController.Rpc("2.0",json.valueToTree(1),method,json.valueToTree(params)));assertEquals("private, no-store",result.getHeaders().getCacheControl());return json.valueToTree(result.getBody());}
+    JsonNode rpc(String method,Map<String,Object> params){var result=controller.rpc(new McpMediaToolsController.Rpc("2.0",1,method,params));assertEquals("private, no-store",result.getHeaders().getCacheControl());return json.valueToTree(result.getBody());}
     @Test void actualJsonRpcInitializeAndNineProductToolsHaveClosedSchemas() {
         assertEquals("2025-03-26",rpc("initialize",Map.of()).at("/result/protocolVersion").asText());
         var tools=rpc("tools/list",Map.of()).at("/result/tools");assertEquals(9,tools.size());Set<String> names=new HashSet<>();
@@ -53,6 +53,21 @@ class McpMediaToolsControllerTest {
         assertEquals(-32602,rpc("tools/call",Map.of("name","timeline.apply_operation","arguments",Map.of("projectId","project","command",Map.of("dag",Map.of())))).at("/error/code").asInt());verifyNoInteractions(operations);
     }
     @Test void invalidJsonRpcIdentityIsRejected() {
-        var response=controller.rpc(new McpMediaToolsController.Rpc("2.0",json.createObjectNode(),"tools/list",null));assertEquals(-32600,json.valueToTree(response.getBody()).at("/error/code").asInt());
+        var response=controller.rpc(new McpMediaToolsController.Rpc("2.0",Map.of("invalid",true),"tools/list",null));assertEquals(-32600,json.valueToTree(response.getBody()).at("/error/code").asInt());
+    }
+    @Test void actualHttpMessageConversionUsesPlainJsonRpcValues() throws Exception {
+        var mvc=org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller).build();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/mcp/media")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{\"jsonrpc\":\"2.0\",\"id\":\"wire-1\",\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{}}}"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").value("wire-1"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.result.serverInfo.name").value("media-platform"));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/mcp/media")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.result.tools.length()").value(9))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.result.tools[0].inputSchema.type").value("object"));
     }
 }
