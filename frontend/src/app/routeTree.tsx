@@ -5,7 +5,6 @@ import { EditorPage } from '../editor/EditorPage.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
-import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
 import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
 import { DevDiagnosticsHubPage } from '../pages/DevDiagnosticsHubPage.js'
@@ -101,7 +100,7 @@ const foundationRoutes = [
 const legacyRoutes = [
   route('/legacy/editor', EditorPage), createRoute({ getParentRoute: () => rootRoute, path: '/render-jobs', beforeLoad: () => { throw redirect({ to: '/operations/renders', replace: true }) } }),
   route('/capabilities', CapabilitiesPage), route('/smoke-editor', SmokeEditorPage),
-  route('/observability', ObservabilityDashboard), route('/dev/timeline-git', TimelineGitConsolePage),
+  route('/observability', ObservabilityDashboard),
   route('/admin/storage-health', AdminStorageHealthPage),
   route('/admin/render-jobs', AdminRenderJobsPage),
   route('/dev/diagnostics', DevDiagnosticsHubPage),

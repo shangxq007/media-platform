@@ -76,17 +76,6 @@ export interface TimelineState {
   playing: boolean
 }
 
-export interface RenderJob {
-  id: string
-  projectId: string
-  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
-  format: string
-  resolution: string
-  profile: string
-  artifactId?: string
-  createdAt: string
-}
-
 export interface ExportSettings {
   format: 'mp4' | 'ogg' | 'webm'
   resolution: '720p' | '1080p' | '4k'
