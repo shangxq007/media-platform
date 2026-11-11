@@ -194,7 +194,7 @@ export default function AdminStorageHealthPage() {
         {/* Links */}
         <div className="mt-4 flex gap-4 text-sm">
           <Link to="/admin/render-jobs" className="text-blue-400 hover:underline">Admin Render Jobs</Link>
-          <Link to="/dev/timeline-git" className="text-blue-400 hover:underline">Dev Console</Link>
+          <Link to="/operations/renders" className="text-blue-400 hover:underline">Dev Console</Link>
         </div>
       </div>
     </div>

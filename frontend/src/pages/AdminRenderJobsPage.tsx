@@ -121,8 +121,8 @@ export default function AdminRenderJobsPage() {
           </p>
           <p className="mt-2 text-sm text-gray-400">
             For detailed per-job lifecycle events, visit{' '}
-            <Link to="/dev/timeline-git" className="text-blue-400 hover:underline">
-              /dev/timeline-git
+            <Link to="/operations/renders" className="text-blue-400 hover:underline">
+              /operations/renders
             </Link>
           </p>
         </div>
