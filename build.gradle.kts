@@ -728,7 +728,7 @@ tasks.register("verifyC1Cnm1RedGates") {
             "FAIL: (int) doubleFps truncation in canonical import service"
         }
         val mapper = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderJobMapper.java")
-        require(!mapper.readText().contains("(int) output.frameRate()")) { "FAIL: (int) doubleFps truncation in render mapper" }
+        require(!mapper.exists()) { "FAIL: retired legacy Render mapper reintroduced" }
 
         // ── RED-03: canonical merge time path contains no integer-ms authority ──
         val engine = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java")
@@ -1324,9 +1324,11 @@ tasks.register("verifyR1RenderCanonicalizationReissue") {
         }
 
         // ── R1-REISSUE-RED-04: mock provider registration absent ──
-        val providerConfig = file("render-module/src/main/java/com/example/platform/render/infrastructure/RenderProviderAutoConfiguration.java").readText()
-        require(!providerConfig.contains("MockRenderProvider") && !providerConfig.contains("register(\"mock\"")) {
-            "FAIL R1-REISSUE-RED-04: mock provider registration must not exist in production"
+        require(!file("render-module/src/main/java/com/example/platform/render/infrastructure/RenderProviderAutoConfiguration.java").exists()) {
+            "FAIL: retired legacy Provider registry reintroduced"
+        }
+        require(file("media-execution-plan-module/src/main/java/com/example/platform/execution/binding/ProviderBindingEntryService.java").exists()) {
+            "FAIL: formal Provider Binding entry missing"
         }
 
         // ── R1-REISSUE-RED-05: reissued test-only types confined to testFixtures ──
@@ -2469,5 +2471,38 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership; R5 constructor-injection closure; R5 domain-value authority; R5 single typed source binding; FINAL_CLOSURE_F1 explicit-jOOQ merge transaction; FINAL_CLOSURE_F2 strict canonical codec)")
+    }
+}
+
+// R1E source guard complements fresh-PG, actual Spring wiring and authenticated HTTP retirement proofs.
+tasks.register("verifyUnifiedRenderExecutionRetirement") {
+    group = "verification"
+    doLast {
+        val retired = listOf(
+            "render-module/src/main/java/com/example/platform/render/api/RenderController.java",
+            "render-module/src/main/java/com/example/platform/render/app/RenderJobExecutionService.java",
+            "render-module/src/main/java/com/example/platform/render/app/planner/PipelineDagExecutorService.java",
+            "render-module/src/main/java/com/example/platform/render/infrastructure/RenderProviderRouter.java",
+            "workflow-module/src/main/java/com/example/platform/workflow/temporal/RenderWorkflow.java",
+            "workflow-module/src/main/java/com/example/platform/workflow/temporal/RenderActivitiesImpl.java",
+            "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java")
+        require(retired.none { file(it).exists() }) { "FAIL: legacy execution authority reintroduced" }
+        val v1 = file("platform-app/src/main/resources/db/migration/V1__baseline.sql").readText()
+        for (table in listOf("delivery_job", "delivery_destination", "delivery_policy", "render_worker", "render_job_lease", "render_job_queue")) {
+            require(!Regex("create\\s+table\\s+" + table + "\\s*\\(", RegexOption.IGNORE_CASE).containsMatchIn(v1)) {
+                "FAIL: legacy table remains: $table"
+            }
+        }
+        require(v1.contains("wf_artifact_reuse_index") && v1.contains("create table delivery (")) {
+            "FAIL: formal Artifact reuse or Delivery authority missing"
+        }
+        val read = file("artifact-module/src/main/java/com/example/platform/artifact/infrastructure/ArtifactOutputReadService.java").readText()
+        require(read.contains("AcceptedRenderOutputQuery") && read.contains("content.read(scope") && !read.contains("render-output:")) {
+            "FAIL: result read bypasses formal accepted-output or Artifact content authority"
+        }
+        require(file("render-module/src/main/java/com/example/platform/render/api/PreviewMediaUploadController.java").exists()) {
+            "FAIL: independent Product preview upload ingress missing"
+        }
+        println("OK: R1E legacy source/schema retirement and retained authorities")
     }
 }
