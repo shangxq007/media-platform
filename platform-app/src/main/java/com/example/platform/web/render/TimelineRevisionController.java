@@ -43,23 +43,14 @@ public class TimelineRevisionController {
 
     private final com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService;
     private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
-    private final TimelineMergeOperations mergeEngine;
-    private final com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService;
-    private final com.example.platform.timeline.api.composition.TimelinePayloadCodec timelinePayloadCodec;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineRevisionController(
             com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService,
             com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
-                                       TimelineMergeOperations mergeEngine,
-                                       com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService,
-                                       com.example.platform.timeline.api.composition.TimelinePayloadCodec timelinePayloadCodec,
                                        TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
-        this.mergeEngine = mergeEngine;
-        this.revisionSaveService = revisionSaveService;
-        this.timelinePayloadCodec = timelinePayloadCodec;
         this.projectAuthorization = projectAuthorization;
     }
 
@@ -240,28 +231,7 @@ public class TimelineRevisionController {
                 paths.size());
     }
 
-    private RestoreResponse toRestoreResponse(String projectId, String newRevisionId) {
-        // CFRH-I2: read the newly restored revision through the ownership-scoped
-        // query authority (projectId + tenantId participate in the persistence read).
-        String tenantId = TenantContext.get();
-        var detail = revisionQueryService.getDetail(projectId, tenantId, newRevisionId);
-        var info = detail.map(RevisionDetail::revision).orElse(null);
-        var canonicalPayload = revisionQueryService.getRevisionSnapshotPayload(projectId, tenantId, newRevisionId)
-                .map(RevisionSnapshotPayload::canonicalTimelineJson)
-                .orElse(null);
-        if (info == null || canonicalPayload == null) {
-            // Canonical restore success guarantees the new revision + governed
-            // payload exist; a missing read is an impossible post-restore state.
-            throw new IllegalStateException(
-                    "RESTORE_RESPONSE_INCOMPLETE: restored revision " + newRevisionId
-                            + " missing detail or internal payload");
-        }
-        String editorPayload = timelinePayloadCodec.toEditorJson(canonicalPayload);
-        return new RestoreResponse(
-                toListItem(info),
-                editorPayload,
-                canonicalPayload);
-    }
+
 
     private static ChangeSummaryDto parseChangeSummary(String json) {
         if (json == null || json.isBlank()) {

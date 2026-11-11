@@ -229,9 +229,6 @@ class TimelineMutationControllersMockMvcTest {
         var controller = new TimelineRevisionController(
                 mock(TimelineRevisionQueryService.class),
                 mock(TimelineRevisionDiffQuery.class),
-                mergeEngine,
-                saveService,
-                mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);
 
         mvc(controller).perform(post("/api/render/projects/project-a/timeline/revisions/merge")
@@ -254,8 +251,7 @@ class TimelineMutationControllersMockMvcTest {
         var mergeEngine = mock(com.example.platform.timeline.app.TimelineMergeEngine.class);
         var queries = mock(TimelineRevisionQueryService.class);
         var controller = new TimelineRevisionController(queries,
-                mock(TimelineRevisionDiffQuery.class), mergeEngine, saveService,
-                mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
+                mock(TimelineRevisionDiffQuery.class),
                 authorization);
         mvc(controller).perform(post("/api/render/projects/project-a/timeline/revisions/history-1/restore"))
                 .andExpect(status().isGone());
@@ -268,9 +264,6 @@ class TimelineMutationControllersMockMvcTest {
         var controller = new TimelineRevisionController(
                 mock(TimelineRevisionQueryService.class),
                 mock(TimelineRevisionDiffQuery.class),
-                mergeEngine,
-                saveService,
-                mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);
         when(authorization.requireWrite("tenant-a", "project-a"))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "denied"));

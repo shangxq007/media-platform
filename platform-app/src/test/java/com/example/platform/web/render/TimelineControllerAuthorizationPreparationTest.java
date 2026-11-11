@@ -29,7 +29,7 @@ class TimelineControllerAuthorizationPreparationTest {
                 .thenThrow(new ResponseStatusException(
                         org.springframework.http.HttpStatus.FORBIDDEN, "denied"));
         TimelineRevisionController controller = new TimelineRevisionController(
-                query, mock(TimelineRevisionDiffQuery.class), null, null, null, authorization);
+                query, mock(TimelineRevisionDiffQuery.class), authorization);
 
         assertThrows(ResponseStatusException.class,
                 () -> controller.list("project-1", 30, null, null, null));
