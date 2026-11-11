@@ -1,9 +1,6 @@
 import { z } from 'zod'
-import axios from 'axios'
 import { versionlessApi } from './app/versionless-api'
-import { isOidcEnabled } from '../auth/oidcConfig'
-import { getOidcRequestBinding, subscribeOidcSessionRetirement } from '../auth/oidcClient'
-import { expectOidcRequestBinding } from './oidc-transport'
+import { sessionBoundRequest as request } from './oidc-transport'
 import { RENDER_JOB_STATUSES } from '../contracts/app/render-job'
 
 const id = z.string().min(1)
@@ -18,24 +15,6 @@ const Revision = z.object({ revisionId: id, productId: id, contentDigest: id, ti
 const Head = z.object({ revisionId: id, revision: z.object({ revisionId: id, productId: id, semanticContext: z.object({ timelineContentDigest: id }) }) })
 const Lifecycle = z.object({ renderJobId: id, timelineRevisionId: id, projectId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable() })
 
-/** Reuse the existing auth/session binding; retirement aborts each in-flight product operation. */
-async function request<T>(run: (config: { signal: AbortSignal; expectedOidcBinding?: ReturnType<typeof expectOidcRequestBinding> }) => Promise<{ data: T }>, signal?: AbortSignal): Promise<T> {
-  const controller = new AbortController()
-  const active = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal
-  const stop = isOidcEnabled() ? subscribeOidcSessionRetirement(() => controller.abort()) : () => {}
-  try {
-    const binding = isOidcEnabled() ? await getOidcRequestBinding() : undefined
-    active.throwIfAborted()
-    const { data } = await run({ signal: active, expectedOidcBinding: binding ? expectOidcRequestBinding(binding) : undefined })
-    active.throwIfAborted()
-    if (binding) {
-      const current = await getOidcRequestBinding()
-      if (current.retired || current.revision !== binding.revision || current.credential !== binding.credential) throw new axios.CanceledError('OIDC request binding retired')
-    }
-    active.throwIfAborted()
-    return data
-  } finally { stop() }
-}
 const jobPath = (tenant: string, project: string, job: string) => `/tenants/${part(tenant)}/projects/${part(project)}/render-jobs/${part(job)}`
 export const FormalRenderAPI = {
   async head(project: string, signal?: AbortSignal) {

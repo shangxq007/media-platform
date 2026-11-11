@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { isOidcEnabled } from '../auth/oidcConfig'
-import { getOidcRequestBinding, currentOidcTransportRevision, handleOidcUnauthorized, type OidcRequestBinding } from '../auth/oidcClient'
+import { getOidcRequestBinding, subscribeOidcSessionRetirement, currentOidcTransportRevision, handleOidcUnauthorized, type OidcRequestBinding } from '../auth/oidcClient'
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -40,4 +40,23 @@ export async function handleOidcResponseError(error: AxiosError): Promise<void> 
     try { await handleOidcUnauthorized(binding, error.config?.signal, window.location.pathname + window.location.search) }
     catch { console.error('OIDC current-session check failed') }
   }
+}
+
+/** Reuse the existing auth/session binding; retirement aborts each in-flight product operation. */
+export async function sessionBoundRequest<T>(run: (config: { signal: AbortSignal; expectedOidcBinding?: ReturnType<typeof expectOidcRequestBinding> }) => Promise<{ data: T }>, signal?: AbortSignal): Promise<T> {
+  const controller = new AbortController()
+  const active = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal
+  const stop = isOidcEnabled() ? subscribeOidcSessionRetirement(() => controller.abort()) : () => {}
+  try {
+    const binding = isOidcEnabled() ? await getOidcRequestBinding() : undefined
+    active.throwIfAborted()
+    const { data } = await run({ signal: active, expectedOidcBinding: binding ? expectOidcRequestBinding(binding) : undefined })
+    active.throwIfAborted()
+    if (binding) {
+      const current = await getOidcRequestBinding()
+      if (current.retired || current.revision !== binding.revision || current.credential !== binding.credential) throw new axios.CanceledError('OIDC request binding retired')
+    }
+    active.throwIfAborted()
+    return data
+  } finally { stop() }
 }

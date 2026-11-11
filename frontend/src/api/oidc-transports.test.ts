@@ -29,6 +29,7 @@ vi.mock('oidc-client-ts', () => {
 })
 import api from './index'
 import { FormalRenderAPI } from './formal-render'
+import { DeliveryAPI } from './delivery'
 import { versionlessApi } from './app/versionless-api'
 import { getOidcRequestBinding, getOidcUser, handleOAuthCallback, subscribeOidcSessionRetirement } from '../auth/oidcClient'
 
@@ -372,5 +373,39 @@ describe('Formal render submission session binding', () => {
     await login('scope-A')
     versionlessApi.defaults.adapter = async config => { sdk.user = user('scope-B'); return { config, status: 200, statusText: 'OK', headers: {}, data: planned } }
     await expect(FormalRenderAPI.submit(intent, 'intent-A')).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+  })
+})
+
+
+describe('Delivery session and project request fencing', () => {
+  const record = { deliveryId: 'dlv-A', projectId: 'p', sourceRenderJobId: 'job-A', timelineRevisionId: 'r', artifactId: 'a', status: 'READY', createdAt: 'now', resultPath: '/api/projects/p/deliveries/dlv-A/result' }
+  it('never sends a queued old delivery intent with the replacement session credential', async () => {
+    await login('delivery-A')
+    const queued = deferred<void>(), release = deferred<void>(), adapter = vi.fn()
+    versionlessApi.defaults.adapter = adapter
+    const gate = versionlessApi.interceptors.request.use(async config => { queued.resolve(); await release.promise; return config })
+    try {
+      const pending = DeliveryAPI.create('p', { sourceRenderJobId: 'job-A' }, 'delivery-intent')
+      const rejected = expect(pending).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+      await queued.promise; await login('delivery-B'); release.resolve(); await rejected
+      expect(adapter).not.toHaveBeenCalled(); expect((await getOidcRequestBinding()).accessToken).toBe('token-delivery-B')
+    } finally { versionlessApi.interceptors.request.eject(gate); release.resolve() }
+  })
+  it.each(['create', 'get', 'list', 'download'] as const)('aborts %s with its owning project lifecycle and rejects a late response', async operation => {
+    await login('delivery-owner')
+    const sent = deferred<InternalAxiosRequestConfig>(), response = deferred<AxiosResponse>(), controller = new AbortController()
+    versionlessApi.defaults.adapter = config => { sent.resolve(config); return response.promise }
+    const pending = operation === 'create' ? DeliveryAPI.create('p', { sourceRenderJobId: 'job-A' }, 'key', controller.signal)
+      : operation === 'list' ? DeliveryAPI.list('p', 50, controller.signal)
+      : operation === 'get' ? DeliveryAPI.get('p', 'dlv-A', controller.signal) : DeliveryAPI.download('p', 'dlv-A', controller.signal)
+    const rejected = expect(pending).rejects.toBeDefined(); const config = await sent.promise
+    expect(config.headers.Authorization).toBe('Bearer token-delivery-owner'); expect(config.expectedOidcBinding).toBeDefined()
+    controller.abort(); response.resolve({ config, status: 200, statusText: 'OK', headers: {}, data: operation === 'list' ? [record] : record })
+    await rejected; expect(config.signal?.aborted).toBe(true)
+  })
+  it('rejects successful delivery responses if the SDK credential silently changes', async () => {
+    await login('delivery-old')
+    versionlessApi.defaults.adapter = async config => { sdk.user = user('delivery-new'); return { config, status: 200, statusText: 'OK', headers: {}, data: record } }
+    await expect(DeliveryAPI.get('p', 'dlv-A')).rejects.toMatchObject({ code: 'ERR_CANCELED' })
   })
 })

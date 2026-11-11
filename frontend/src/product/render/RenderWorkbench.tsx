@@ -27,21 +27,31 @@ export function RenderWorkbench() {
     const ids: string[] = doc.tracks.flatMap((track: { clips: { clipId: string }[] }) => track.clips.map(c => c.clipId))
     setRevision(info.revisionId); setHash(info.contentHash); setClips(ids); setClip(ids[0] ?? '')
   }
+  function retireWorkspace() {
+    scope.current.abort(); keys.current.clear(); setProject(''); setProjects([]); setTenant(''); setJob(null); setReference(null); setJobs([]); setDelivery(null); setDeliveries([]); setRevision(''); setHash(''); setClips([]); setClip(''); setBusy(false)
+  }
+  function handleFailure(failure: unknown, signal: AbortSignal, fallback: string) {
+    if (signal.aborted) return
+    const status = (failure as { response?: { status?: number } })?.response?.status
+    if (status === 401 || status === 403 || status === 404) {
+      retireWorkspace(); setError('Project access is unavailable. Sign in again or select an authorized workspace.')
+    } else setError(failure instanceof Error ? failure.message : fallback)
+  }
   async function action(run: (signal: AbortSignal) => Promise<void>) {
     const signal = scope.current.signal; setBusy(true); setError('')
     try { await run(signal); signal.throwIfAborted() }
-    catch (failure) { if (!signal.aborted) { const status = (failure as { response?: { status?: number } })?.response?.status; if (status === 401 || status === 403 || status === 404) { setProject(''); setProjects([]); setTenant(''); setJob(null); setDelivery(null); setReference(null); setJobs([]); setDeliveries([]); setRevision(''); setHash(''); setClips([]); keys.current.clear() }; setError(status === 401 || status === 403 || status === 404 ? 'Project access is unavailable. Sign in again or select an authorized workspace.' : failure instanceof Error ? failure.message : 'Request failed') } }
+    catch (failure) { handleFailure(failure, signal, 'Request failed') }
     finally { if (!signal.aborted) setBusy(false) }
   }
   useEffect(() => {
     const abort = new AbortController()
     void (async () => { try { const t = await renderReadSource.tenant(abort.signal); const p = await renderReadSource.projects(t, abort.signal); abort.signal.throwIfAborted(); setTenant(t); setProjects(p); setProject(p[0]?.id ?? '') } catch (e) { if (!abort.signal.aborted) setError(e instanceof Error ? e.message : 'Workspace unavailable') } })()
-    const stop = subscribeOidcSessionRetirement(() => { abort.abort(); scope.current.abort(); keys.current.clear(); setProject(''); setProjects([]); setTenant(''); setJob(null); setReference(null); setJobs([]); setDelivery(null); setDeliveries([]); setRevision(''); setHash(''); setBusy(false) })
+    const stop = subscribeOidcSessionRetirement(() => { abort.abort(); retireWorkspace() })
     return () => { abort.abort(); scope.current.abort(); stop() }
   }, [])
   useEffect(() => {
     scope.current.abort(); scope.current = new AbortController(); setJob(null); setReference(null); setJobs([]); setDelivery(null); setDeliveries([]); setRevision(''); setHash(''); setClips([]); setJobs([]); setBusy(false)
-    if (project) void action(async signal => { await loadRevision('', signal); const rows = await DeliveryAPI.list(project); const records = await renderReadSource.jobs(tenant, project, signal); signal.throwIfAborted(); setJobs(records); setDeliveries(rows) })
+    if (project) void action(async signal => { await loadRevision('', signal); const rows = await DeliveryAPI.list(project, 50, signal); const records = await renderReadSource.jobs(tenant, project, signal); signal.throwIfAborted(); setJobs(records); setDeliveries(rows) })
     return () => scope.current.abort()
   }, [project])
   useEffect(() => {
@@ -50,7 +60,7 @@ export function RenderWorkbench() {
     const timer = setInterval(() => { void (async () => { try {
       const result = await FormalRenderAPI.result(tenant, project, id, signal); const records = await renderReadSource.jobs(tenant, project, signal); signal.throwIfAborted(); setJob(result); setJobs(records)
       if (result.status === 'COMPLETED') { const info = await FormalRenderAPI.lifecycle(project, id, signal); signal.throwIfAborted(); setReference(previous => previous ?? { job: id, revision: info.timelineRevisionId }) }
-    } catch (e) { if (!signal.aborted) setError(e instanceof Error ? e.message : 'Status unavailable') } })() }, 1000)
+    } catch (e) { handleFailure(e, signal, 'Status unavailable') } })() }, 1000)
     return () => clearInterval(timer)
   }, [job?.renderJobId, job?.status, tenant, project])
   const extent = () => ({ startMillis: 0, endMillis: end, frameRateNumerator: fps, frameRateDenominator: 1 })
@@ -94,11 +104,11 @@ export function RenderWorkbench() {
         {job.status === 'COMPLETED' && job.finalArtifactId && <>
           <button disabled={busy} onClick={() => void action(async signal => { const info = await FormalRenderAPI.lifecycle(project, job.renderJobId, signal); signal.throwIfAborted(); setReference({ job: info.renderJobId, revision: info.timelineRevisionId }) })}>Use as incremental reference</button>
           <button disabled={busy} onClick={() => void action(async signal => { const blob = await FormalRenderAPI.download(tenant, project, job.renderJobId, job.finalArtifactId!, signal); signal.throwIfAborted(); save(blob) })}>Download render</button>
-          <button disabled={busy} onClick={() => void action(async signal => { const value = await DeliveryAPI.create(project, { sourceRenderJobId: job.renderJobId, artifactId: job.finalArtifactId! }, key([project, 'delivery', job.renderJobId])); signal.throwIfAborted(); setDelivery(value); const rows = await DeliveryAPI.list(project); signal.throwIfAborted(); setDeliveries(rows) })}>Create delivery</button>
+          <button disabled={busy} onClick={() => void action(async signal => { const value = await DeliveryAPI.create(project, { sourceRenderJobId: job.renderJobId, artifactId: job.finalArtifactId! }, key([project, 'delivery', job.renderJobId]), signal); signal.throwIfAborted(); setDelivery(value); const rows = await DeliveryAPI.list(project, 50, signal); signal.throwIfAborted(); setDeliveries(rows) })}>Create delivery</button>
         </>}
       </section>}
-      <section aria-label="Deliveries"><h2>Deliveries</h2>{deliveries.map(d => <button key={d.deliveryId} onClick={() => void action(async signal => { const value = await DeliveryAPI.get(project, d.deliveryId); signal.throwIfAborted(); setDelivery(value) })}>{d.deliveryId}: {d.status}</button>)}
-        {delivery && <div><code>{delivery.deliveryId}</code><p>{delivery.status}</p><button disabled={busy} onClick={() => void action(async signal => { const blob = await DeliveryAPI.download(project, delivery.deliveryId); signal.throwIfAborted(); save(blob) })}>Download delivery</button></div>}
+      <section aria-label="Deliveries"><h2>Deliveries</h2>{deliveries.map(d => <button key={d.deliveryId} onClick={() => void action(async signal => { const value = await DeliveryAPI.get(project, d.deliveryId, signal); signal.throwIfAborted(); setDelivery(value) })}>{d.deliveryId}: {d.status}</button>)}
+        {delivery && <div><code>{delivery.deliveryId}</code><p>{delivery.status}</p><button disabled={busy} onClick={() => void action(async signal => { const blob = await DeliveryAPI.download(project, delivery.deliveryId, signal); signal.throwIfAborted(); save(blob) })}>Download delivery</button></div>}
       </section>
     </>}
   </main>

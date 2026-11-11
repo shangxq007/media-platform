@@ -14,7 +14,7 @@ vi.mock('../auth/oidcClient', () => ({ subscribeOidcSessionRetirement: (listener
 const complete = { renderJobId: 'j', status: 'COMPLETED', finalArtifactId: 'artifact', failureCode: null }
 const delivery = { deliveryId: 'delivery', projectId: 'p', sourceRenderJobId: 'j', timelineRevisionId: 'r', artifactId: 'artifact', status: 'READY', createdAt: 'now', resultPath: '/api/projects/p/deliveries/delivery/result' }
 async function ready() { render(<RenderWorkbench />); await screen.findByText('r'); await waitFor(() => expect(screen.getByRole('button', { name: 'Submit render' }).closest('fieldset')?.disabled).toBe(false)) }
-afterEach(() => { cleanup(); mock.listeners.clear(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); mock.listeners.clear(); vi.clearAllMocks(); vi.restoreAllMocks() })
 beforeEach(() => {
   mock.tenant.mockResolvedValue('t'); mock.projects.mockResolvedValue([{ id: 'p', tenantId: 't', name: 'Film' }, { id: 'q', tenantId: 't', name: 'Second' }]); mock.jobs.mockResolvedValue([])
   mock.head.mockResolvedValue({ revisionId: 'r', contentHash: 'hash' }); mock.revision.mockResolvedValue({ revisionId: 'r2', contentHash: 'hash2' }); mock.snapshot.mockResolvedValue({ canonicalTimelineJson: JSON.stringify({ tracks: [{ clips: [{ clipId: 'clip' }] }] }) })
@@ -33,7 +33,7 @@ describe('Formal render workbench product and authorization boundaries', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
     expect(mock.submit).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2', extent: { startMillis: 0, endMillis: 3000, frameRateNumerator: 4, frameRateDenominator: 1 } }), expect.any(String), expect.any(AbortSignal))
     fireEvent.click(screen.getByRole('button', { name: 'Create delivery' })); await screen.findByText('delivery')
-    expect(mock.create).toHaveBeenCalledWith('p', { sourceRenderJobId: 'j', artifactId: 'artifact' }, expect.any(String))
+    expect(mock.create).toHaveBeenCalledWith('p', { sourceRenderJobId: 'j', artifactId: 'artifact' }, expect.any(String), expect.any(AbortSignal))
     expect(screen.getByRole('button', { name: 'Download delivery' })).toBeTruthy()
   })
   it('uses the completed job and its exact revision as incremental reference', async () => {
@@ -65,4 +65,22 @@ describe('Formal render workbench product and authorization boundaries', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load current revision' })); await screen.findByRole('alert')
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull()); expect(screen.queryByRole('button', { name: 'Create delivery' })).toBeNull()
   })
+  it.each([401, 403, 404])('retires the full private workspace when background polling loses HTTP %s access', async status => {
+    let poll!: () => void
+    const interval = globalThis.setInterval
+    vi.spyOn(globalThis, 'setInterval').mockImplementation((callback, delay, ...args) => {
+      if (delay === 1000) { poll = callback as () => void; return 123 as unknown as ReturnType<typeof setInterval> }
+      return interval(callback, delay, ...args)
+    })
+    mock.list.mockResolvedValue([delivery]); await ready()
+    mock.result.mockResolvedValueOnce({ ...complete, status: 'RUNNING', finalArtifactId: null })
+    fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
+    await waitFor(() => expect(poll).toBeDefined()); const signal = mock.submit.mock.calls[0][2] as AbortSignal
+    mock.result.mockRejectedValueOnce(Object.assign(new Error('Permission lost'), { response: { status } }))
+    await act(async () => poll()); await screen.findByRole('alert')
+    expect(signal.aborted).toBe(true); expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByText('delivery')).toBeNull(); expect(screen.queryByText('r')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Submit render' })).toBeNull()
+  })
+
 })
