@@ -104,9 +104,11 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(tables.contains("render_job"), "render_job required");
         assertTrue(tables.contains("render_job_status_history"), "render_job_status_history required");
         assertTrue(tables.contains("render_job_lifecycle_events"), "render_job_lifecycle_events required");
-        assertTrue(tables.contains("render_job_lease"), "render_job_lease required");
-        assertTrue(tables.contains("render_job_queue"), "render_job_queue required");
-        assertTrue(tables.contains("render_worker"), "render_worker required");
+        for (String retired : List.of("render_job_lease","render_job_queue","render_worker",
+                "delivery_job","delivery_policy","delivery_destination"))
+            assertFalse(tables.contains(retired), "R1E retired table must be absent: " + retired);
+        for (String authority : List.of("render_binding_inputs","render_graph_execution","delivery","wf_artifact_reuse_index"))
+            assertTrue(tables.contains(authority), "Formal execution/reuse/delivery authority required: " + authority);
         assertTrue(tables.contains("wf_request_work_resolution"),
                 "worker-fabric RequestWork resolution authority required");
         assertTrue(tables.contains("wf_host_resource_snapshot"),
@@ -316,7 +318,12 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertNotNull(columns.get("project_id"), "project_id required");
         assertNotNull(columns.get("status"), "status required");
         assertNotNull(columns.get("created_at"), "created_at required");
-        assertNotNull(columns.get("selected_provider"), "selected_provider required");
+        for (String retired : List.of("selected_provider","ai_script","artifact_uri","pipeline_plan_json",
+                "pipeline_execution_json","base_job_id","trace_id"))
+            assertNull(columns.get(retired), "R1E retired Render field must be absent: " + retired);
+        assertNotNull(columns.get("timeline_revision_id"), "frozen revision pin required");
+        assertNotNull(columns.get("incremental_reference_job_id"), "formal incremental reference required");
+        assertNotNull(columns.get("graph_preparation_deadline"), "bounded graph preparation required");
         assertEquals("NO", columns.get("initiator_type").nullable(), "initiator_type immutable/non-null");
         assertEquals("NO", columns.get("initiator_id").nullable(), "initiator_id immutable/non-null");
         assertEquals("NO", columns.get("initiator_tenant_id").nullable(), "initiator tenant immutable/non-null");
