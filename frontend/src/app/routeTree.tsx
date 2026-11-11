@@ -57,7 +57,7 @@ export const implementedRouteInventory = [
 
 export const legacyRouteInventory = [
   '/legacy/editor', '/render-jobs', '/capabilities', '/smoke-editor', '/observability',
-  '/dev/timeline-git', '/admin/storage-health',
+  '/admin/storage-health',
   '/admin/render-jobs', '/dev/diagnostics', '/dev/storage-delivery-profiles',
   '/dev/ingest/preflight-policy',
 ] as const

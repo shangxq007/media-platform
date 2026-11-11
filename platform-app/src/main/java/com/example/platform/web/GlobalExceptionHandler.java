@@ -52,6 +52,21 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public org.springframework.http.ResponseEntity<ProblemDetail> handleUnsupportedMethod(
+            org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.METHOD_NOT_ALLOWED, "Request method is not supported");
+        problem.setTitle("Method Not Allowed");
+        problem.setType(URI.create("https://example.com/problems/METHOD_NOT_ALLOWED"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("errorCode", "METHOD_NOT_ALLOWED");
+        problem.setProperty("traceId", MDC.get("traceId"));
+        problem.setProperty("timestamp", OffsetDateTime.now().toString());
+        var response = org.springframework.http.ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+        if (ex.getSupportedHttpMethods() != null) response.allow(ex.getSupportedHttpMethods().toArray(org.springframework.http.HttpMethod[]::new));
+        return response.body(problem);
+    }
+
     @ExceptionHandler(PlatformException.class)
     public ProblemDetail handlePlatform(PlatformException ex, HttpServletRequest request) {
         var code = ex.getErrorCode();
