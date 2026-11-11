@@ -1339,8 +1339,10 @@ tasks.register("verifyR1RenderCanonicalizationReissue") {
             "NoopFontStackResolver.java",
             "NoopFontSubsetter.java",
             "NoopFontValidator.java",
-            "NoopMissingGlyphDetector.java",
-            "GoldenRenderPlanAdapter.java")
+            "NoopMissingGlyphDetector.java")
+        require(!file("render-module/src/testFixtures/java/com/example/platform/render/domain/planning/GoldenRenderPlanAdapter.java").exists()) {
+            "FAIL: legacy golden execution adapter reintroduced"
+        }
         val fixtureMatches = testFixtureDir.walkTopDown()
             .filter { it.isFile && it.name in reissued }
             .map { it.name }
