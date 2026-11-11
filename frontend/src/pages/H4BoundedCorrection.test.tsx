@@ -59,9 +59,9 @@ describe('Formal render workbench product and authorization boundaries', () => {
     act(() => mock.listeners.forEach(listener => listener())); expect(signal.aborted).toBe(true)
     expect(screen.queryByText('j')).toBeNull(); expect(screen.queryByText('r')).toBeNull(); expect(screen.queryByRole('button', { name: 'Create delivery' })).toBeNull()
   })
-  it('removes private state when a refreshed read denies project access', async () => {
+  it.each([401, 403, 404])('removes private state when a refreshed read returns HTTP %s', async status => {
     await ready(); fireEvent.click(screen.getByRole('button', { name: 'Submit render' })); await screen.findByRole('status')
-    mock.head.mockRejectedValue(Object.assign(new Error('Request failed'), { response: { status: 403 } }))
+    mock.head.mockRejectedValue(Object.assign(new Error('Request failed'), { response: { status } }))
     fireEvent.click(screen.getByRole('button', { name: 'Load current revision' })); await screen.findByRole('alert')
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull()); expect(screen.queryByRole('button', { name: 'Create delivery' })).toBeNull()
   })

@@ -30,7 +30,7 @@ export function RenderWorkbench() {
   async function action(run: (signal: AbortSignal) => Promise<void>) {
     const signal = scope.current.signal; setBusy(true); setError('')
     try { await run(signal); signal.throwIfAborted() }
-    catch (failure) { if (!signal.aborted) { const status = (failure as { response?: { status?: number } })?.response?.status; if (status === 401 || status === 403) { setProject(''); setProjects([]); setTenant(''); setJob(null); setDelivery(null); setReference(null); setJobs([]); setDeliveries([]); setRevision(''); setHash(''); setClips([]); keys.current.clear() }; setError(status === 401 || status === 403 ? 'Project access is unavailable. Sign in again or select an authorized workspace.' : failure instanceof Error ? failure.message : 'Request failed') } }
+    catch (failure) { if (!signal.aborted) { const status = (failure as { response?: { status?: number } })?.response?.status; if (status === 401 || status === 403 || status === 404) { setProject(''); setProjects([]); setTenant(''); setJob(null); setDelivery(null); setReference(null); setJobs([]); setDeliveries([]); setRevision(''); setHash(''); setClips([]); keys.current.clear() }; setError(status === 401 || status === 403 || status === 404 ? 'Project access is unavailable. Sign in again or select an authorized workspace.' : failure instanceof Error ? failure.message : 'Request failed') } }
     finally { if (!signal.aborted) setBusy(false) }
   }
   useEffect(() => {
