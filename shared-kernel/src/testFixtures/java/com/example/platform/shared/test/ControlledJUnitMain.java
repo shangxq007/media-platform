@@ -38,6 +38,7 @@ public final class ControlledJUnitMain {
                     DiscoverySelectors.selectClass("com.example.platform.FlywaySchemaIntegrationTest"),
                     DiscoverySelectors.selectClass("com.example.platform.testinfra.TestDatabaseIsolationGuardTest"));
                 if ("pg18-local".equals(args[4])) request.selectors(
+                    DiscoverySelectors.selectClass("com.example.platform.storage.RenderOutputAcceptanceTest"),
                     DiscoverySelectors.selectClass("com.example.platform.media.infrastructure.persistence.SourceVisualOwnershipIntegrityIT"),
                     DiscoverySelectors.selectClass("com.example.platform.media.infrastructure.persistence.SourceVisualDescriptionSnapshotIT"),
                     DiscoverySelectors.selectClass("com.example.platform.persistence.binding.JooqBoundGraphInputStoreIT"),
