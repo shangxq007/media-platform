@@ -38,7 +38,7 @@ export const FormalRenderAPI = {
     return { revisionId: value.newRevisionId ?? value.baseRevisionId, contentHash: value.resultContentHash ?? value.unchangedContentHash ?? '' }
   },
   async submit(intent: RenderIntent, key: string, signal?: AbortSignal) {
-    return Submission.parse(await request(c => versionlessApi.post('/first-render/plans', intent, { ...c, headers: { 'Idempotency-Key': key } }), signal))
+    return Submission.parse(await request(c => versionlessApi.post('/render-jobs', intent, { ...c, headers: { 'Idempotency-Key': key } }), signal))
   },
   async incremental(intent: IncrementalIntent, key: string, signal?: AbortSignal) {
     return Submission.parse(await request(c => versionlessApi.post('/incremental-render/plans', intent, { ...c, headers: { 'Idempotency-Key': key } }), signal))
@@ -48,8 +48,8 @@ export const FormalRenderAPI = {
     if (value.renderJobId !== job) throw new Error('JOB_SCOPE_MISMATCH')
     return value
   },
-  async lifecycle(project: string, job: string, signal?: AbortSignal) {
-    const value = Lifecycle.parse(await request(c => versionlessApi.get(`/first-render/jobs/${part(job)}`, c), signal))
+  async lifecycle(tenant: string, project: string, job: string, signal?: AbortSignal) {
+    const value = Lifecycle.parse(await request(c => versionlessApi.get(jobPath(tenant, project, job) + '/lifecycle', c), signal))
     if (value.projectId !== project || value.renderJobId !== job) throw new Error('JOB_SCOPE_MISMATCH')
     return value
   },

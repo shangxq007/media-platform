@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/mcp/media")
 public class McpMediaToolsController {
     private final CanonicalActorResolver actors;
-    private final FirstRenderSubmissionService submissions;
+    private final RevisionRenderSubmissionService submissions;
     private final TimelineRevisionQueries revisions;
     private final TimelineProjectAuthorizationService projectAccess;
     private final OperationInvocationPort operations;
@@ -39,7 +39,7 @@ public class McpMediaToolsController {
     private final ArtifactProjectAuthorizationPort artifactAccess;
     private final ObjectMapper json;
     private final Validator validator;
-    public McpMediaToolsController(CanonicalActorResolver actors,FirstRenderSubmissionService submissions,
+    public McpMediaToolsController(CanonicalActorResolver actors,RevisionRenderSubmissionService submissions,
             TimelineRevisionQueries revisions,TimelineProjectAuthorizationService projectAccess,
             OperationInvocationPort operations,RenderJobService jobs,GraphRenderLifecycle lifecycle,
             DeliveryService deliveries,ArtifactApplicationService artifacts,

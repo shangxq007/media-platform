@@ -20,6 +20,9 @@ import type {
   TimelineQueryGateway,
 } from './gateways'
 import { SemanticDiff } from './SemanticDiff'
+import { SourceBrowser } from './SourceBrowser'
+import { ClipEditor } from './ClipEditor'
+import { NleRenderPanel } from './NleRenderPanel'
 import { useTranslation } from '../../localization'
 import {
   ADD_MEDIA_CLIP_DEFINITION,
@@ -285,7 +288,7 @@ export function NleWorkspace({
       try {
         const requestedProject = projectId(project.projectId)
         const [assets, capability] = await Promise.all([
-          sourceGateway.listSourcePins(requestedProject),
+          sourceGateway.listSourcePins(project.tenantId ?? '', requestedProject),
           capabilityGateway.getOperationCapability(requestedProject),
         ])
         if (!active) return
@@ -297,7 +300,7 @@ export function NleWorkspace({
     }
     void loadBoundaries()
     return () => { active = false }
-  }, [project.projectId, sourceGateway, capabilityGateway])
+  }, [project.projectId, project.tenantId, sourceGateway, capabilityGateway])
 
   const selectRevision = async (selectedId: string) => {
     const selectionLocked = applyInFlight.current
@@ -473,6 +476,14 @@ export function NleWorkspace({
           />
         </Panel>
         <Panel title="Add Media Clip · advanced / provisional" className="ff-operation-panel">
+          <SourceBrowser tenantId={project.tenantId} project={project.projectId} onSelect={source => {
+            const stream = source.streams.find(item => item.kind === 'VIDEO') ?? source.streams[0]
+            setFields({ trackId: state.presentation.selectedTrackId ?? 'V1', clipId: `clip-${crypto.randomUUID()}`,
+              mediaAssetId: source.mediaAssetId, mediaStreamId: stream.streamId, artifactId: source.artifactId,
+              contentDigest: source.contentDigest, sourceStart: '0', sourceEnd: stream.duration,
+              timelineStart: '0', timelineEnd: stream.duration, rateNumerator: '1', rateDenominator: '1', direction: 'FORWARD' })
+            setStableCommandId(null); setConfirmed(false); dispatch({ type: 'ROLLBACK_DRAFT' })
+          }} />
           <div className="ff-state ff-state--unavailable" role="note"><span className="ff-state__code">ASSET GATEWAY · UNAVAILABLE</span><p>{assetBoundary} Enter only canonical logical IDs below. Physical locations and provider coordinates are not accepted.</p><p>{capabilityBoundary}</p></div>
           {!project.tenantId ? <div className="ff-operation-notice ff-operation-notice--danger" role="alert"><strong>TENANT CONTEXT UNAVAILABLE</strong><p>The authenticated Workspace projection did not supply a tenant. Preview and apply remain disabled.</p></div> : null}
           <form onSubmit={event => { event.preventDefault(); void preview() }}>
@@ -505,6 +516,12 @@ export function NleWorkspace({
             <Button variant="primary" disabled={!previewReady || !confirmed || !stableCommandId || state.phase.kind === 'PendingApply'} onClick={() => void apply()}>Confirm and apply</Button>
           </section> : null}
           {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
+        </Panel>
+        <Panel title="Clip operations" className="ff-operation-panel">
+          <ClipEditor head={state.server.head} onRevisionChanged={() => loadHead()} />
+        </Panel>
+        <Panel title="Render and delivery" className="ff-operation-panel">
+          <NleRenderPanel head={state.server.head} />
         </Panel>
         <Panel title="Server semantic comparison" className="ff-nle-diff-panel"><SemanticDiff comparison={state.server.comparison} actionFilter={state.presentation.comparisonActionFilter} onActionFilterChange={action => dispatch({ type: 'COMPARISON_FILTER_CHANGED', action })} /></Panel>
       </div>

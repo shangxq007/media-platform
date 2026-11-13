@@ -156,10 +156,16 @@ export interface AssetSourcePin {
   readonly mediaStreamId: MediaStreamId
   readonly artifactId: ArtifactId
   readonly contentDigest: SourceContentDigest
+  readonly name: string
+  readonly byteLength: number
+  readonly duration: ExactMediaTime
+  readonly streams: readonly { readonly streamId: MediaStreamId; readonly kind: 'VIDEO' | 'AUDIO'; readonly duration: ExactMediaTime }[]
 }
 
 export interface AssetGateway {
-  listSourcePins(projectId: ProjectId): Promise<GatewayResult<readonly AssetSourcePin[]>>
+  listSourcePins(tenantId: string, projectId: ProjectId): Promise<GatewayResult<readonly AssetSourcePin[]>>
+  uploadSource(tenantId: string, projectId: ProjectId, file: File, idempotencyKey: string,
+    onProgress?: (percentage: number) => void): Promise<GatewayResult<AssetSourcePin>>
 }
 
 export type CapabilityState = 'AVAILABLE' | 'UNKNOWN' | 'UNAVAILABLE'

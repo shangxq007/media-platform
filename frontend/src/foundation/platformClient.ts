@@ -53,6 +53,9 @@ export interface PlatformClient {
   readonly workspace: {
     getHome(workspaceId: string, signal?: AbortSignal): Promise<WorkspaceHomeProjection>
   }
+  readonly project: {
+    getContext(workspaceId: string, projectId: string, signal?: AbortSignal): Promise<{ tenantId: string; name: string }>
+  }
   readonly effectiveAccess: {
     getCatalog(keys: readonly string[]): Promise<EffectiveAccessCatalog>
   }
@@ -91,6 +94,25 @@ export const platformClient: PlatformClient = {
       }
     },
   },
+  project: {
+    async getContext(workspaceId, projectId, signal) {
+      const id = encodeURIComponent
+      const [workspaceResponse, projectResponse] = await Promise.all([
+        api.get(`/api/workspaces/${id(workspaceId)}`, { baseURL: '', signal }),
+        api.get(`/api/identity/projects/${id(projectId)}`, { baseURL: '', signal }),
+      ])
+      const workspace = z.object({ id: z.string().min(1), tenantId: z.string().min(1) }).parse(workspaceResponse.data)
+      const project = z.object({ id: z.string().min(1), tenantId: z.string().min(1),
+        workspaceId: z.string().min(1), name: z.string().min(1), status: z.literal('ACTIVE') }).parse(projectResponse.data)
+      if (workspace.id !== workspaceId || project.id !== projectId || project.workspaceId !== workspaceId
+        || project.tenantId !== workspace.tenantId) {
+        const mismatch = new Error('Authenticated Workspace and Project scope do not match the route.')
+        mismatch.name = 'WORKSPACE_SCOPE_NOT_AVAILABLE'
+        throw mismatch
+      }
+      return { tenantId: workspace.tenantId, name: project.name }
+    },
+  },
   effectiveAccess: {
     async getCatalog(keys) {
       // FB-GAP-002: there is no accepted five-factor effective-access catalog.
@@ -117,7 +139,7 @@ export function isWorkspaceAccessFailure(error: unknown) {
   return failure?.name === 'WORKSPACE_SCOPE_NOT_AVAILABLE' || [401, 403, 404].includes(failure?.response?.status ?? 0)
 }
 
-export function useWorkspaceHome(workspaceId: string) {
+export function useWorkspaceHome(workspaceId: string, enabled = true) {
   const { binding, retired } = useWorkspaceBinding()
   const available = !retired && binding.workspaceId === workspaceId
   const query = useQuery({
@@ -132,7 +154,7 @@ export function useWorkspaceHome(workspaceId: string) {
         throw error
       }
     },
-    enabled: Boolean(workspaceId) && available,
+    enabled: enabled && Boolean(workspaceId) && available,
     retry: false,
     staleTime: 0,
     gcTime: 0,

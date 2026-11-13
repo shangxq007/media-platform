@@ -1,9 +1,6 @@
 path	classification	rationale
 frontend/.dockerignore	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/Dockerfile	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
-frontend/dist/assets/index-BMcgZaKx.css	DEFER	TRACKED_GENERATED_OUTPUT
-frontend/dist/assets/index-B_O_iL1c.js	DEFER	TRACKED_GENERATED_OUTPUT
-frontend/dist/index.html	DEFER	TRACKED_GENERATED_OUTPUT
 frontend/eslint.config.js	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/index.html	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/package-lock.json	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
@@ -29,7 +26,6 @@ frontend/src/api/admin/policy-admin.ts	MIGRATE	ADMIN_CLIENT_SCOPE_AND_TYPED_CONT
 frontend/src/api/admin/quota-billing.ts	MIGRATE	ADMIN_CLIENT_SCOPE_AND_TYPED_CONTRACT
 frontend/src/api/admin/render.ts	MIGRATE	ADMIN_CLIENT_SCOPE_AND_TYPED_CONTRACT
 frontend/src/api/admin/shared-resources-admin.ts	MIGRATE	ADMIN_CLIENT_SCOPE_AND_TYPED_CONTRACT
-frontend/src/api/ai-timeline.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
 frontend/src/api/analytics.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
 frontend/src/api/app/artifacts.client.ts	DEFER	MISSING_CANONICAL_APPLICATION_PROJECTION
 frontend/src/api/app/index.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
@@ -53,7 +49,6 @@ frontend/src/api/navigation.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_
 frontend/src/api/prompt.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
 frontend/src/api/publish.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
 frontend/src/api/query-keys.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
-frontend/src/api/render-incremental.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
 frontend/src/api/render-jobs.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
 frontend/src/api/safeApiCall.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
 frontend/src/api/timelineRevision.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
@@ -99,7 +94,6 @@ frontend/src/main.tsx	REUSE	VIABLE_FRONTEND_FOUNDATION
 frontend/src/pages/AdminRenderJobsPage.tsx	MIGRATE	OPERATIONS_INFORMATION_ARCHITECTURE
 frontend/src/pages/AdminStorageHealthPage.tsx	MIGRATE	OPERATIONS_INFORMATION_ARCHITECTURE
 frontend/src/pages/CanonicalProjectionGapPages.test.tsx	REUSE	VIABLE_FRONTEND_FOUNDATION
-frontend/src/pages/DevConsolePage.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
 frontend/src/pages/DevDiagnosticsHubPage.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
 frontend/src/pages/DevIngestPreflightPolicyDiagnosticsPage.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
 frontend/src/pages/DevStorageDeliveryProfileDiagnosticsPage.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
@@ -107,7 +101,6 @@ frontend/src/pages/H4BoundedCorrection.test.tsx	REUSE	VIABLE_FRONTEND_FOUNDATION
 frontend/src/pages/ObservabilityDashboard.tsx	MIGRATE	OPERATIONS_INFORMATION_ARCHITECTURE
 frontend/src/pages/RenderJobDashboard.tsx	MIGRATE	REHOME_CANONICAL_RENDER_PROJECTION
 frontend/src/pages/SmokeEditorPage.tsx	DEFER	MISSING_CANONICAL_APPLICATION_PROJECTION
-frontend/src/pages/TimelineGitConsolePage.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
 frontend/src/query/app/index.ts	REUSE	VIABLE_FRONTEND_FOUNDATION
 frontend/src/query/app/upload/index.ts	REUSE	VIABLE_FRONTEND_FOUNDATION
 frontend/src/query/app/upload/useUploadRawMediaMutation.ts	REUSE	VIABLE_FRONTEND_FOUNDATION
@@ -119,8 +112,6 @@ frontend/src/query/shared/query-options.ts	REUSE	VIABLE_FRONTEND_FOUNDATION
 frontend/src/remotion/player/RemotionPreview.tsx	REUSE	PRESENTATION_MECHANICS
 frontend/src/routes/app/AppShell.tsx	MIGRATE	SEMANTIC_ROUTE_AND_SHARED_SHELL
 frontend/src/routes/app/renders/ArtifactAccessAction.tsx	MIGRATE	REHOME_CANONICAL_RENDER_PROJECTION
-frontend/src/routes/app/renders/RenderResultDetailPage.tsx	MIGRATE	REHOME_CANONICAL_RENDER_PROJECTION
-frontend/src/routes/app/renders/RenderResultsListPage.tsx	MIGRATE	REHOME_CANONICAL_RENDER_PROJECTION
 frontend/src/routes/dev/diagnostics.route-map.ts	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
 frontend/src/routes/dev/diagnostics/DevDiagnosticsShell.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
 frontend/src/routes/dev/diagnostics/IngestPreflightPolicyDiagnosticsPage.tsx	DEFER	EXPLICIT_DEVELOPER_DIAGNOSTIC
@@ -283,3 +274,21 @@ frontend/docs/timeline-review.md	REUSE	TIMELINE_REVIEW_FEATURE_CONTRACT_AND_TEST
 frontend/src/api/oidc-transport.ts	REUSE	SHARED_OIDC_AXIOS_REQUEST_BINDING_AND_EXPIRY_HANDLER
 frontend/src/api/oidc-transports.test.ts	REUSE	OIDC_CROSS_TRANSPORT_SESSION_FENCING_REGRESSION_TEST
 frontend/src/api/dev-transports.test.ts	REUSE	EXPLICIT_DEVELOPMENT_AUTH_TRANSPORT_REGRESSION_TEST
+frontend/scripts/nle-browser-e2e.mjs	REUSE	REAL_CHROME_NLE_PRODUCT_ACCEPTANCE
+frontend/src/api/app/asset.gateway.test.ts	REUSE	SOURCE_ARTIFACT_GATEWAY_REGRESSION
+frontend/src/api/composition.ts	REUSE	EXISTING_COMPOSITION_PRODUCT_CLIENT
+frontend/src/api/compositionVersionRange.test.ts	REUSE	EXISTING_COMPOSITION_VERSION_TEST
+frontend/src/api/compositionVersionRange.ts	REUSE	EXISTING_COMPOSITION_VERSION_CONTRACT
+frontend/src/api/delivery-product.test.ts	REUSE	EXISTING_DELIVERY_PRODUCT_TEST
+frontend/src/api/formal-render.ts	REUSE	FORMAL_REVISION_RENDER_PRODUCT_CLIENT
+frontend/src/api/thumbnail.test.ts	REUSE	EXISTING_THUMBNAIL_PRODUCT_TEST
+frontend/src/api/thumbnail.ts	REUSE	EXISTING_THUMBNAIL_PRODUCT_CLIENT
+frontend/src/pages/CompositionFoundationPage.test.tsx	REUSE	EXISTING_COMPOSITION_PAGE_TEST
+frontend/src/pages/CompositionFoundationPage.tsx	REUSE	EXISTING_COMPOSITION_PAGE
+frontend/src/pages/compositionEditors.tsx	REUSE	EXISTING_COMPOSITION_EDITOR
+frontend/src/product/render/RenderWorkbench.tsx	REUSE	FORMAL_RENDER_PRODUCT_WORKBENCH
+frontend/src/product/thumbnail/ThumbnailWorkspace.tsx	REUSE	EXISTING_THUMBNAIL_WORKSPACE
+frontend/src/product/timeline/ClipEditor.tsx	REUSE	FORMAL_TIMELINE_CLIP_OPERATION_UI
+frontend/src/product/timeline/NleRenderPanel.tsx	REUSE	FORMAL_RENDERJOB_DELIVERY_UI
+frontend/src/product/timeline/SourceBrowser.tsx	REUSE	SOURCE_ARTIFACT_BROWSER_AND_UPLOAD_UI
+frontend/src/foundation/projectContextScope.test.ts	REUSE	AUTHENTICATED_WORKSPACE_PROJECT_SCOPE_REGRESSION

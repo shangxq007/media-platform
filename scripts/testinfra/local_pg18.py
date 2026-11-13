@@ -59,7 +59,7 @@ def execute(binding_file,password_file,classpath_file,output):
         while time.monotonic()<deadline:
             observation=job.observe()
             if not observation['reachable']:raise PolicyError('owned executor unavailable')
-            if observation.get('exit_code') is not None:break
+            if observation.get('complete') is True and observation.get('wait_result') == 'ECHILD':break
             time.sleep(.1)
         else:raise PolicyError('bounded local PG18 deadline')
         proof=job.confirm_complete(identity)

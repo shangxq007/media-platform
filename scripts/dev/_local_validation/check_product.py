@@ -8,7 +8,7 @@ app=Path((R/'07-runtime/current-apps.txt').read_text().strip())
 code=r'''
 from pathlib import Path
 import urllib.request,urllib.error,json,sys,time,hashlib,concurrent.futures
-r=Path(sys.argv[1]);token=(r/'token').read_text();http=json.loads((r/'http-results.json').read_text());job=json.loads(http['first_render']['body'])['renderJobId'];base='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/render-jobs/'+job
+r=Path(sys.argv[1]);token=(r/'token').read_text();http=json.loads((r/'http-results.json').read_text());job=json.loads(http.get('formal_render',http.get('first_render'))['body'])['renderJobId'];base='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/render-jobs/'+job
 results={'job':job,'observed':[]}
 def get(path,auth=True):
  req=urllib.request.Request('http://127.0.0.1:18080'+path,headers={'Authorization':'Bearer '+token} if auth else {})

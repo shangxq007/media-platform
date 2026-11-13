@@ -52,7 +52,7 @@ assert process.returncode == 0, process.stderr
 
 encode = lambda data: base64.urlsafe_b64encode(data).decode().rstrip('=')
 now = int(time.time())
-payload = dict(iss='http://127.0.0.1:18081',sub='f8-subject',aud='f8-local',iat=now,exp=now+1800,tenantId='tenant-fr-e2e')
+payload = dict(iss='http://127.0.0.1:18081',sub='f8-subject',sid='f8-owned-browser-session',aud='f8-local',iat=now,exp=now+1800,tenantId='tenant-fr-e2e')
 unsigned = encode(json.dumps({'alg':'RS256','typ':'JWT','kid':'f8-local'}).encode())+'.'+encode(json.dumps(payload).encode())
 signature = subprocess.run(['openssl','dgst','-sha256','-sign',str(R/'07-runtime/private/oidc-private.pem')],
     env=env,input=unsigned.encode(),capture_output=True,check=True).stdout
@@ -173,7 +173,7 @@ required('direct_merge_retired',call('/api/render/projects/project-fr-e2e/timeli
     {'baseRevisionId':revision,'sourceRevisionId':revision,'targetRevisionId':revision}),{410})
 results['final_revision']={'revisionId':revision,'contentHash':content,'operationIds':['add-clip-red','add-clip-blue','add-clip-discard','move-blue','trim-red','delete-extra']}
 results['snapshot']={'status':201,'body':json.dumps({'revisionId':revision})}
-plan=required('first_render',call('/api/first-render/plans',{'revisionId':revision,
+plan=required('formal_render',call('/api/render-jobs',{'revisionId':revision,
     'extent':{'startMillis':0,'endMillis':2000,'frameRateNumerator':1,'frameRateDenominator':1},
     'outputFormat':'MP4','profile':'default'}),{201})
 assert plan['renderJobId']

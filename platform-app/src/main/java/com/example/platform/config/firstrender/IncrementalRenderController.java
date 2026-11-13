@@ -12,9 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/incremental-render")
 public class IncrementalRenderController {
-    private final FirstRenderSubmissionService submissions;
+    private final RevisionRenderSubmissionService submissions;
     private final CanonicalActorResolver actors;
-    public IncrementalRenderController(FirstRenderSubmissionService submissions, CanonicalActorResolver actors) {
+    public IncrementalRenderController(RevisionRenderSubmissionService submissions, CanonicalActorResolver actors) {
         this.submissions=submissions; this.actors=actors;
     }
     @PostMapping("/plans")

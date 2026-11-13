@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
  * SPA fallback controller: forwards frontend document routes to index.html.
- * Only handles /app/** which is the frontend client-side routing namespace.
+ * Handles the legacy /app/** shell and canonical workspace document routes.
  *
  * Excluded namespaces:
  * - /api/** — backend REST API
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 public class SpaFallbackController {
 
-    @RequestMapping(value = "/app/**")
+    @RequestMapping(value = {"/app/**", "/w/**"})
     public String forwardToFrontend() {
         return "forward:/index.html";
     }

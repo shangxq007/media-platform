@@ -3,6 +3,7 @@ package com.example.platform.web.artifact;
 import com.example.platform.artifact.contract.*;
 import com.example.platform.artifact.domain.*;
 import com.example.platform.artifact.app.ArtifactSourceFactsQuery;
+import com.example.platform.artifact.app.ArtifactSourceCatalog;
 import com.example.platform.entitlement.api.commercial.*;
 import com.example.platform.entitlement.app.QuotaUsageAuthority;
 import com.example.platform.entitlement.app.QuotaPolicyService;
@@ -40,12 +41,14 @@ public class SourceMediaUploadController {
     private final StorageSourceUploadPort storage;
     private final ArtifactUploadAdmissionPort artifacts;
     private final ArtifactSourceFactsQuery sourceFacts;
+    private final ArtifactSourceCatalog sourceCatalog;
 
     public SourceMediaUploadController(TimelineProjectAuthorizationService authorization,
             ProjectReadQuery projects, CanonicalActorResolver actors,
             CommercialAdmissionPort commercial, QuotaUsageAuthority quota,
             QuotaPolicyService quotaPolicies, StorageSourceUploadPort storage,
-            ArtifactUploadAdmissionPort artifacts, ArtifactSourceFactsQuery sourceFacts) {
+            ArtifactUploadAdmissionPort artifacts, ArtifactSourceFactsQuery sourceFacts,
+            ArtifactSourceCatalog sourceCatalog) {
         this.authorization = authorization;
         this.projects = projects;
         this.actors = actors;
@@ -55,6 +58,7 @@ public class SourceMediaUploadController {
         this.storage = storage;
         this.artifacts = artifacts;
         this.sourceFacts = sourceFacts;
+        this.sourceCatalog = sourceCatalog;
     }
 
     @PostMapping(consumes = "multipart/form-data")
@@ -78,6 +82,8 @@ public class SourceMediaUploadController {
         if (file.isEmpty() || file.getSize() > MAX_BYTES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "source must contain at most 64 MiB");
         }
+        // Reject malformed client metadata before quota, storage, or Artifact side effects.
+        displayName(file.getOriginalFilename(), "pending");
         String mime = file.getContentType();
         final ArtifactOutputFormat format;
         try {
@@ -137,14 +143,39 @@ public class SourceMediaUploadController {
         var result = artifacts.admit(admission);
         var acceptedFacts = sourceFacts.find(tenantId, projectId, result.artifactId(), placement.committedDigest())
                 .orElseThrow(() -> new IllegalStateException("accepted source facts unavailable"));
-        return new UploadResult(result.artifactId().value(),
+        String displayName = displayName(file.getOriginalFilename(), result.artifactId().value());
+        sourceCatalog.recordDisplayName(tenantId, projectId, result.artifactId(), placement.committedDigest(), displayName);
+        return new UploadResult(result.artifactId().value(), result.artifactId().value(), displayName,
                 placement.committedDigest().canonicalValue(), placement.committedLength(),
                 acceptedFacts.duration().toString(), acceptedFacts.streams().stream()
                         .map(stream -> new SourceStream(stream.streamId(), stream.kind().name(),
                                 stream.duration().toString())).toList());
     }
 
-    public record UploadResult(String artifactId, String contentDigest, long byteLength,
+    @GetMapping
+    public List<UploadResult> list(@PathVariable String tenantId, @PathVariable String projectId,
+            @RequestParam(defaultValue = "100") int limit) {
+        authorization.requireRead(tenantId, projectId);
+        return sourceCatalog.list(tenantId, projectId, limit).stream()
+                .map(item -> new UploadResult(item.artifactId().value(), item.artifactId().value(), item.name(),
+                        item.digest().canonicalValue(), item.byteLength(), item.facts().duration().toString(),
+                        item.facts().streams().stream().map(stream -> new SourceStream(stream.streamId(),
+                                stream.kind().name(), stream.duration().toString())).toList()))
+                .toList();
+    }
+
+    private static String displayName(String raw, String artifactId) {
+        if (raw == null || raw.isBlank()) return artifactId;
+        String base = raw.replace('\\', '/');
+        base = base.substring(base.lastIndexOf('/') + 1).trim();
+        if (base.isBlank()) return artifactId;
+        if (base.length() > 256 || base.chars().anyMatch(Character::isISOControl)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid source file name");
+        }
+        return base;
+    }
+
+    public record UploadResult(String artifactId, String mediaAssetId, String name, String contentDigest, long byteLength,
                                String duration, List<SourceStream> streams) {}
     public record SourceStream(String streamId, String kind, String duration) {}
 }

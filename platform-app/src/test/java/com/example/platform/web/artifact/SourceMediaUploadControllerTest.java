@@ -2,6 +2,7 @@ package com.example.platform.web.artifact;
 
 import com.example.platform.artifact.contract.*;
 import com.example.platform.artifact.app.ArtifactSourceFactsQuery;
+import com.example.platform.artifact.app.ArtifactSourceCatalog;
 import com.example.platform.entitlement.api.commercial.*;
 import com.example.platform.entitlement.app.QuotaUsageAuthority;
 import com.example.platform.entitlement.app.QuotaPolicyService;
@@ -43,6 +44,7 @@ class SourceMediaUploadControllerTest {
         var storage = mock(StorageSourceUploadPort.class);
         var artifacts = mock(ArtifactUploadAdmissionPort.class);
         var sourceFacts = mock(ArtifactSourceFactsQuery.class);
+        var sourceCatalog = mock(ArtifactSourceCatalog.class);
         when(authorization.requireWrite("tenant-a", "project-a")).thenReturn(
                 CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test"));
         when(actors.resolveCurrentActor()).thenReturn(Optional.of(
@@ -55,7 +57,7 @@ class SourceMediaUploadControllerTest {
                 "artifact.source.upload", false, CommercialDecisionReason.NOT_ENTITLED,
                 java.util.List.of(), "v1", "decision-1", Instant.now()));
         var controller = new SourceMediaUploadController(authorization, projects, actors,
-                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts);
+                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts, sourceCatalog);
         byte[] media = new byte[]{0, 0, 0, 16, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0};
         assertThrows(ResponseStatusException.class, () -> controller.upload(
                 "tenant-a", "project-a", "upload-1",
@@ -73,6 +75,7 @@ class SourceMediaUploadControllerTest {
         var storage = mock(StorageSourceUploadPort.class);
         var artifacts = mock(ArtifactUploadAdmissionPort.class);
         var sourceFacts = mock(ArtifactSourceFactsQuery.class);
+        var sourceCatalog = mock(ArtifactSourceCatalog.class);
         var actor = CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test");
         when(authorization.requireWrite("tenant-a", "project-a")).thenReturn(actor);
         when(actors.resolveCurrentActor()).thenReturn(Optional.of(actor));
@@ -109,16 +112,64 @@ class SourceMediaUploadControllerTest {
                 java.util.List.of(new ArtifactSourceFacts.Stream("artifact-1:s0", ArtifactSourceFacts.Kind.VIDEO,
                         com.example.platform.shared.time.MediaTime.ofMillis(1000))))));
         var controller = new SourceMediaUploadController(authorization, projects, actors,
-                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts);
+                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts, sourceCatalog);
         byte[] media = new byte[]{0, 0, 0, 16, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0};
         var result = controller.upload("tenant-a", "project-a", "upload-1",
                 new MockMultipartFile("file", "source.mp4", "video/mp4", media));
         assertEquals("artifact-1", result.artifactId());
+        assertEquals("artifact-1", result.mediaAssetId());
+        assertEquals("source.mp4", result.name());
         assertEquals("a".repeat(64), result.contentDigest());
+        verify(sourceCatalog).recordDisplayName(eq("tenant-a"), eq("project-a"), eq(new ArtifactId("artifact-1")),
+                eq(ContentDigest.sha256("a".repeat(64))), eq("source.mp4"));
         var captured = ArgumentCaptor.forClass(ArtifactUploadAdmission.class);
         verify(artifacts).admit(captured.capture());
         assertEquals("project-a", captured.getValue().scope().projectId());
         assertEquals("workspace-a", captured.getValue().scope().workspaceId());
         assertEquals("quota-operation-1", captured.getValue().quotaDecisionId());
+    }
+
+    @Test void sourceBrowserRequiresProjectReadAndReturnsOnlyScopedLogicalPins() {
+        var authorization = mock(TimelineProjectAuthorizationService.class);
+        var sourceFacts = mock(ArtifactSourceFactsQuery.class);
+        var sourceCatalog = mock(ArtifactSourceCatalog.class);
+        var controller = new SourceMediaUploadController(authorization, mock(ProjectReadQuery.class),
+                mock(CanonicalActorResolver.class), mock(CommercialAdmissionPort.class),
+                mock(QuotaUsageAuthority.class), new QuotaPolicyService(),
+                mock(StorageSourceUploadPort.class), mock(ArtifactUploadAdmissionPort.class), sourceFacts, sourceCatalog);
+        var facts = new ArtifactSourceFacts(com.example.platform.shared.time.MediaTime.ofMillis(1000),
+                java.util.List.of(new ArtifactSourceFacts.Stream("stream-1", ArtifactSourceFacts.Kind.VIDEO,
+                        com.example.platform.shared.time.MediaTime.ofMillis(1000))));
+        when(sourceCatalog.list("tenant-a", "project-a", 25)).thenReturn(java.util.List.of(
+                new ArtifactSourceCatalog.SourceEntry(new ArtifactId("artifact-1"),
+                        ContentDigest.sha256("a".repeat(64)), 100L, "source.mp4", facts)));
+        var rows = controller.list("tenant-a", "project-a", 25);
+        verify(authorization).requireRead("tenant-a", "project-a");
+        assertEquals(1, rows.size());
+        assertEquals("source.mp4", rows.getFirst().name());
+        assertEquals("artifact-1", rows.getFirst().mediaAssetId());
+        assertEquals("stream-1", rows.getFirst().streams().getFirst().streamId());
+    }
+
+    @Test void invalidClientFileNameIsRejectedBeforeQuotaOrStorageSideEffects() {
+        var authorization = mock(TimelineProjectAuthorizationService.class);
+        var projects = mock(ProjectReadQuery.class);
+        var actors = mock(CanonicalActorResolver.class);
+        var quota = mock(QuotaUsageAuthority.class);
+        var storage = mock(StorageSourceUploadPort.class);
+        var artifacts = mock(ArtifactUploadAdmissionPort.class);
+        when(projects.getProject("tenant-a", "project-a")).thenReturn(
+                new ProjectResponse("project-a", "tenant-a", "p", "", "ACTIVE",
+                        Instant.now(), "workspace-a"));
+        when(actors.resolveCurrentActor()).thenReturn(Optional.of(
+                CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
+        var controller = new SourceMediaUploadController(authorization, projects, actors,
+                mock(CommercialAdmissionPort.class), quota, new QuotaPolicyService(), storage,
+                artifacts, mock(ArtifactSourceFactsQuery.class), mock(ArtifactSourceCatalog.class));
+        var invalid = new MockMultipartFile("file", "invalid\nname.mp4", "video/mp4", new byte[]{1});
+
+        assertThrows(ResponseStatusException.class,
+                () -> controller.upload("tenant-a", "project-a", "upload-1", invalid));
+        verifyNoInteractions(quota, storage, artifacts);
     }
 }

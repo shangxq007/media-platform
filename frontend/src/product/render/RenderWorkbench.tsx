@@ -59,7 +59,7 @@ export function RenderWorkbench() {
     const id = job.renderJobId; const signal = scope.current.signal
     const timer = setInterval(() => { void (async () => { try {
       const result = await FormalRenderAPI.result(tenant, project, id, signal); const records = await renderReadSource.jobs(tenant, project, signal); signal.throwIfAborted(); setJob(result); setJobs(records)
-      if (result.status === 'COMPLETED') { const info = await FormalRenderAPI.lifecycle(project, id, signal); signal.throwIfAborted(); setReference(previous => previous ?? { job: id, revision: info.timelineRevisionId }) }
+      if (result.status === 'COMPLETED') { const info = await FormalRenderAPI.lifecycle(tenant, project, id, signal); signal.throwIfAborted(); setReference(previous => previous ?? { job: id, revision: info.timelineRevisionId }) }
     } catch (e) { handleFailure(e, signal, 'Status unavailable') } })() }, 1000)
     return () => clearInterval(timer)
   }, [job?.renderJobId, job?.status, tenant, project])
@@ -70,7 +70,7 @@ export function RenderWorkbench() {
       ? await FormalRenderAPI.incremental({ ...output, targetRevisionId: revision, referenceRevisionId: reference.revision, referenceRenderJobId: reference.job }, key([project, revision, reference, output]), signal)
       : await FormalRenderAPI.submit({ ...output, revisionId: revision }, key([project, revision, output]), signal)
     const current = await FormalRenderAPI.result(tenant, project, result.renderJobId, signal); signal.throwIfAborted(); setJob(current); setDelivery(null)
-    if (current.status === 'COMPLETED' && !reference) { const info = await FormalRenderAPI.lifecycle(project, current.renderJobId, signal); signal.throwIfAborted(); setReference({ job: current.renderJobId, revision: info.timelineRevisionId }) }
+    if (current.status === 'COMPLETED' && !reference) { const info = await FormalRenderAPI.lifecycle(tenant, project, current.renderJobId, signal); signal.throwIfAborted(); setReference({ job: current.renderJobId, revision: info.timelineRevisionId }) }
   })
   const apply = () => action(async signal => {
     const intent = { type: editType, baseRevisionId: revision, baseContentHash: hash, clipId: clip, ...(editType === 'DELETE_CLIP' ? {} : { delta }), ...(editType === 'TRIM_CLIP' ? { edge: 'END' as const } : {}), ...(editType === 'MOVE_CLIP' ? { absolute: true } : {}) }
@@ -102,7 +102,7 @@ export function RenderWorkbench() {
       {job && <section aria-label="Render result"><h2>RenderJob</h2><code>{job.renderJobId}</code><p role="status">{job.status}</p>{job.failureCode && <p>{job.failureCode}</p>}
         {!terminal.has(job.status) && <button disabled={busy} onClick={() => void action(async signal => { await FormalRenderAPI.cancel(tenant, project, job.renderJobId, signal); setJob(await FormalRenderAPI.result(tenant, project, job.renderJobId, signal)) })}>Cancel render</button>}
         {job.status === 'COMPLETED' && job.finalArtifactId && <>
-          <button disabled={busy} onClick={() => void action(async signal => { const info = await FormalRenderAPI.lifecycle(project, job.renderJobId, signal); signal.throwIfAborted(); setReference({ job: info.renderJobId, revision: info.timelineRevisionId }) })}>Use as incremental reference</button>
+          <button disabled={busy} onClick={() => void action(async signal => { const info = await FormalRenderAPI.lifecycle(tenant, project, job.renderJobId, signal); signal.throwIfAborted(); setReference({ job: info.renderJobId, revision: info.timelineRevisionId }) })}>Use as incremental reference</button>
           <button disabled={busy} onClick={() => void action(async signal => { const blob = await FormalRenderAPI.download(tenant, project, job.renderJobId, job.finalArtifactId!, signal); signal.throwIfAborted(); save(blob) })}>Download render</button>
           <button disabled={busy} onClick={() => void action(async signal => { const value = await DeliveryAPI.create(project, { sourceRenderJobId: job.renderJobId, artifactId: job.finalArtifactId! }, key([project, 'delivery', job.renderJobId]), signal); signal.throwIfAborted(); setDelivery(value); const rows = await DeliveryAPI.list(project, 50, signal); signal.throwIfAborted(); setDeliveries(rows) })}>Create delivery</button>
         </>}

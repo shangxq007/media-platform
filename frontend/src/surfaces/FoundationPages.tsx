@@ -61,7 +61,7 @@ export function ProjectListPage() {
 export function ProjectFrame({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {
   const { workspaceId = '', projectId = '' } = routeParams()
   const scopeKey = `${workspaceId}\u0000${projectId}`
-  return <ProjectContextProvider key={scopeKey} workspaceId={workspaceId} projectId={projectId}><ProjectFrameInner surfaceId={surfaceId}>{children}</ProjectFrameInner></ProjectContextProvider>
+  return <ProjectContextProvider key={scopeKey} workspaceId={workspaceId} projectId={projectId} resolveProject={surfaceId === 'nle'}><ProjectFrameInner surfaceId={surfaceId}>{children}</ProjectFrameInner></ProjectContextProvider>
 }
 
 function ProjectFrameInner({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {

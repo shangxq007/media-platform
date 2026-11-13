@@ -8,7 +8,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** One DB commit owns the reservation, accepted Job, revision, graph and dispatch intent. */
 @Service
-public class FirstRenderSubmissionService {
+public class RevisionRenderSubmissionService {
     private final TransactionTemplate transactions;
     private final FirstRenderPlanningApplicationService preparation;
     private final FirstRenderPlanningAndBindingService planning;
@@ -18,7 +18,7 @@ public class FirstRenderSubmissionService {
     private final FirstRenderDispatchService dispatch;
     private final com.example.platform.render.app.RenderJobService jobs;
 
-    public FirstRenderSubmissionService(org.springframework.transaction.PlatformTransactionManager manager,
+    public RevisionRenderSubmissionService(org.springframework.transaction.PlatformTransactionManager manager,
             FirstRenderPlanningApplicationService preparation, FirstRenderPlanningAndBindingService planning,
             FirstRenderSaveAndStartService graphs, FirstRenderIdempotencyService idempotency,
             RenderAcceptanceContextService acceptance, FirstRenderDispatchService dispatch,

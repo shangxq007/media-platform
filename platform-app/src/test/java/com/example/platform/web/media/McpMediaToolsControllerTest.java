@@ -5,7 +5,7 @@ import com.example.platform.operation.invocation.*;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.render.TimelineProjectAuthorizationService;
-import com.example.platform.config.firstrender.FirstRenderSubmissionService;
+import com.example.platform.config.firstrender.RevisionRenderSubmissionService;
 import com.fasterxml.jackson.databind.*;
 import java.util.*;
 import org.junit.jupiter.api.*;
@@ -15,7 +15,7 @@ import static org.mockito.Mockito.*;
 class McpMediaToolsControllerTest {
     final ObjectMapper json=new ObjectMapper();
     final CanonicalActorResolver actors=mock(CanonicalActorResolver.class);
-    final FirstRenderSubmissionService submissions=mock(FirstRenderSubmissionService.class);
+    final RevisionRenderSubmissionService submissions=mock(RevisionRenderSubmissionService.class);
     final TimelineProjectAuthorizationService access=mock(TimelineProjectAuthorizationService.class);
     final OperationInvocationPort operations=mock(OperationInvocationPort.class);
     final jakarta.validation.ValidatorFactory validators=jakarta.validation.Validation.buildDefaultValidatorFactory();

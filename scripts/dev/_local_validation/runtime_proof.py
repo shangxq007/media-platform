@@ -4,7 +4,7 @@ from pathlib import Path
 import os,json,subprocess,hashlib,sys,base64,time
 R=Path(os.environ['MEDIA_PLATFORM_VALIDATION_OUTPUT']);RUN_ID=json.loads((R/'07-runtime/run.json').read_text())['id'];W=Path(__file__).resolve().parents[3];sys.path.insert(0,str(W/'scripts/testinfra'));from local_runtime import sandbox_prefix
 app=Path((R/'07-runtime/current-apps.txt').read_text().strip());c=json.loads((R/'07-runtime/local-context.json').read_text());B=json.loads((R/'07-runtime/podman-base.json').read_text());E=json.loads((R/'03-build/podman/environment.json').read_text());cid=c['container_id'];d=json.loads(subprocess.check_output(B+['container','inspect',cid],env=E))[0];assert d['Id']==cid and d['Config']['Labels']['media-platform.f8-run']==''+RUN_ID+''
-job=json.loads(json.loads((app/'http-results.json').read_text())['first_render']['body'])['renderJobId'];assert job.startswith('rj_') and job.replace('_','').isalnum()
+http=json.loads((app/'http-results.json').read_text());job=json.loads(http.get('formal_render',http.get('first_render'))['body'])['renderJobId'];assert job.startswith('rj_') and job.replace('_','').isalnum()
 tid=(R/'07-runtime/temporal-id').read_text().strip();d=json.loads(subprocess.check_output(B+['container','inspect',tid],env=E))[0];assert d['Id']==tid and d['Config']['Labels']['media-platform.f8-run']==''+RUN_ID+''
 commands=[]
 def execute(name,args,input=None):
@@ -22,7 +22,7 @@ execute('authorization-fixture',psql,seed)
 b64=lambda b:base64.urlsafe_b64encode(b).decode().rstrip('=');old=(app/'token').read_text().split('.');payload=json.loads(base64.urlsafe_b64decode(old[1]+'='*(-len(old[1])%4)));payload.update(sub='f8-denied-subject',iat=int(time.time()),exp=int(time.time())+1800);header=json.loads(base64.urlsafe_b64decode(old[0]+'='*(-len(old[0])%4)));unsigned=b64(json.dumps(header,separators=(',',':')).encode())+'.'+b64(json.dumps(payload,separators=(',',':')).encode());signature=subprocess.check_output(['openssl','dgst','-sha256','-sign',str(R/'07-runtime/private/oidc-private.pem')],input=unsigned.encode(),env={'PATH':'/usr/bin:/bin'});p=app/'denied-token';p.write_text(unsigned+'.'+b64(signature));p.chmod(0o600)
 client='''from pathlib import Path
 import sys,json,urllib.request,urllib.error
-r=Path(sys.argv[1]);data=json.loads(json.loads((r/'http-results.json').read_text())['first_render']['body']);job=data['renderJobId'];closure=json.loads((r/'product-closure.json').read_text());artifact=closure['download']['path'];artifact=json.loads((r/'product-closure.json').read_text())['access_descriptor']['artifactId'];base='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/render-jobs/'+job
+r=Path(sys.argv[1]);http=json.loads((r/'http-results.json').read_text());data=json.loads(http.get('formal_render',http.get('first_render'))['body']);job=data['renderJobId'];closure=json.loads((r/'product-closure.json').read_text());artifact=closure['download']['path'];artifact=json.loads((r/'product-closure.json').read_text())['access_descriptor']['artifactId'];base='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/render-jobs/'+job
 results={}
 for label,path,token,expected in [('history',base+'/status-history','token',{200}),('no-artifact-permission',base+'/artifacts/'+artifact+'/content','denied-token',{403}),('wrong-project',base.replace('project-fr-e2e','project-fr-other')+'/artifacts/'+artifact+'/content','token',{404})]:
  req=urllib.request.Request('http://127.0.0.1:18080'+path,headers={'Authorization':'Bearer '+(r/token).read_text()})

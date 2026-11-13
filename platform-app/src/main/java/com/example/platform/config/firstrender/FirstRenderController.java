@@ -30,10 +30,10 @@ public class FirstRenderController {
     /** Planning-stage status: the plan inputs were prepared; nothing was executed or queued. */
     static final String STATUS_PLANNED = "PLANNED";
 
-    private final FirstRenderSubmissionService submissions;
+    private final RevisionRenderSubmissionService submissions;
     private final CanonicalActorResolver canonicalActorResolver;
 
-    public FirstRenderController(FirstRenderSubmissionService submissions, CanonicalActorResolver canonicalActorResolver) {
+    public FirstRenderController(RevisionRenderSubmissionService submissions, CanonicalActorResolver canonicalActorResolver) {
         this.submissions = submissions;
         this.canonicalActorResolver = canonicalActorResolver;
     }

@@ -13,10 +13,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 class FirstRenderControllerMockMvcTest {
     private static final String REVISION="rev-1";
-    private FirstRenderSubmissionService submissions;
+    private RevisionRenderSubmissionService submissions;
     private MockMvc mvc;
     @BeforeEach void setup() {
-        submissions=mock(FirstRenderSubmissionService.class);
+        submissions=mock(RevisionRenderSubmissionService.class);
         var actors=mock(CanonicalActorResolver.class);
         when(actors.resolveCurrentActor()).thenReturn(Optional.of(CanonicalActor.user("actor","tenant",Set.of(),"test")));
         mvc=mockMvc(new FirstRenderController(submissions,actors));
@@ -24,8 +24,8 @@ class FirstRenderControllerMockMvcTest {
     @Test void returnsCreatedOrReplayWithDurableIdentity() throws Exception {
         var response=new FirstRenderPlanHttpResponse("job","request","plan","PLANNED","render:tenant:job",false);
         when(submissions.submit(any(),any(),any(),eq("key")))
-            .thenReturn(new FirstRenderSubmissionService.Submission(true,response))
-            .thenReturn(new FirstRenderSubmissionService.Submission(false,response));
+            .thenReturn(new RevisionRenderSubmissionService.Submission(true,response))
+            .thenReturn(new RevisionRenderSubmissionService.Submission(false,response));
         mvc.perform(post("/api/first-render/plans").header("Idempotency-Key","key").contentType(MediaType.APPLICATION_JSON).content(validJson("default")))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.renderJobId").value("job")).andExpect(jsonPath("$.workflowStarted").value(false));
         mvc.perform(post("/api/first-render/plans").header("Idempotency-Key","key").contentType(MediaType.APPLICATION_JSON).content(validJson("default")))

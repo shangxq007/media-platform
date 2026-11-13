@@ -353,7 +353,7 @@ describe('Formal render submission session binding', () => {
     const seen: InternalAxiosRequestConfig[] = []
     versionlessApi.defaults.adapter = async config => { seen.push(config); return { config, status: 200, statusText: 'OK', headers: {}, data: planned } }
     await expect(FormalRenderAPI.submit(intent, 'intent-A')).resolves.toEqual(planned)
-    expect(seen.map(c => versionlessApi.getUri(c))).toEqual(['/api/first-render/plans'])
+    expect(seen.map(c => versionlessApi.getUri(c))).toEqual(['/api/render-jobs'])
     expect(seen[0].headers.Authorization).toBe('Bearer token-scope-A')
     expect(seen[0].headers['Idempotency-Key']).toBe('intent-A')
     expect(JSON.parse(seen[0].data)).toEqual(intent)
