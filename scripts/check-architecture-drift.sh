@@ -162,6 +162,21 @@ def sole_boundary_proof(sources: dict[str, str]) -> bool:
         path for path, source in sources.items()
         if re.search(r"insertInto\s*\(\s*TIMELINE_REVISION\s*\)", source)
     }
+    # The retired direct revision write endpoints must stay retired: the HTTP
+    # controllers may hold the canonical commands/queries ports for reads, but they
+    # no longer call the writer's save/restore methods (those routes answer 410 GONE).
+    controller_writer_calls = {
+        name
+        for name, source in (
+            ("TimelineRevisionController", revision_controller),
+            ("TimelineGitV1Controller", git_controller),
+        )
+        if re.search(
+            r"\b(?:revisionSaveService|saveService)\s*\.\s*"
+            r"(?:saveRevision|saveRevisionForCommand|restoreRevision|recordNoOpCommand)\s*\(",
+            source,
+        )
+    }
     return (
         shadow_revision_command_runtime_absent(sources)
         and boundary_definitions == 1
@@ -179,10 +194,7 @@ def sole_boundary_proof(sources: dict[str, str]) -> bool:
             merge_source,
             flags=re.DOTALL,
         ) is not None
-        and "TimelineRevisionCommands revisionSaveService" in revision_controller
-        and "revisionSaveService.restoreRevision" in revision_controller
-        and "TimelineRevisionCommands saveService" in git_controller
-        and "saveService.restoreRevision" in git_controller
+        and not controller_writer_calls
     )
 
 
@@ -431,11 +443,11 @@ else
     fail "Admin routes missing ROLE_ADMIN authority requirement"
 fi
 
-# Verify SPA fallback only handles /app/**
-if grep -q '@RequestMapping(value = "/app/\*\*")' platform-app/src/main/java/com/example/platform/web/SpaFallbackController.java 2>/dev/null; then
-    pass "SPA fallback restricted to /app/**"
+# Verify SPA fallback serves the canonical document routes only
+if grep -qF '@RequestMapping(value = {"/app/**", "/w/**"})' platform-app/src/main/java/com/example/platform/web/SpaFallbackController.java 2>/dev/null; then
+    pass "SPA fallback serves /app/** and /w/** document routes"
 else
-    fail "SPA fallback scope may be too broad"
+    fail "SPA fallback scope drifted from the canonical document routes"
 fi
 
 echo ""
@@ -1747,6 +1759,35 @@ if python3 scripts/guards/marketplace-authority-guard.py --root "$ROOT_DIR"; the
     pass "Marketplace owner, public composition and displaced authority retirement"
 else
     fail "Marketplace authority drift"
+fi
+
+echo ""
+echo "--- Formal Render Production Paths ---"
+
+# Both formal render production paths (full and incremental) must converge on the shared
+# revision-pinned submission service, and the First Render probe route must stay absent.
+# First Render is an automation/E2E scenario, never a production business type or entry.
+if grep -q '@RequestMapping("/api/render-jobs")' platform-app/src/main/java/com/example/platform/config/firstrender/RenderJobSubmissionController.java 2>/dev/null; then
+    pass "formal full-render entry /api/render-jobs present"
+else
+    fail "formal full-render entry /api/render-jobs missing"
+fi
+if grep -q '@RequestMapping("/api/incremental-render")' platform-app/src/main/java/com/example/platform/config/firstrender/IncrementalRenderController.java 2>/dev/null \
+    && grep -q '@PostMapping("/plans")' platform-app/src/main/java/com/example/platform/config/firstrender/IncrementalRenderController.java 2>/dev/null; then
+    pass "formal incremental-render entry /api/incremental-render/plans present"
+else
+    fail "formal incremental-render entry /api/incremental-render/plans missing"
+fi
+if grep -rq 'first-render/plans' platform-app/src/main/java 2>/dev/null; then
+    fail "First Render probe route still present in production sources"
+else
+    pass "First Render probe route absent from production sources"
+fi
+if grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/firstrender/RenderJobSubmissionController.java 2>/dev/null \
+    && grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/firstrender/IncrementalRenderController.java 2>/dev/null; then
+    pass "full and incremental render entries share the formal submission service"
+else
+    fail "full/incremental render entries do not share the formal submission service"
 fi
 
 if [ $FAILED -eq 0 ]; then

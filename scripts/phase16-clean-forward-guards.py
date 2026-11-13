@@ -68,10 +68,15 @@ direct_skip = regex_hits(
     and ("Incremental" in path or "SegmentPlanFilter" in path or "Pipeline" in path))
 report("INCREMENTAL_PLAN_DIRECT_SKIP_WITHOUT_ARTIFACT_VALIDATION_COUNT", len(direct_skip), direct_skip)
 
-reusable_value = read("render-module/src/main/java/com/example/platform/render/domain/planning/ReusableArtifact.java")
-direct_truth = 0 if ("String uri" not in reusable_value and "advisory only" in reusable_value) else 1
+# The former render-module ReusableArtifact (a URI-based direct reuse truth) was retired
+# and replaced by the worker-fabric ReusableArtifactRecord, which carries an Artifact pin
+# and never a storage location. The direct-reuse-truth law now inspects that record.
+reusable_value = read("worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse/ReusableArtifactRecord.java")
+direct_truth = 0 if ("ArtifactPin" in reusable_value
+                     and "String uri" not in reusable_value
+                     and "storageUri" not in reusable_value) else 1
 report("INCREMENTAL_PLAN_DIRECT_REUSE_TRUTH_COUNT", direct_truth,
-       ["ReusableArtifact.java"] if direct_truth else [])
+       ["ReusableArtifactRecord.java"] if direct_truth else [])
 
 opendal = regex_hits(
     r"org\.apache\.opendal|\bOpenDal\w*|\bOpenDAL\b",

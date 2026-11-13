@@ -24,7 +24,7 @@ def call(path,data=None):
  try:
   with urllib.request.urlopen(req,timeout=15) as f:return {'status':f.status,'body':f.read().decode()}
  except urllib.error.HTTPError as f:return {'status':f.code,'body':f.read().decode()}
-result={'submit':call('/api/first-render/plans',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})};assert result['submit']['status']==201,result
+result={'submit':call('/api/render-jobs',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})};assert result['submit']['status']==201,result
 job=json.loads(result['submit']['body'])['renderJobId'];base='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/render-jobs/'+job
 result['job']=job;result['before']=call(base);assert json.loads(result['before']['body'])['status']=='QUEUED'
 result['cancel']=call(base+'/cancel',{});assert result['cancel']['status']==200 and json.loads(result['cancel']['body'])['status']=='CANCELLED',result

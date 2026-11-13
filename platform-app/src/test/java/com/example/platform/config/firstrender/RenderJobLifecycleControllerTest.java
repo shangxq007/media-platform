@@ -23,7 +23,7 @@ class RenderJobLifecycleControllerTest {
         when(pinning.getPinnedRevisionId("job")).thenReturn("revision");
         when(lifecycle.find("tenant", "project", "job")).thenReturn(Optional.empty());
 
-        var response = new FirstRenderJobLifecycleController(jobs, lifecycle, pinning)
+        var response = new RenderJobLifecycleController(jobs, lifecycle, pinning)
                 .scopedLifecycle("tenant", "project", "job");
 
         assertEquals("revision", response.timelineRevisionId());
@@ -42,7 +42,7 @@ class RenderJobLifecycleControllerTest {
         when(pinning.getPinnedRevisionId("job")).thenReturn("revision");
         when(lifecycle.find("tenant", "project", "job")).thenReturn(Optional.empty());
 
-        MockMvcBuilders.standaloneSetup(new FirstRenderJobLifecycleController(jobs, lifecycle, pinning)).build()
+        MockMvcBuilders.standaloneSetup(new RenderJobLifecycleController(jobs, lifecycle, pinning)).build()
                 .perform(get("/api/tenants/tenant/projects/project/render-jobs/job/lifecycle"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.renderJobId").value("job"))

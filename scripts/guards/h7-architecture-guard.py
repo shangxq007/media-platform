@@ -325,6 +325,15 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
         if re.search(r"\bclass\s+(?:OperationPlanApplyService|TimelineMediaClipOperationService|"
                      r"TimelineMediaClipOperationController)\b", source):
             return True
+        # Read-only HTTP projections may hold the canonical commands/queries ports and
+        # call only read methods. They are classified exactly when they do not invoke
+        # the writer's save/restore path (the direct write routes are retired).
+        if re.search(r"\b(?:TimelineRevisionCommands|TimelineRevisionQueries)\s+\w+", source):
+            return re.search(
+                r"\b(?:revisionSaveService|saveService)\s*\.\s*"
+                r"(?:saveRevision|saveRevisionForCommand|restoreRevision|recordNoOpCommand)\s*\(",
+                source,
+            ) is None
         return False
 
     unclassified_paths = [

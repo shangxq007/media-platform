@@ -13,7 +13,11 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     root: fileURLToPath(new URL('.', import.meta.url)),
-    setupFiles: [],
+    // Node >=25 exposes a global `localStorage` that is undefined unless
+    // --localstorage-file is supplied, and that global shadows happy-dom's
+    // window.localStorage. Load the shared setup so the Storage polyfill and the
+    // querySelector compatibility patch apply to every suite.
+    setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     coverage: {
       provider: 'v8',

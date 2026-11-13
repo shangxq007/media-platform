@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:oidc": "node scripts/require-oidc-build-env.mjs && vite build",
+    "build:prod": "npm run build:oidc",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

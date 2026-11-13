@@ -111,7 +111,7 @@ def frac(x):
 assert [(c['clipId'],frac(c['startTime']),frac(c['endTime'])) for c in clips]==[('clip-red','0','1/2'),('clip-blue','3/2','2')],clips
 assert [(frac(c['trimStart']),frac(c['trimEnd'])) for c in clips]==[('0','1/2'),('0','1/2')],clips
 def plan(name,rev):
- p=req(name,'/api/first-render/plans',{'revisionId':rev,'extent':{'startMillis':0,'endMillis':2000,'frameRateNumerator':2,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'},expect=(201,))
+ p=req(name,'/api/render-jobs',{'revisionId':rev,'extent':{'startMillis':0,'endMillis':2000,'frameRateNumerator':2,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'},expect=(201,))
  return p['renderJobId']
 def wait_download(name,job):
  jb='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/render-jobs/'+job

@@ -61,12 +61,12 @@ def call(path,data,auth=True):
  return {'status':status,'body':body}
 result={}
 result['readiness']=call('/actuator/health/readiness',None,False)
-result['unauthenticated']=call('/api/first-render/plans',{},False)
+result['unauthenticated']=call('/api/render-jobs',{},False)
 data={'projectId':'project-fr-e2e','payloadJson':(r/'timeline.json').read_text()}
 result['snapshot']=call('/api/render/timeline-snapshots',data)
 if result['snapshot']['status']==201:
  revision=json.loads(result['snapshot']['body'])['revisionId']
- result['first_render']=call('/api/first-render/plans',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})
+ result['first_render']=call('/api/render-jobs',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})
 (r/'http-results.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
 ''')
 print(run('http',prefix+['/usr/bin/python3','-B',str(client),str(a)]))

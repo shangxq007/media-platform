@@ -135,6 +135,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify committed bundle carries no test OIDC config
+        run: bash scripts/check-oidc-bundle-config.sh
+
+      - name: Verify dev auth secret never reaches the bundle
+        run: bash scripts/check-dev-auth-bundle-leak.sh
+
   # ── Targeted GitOps validation ─────────────────────────────────────────
   gitops-validation:
     runs-on: ubuntu-latest
