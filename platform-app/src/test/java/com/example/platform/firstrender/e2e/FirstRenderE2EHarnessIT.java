@@ -49,7 +49,7 @@ import com.example.platform.render.domain.renderplan.RenderSourceResolutionState
 import com.example.platform.render.domain.renderplan.SourceResolutionInput;
 import com.example.platform.runtime.PlatformFfmpegWorkerApplication;
 import com.example.platform.runtime.mediatask.AdmissionEvidenceProducer;
-import com.example.platform.runtime.mediatask.FirstRenderGrantMinter;
+import com.example.platform.runtime.mediatask.MediaTaskGrantMinter;
 import com.example.platform.providerplugin.PendingNativeWorkProjection;
 import com.example.platform.workerfabric.domain.AvailabilityState;
 import com.example.platform.workerfabric.domain.CapacitySnapshot;
@@ -501,7 +501,7 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
     @SuppressWarnings("unchecked")
     private <T> T canonical(Object row, String methodName) {
         try {
-            Method method = FirstRenderGrantMinter.class.getDeclaredMethod(methodName, row.getClass());
+            Method method = MediaTaskGrantMinter.class.getDeclaredMethod(methodName, row.getClass());
             method.setAccessible(true);
             return (T) method.invoke(null, row);
         } catch (ReflectiveOperationException failure) {

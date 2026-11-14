@@ -141,6 +141,36 @@ class FfmpegCapabilityAwareLoweringTest {
     }
 
     @Test
+    void textOverlayMayOverlapBaseVideoAndIsCompositedLast() {
+        ExecutableTask task = task("composite", List.of("render.composite"), null, 1);
+        var unit = task.memberships().getFirst().physicalPlanUnit();
+        var textId = new ExecutionInputId("aaa-text");
+        var videoId = new ExecutionInputId("zzz-video");
+        var text = mock(InputBinding.class);
+        var video = mock(InputBinding.class);
+        when(text.inputId()).thenReturn(textId);
+        when(video.inputId()).thenReturn(videoId);
+        when(text.dependencyVariant()).thenReturn(
+                new com.example.platform.render.domain.renderplan.RenderDependency.CompositeInput());
+        when(video.dependencyVariant()).thenReturn(
+                new com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput(
+                        MediaTime.ZERO, MediaTime.ofRational(2, 1)));
+        when(unit.typedInputs()).thenReturn(List.of(text, video));
+        when(unit.propagatedExtent()).thenReturn(new RenderExtent(
+                MediaTime.ZERO, MediaTime.ofRational(2, 1), FrameRate.of(30, 1)));
+        var textRuntime = mock(ExecutableInputProjection.class);
+        var videoRuntime = mock(ExecutableInputProjection.class);
+        when(textRuntime.inputId()).thenReturn(textId);
+        when(videoRuntime.inputId()).thenReturn(videoId);
+        when(task.requiredRuntimeInputs()).thenReturn(List.of(textRuntime, videoRuntime));
+
+        var plan = LOWERER.lower(task, CONTEXT);
+        assertThat(plan.compositeInputs()).extracting(FfmpegCpuRenderPlan.TimedInput::inputId)
+                .containsExactly(videoId, textId);
+        assertThat(plan.compositeInputs().getLast().overlay()).isTrue();
+    }
+
+    @Test
     void transcodeSliceKeepsLoweringWithoutAnyCapabilityRequirement() {
         FfmpegCpuRenderPlan plan = LOWERER.lower(task("transcode", List.of(), null, 1), CONTEXT);
 
@@ -302,7 +332,7 @@ class FfmpegCapabilityAwareLoweringTest {
         assertThat(raster.fontFile()).isEqualTo("/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf");
 
         List<String> arguments = arguments(plan);
-        assertThat(arguments).contains("-vf", "-c:v", "qtrle", "-pix_fmt", "argb", "-f", "mov",
+        assertThat(arguments).contains("-vf", "-c:v", "qtrle", "-pix_fmt", "argb", "-t", "5", "-f", "mov",
                 ProviderNativeOutputFiles.RENDER_OUTPUT);
         assertThat(arguments.get(arguments.indexOf("-vf") + 1))
                 .contains("drawtext=fontfile=/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf")

@@ -47,7 +47,7 @@ public final class MediaTaskActivity {
     private final AtomicAssignmentGrantBoundary grantBoundary;
     private final RuntimeClosedLoopOrchestrator orchestrator;
     private final MediaTaskPublicationSettings publicationSettings;
-    private final FirstRenderGrantMinter grantMinter;
+    private final MediaTaskGrantMinter grantMinter;
     private final ProviderPluginCatalog providerPluginCatalog;
     private final com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle;
 
@@ -64,7 +64,7 @@ public final class MediaTaskActivity {
             AtomicAssignmentGrantBoundary grantBoundary,
             RuntimeClosedLoopOrchestrator orchestrator,
             MediaTaskPublicationSettings publicationSettings,
-            FirstRenderGrantMinter grantMinter) {
+            MediaTaskGrantMinter grantMinter) {
         this(boundGraphInputStore, grantBoundary, orchestrator, publicationSettings, grantMinter, null);
     }
 
@@ -73,14 +73,14 @@ public final class MediaTaskActivity {
             AtomicAssignmentGrantBoundary grantBoundary,
             RuntimeClosedLoopOrchestrator orchestrator,
             MediaTaskPublicationSettings publicationSettings,
-            FirstRenderGrantMinter grantMinter,
+            MediaTaskGrantMinter grantMinter,
             ProviderPluginCatalog providerPluginCatalog) {
         this(boundGraphInputStore, grantBoundary, orchestrator, publicationSettings, grantMinter, providerPluginCatalog, null);
     }
 
     public MediaTaskActivity(BoundGraphInputStore boundGraphInputStore, AtomicAssignmentGrantBoundary grantBoundary,
             RuntimeClosedLoopOrchestrator orchestrator, MediaTaskPublicationSettings publicationSettings,
-            FirstRenderGrantMinter grantMinter, ProviderPluginCatalog providerPluginCatalog,
+            MediaTaskGrantMinter grantMinter, ProviderPluginCatalog providerPluginCatalog,
             com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle) {
         this.nativeLifecycle = nativeLifecycle;
         this.boundGraphInputStore = Objects.requireNonNull(
@@ -431,7 +431,7 @@ public final class MediaTaskActivity {
     }
 
     static void requireOwnedGrant(AssignmentGrant grant, String job, ExecutableTaskId task, long activityAttempt) {
-        if (!FirstRenderGrantMinter.requestWorkId(job, task, activityAttempt).equals(grant.requestWorkId()))
+        if (!MediaTaskGrantMinter.requestWorkId(job, task, activityAttempt).equals(grant.requestWorkId()))
             throw new AdmissionCapacityRetryableException("TASK_OWNERSHIP_BUSY");
     }
 
@@ -450,22 +450,22 @@ public final class MediaTaskActivity {
             return current.orElseThrow();
         }
         if (grantMinter != null) {
-            FirstRenderGrantMinter.Result result = grantMinter.mint(
+            MediaTaskGrantMinter.Result result = grantMinter.mint(
                     renderJobId, taskId, graph, requireContribution(executableTask),
                     admissionAttempt);
-            if (result instanceof FirstRenderGrantMinter.Result.Minted minted) {
+            if (result instanceof MediaTaskGrantMinter.Result.Minted minted) {
                 var grant=grantBoundary.findCurrentGrant(taskId).orElseThrow(()->new TaskRuntimeExecutionConstructionException(
                         "GRANT_NO_LONGER_CURRENT","new grant lost its current ownership"));
                 requireOwnedGrant(grant, renderJobId, taskId, admissionAttempt);
                 grantMinter.requireLocalGrant(grant);
                 return grant;
             }
-            if (result instanceof FirstRenderGrantMinter.Result.Unavailable unavailable) {
+            if (result instanceof MediaTaskGrantMinter.Result.Unavailable unavailable) {
                 throw new TaskRuntimeExecutionConstructionException(
                         "GRANT_ABSENT", "missing authoritative inputs: "
                                 + String.join(",", unavailable.missingAuthoritativeInputs()));
             }
-            if (result instanceof FirstRenderGrantMinter.Result.Rejected rejected) {
+            if (result instanceof MediaTaskGrantMinter.Result.Rejected rejected) {
                 String reason = rejected.reason();
                 if (reason.equals("ADMISSION_REJECTED: RESERVATION_CONFLICT")
                         || reason.equals("ADMISSION_REJECTED: HOST_RESOURCE_SNAPSHOT_MISMATCH")

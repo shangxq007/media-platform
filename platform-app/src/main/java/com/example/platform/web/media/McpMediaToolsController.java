@@ -1,7 +1,7 @@
 package com.example.platform.web.media;
 
 import com.example.platform.artifact.app.*;
-import com.example.platform.config.firstrender.*;
+import com.example.platform.config.render.*;
 import com.example.platform.delivery.app.DeliveryService;
 import com.example.platform.delivery.app.DeliveryFailure;
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
@@ -51,7 +51,7 @@ public class McpMediaToolsController {
     public record Rpc(String jsonrpc,Object id,String method,Map<String,Object> params) {}
     public record RevisionArgs(@NotBlank String projectId,@NotBlank String revisionId) {}
     public record OperationArgs(@NotBlank String projectId,@NotNull @Valid TimelineClipEditCommand command) {}
-    public record RenderArgs(@NotNull @Valid FirstRenderPlanHttpRequest request,@NotBlank @Size(max=255) String idempotencyKey) {}
+    public record RenderArgs(@NotNull @Valid RenderJobSubmissionHttpRequest request,@NotBlank @Size(max=255) String idempotencyKey) {}
     public record IncrementalArgs(@NotNull @Valid IncrementalRenderHttpRequest request,@NotBlank @Size(max=255) String idempotencyKey) {}
     public record JobArgs(@NotBlank String projectId,@NotBlank String renderJobId) {}
     public record DeliveryArgs(@NotBlank String projectId,@NotBlank String sourceRenderJobId,String artifactId,

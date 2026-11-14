@@ -211,6 +211,8 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
                 + seconds(raster.end()) + ")'");
         arguments.add("-c:v");
         arguments.add("qtrle");
+        arguments.add("-t");
+        arguments.add(seconds(raster.duration()));
         arguments.add("-pix_fmt");
         arguments.add("argb");
         arguments.add("-f");

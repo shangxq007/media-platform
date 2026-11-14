@@ -1,6 +1,6 @@
 package com.example.platform.testinfra;
 
-import com.example.platform.config.firstrender.*;
+import com.example.platform.config.render.*;
 import com.example.platform.config.providerinteroperability.ProviderInteroperabilityAuthority;
 import com.example.platform.execution.binding.*;
 import com.example.platform.execution.planning.PhysicalPlanningEntryService;
@@ -48,9 +48,9 @@ class FirstRenderPreparationPostgresTest {
     static class Scenario implements AutoCloseable {
         final GraphRenderLifecycleIT.World world = new GraphRenderLifecycleIT.World();
         final GraphRenderLifecycle lifecycle;
-        final FirstRenderPlanningAndBindingService planning;
-        final FirstRenderSaveAndStartService save;
-        final FirstRenderWorkflowStarter starter = mock(FirstRenderWorkflowStarter.class);
+        final RevisionRenderPlanningAndBindingService planning;
+        final RenderBoundGraphService save;
+        final RenderJobWorkflowStarter starter = mock(RenderJobWorkflowStarter.class);
         final RenderLifecyclePublisher events;
         Scenario(String fault) throws Exception {
             var db=world.db;
@@ -97,18 +97,18 @@ class FirstRenderPreparationPostgresTest {
             when(interoperability.declarations()).thenReturn(List.of());
             var catalog=FirstRenderPlanningFixture.catalog();
             if ("BINDING".equals(fault)) when(catalog.contributions()).thenReturn(List.of());
-            var inputs=new FirstRenderPlanningApplicationService(render,commands,queries,artifacts,interoperability);
-            planning=new FirstRenderPlanningAndBindingService(inputs,commands,queries,effects,catalog,
+            var inputs=new RevisionRenderPlanningApplicationService(render,commands,queries,artifacts,interoperability);
+            planning=new RevisionRenderPlanningAndBindingService(inputs,commands,queries,effects,catalog,
                     new RenderPlanningEntryService(),new PhysicalPlanningEntryService(),new ProviderBindingEntryService(),lifecycle);
             if("BOUND_GRAPH_SAVE".equals(fault)) {
                 db.execute("create function reject_bound_graph_save() returns trigger language plpgsql as $$ begin raise exception 'synthetic save failure'; end $$");
                 db.execute("create trigger reject_bound_graph_save before insert on render_binding_inputs for each row execute function reject_bound_graph_save()");
             }
             when(starter.start(any(),any(),any())).thenReturn(true);
-            save=new FirstRenderSaveAndStartService(new JooqBoundGraphInputStore(db),lifecycle);
+            save=new RenderBoundGraphService(new JooqBoundGraphInputStore(db),lifecycle);
         }
-        FirstRenderPlanningAndBindingResult plan() {
-            return planning.planAndBind(new FirstRenderPlanningRequest(TENANT,REVISION,
+        RevisionRenderPlanningAndBindingResult plan() {
+            return planning.planAndBind(new RevisionRenderPlanningRequest(TENANT,REVISION,
                     new RenderInitiator.System("probe",ActorType.SYSTEM,TENANT),
                     new com.example.platform.render.domain.renderplan.RenderExtent(
                             MediaTime.ofMillis(0),MediaTime.ofMillis(2000),FrameRate.of(30,1)),"preparation-test"));

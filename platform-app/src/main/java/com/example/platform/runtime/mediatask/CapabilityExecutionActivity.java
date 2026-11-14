@@ -26,13 +26,13 @@ public class CapabilityExecutionActivity implements CapabilityExecutionActivitie
     private final PlatformExecutionAdmissionPort.ArtifactCapabilities executions;
     private final CapabilityExecutionCompletionPort completion;
     private final AtomicAssignmentGrantBoundary grants;
-    private final FirstRenderGrantMinter minter;
+    private final MediaTaskGrantMinter minter;
     private final ProviderPluginCatalog catalog;
     private final RuntimeClosedLoopOrchestrator runtime;
     private final MediaTaskPublicationSettings publication;
     private final ExecutionLifecycleBoundary lifecycle;
     public CapabilityExecutionActivity(PlatformExecutionAdmissionPort.ArtifactCapabilities executions,
-            CapabilityExecutionCompletionPort completion,AtomicAssignmentGrantBoundary grants,FirstRenderGrantMinter minter,
+            CapabilityExecutionCompletionPort completion,AtomicAssignmentGrantBoundary grants,MediaTaskGrantMinter minter,
             ProviderPluginCatalog catalog,RuntimeClosedLoopOrchestrator runtime,MediaTaskPublicationSettings publication,
             ExecutionLifecycleBoundary lifecycle) {
         this.executions=executions;this.completion=completion;this.grants=grants;this.minter=minter;this.catalog=catalog;

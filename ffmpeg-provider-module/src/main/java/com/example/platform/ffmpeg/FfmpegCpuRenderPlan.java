@@ -67,6 +67,7 @@ public record FfmpegCpuRenderPlan(
             String text,
             MediaTime start,
             MediaTime end,
+            MediaTime duration,
             int fontSize,
             String fontFile,
             String x,
@@ -75,11 +76,15 @@ public record FfmpegCpuRenderPlan(
             Objects.requireNonNull(text, "text");
             Objects.requireNonNull(start, "start");
             Objects.requireNonNull(end, "end");
+            Objects.requireNonNull(duration, "duration");
             Objects.requireNonNull(fontFile, "fontFile");
             Objects.requireNonNull(x, "x");
             Objects.requireNonNull(y, "y");
             if (start.isGreaterThan(end)) {
                 throw new IllegalArgumentException("raster interval start must be <= end");
+            }
+            if (!duration.isGreaterThan(MediaTime.ZERO) || end.isGreaterThan(duration)) {
+                throw new IllegalArgumentException("raster duration must bound the text interval");
             }
             if (fontSize <= 0) {
                 throw new IllegalArgumentException("font size must be > 0");
@@ -105,7 +110,10 @@ public record FfmpegCpuRenderPlan(
     }
 
     /** Exact Timeline placement, relative to the requested render extent. */
-    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
+    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, boolean overlay) {
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
+            this(inputId, start, end, false);
+        }
         public TimedInput {
             Objects.requireNonNull(inputId); Objects.requireNonNull(start); Objects.requireNonNull(end);
             if (!start.isLessThan(end)) throw new IllegalArgumentException("positive input interval required");

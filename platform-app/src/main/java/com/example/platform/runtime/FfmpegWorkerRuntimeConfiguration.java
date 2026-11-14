@@ -8,8 +8,8 @@ import com.example.platform.execution.binding.BoundGraphInputStore;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.runtime.mediatask.MediaTaskActivity;
 import com.example.platform.runtime.mediatask.MediaTaskPublicationSettings;
-import com.example.platform.runtime.mediatask.FirstRenderGrantMinter;
-import com.example.platform.runtime.mediatask.FirstRenderAdmissionEvidenceFactory;
+import com.example.platform.runtime.mediatask.MediaTaskGrantMinter;
+import com.example.platform.runtime.mediatask.MediaTaskAdmissionEvidenceFactory;
 import com.example.platform.runtime.CpuArchitectureProbe;
 import com.example.platform.runtime.ProviderExecutableDependencyProbe;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
@@ -175,7 +175,7 @@ public class FfmpegWorkerRuntimeConfiguration {
     }
 
     @Bean
-    FirstRenderAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory(
+    MediaTaskAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory(
             ProviderPluginCatalog providerPluginCatalog,
             @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
             @Value("${platform.ffmpeg-worker.workspace-root}") String workspaceRoot,
@@ -186,7 +186,7 @@ public class FfmpegWorkerRuntimeConfiguration {
         // real provider catalog, the live worker JVM architecture, and the exact configured
         // executable. The runtime-dependency input is completed by a controlled start probe inside
         // the production sandbox, bound to the executable's probed identity.
-        return new FirstRenderAdmissionEvidenceFactory(
+        return new MediaTaskAdmissionEvidenceFactory(
                 providerPluginCatalog,
                 new CpuArchitectureProbe(),
                 new ProviderExecutableDependencyProbe(),
@@ -196,19 +196,19 @@ public class FfmpegWorkerRuntimeConfiguration {
                         Long.parseLong(captureBytes)),
                 Path.of(ffmpeg),
                 clock,
-                FirstRenderAdmissionEvidenceFactory.EVIDENCE_VALIDITY);
+                MediaTaskAdmissionEvidenceFactory.EVIDENCE_VALIDITY);
     }
 
     @Bean
-    FirstRenderGrantMinter firstRenderGrantMinter(
+    MediaTaskGrantMinter firstRenderGrantMinter(
             WorkerFabricRegistrationBoundary workerFabricRegistrationBoundary,
             AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
             NativePullAdmissionPort nativePullAdmissionPort,
-            FirstRenderAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory,
+            MediaTaskAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory,
             ReservationFeasibilityQuery reservationFeasibilityQuery,
             Clock clock,
             com.example.platform.workerfabric.domain.LocalHostRegistrationLoop localHostRegistrationLoop) {
-        return new FirstRenderGrantMinter(
+        return new MediaTaskGrantMinter(
                 workerFabricRegistrationBoundary,
                 atomicAssignmentGrantBoundary,
                 nativePullAdmissionPort,
@@ -223,7 +223,7 @@ public class FfmpegWorkerRuntimeConfiguration {
             AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
             RuntimeClosedLoopOrchestrator runtimeClosedLoopOrchestrator,
             MediaTaskPublicationSettings mediaTaskPublicationSettings,
-            FirstRenderGrantMinter firstRenderGrantMinter,
+            MediaTaskGrantMinter firstRenderGrantMinter,
             ProviderPluginCatalog providerPluginCatalog,
             com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle) {
         return new MediaTaskActivity(

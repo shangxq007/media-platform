@@ -1767,13 +1767,13 @@ echo "--- Formal Render Production Paths ---"
 # Both formal render production paths (full and incremental) must converge on the shared
 # revision-pinned submission service, and the First Render probe route must stay absent.
 # First Render is an automation/E2E scenario, never a production business type or entry.
-if grep -q '@RequestMapping("/api/render-jobs")' platform-app/src/main/java/com/example/platform/config/firstrender/RenderJobSubmissionController.java 2>/dev/null; then
+if grep -q '@RequestMapping("/api/render-jobs")' platform-app/src/main/java/com/example/platform/config/render/RenderJobSubmissionController.java 2>/dev/null; then
     pass "formal full-render entry /api/render-jobs present"
 else
     fail "formal full-render entry /api/render-jobs missing"
 fi
-if grep -q '@RequestMapping("/api/incremental-render")' platform-app/src/main/java/com/example/platform/config/firstrender/IncrementalRenderController.java 2>/dev/null \
-    && grep -q '@PostMapping("/plans")' platform-app/src/main/java/com/example/platform/config/firstrender/IncrementalRenderController.java 2>/dev/null; then
+if grep -q '@RequestMapping("/api/incremental-render")' platform-app/src/main/java/com/example/platform/config/render/IncrementalRenderController.java 2>/dev/null \
+    && grep -q '@PostMapping("/plans")' platform-app/src/main/java/com/example/platform/config/render/IncrementalRenderController.java 2>/dev/null; then
     pass "formal incremental-render entry /api/incremental-render/plans present"
 else
     fail "formal incremental-render entry /api/incremental-render/plans missing"
@@ -1783,11 +1783,27 @@ if grep -rq 'first-render/plans' platform-app/src/main/java 2>/dev/null; then
 else
     pass "First Render probe route absent from production sources"
 fi
-if grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/firstrender/RenderJobSubmissionController.java 2>/dev/null \
-    && grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/firstrender/IncrementalRenderController.java 2>/dev/null; then
+if grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/render/RenderJobSubmissionController.java 2>/dev/null \
+    && grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/render/IncrementalRenderController.java 2>/dev/null; then
     pass "full and incremental render entries share the formal submission service"
 else
     fail "full/incremental render entries do not share the formal submission service"
+fi
+if grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/web/media/McpMediaToolsController.java \
+    && [ "$(rg -l 'class RevisionRenderSubmissionService' platform-app/src/main/java | wc -l)" -eq 1 ]; then
+    pass "MCP and HTTP converge on one revision-pinned submission authority"
+else
+    fail "MCP and HTTP submission authority diverged"
+fi
+if rg -q 'class FirstRender|interface FirstRender|package com\.example\.platform\.config\.firstrender' platform-app/src/main/java; then
+    fail "First Render test concept still owns a production component"
+else
+    pass "First Render has no named production component"
+fi
+if rg -q 'create table first_render_idempotency' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
+    fail "First Render still names a production idempotency table; Owner schema decision required"
+else
+    pass "First Render has no dedicated production persistence"
 fi
 
 if [ $FAILED -eq 0 ]; then

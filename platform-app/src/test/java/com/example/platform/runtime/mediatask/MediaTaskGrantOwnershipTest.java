@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MediaTaskGrantOwnershipTest {
     final ExecutableTaskId task=new ExecutableTaskId("a".repeat(64));
     AssignmentGrant grant(String job,long attempt) {
-        var grant=mock(AssignmentGrant.class);when(grant.requestWorkId()).thenReturn(FirstRenderGrantMinter.requestWorkId(job,task,attempt));return grant;
+        var grant=mock(AssignmentGrant.class);when(grant.requestWorkId()).thenReturn(MediaTaskGrantMinter.requestWorkId(job,task,attempt));return grant;
     }
     @Test void activeGrantBelongsToItsExactJobRequest() {
         assertDoesNotThrow(()->MediaTaskActivity.requireOwnedGrant(grant("job-a",1),"job-a",task,1));
@@ -19,7 +19,7 @@ class MediaTaskGrantOwnershipTest {
     }
     @Test void postMintRereadRejectsOwnershipTakenByAnotherJob() throws Exception {
         var boundary=mock(com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary.class);
-        var minter=mock(FirstRenderGrantMinter.class);
+        var minter=mock(MediaTaskGrantMinter.class);
         var catalog=mock(com.example.platform.providerplugin.ProviderPluginCatalog.class);
         var graph=mock(com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph.class);
         var executable=mock(com.example.platform.execution.taskgraph.ExecutableTask.class);
@@ -28,7 +28,7 @@ class MediaTaskGrantOwnershipTest {
         var ownGrant=grant("job-a",1);var foreignGrant=grant("job-b",1);
         when(boundary.findCurrentGrant(task)).thenReturn(java.util.Optional.empty(),java.util.Optional.of(foreignGrant));
         when(minter.mint("job-a",task,graph,contribution,1L)).thenReturn(
-                new FirstRenderGrantMinter.Result.Minted(FirstRenderGrantMinter.requestWorkId("job-a",task,1),ownGrant));
+                new MediaTaskGrantMinter.Result.Minted(MediaTaskGrantMinter.requestWorkId("job-a",task,1),ownGrant));
         var activity=new MediaTaskActivity(mock(com.example.platform.execution.binding.BoundGraphInputStore.class),boundary,
                 mock(com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator.class),mock(MediaTaskPublicationSettings.class),minter,catalog);
         var method=MediaTaskActivity.class.getDeclaredMethod("currentGrantOrMint",String.class,ExecutableTaskId.class,

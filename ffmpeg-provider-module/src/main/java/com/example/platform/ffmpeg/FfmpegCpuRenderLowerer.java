@@ -94,6 +94,7 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
             for (var input : unit.typedInputs()) {
                 MediaTime overlayStart;
                 MediaTime overlayEnd;
+                boolean textOverlay = false;
                 if (input.dependencyVariant() instanceof
                         com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput timed) {
                     if (!runtimeIds.contains(input.inputId())
@@ -115,20 +116,25 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
                     }
                     overlayStart = extent.start();
                     overlayEnd = extent.end();
+                    textOverlay = true;
                 } else {
                     throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                             "each composition input requires a typed composite dependency");
                 }
                 inputs.add(new FfmpegCpuRenderPlan.TimedInput(input.inputId(),
-                        overlayStart.subtract(extent.start()), overlayEnd.subtract(extent.start())));
+                        overlayStart.subtract(extent.start()), overlayEnd.subtract(extent.start()), textOverlay));
             }
-            inputs.sort(java.util.Comparator.comparing(FfmpegCpuRenderPlan.TimedInput::start)
+            inputs.sort(java.util.Comparator.comparing(FfmpegCpuRenderPlan.TimedInput::overlay)
+                    .thenComparing(FfmpegCpuRenderPlan.TimedInput::start)
                     .thenComparing(input -> input.inputId().value()));
-            for (int i = 1; i < inputs.size(); i++) {
-                if (inputs.get(i - 1).end().isGreaterThan(inputs.get(i).start())) {
+            FfmpegCpuRenderPlan.TimedInput previousBase = null;
+            for (var input : inputs) {
+                if (input.overlay()) continue;
+                if (previousBase != null && previousBase.end().isGreaterThan(input.start())) {
                     throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
-                            "overlapping composition inputs are not supported");
+                            "overlapping base video inputs are not supported");
                 }
+                previousBase = input;
             }
             LOG.info("FFMPEG_COMPOSITE_PLAN task={} extent={}..{} frameRate={} inputs={} duration={}",
                     task.id().sha256Hex(), extent.start(), extent.end(), extent.frameRate(),
@@ -295,7 +301,7 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
         };
         var parameters = new FfmpegCpuRenderPlan.RasterParameters(
                 content, start.subtract(extent.start()), end.subtract(extent.start()),
-                fontSize, fontFile, x, y);
+                extent.end().subtract(extent.start()), fontSize, fontFile, x, y);
         LOG.info("FFMPEG_RASTER_PLAN task={} start={} end={} fontSize={} contentLength={}",
                 task.id().sha256Hex(), parameters.start(), parameters.end(), fontSize, content.length());
         return new FfmpegCpuRenderPlan(task.id(), task.providerBindingPin(),

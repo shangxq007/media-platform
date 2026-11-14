@@ -5,7 +5,7 @@ import com.example.platform.operation.invocation.*;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.render.TimelineProjectAuthorizationService;
-import com.example.platform.config.firstrender.RevisionRenderSubmissionService;
+import com.example.platform.config.render.RevisionRenderSubmissionService;
 import com.fasterxml.jackson.databind.*;
 import java.util.*;
 import org.junit.jupiter.api.*;
