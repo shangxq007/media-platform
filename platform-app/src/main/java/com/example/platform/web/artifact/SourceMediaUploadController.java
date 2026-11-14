@@ -25,7 +25,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** Authenticated source upload; Storage and Artifact retain their own issuance authorities. */
 @RestController
@@ -42,13 +43,14 @@ public class SourceMediaUploadController {
     private final ArtifactUploadAdmissionPort artifacts;
     private final ArtifactSourceFactsQuery sourceFacts;
     private final ArtifactSourceCatalog sourceCatalog;
+    private final TransactionTemplate transaction;
 
     public SourceMediaUploadController(TimelineProjectAuthorizationService authorization,
             ProjectReadQuery projects, CanonicalActorResolver actors,
             CommercialAdmissionPort commercial, QuotaUsageAuthority quota,
             QuotaPolicyService quotaPolicies, StorageSourceUploadPort storage,
             ArtifactUploadAdmissionPort artifacts, ArtifactSourceFactsQuery sourceFacts,
-            ArtifactSourceCatalog sourceCatalog) {
+            ArtifactSourceCatalog sourceCatalog, PlatformTransactionManager transactionManager) {
         this.authorization = authorization;
         this.projects = projects;
         this.actors = actors;
@@ -59,11 +61,11 @@ public class SourceMediaUploadController {
         this.artifacts = artifacts;
         this.sourceFacts = sourceFacts;
         this.sourceCatalog = sourceCatalog;
+        this.transaction = new TransactionTemplate(transactionManager);
     }
 
     @PostMapping(consumes = "multipart/form-data")
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
     public UploadResult upload(@PathVariable String tenantId, @PathVariable String projectId,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestPart("file") MultipartFile file) throws IOException {
@@ -94,9 +96,8 @@ public class SourceMediaUploadController {
         if (format.mediaType() != ArtifactMediaType.VIDEO && format.mediaType() != ArtifactMediaType.AUDIO) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "timed video or audio required");
         }
-        byte[] bytes = file.getBytes();
-        try {
-            format.validate(bytes);
+        try (var signature = file.getInputStream()) {
+            format.validate(signature, file.getSize());
         } catch (IllegalArgumentException invalid) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "source bytes do not match MIME");
         }
@@ -106,7 +107,7 @@ public class SourceMediaUploadController {
         var admissionRequest = new CommercialAdmissionRequest(
                 PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId),
                 "artifact.source.upload", "artifact.source.upload", "artifact.source.upload",
-                bytes.length, month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
+                file.getSize(), month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
                 month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(), trace, now);
         var decision = commercial.decideForAcceptance(admissionRequest);
         // The quota authority performs the atomic limit check and recognizes retries.
@@ -114,21 +115,15 @@ public class SourceMediaUploadController {
         if (!decision.allowed() && decision.reason() != CommercialDecisionReason.QUOTA_EXCEEDED) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "source upload admission denied");
         }
-        var quotaResult = quota.execute(new QuotaUsageCommand(
-                admissionRequest.principal(), admissionRequest.quotaKey(),
-                admissionRequest.periodStart(), admissionRequest.periodEnd(), bytes.length,
-                quotaPolicies.getQuotaPolicy(admissionRequest.quotaKey()).limitValue().longValueExact(),
-                trace, QuotaOperationKind.CONSUMPTION, decision.traceId(),
-                "source media upload", now));
-        if (!quotaResult.applied()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "source upload quota exceeded");
-        }
         var owner = new StorageOwnershipScope(tenantId, projectId);
         var receiptKey = new IssuanceIdempotencyKey(trace);
-        var written = storage.writeSource(owner, receiptKey, bytes, mime);
+        StorageOutputPort.WrittenOutput written;
+        try (var content = file.getInputStream()) {
+            written = storage.writeSource(owner, receiptKey, content, file.getSize(), mime);
+        }
         var issuance = written.issuance();
         var placement = issuance.placement();
-        var admission = new ArtifactUploadAdmission(
+        var preflight = new ArtifactUploadAdmission(
                 ArtifactUploadAdmission.CURRENT_CONTRACT_VERSION,
                 new ArtifactScope(tenantId, project.workspaceId(), projectId),
                 new ArtifactStorageReference(issuance.objectId(), placement.replicaId(),
@@ -139,8 +134,24 @@ public class SourceMediaUploadController {
                 new ArtifactAuditFacts(actor.actorId(), trace, now),
                 new ArtifactLifecycleFacts(ArtifactState.AVAILABLE, now),
                 new ArtifactLineageFacts(List.of(), "source-upload", 1),
-                idempotencyKey, quotaResult.operationId());
-        var result = artifacts.admit(admission);
+                idempotencyKey, "pending-quota");
+        var prepared = artifacts.prepare(preflight);
+        var result = transaction.execute(status -> {
+            var quotaResult = quota.execute(new QuotaUsageCommand(
+                    admissionRequest.principal(), admissionRequest.quotaKey(),
+                    admissionRequest.periodStart(), admissionRequest.periodEnd(), file.getSize(),
+                    quotaPolicies.getQuotaPolicy(admissionRequest.quotaKey()).limitValue().longValueExact(),
+                    trace, QuotaOperationKind.CONSUMPTION, decision.traceId(),
+                    "source media upload", now));
+            if (!quotaResult.applied()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "source upload quota exceeded");
+            }
+            var admission = new ArtifactUploadAdmission(preflight.contractVersion(), preflight.scope(),
+                    preflight.storage(), preflight.digest(), preflight.sizeBytes(), preflight.technicalMetadata(),
+                    preflight.audit(), preflight.lifecycle(), preflight.lineage(), preflight.idempotencyKey(),
+                    quotaResult.operationId());
+            return artifacts.admitPrepared(prepared, admission);
+        });
         var acceptedFacts = sourceFacts.find(tenantId, projectId, result.artifactId(), placement.committedDigest())
                 .orElseThrow(() -> new IllegalStateException("accepted source facts unavailable"));
         String displayName = displayName(file.getOriginalFilename(), result.artifactId().value());

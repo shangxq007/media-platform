@@ -1605,7 +1605,7 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
             .digest(file(migrationDir.resolve("V1__baseline.sql")).readBytes())
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        require(appliedV1Hash == "4e8a539025794c45b67964407e5270ef48606296ad65d77c90db32e0c2278450") {
+        require(appliedV1Hash == "f6755e0663596721fa824cb436a5ed548475213fda11d3655e0899fcdce3e580") {
             "FAIL: canonical V1 differs from the Owner-approved consolidated greenfield baseline"
         }
         require(file(migrationDir.resolve("V1__baseline.sql")).exists()) {

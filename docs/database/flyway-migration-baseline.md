@@ -21,7 +21,7 @@
 Owner R1E 删除已无正式消费者的旧出站交付、Render Worker/Lease/Queue 和 Pipeline/AI/URI/旧 Provider 字段；正式图执行、复用及 Delivery 权威保持不变。须重新完成空 PG18、真实 jOOQ 生成与产品回归。
 
 路径：`platform-app/src/main/resources/db/migration/V1__baseline.sql`。
-完整 SHA-256：`4e8a539025794c45b67964407e5270ef48606296ad65d77c90db32e0c2278450`。
+完整 SHA-256：`f6755e0663596721fa824cb436a5ed548475213fda11d3655e0899fcdce3e580`。
 
 Owner R1D 增加仅保存授权交付选择的不可变 Delivery 表、同作用域外键及幂等唯一性；不改变 Artifact 身份或生命周期。须通过新鲜 PG18 和 jOOQ 一致性验证。
 

@@ -20,7 +20,7 @@ public record FfmpegSandboxWorkspace(
                 normalized,
                 normalized.resolve(".sandbox-tmp"),
                 normalized.resolve(".sandbox-output"),
-                normalized);
+                normalized.resolve(".sandbox-output"));
     }
 
     private static Path normalized(Path path, String label) {

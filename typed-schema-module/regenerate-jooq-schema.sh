@@ -432,7 +432,7 @@ fi
 TABLE_COUNT="$(find "$GENERATED_ROOT/tables" -maxdepth 1 -type f -name '*.java' | wc -l)"
 RECORD_COUNT="$(find "$GENERATED_ROOT/tables/records" -maxdepth 1 -type f -name '*.java' | wc -l)"
 TOTAL_FILES="$(find "$STAGING_DIR" -type f -name '*.java' | wc -l)"
-if [[ "$TABLE_COUNT" -ne 220 || "$RECORD_COUNT" -ne 220 || "$TOTAL_FILES" -ne 445 ]]; then
+if [[ "$TABLE_COUNT" -ne 214 || "$RECORD_COUNT" -ne 214 || "$TOTAL_FILES" -ne 433 ]]; then
     echo "FAIL: generation inventory mismatch: table=$TABLE_COUNT record=$RECORD_COUNT total=$TOTAL_FILES" >&2
     exit 1
 fi

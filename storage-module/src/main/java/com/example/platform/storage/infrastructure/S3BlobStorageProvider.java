@@ -5,6 +5,7 @@ import com.example.platform.storage.domain.PutObjectCommand;
 import com.example.platform.storage.domain.StorageObjectRef;
 import com.example.platform.storage.domain.StoredObject;
 import java.net.URI;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -163,6 +164,18 @@ public class S3BlobStorageProvider implements BlobStorage {
             throw new IllegalStateException(
                     "S3 get failed: bucket=" + resolvedBucket + " key=" + objectKey
                             + " status=" + e.statusCode() + " error=" + e.awsErrorDetails().errorCode(), e);
+        }
+    }
+
+    @Override
+    public Optional<InputStream> open(String bucket, String objectKey) {
+        String resolvedBucket = bucket != null && !bucket.isBlank() ? bucket : properties.getDefaultBucket();
+        try {
+            return Optional.of(getClient().getObject(GetObjectRequest.builder()
+                    .bucket(resolvedBucket).key(objectKey).build()));
+        } catch (software.amazon.awssdk.services.s3.model.S3Exception failure) {
+            if (isObjectNotFound(failure)) return Optional.empty();
+            throw failure;
         }
     }
 

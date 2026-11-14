@@ -17,6 +17,32 @@ public enum ArtifactOutputFormat {
         for(var format:values())if(format.mime.equals(mime))return format;
         throw new IllegalArgumentException("Unsupported accepted output MIME: "+mime);
     }
+    /** Validate the same container signature with bounded memory for streamed source media. */
+    public void validate(java.io.InputStream input, long totalLength) throws java.io.IOException {
+        java.util.Objects.requireNonNull(input);
+        if (this != MP4 && this != QUICKTIME) {
+            validate(input.readNBytes(4096));
+            return;
+        }
+        byte[] header = input.readNBytes(8);
+        if (header.length != 8 || totalLength < 16 || !ascii(header, 4, "ftyp"))
+            throw new IllegalArgumentException("Accepted output bytes do not match MIME " + mime);
+        int size = java.nio.ByteBuffer.wrap(header, 0, 4).getInt();
+        if (size < 16 || size > totalLength)
+            throw new IllegalArgumentException("Accepted output bytes do not match MIME " + mime);
+        boolean qt = false, mp4 = false;
+        var brands = java.util.Set.of("isom", "iso2", "iso3", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1", "dash", "M4V ");
+        for (int offset = 8; offset + 4 <= size; offset += 4) {
+            byte[] word = input.readNBytes(4);
+            if (word.length != 4) throw new IllegalArgumentException("Accepted output bytes do not match MIME " + mime);
+            if (offset == 12) continue;
+            String brand = new String(word, java.nio.charset.StandardCharsets.US_ASCII);
+            qt |= brand.equals("qt  ");
+            mp4 |= brands.contains(brand);
+        }
+        if (!(this == QUICKTIME ? qt : mp4 && !qt))
+            throw new IllegalArgumentException("Accepted output bytes do not match MIME " + mime);
+    }
     public void validate(byte[] bytes) {
         java.util.Objects.requireNonNull(bytes);
         boolean valid=switch(this) {

@@ -62,7 +62,6 @@ import com.example.platform.typedschema.jooq.generated.tables.FeatureDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagEvaluationSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagTargetingRule;
-import com.example.platform.typedschema.jooq.generated.tables.FirstRenderIdempotency;
 import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
@@ -131,6 +130,7 @@ import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecuti
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
+import com.example.platform.typedschema.jooq.generated.tables.RenderSubmissionIdempotency;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewThread;
 import com.example.platform.typedschema.jooq.generated.tables.Role;
@@ -517,11 +517,6 @@ public class Tables {
     public static final FeatureFlagTargetingRule FEATURE_FLAG_TARGETING_RULE = FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE;
 
     /**
-     * The table <code>public.first_render_idempotency</code>.
-     */
-    public static final FirstRenderIdempotency FIRST_RENDER_IDEMPOTENCY = FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY;
-
-    /**
      * The table <code>public.frontend_route_definition</code>.
      */
     public static final FrontendRouteDefinition FRONTEND_ROUTE_DEFINITION = FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION;
@@ -860,6 +855,11 @@ public class Tables {
      * The table <code>public.render_job_status_history</code>.
      */
     public static final RenderJobStatusHistory RENDER_JOB_STATUS_HISTORY = RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
+
+    /**
+     * The table <code>public.render_submission_idempotency</code>.
+     */
+    public static final RenderSubmissionIdempotency RENDER_SUBMISSION_IDEMPOTENCY = RenderSubmissionIdempotency.RENDER_SUBMISSION_IDEMPOTENCY;
 
     /**
      * The table <code>public.review_decision</code>.

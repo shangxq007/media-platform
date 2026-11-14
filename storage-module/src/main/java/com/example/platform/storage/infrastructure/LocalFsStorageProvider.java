@@ -4,6 +4,7 @@ import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -119,6 +120,16 @@ public class LocalFsStorageProvider implements BlobStorage {
             }
             return Optional.of(Files.readAllBytes(p));
         } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<InputStream> open(String bucket, String objectKey) {
+        try {
+            Path p = resolveSafePath(bucket, objectKey);
+            return Files.isRegularFile(p) ? Optional.of(Files.newInputStream(p)) : Optional.empty();
+        } catch (IOException unavailable) {
             return Optional.empty();
         }
     }

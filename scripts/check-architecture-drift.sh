@@ -1800,10 +1800,13 @@ if rg -q 'class FirstRender|interface FirstRender|package com\.example\.platform
 else
     pass "First Render has no named production component"
 fi
-if rg -q 'create table first_render_idempotency' platform-app/src/main/resources/db/migration/V1__baseline.sql; then
-    fail "First Render still names a production idempotency table; Owner schema decision required"
+if rg -q 'first_render_idempotency' platform-app/src/main/resources/db/migration/V1__baseline.sql platform-app/src/main/java; then
+    fail "First Render still names production idempotency persistence"
+elif rg -q 'create table render_submission_idempotency' platform-app/src/main/resources/db/migration/V1__baseline.sql \
+    && [ "$(rg -l 'render_submission_idempotency' platform-app/src/main/java/com/example/platform/config/render | wc -l)" -eq 2 ]; then
+    pass "one formal RenderJob submission idempotency table serves submission and dispatch"
 else
-    pass "First Render has no dedicated production persistence"
+    fail "formal RenderJob submission idempotency authority missing or duplicated"
 fi
 
 if [ $FAILED -eq 0 ]; then

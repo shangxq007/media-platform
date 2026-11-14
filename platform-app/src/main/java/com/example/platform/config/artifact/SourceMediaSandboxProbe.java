@@ -25,13 +25,13 @@ public class SourceMediaSandboxProbe implements ArtifactSourceProbePort {
     private final MediaProbeNormalizer normalizer = new FfprobeMediaProbeNormalizer();
 
     @Override
-    public ArtifactSourceFacts probe(ArtifactId id, byte[] bytes, String mimeType) {
+    public ArtifactSourceFacts probe(ArtifactId id, Path verifiedSource, String mimeType) {
         Path workspace = null;
         Path source = null;
         try {
             workspace = Files.createTempDirectory("source-probe-").toAbsolutePath().normalize();
             source = workspace.resolve("source.bin");
-            Files.write(source, bytes);
+            Files.copy(verifiedSource, source);
             var result = LocalSandboxProcess.execute(List.of("ffprobe", "-v", "error", "-show_format",
                             "-show_streams", "-of", "json", source.toString()), workspace, workspace,
                     Set.of(source), Map.of("PATH", "/usr/bin:/bin",

@@ -28,14 +28,14 @@ public class RenderSubmissionIdempotencyService {
     public Reservation reserve(String tenant, String project, String key, String hash) {
         if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("Submission transaction required");
-        int inserted = jdbc.update("insert into first_render_idempotency(tenant_id,project_id,idempotency_key,request_hash) "
+        int inserted = jdbc.update("insert into render_submission_idempotency(tenant_id,project_id,idempotency_key,request_hash) "
                 + "values (?,?,?,?) on conflict (tenant_id,project_id,idempotency_key) do nothing",
                 tenant, project, key, hash);
         if (inserted == 1) {
             return new Reservation(true, null, null, null, null, false);
         }
         var row = jdbc.queryForMap("select request_hash,render_job_id,request_id,execution_plan_id,workflow_id,workflow_started "
-                + "from first_render_idempotency where tenant_id=? and project_id=? and idempotency_key=?", tenant, project, key);
+                + "from render_submission_idempotency where tenant_id=? and project_id=? and idempotency_key=?", tenant, project, key);
         if (!hash.equals(row.get("request_hash")))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "IDEMPOTENCY_CONFLICT");
         if (row.get("render_job_id") == null) throw new IllegalStateException("Incomplete committed reservation");
@@ -45,7 +45,7 @@ public class RenderSubmissionIdempotencyService {
 
     public void complete(String tenant, String project, String key, String jobId, String requestId,
             String executionPlanId, String workflowId, boolean workflowStarted) {
-        int changed = jdbc.update("update first_render_idempotency set render_job_id=?,request_id=?,execution_plan_id=?,"
+        int changed = jdbc.update("update render_submission_idempotency set render_job_id=?,request_id=?,execution_plan_id=?,"
                 + "workflow_id=?,workflow_started=?,lifecycle_status='PLANNED',updated_at=now() "
                 + "where tenant_id=? and project_id=? and idempotency_key=? and render_job_id is null",
                 jobId, requestId, executionPlanId, workflowId, workflowStarted, tenant, project, key);

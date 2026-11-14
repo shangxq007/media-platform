@@ -58,8 +58,8 @@ create table render_job (
 
 create index ix_render_job_project_id on render_job(project_id);
 
--- First Render client idempotency reservation; unique key is the concurrency authority.
-create table first_render_idempotency (
+-- Formal RenderJob submission idempotency reservation; unique key is the concurrency authority.
+create table render_submission_idempotency (
     tenant_id varchar(128) not null,
     project_id varchar(64) not null,
     idempotency_key varchar(255) not null,

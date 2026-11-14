@@ -27,11 +27,18 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class SourceMediaUploadControllerTest {
+    private static PlatformTransactionManager transactions() {
+        var manager = mock(PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        return manager;
+    }
     @AfterEach void clear() { TenantContext.clear(); }
 
     @Test void scopeAndCommercialDecisionPrecedeAnyStorageWrite() {
@@ -57,7 +64,7 @@ class SourceMediaUploadControllerTest {
                 "artifact.source.upload", false, CommercialDecisionReason.NOT_ENTITLED,
                 java.util.List.of(), "v1", "decision-1", Instant.now()));
         var controller = new SourceMediaUploadController(authorization, projects, actors,
-                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts, sourceCatalog);
+                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts, sourceCatalog, transactions());
         byte[] media = new byte[]{0, 0, 0, 16, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0};
         assertThrows(ResponseStatusException.class, () -> controller.upload(
                 "tenant-a", "project-a", "upload-1",
@@ -103,16 +110,17 @@ class SourceMediaUploadControllerTest {
         when(receipt.receiptId()).thenReturn("receipt-1");
         when(placement.committedDigest()).thenReturn(ContentDigest.sha256("a".repeat(64)));
         when(placement.committedLength()).thenReturn(16L);
-        when(storage.writeSource(any(), any(), any(), eq("video/mp4"))).thenReturn(
+        when(storage.writeSource(any(), any(), any(), eq(16L), eq("video/mp4"))).thenReturn(
                 new StorageOutputPort.WrittenOutput(issuance, mock(StorageReference.class)));
-        when(artifacts.admit(any())).thenReturn(new ArtifactUploadAdmissionPort.AdmissionResult(
+        when(artifacts.prepare(any())).thenReturn(mock(ArtifactUploadAdmissionPort.PreparedSource.class));
+        when(artifacts.admitPrepared(any(), any())).thenReturn(new ArtifactUploadAdmissionPort.AdmissionResult(
                 new ArtifactId("artifact-1"), "fingerprint-1"));
         when(sourceFacts.find(any(), any(), any(), any())).thenReturn(Optional.of(new ArtifactSourceFacts(
                 com.example.platform.shared.time.MediaTime.ofMillis(1000),
                 java.util.List.of(new ArtifactSourceFacts.Stream("artifact-1:s0", ArtifactSourceFacts.Kind.VIDEO,
                         com.example.platform.shared.time.MediaTime.ofMillis(1000))))));
         var controller = new SourceMediaUploadController(authorization, projects, actors,
-                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts, sourceCatalog);
+                commercial, quota, new QuotaPolicyService(), storage, artifacts, sourceFacts, sourceCatalog, transactions());
         byte[] media = new byte[]{0, 0, 0, 16, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0};
         var result = controller.upload("tenant-a", "project-a", "upload-1",
                 new MockMultipartFile("file", "source.mp4", "video/mp4", media));
@@ -123,7 +131,7 @@ class SourceMediaUploadControllerTest {
         verify(sourceCatalog).recordDisplayName(eq("tenant-a"), eq("project-a"), eq(new ArtifactId("artifact-1")),
                 eq(ContentDigest.sha256("a".repeat(64))), eq("source.mp4"));
         var captured = ArgumentCaptor.forClass(ArtifactUploadAdmission.class);
-        verify(artifacts).admit(captured.capture());
+        verify(artifacts).admitPrepared(any(), captured.capture());
         assertEquals("project-a", captured.getValue().scope().projectId());
         assertEquals("workspace-a", captured.getValue().scope().workspaceId());
         assertEquals("quota-operation-1", captured.getValue().quotaDecisionId());
@@ -136,7 +144,7 @@ class SourceMediaUploadControllerTest {
         var controller = new SourceMediaUploadController(authorization, mock(ProjectReadQuery.class),
                 mock(CanonicalActorResolver.class), mock(CommercialAdmissionPort.class),
                 mock(QuotaUsageAuthority.class), new QuotaPolicyService(),
-                mock(StorageSourceUploadPort.class), mock(ArtifactUploadAdmissionPort.class), sourceFacts, sourceCatalog);
+                mock(StorageSourceUploadPort.class), mock(ArtifactUploadAdmissionPort.class), sourceFacts, sourceCatalog, transactions());
         var facts = new ArtifactSourceFacts(com.example.platform.shared.time.MediaTime.ofMillis(1000),
                 java.util.List.of(new ArtifactSourceFacts.Stream("stream-1", ArtifactSourceFacts.Kind.VIDEO,
                         com.example.platform.shared.time.MediaTime.ofMillis(1000))));
@@ -165,7 +173,7 @@ class SourceMediaUploadControllerTest {
                 CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
         var controller = new SourceMediaUploadController(authorization, projects, actors,
                 mock(CommercialAdmissionPort.class), quota, new QuotaPolicyService(), storage,
-                artifacts, mock(ArtifactSourceFactsQuery.class), mock(ArtifactSourceCatalog.class));
+                artifacts, mock(ArtifactSourceFactsQuery.class), mock(ArtifactSourceCatalog.class), transactions());
         var invalid = new MockMultipartFile("file", "invalid\nname.mp4", "video/mp4", new byte[]{1});
 
         assertThrows(ResponseStatusException.class,

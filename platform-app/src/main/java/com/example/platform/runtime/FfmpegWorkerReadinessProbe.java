@@ -48,8 +48,8 @@ public final class FfmpegWorkerReadinessProbe implements WorkerReadinessProbe {
     /**
      * Builds the production probe from the worker's configured bounded-V1 roots and the configured
      * bubblewrap binary. The roots mirror the exact paths the sandbox execution uses
-     * ({@code FfmpegSandboxWorkspace.under(workspaceRoot)}): the workspace root is also the working
-     * directory and owns the {@code .sandbox-tmp}/{@code .sandbox-output} sub-roots.
+     * ({@code FfmpegSandboxWorkspace.under(workspaceRoot)}): its output staging root is the working
+     * directory; both mutable sub-roots remain under the configured workspace.
      */
     public static FfmpegWorkerReadinessProbe of(
             String workRoot, String workspaceRoot, String stagingRoot, String bubblewrap) {

@@ -62,7 +62,6 @@ import com.example.platform.typedschema.jooq.generated.tables.FeatureDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagEvaluationSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagTargetingRule;
-import com.example.platform.typedschema.jooq.generated.tables.FirstRenderIdempotency;
 import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
@@ -130,6 +129,7 @@ import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecuti
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
+import com.example.platform.typedschema.jooq.generated.tables.RenderSubmissionIdempotency;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewThread;
 import com.example.platform.typedschema.jooq.generated.tables.Role;
@@ -275,7 +275,6 @@ import com.example.platform.typedschema.jooq.generated.tables.records.FeatureDef
 import com.example.platform.typedschema.jooq.generated.tables.records.FeatureFlagDefinitionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.FeatureFlagEvaluationSnapshotRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.FeatureFlagTargetingRuleRecord;
-import com.example.platform.typedschema.jooq.generated.tables.records.FirstRenderIdempotencyRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.FrontendRouteDefinitionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.GroupRoleAssignmentRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.IngestPreflightSafeReportRecordsRecord;
@@ -344,6 +343,7 @@ import com.example.platform.typedschema.jooq.generated.tables.records.RenderGrap
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobLifecycleEventsRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobStatusHistoryRecord;
+import com.example.platform.typedschema.jooq.generated.tables.records.RenderSubmissionIdempotencyRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ReviewDecisionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ReviewThreadRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RolePermissionRecord;
@@ -542,7 +542,6 @@ public class Keys {
     public static final UniqueKey<FeatureFlagDefinitionRecord> FEATURE_FLAG_DEFINITION_PKEY = Internal.createUniqueKey(FeatureFlagDefinition.FEATURE_FLAG_DEFINITION, DSL.name("feature_flag_definition_pkey"), new TableField[] { FeatureFlagDefinition.FEATURE_FLAG_DEFINITION.ID }, true);
     public static final UniqueKey<FeatureFlagEvaluationSnapshotRecord> FEATURE_FLAG_EVALUATION_SNAPSHOT_PKEY = Internal.createUniqueKey(FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT, DSL.name("feature_flag_evaluation_snapshot_pkey"), new TableField[] { FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT.SNAPSHOT_ID }, true);
     public static final UniqueKey<FeatureFlagTargetingRuleRecord> FEATURE_FLAG_TARGETING_RULE_PKEY = Internal.createUniqueKey(FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE, DSL.name("feature_flag_targeting_rule_pkey"), new TableField[] { FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE.ID }, true);
-    public static final UniqueKey<FirstRenderIdempotencyRecord> FIRST_RENDER_IDEMPOTENCY_PKEY = Internal.createUniqueKey(FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY, DSL.name("first_render_idempotency_pkey"), new TableField[] { FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY.TENANT_ID, FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY.PROJECT_ID, FirstRenderIdempotency.FIRST_RENDER_IDEMPOTENCY.IDEMPOTENCY_KEY }, true);
     public static final UniqueKey<FrontendRouteDefinitionRecord> FRONTEND_ROUTE_DEFINITION_PKEY = Internal.createUniqueKey(FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION, DSL.name("frontend_route_definition_pkey"), new TableField[] { FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION.ID }, true);
     public static final UniqueKey<FrontendRouteDefinitionRecord> FRONTEND_ROUTE_DEFINITION_ROUTE_KEY_KEY = Internal.createUniqueKey(FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION, DSL.name("frontend_route_definition_route_key_key"), new TableField[] { FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION.ROUTE_KEY }, true);
     public static final UniqueKey<GroupRoleAssignmentRecord> GROUP_ROLE_ASSIGNMENT_PKEY = Internal.createUniqueKey(GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT, DSL.name("group_role_assignment_pkey"), new TableField[] { GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT.ID }, true);
@@ -651,6 +650,7 @@ public class Keys {
     public static final UniqueKey<RenderJobRecord> UQ_RENDER_JOB_EXECUTION_SCOPE = Internal.createUniqueKey(RenderJob.RENDER_JOB, DSL.name("uq_render_job_execution_scope"), new TableField[] { RenderJob.RENDER_JOB.TENANT_ID, RenderJob.RENDER_JOB.PROJECT_ID, RenderJob.RENDER_JOB.ID }, true);
     public static final UniqueKey<RenderJobLifecycleEventsRecord> RENDER_JOB_LIFECYCLE_EVENTS_PKEY = Internal.createUniqueKey(RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS, DSL.name("render_job_lifecycle_events_pkey"), new TableField[] { RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS.ID }, true);
     public static final UniqueKey<RenderJobStatusHistoryRecord> RENDER_JOB_STATUS_HISTORY_PKEY = Internal.createUniqueKey(RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY, DSL.name("render_job_status_history_pkey"), new TableField[] { RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY.ID }, true);
+    public static final UniqueKey<RenderSubmissionIdempotencyRecord> RENDER_SUBMISSION_IDEMPOTENCY_PKEY = Internal.createUniqueKey(RenderSubmissionIdempotency.RENDER_SUBMISSION_IDEMPOTENCY, DSL.name("render_submission_idempotency_pkey"), new TableField[] { RenderSubmissionIdempotency.RENDER_SUBMISSION_IDEMPOTENCY.TENANT_ID, RenderSubmissionIdempotency.RENDER_SUBMISSION_IDEMPOTENCY.PROJECT_ID, RenderSubmissionIdempotency.RENDER_SUBMISSION_IDEMPOTENCY.IDEMPOTENCY_KEY }, true);
     public static final UniqueKey<ReviewDecisionRecord> REVIEW_DECISION_PKEY = Internal.createUniqueKey(ReviewDecision.REVIEW_DECISION, DSL.name("review_decision_pkey"), new TableField[] { ReviewDecision.REVIEW_DECISION.ID }, true);
     public static final UniqueKey<ReviewThreadRecord> REVIEW_THREAD_PKEY = Internal.createUniqueKey(ReviewThread.REVIEW_THREAD, DSL.name("review_thread_pkey"), new TableField[] { ReviewThread.REVIEW_THREAD.ID }, true);
     public static final UniqueKey<RoleRecord> ROLE_PKEY = Internal.createUniqueKey(Role.ROLE, DSL.name("role_pkey"), new TableField[] { Role.ROLE.ID }, true);

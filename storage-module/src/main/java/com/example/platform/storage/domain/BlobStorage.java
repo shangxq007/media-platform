@@ -3,6 +3,7 @@ package com.example.platform.storage.domain;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.io.InputStream;
 
 public interface BlobStorage {
     String code();
@@ -29,6 +30,11 @@ public interface BlobStorage {
      * Reads object bytes when supported (e.g. S3 / local FS). Default: not available.
      */
     default Optional<byte[]> get(String bucket, String objectKey) {
+        return Optional.empty();
+    }
+
+    /** Open an object for bounded, caller-owned streaming verification. */
+    default Optional<InputStream> open(String bucket, String objectKey) {
         return Optional.empty();
     }
 

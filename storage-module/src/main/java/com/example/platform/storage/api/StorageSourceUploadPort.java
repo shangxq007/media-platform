@@ -1,7 +1,9 @@
 package com.example.platform.storage.api;
 
-/** Storage-owned admission of bounded source bytes into a durable scoped placement. */
+import java.io.InputStream;
+
+/** Storage-owned admission of a bounded source stream into a durable scoped placement. */
 public interface StorageSourceUploadPort {
     StorageOutputPort.WrittenOutput writeSource(StorageOwnershipScope owner,
-            IssuanceIdempotencyKey key, byte[] bytes, String contentType);
+            IssuanceIdempotencyKey key, InputStream content, long declaredLength, String contentType);
 }

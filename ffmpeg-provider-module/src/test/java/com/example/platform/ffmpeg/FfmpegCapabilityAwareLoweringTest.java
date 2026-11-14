@@ -52,8 +52,13 @@ import com.example.platform.workerfabric.domain.providernative.ProviderNativeOut
 import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionContext;
 import com.example.platform.workerfabric.domain.providernative.StaticProviderExecutionContext;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.io.TempDir;
+import com.example.platform.sandbox.SandboxCancellation;
 
 /**
  * Capability-aware lowering for the bounded CPU ffmpeg slice: the typed-chain
@@ -62,6 +67,7 @@ import org.junit.jupiter.api.Test;
  * bounded shape fails closed.
  */
 class FfmpegCapabilityAwareLoweringTest {
+    @TempDir Path mediaWorkspace;
 
     private static final FfmpegCpuRenderLowerer LOWERER = new FfmpegCpuRenderLowerer();
     private static final StaticProviderExecutionContext CONTEXT =
@@ -341,6 +347,42 @@ class FfmpegCapabilityAwareLoweringTest {
                 .contains("x=(w-text_w)/2")
                 .contains("y=h-text_h-20")
                 .contains("enable='gte(t,1)*lt(t,3)'");
+    }
+
+    @Test
+    void realProviderRasterHasVisiblePixelsOnlyInsideAuthoredInterval() throws Exception {
+        Assumptions.assumeTrue(Boolean.getBoolean("media.platform.ffmpeg.real-subtitle-e2e"),
+                "requires an explicitly declared drawtext-capable Worker FFmpeg");
+        Path binaryDirectory = Path.of(System.getProperty("media.platform.ffmpeg.binary-dir"));
+        Path ffmpeg = binaryDirectory.resolve("ffmpeg").toAbsolutePath().normalize();
+        Path font = Path.of("/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf");
+        ExecutableTask task = rasterTask(timedTextRequirement(
+                "你好 Hello", FontRational.whole(1), FontRational.whole(2)));
+        var context = new RuntimeExecutionContext(task.id(), FfmpegCpuProvider.BINDING,
+                ExecutionAttemptId.of("attempt-real-subtitle"), ExecutionOwnershipGeneration.first());
+        var binding = FfmpegCpuRuntimeBindingFactory.createRender(ffmpeg,
+                FfmpegSandboxWorkspace.under(mediaWorkspace.resolve("worker")),
+                Duration.ofSeconds(30), 1024 * 1024, SandboxCancellation.never(), font);
+        Path movie = mediaWorkspace.resolve("provider-raster.mov");
+        try (var output = binding.execute(task, context, List.of())) {
+            Files.copy(output.content(), movie);
+        }
+        assertThat(Files.size(movie)).isGreaterThan(1024L);
+        assertThat(alphaPixels(ffmpeg, movie, "0.5")).isZero();
+        assertThat(alphaPixels(ffmpeg, movie, "2")).isGreaterThan(100);
+        assertThat(alphaPixels(ffmpeg, movie, "4")).isZero();
+    }
+
+    private static long alphaPixels(Path ffmpeg, Path movie, String seconds) throws Exception {
+        var process = new ProcessBuilder(ffmpeg.toString(), "-hide_banner", "-loglevel", "error",
+                "-ss", seconds, "-i", movie.toString(), "-frames:v", "1", "-f", "rawvideo",
+                "-pix_fmt", "rgba", "pipe:1").redirectErrorStream(true).start();
+        byte[] frame = process.getInputStream().readAllBytes();
+        assertThat(process.waitFor()).isZero();
+        assertThat(frame).hasSize(320 * 240 * 4);
+        long pixels = 0;
+        for (int i = 3; i < frame.length; i += 4) if ((frame[i] & 255) != 0) pixels++;
+        return pixels;
     }
 
     @Test
