@@ -362,7 +362,7 @@ class FfmpegCapabilityAwareLoweringTest {
                 ExecutionAttemptId.of("attempt-real-subtitle"), ExecutionOwnershipGeneration.first());
         var binding = FfmpegCpuRuntimeBindingFactory.createRender(ffmpeg,
                 FfmpegSandboxWorkspace.under(mediaWorkspace.resolve("worker")),
-                Duration.ofSeconds(30), 1024 * 1024, SandboxCancellation.never(), font);
+                Duration.ofSeconds(30), 128, SandboxCancellation.never(), font);
         Path movie = mediaWorkspace.resolve("provider-raster.mov");
         try (var output = binding.execute(task, context, List.of())) {
             Files.copy(output.content(), movie);
