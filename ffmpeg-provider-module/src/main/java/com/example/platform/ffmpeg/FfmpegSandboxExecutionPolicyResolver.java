@@ -35,13 +35,15 @@ public final class FfmpegSandboxExecutionPolicyResolver
     private final Duration timeout;
     private final long captureBytes;
     private final SandboxRuntimeCapabilities capabilities;
+    private final Path fontFile;
 
     public FfmpegSandboxExecutionPolicyResolver(
             Path executable,
             FfmpegSandboxWorkspace workspace,
             Duration timeout,
             long captureBytes,
-            SandboxRuntimeCapabilities capabilities) {
+            SandboxRuntimeCapabilities capabilities,
+            Path fontFile) {
         this.executable = Objects.requireNonNull(executable, "executable")
                 .toAbsolutePath().normalize();
         this.workspace = Objects.requireNonNull(workspace, "workspace");
@@ -52,6 +54,7 @@ public final class FfmpegSandboxExecutionPolicyResolver
             throw new IllegalArgumentException("FFmpeg sandbox settings must be bounded and normalized");
         }
         this.captureBytes = captureBytes;
+        this.fontFile = fontFile == null ? null : fontFile.toAbsolutePath().normalize();
     }
 
     @Override
@@ -60,8 +63,7 @@ public final class FfmpegSandboxExecutionPolicyResolver
         Objects.requireNonNull(command, "command");
         Objects.requireNonNull(runtimeLocalInputs, "runtimeLocalInputs");
         if (!(command.invocationSpec() instanceof ProcessInvocationSpec invocation)
-                || !invocation.executable().equals(executable.toString())
-                || runtimeLocalInputs.isEmpty()) {
+                || !invocation.executable().equals(executable.toString())) {
             return rejected("FFmpeg requires an exact typed process and materialized inputs");
         }
         java.util.Map<String, Path> inputs = new java.util.HashMap<>();
@@ -88,6 +90,11 @@ public final class FfmpegSandboxExecutionPolicyResolver
             return rejected("FFmpeg argv must reference every materialized input exactly once");
         }
         try {
+            List<Path> readOnlyInputs = new ArrayList<>(inputs.values());
+            if (fontFile != null) {
+                // Declared worker execution dependency (subtitle rasterization): read-only mount.
+                readOnlyInputs.add(fontFile);
+            }
             SandboxExecutionRequirement requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(
                             Set.of(executable.toString()),
@@ -95,7 +102,7 @@ public final class FfmpegSandboxExecutionPolicyResolver
                             arguments,
                             timeout),
                     FilesystemPolicy.exact(
-                            FfmpegRuntimeFiles.inputs(executable, inputs.values().toArray(Path[]::new)),
+                            FfmpegRuntimeFiles.inputs(executable, readOnlyInputs.toArray(Path[]::new)),
                             workspace.root(),
                             workspace.temporaryRoot(),
                             workspace.outputStagingRoot(),

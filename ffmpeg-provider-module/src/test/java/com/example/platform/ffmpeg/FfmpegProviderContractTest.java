@@ -53,11 +53,13 @@ class FfmpegProviderContractTest {
         assertThat(FfmpegCpuProvider.CAPABILITY_PROFILE.supportDeclarations())
                 .extracting(support -> support.capabilityId().value())
                 .containsExactlyInAnyOrder(
-                        "media.transcode", "video.decode", "render.composite", "render.output", "media.cover-image", "media.thumbnail");
+                        "media.transcode", "video.decode", "render.composite", "render.output",
+                        "media.cover-image", "media.thumbnail", "subtitle.rasterize");
         assertThat(FfmpegCpuProvider.EXECUTION_CONTRACT.capabilityContractReferences())
                 .extracting(reference -> reference.capabilityId().value())
                 .containsExactlyInAnyOrder(
-                        "media.transcode", "video.decode", "render.composite", "render.output", "media.cover-image", "media.thumbnail");
+                        "media.transcode", "video.decode", "render.composite", "render.output",
+                        "media.cover-image", "media.thumbnail", "subtitle.rasterize");
     }
 
     @Test

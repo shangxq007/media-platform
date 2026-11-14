@@ -22,7 +22,27 @@ import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
 import com.example.platform.shared.capability.ContractVersionRange;
 import com.example.platform.shared.time.FrameRate;
+import com.example.platform.fonttext.resolution.FontFallbackPolicy;
+import com.example.platform.fonttext.text.ParagraphBaseDirection;
+import com.example.platform.fonttext.text.TextContent;
+import com.example.platform.fonttext.text.StyledText;
+import com.example.platform.fonttext.text.TextRange;
+import com.example.platform.fonttext.typography.FontFamilyName;
+import com.example.platform.fonttext.typography.FontRational;
+import com.example.platform.fonttext.typography.FontSelectionIntent;
+import com.example.platform.fonttext.typography.FontSize;
+import com.example.platform.fonttext.typography.LineHeight;
+import com.example.platform.fonttext.typography.OpenTypeFeatureIntent;
+import com.example.platform.fonttext.typography.OpticalSizingIntent;
+import com.example.platform.fonttext.typography.ParagraphStyle;
+import com.example.platform.fonttext.typography.TextFrame;
+import com.example.platform.fonttext.typography.TextStyle;
+import com.example.platform.fonttext.typography.TextStyleRun;
+import com.example.platform.render.domain.renderplan.RenderExecutionCoverage;
+import com.example.platform.render.domain.renderplan.RenderExtent;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.TextElementId;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
@@ -67,8 +87,7 @@ class FfmpegCapabilityAwareLoweringTest {
 
     @Test
     void compositeAndEncodeLowerWithoutASourceWindow() {
-        FfmpegCpuRenderPlan composite = LOWERER.lower(
-                task("composite", List.of("render.composite"), null, 1), CONTEXT);
+        FfmpegCpuRenderPlan composite = LOWERER.lower(compositeTaskWithoutSourceWindow(), CONTEXT);
         FfmpegCpuRenderPlan encode = LOWERER.lower(
                 task("encode", List.of("render.output"), null, 1), CONTEXT);
 
@@ -114,8 +133,8 @@ class FfmpegCapabilityAwareLoweringTest {
                 .contains("-filter_complex", "-t", "2");
         String filter = invocation.arguments().get(invocation.arguments().indexOf("-filter_complex") + 1);
         assertThat(filter).contains("color=c=black:s=320x240:r=30/1:d=2")
-                .contains("overlay=enable='gte(t,0)*lt(t,0.5)'")
-                .contains("overlay=enable='gte(t,1)*lt(t,2)'")
+                .contains("overlay=format=auto:enable='gte(t,0)*lt(t,0.5)'")
+                .contains("overlay=format=auto:enable='gte(t,1)*lt(t,2)'")
                 .doesNotContain("tpad=");
     }
 
@@ -192,8 +211,16 @@ class FfmpegCapabilityAwareLoweringTest {
                         .adapt(plan, context)
                         .commands().getFirst().invocationSpec();
         assertThat(invocation.executable()).isEqualTo("/usr/bin/ffmpeg");
-        assertThat(invocation.arguments()).noneMatch(
-                value -> value.contains(";") || value.contains("&&"));
+        int filterIndex = invocation.arguments().indexOf("-filter_complex");
+        for (int i = 0; i < invocation.arguments().size(); i++) {
+            String value = invocation.arguments().get(i);
+            // `-filter_complex` legitimately uses ';' as a graph separator; every other argv
+            // element must stay free of shell metacharacters.
+            if (i != filterIndex + 1) {
+                assertThat(value).doesNotContain(";");
+            }
+            assertThat(value).doesNotContain("&&");
+        }
         return invocation.arguments();
     }
 
@@ -252,6 +279,131 @@ class FfmpegCapabilityAwareLoweringTest {
         ExecutableInputProjection projection = mock(ExecutableInputProjection.class);
         when(projection.inputId()).thenReturn(new ExecutionInputId("input-media"));
         return projection;
+    }
+
+    @Test
+    void rasterLowersTimedTextWithItsCapabilityAndDeclaredFont() {
+        var requirement = timedTextRequirement("你好世界", FontRational.whole(1), FontRational.whole(2));
+        ExecutableTask task = rasterTask(requirement);
+        var lowerer = new FfmpegCpuRenderLowerer("/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf");
+
+        FfmpegCpuRenderPlan plan = lowerer.lower(task, CONTEXT);
+
+        assertThat(plan.operation()).isEqualTo(FfmpegCpuRenderPlan.Operation.RASTER);
+        assertThat(plan.rasterParameters()).isPresent();
+        var raster = plan.rasterParameters().orElseThrow();
+        assertThat(raster.text()).isEqualTo("你好世界");
+        assertThat(raster.start()).isEqualTo(MediaTime.ofRational(1, 1));
+        assertThat(raster.end()).isEqualTo(MediaTime.ofRational(3, 1));
+        assertThat(raster.fontSize()).isEqualTo(24);
+        assertThat(raster.fontFile()).isEqualTo("/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf");
+
+        List<String> arguments = arguments(plan);
+        assertThat(arguments).contains("-vf", "-c:v", "qtrle", "-pix_fmt", "argb", "-f", "mov", "pipe:1");
+        assertThat(arguments.get(arguments.indexOf("-vf") + 1))
+                .contains("drawtext=fontfile=/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf")
+                .contains("text='你好世界'")
+                .contains("fontsize=24")
+                .contains("x=(w-text_w)/2")
+                .contains("y=h-text_h-20")
+                .contains("enable='between(t,1,3)'");
+    }
+
+    @Test
+    void rasterFailsClosedWithoutADeclaredWorkerFont() {
+        var requirement = timedTextRequirement("你好", FontRational.whole(0), FontRational.whole(2));
+        ExecutableTask task = rasterTask(requirement);
+        assertFailure(() -> LOWERER.lower(task, CONTEXT),
+                ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS);
+    }
+
+    private static TimedTextMaterializationRequirement timedTextRequirement(
+            String text, FontRational start, FontRational duration) {
+        TextContent content = new TextContent(text);
+        StyledText styled = new StyledText(
+                content,
+                List.of(),
+                List.of(new TextStyleRun(TextRange.of(0, content.scalarCount()), sampleStyle())),
+                new ParagraphStyle(ParagraphStyle.Alignment.START, ParagraphStyle.Justification.NONE,
+                        LineHeight.ratio(FontRational.of(12, 10)),
+                        ParagraphStyle.WrapPolicy.WRAP, ParagraphBaseDirection.AUTO,
+                        ParagraphStyle.LineBreakPolicy.STANDARD));
+        return new TimedTextMaterializationRequirement(
+                new TextElementId("text-raster-test"),
+                start, duration, styled,
+                new TextFrame(FontRational.of(640, 1), null,
+                        TextFrame.HorizontalAlignment.CENTER, TextFrame.VerticalAlignment.BOTTOM,
+                        ParagraphStyle.WrapPolicy.WRAP, TextFrame.OverflowBehavior.CLIP),
+                new FontFallbackPolicy(List.of(new FontFamilyName("Noto Sans CJK SC")),
+                        List.of(), List.of(), List.of()),
+                List.of());
+    }
+
+    private static TextStyle sampleStyle() {
+        return new TextStyle(
+                new FontSelectionIntent(List.of(new FontFamilyName("Noto Sans CJK SC")),
+                        FontSelectionIntent.WeightIntent.NORMAL,
+                        FontSelectionIntent.StretchIntent.NORMAL,
+                        FontSelectionIntent.SlantIntent.NORMAL,
+                        OpticalSizingIntent.disabled(),
+                        List.of()),
+                new FontSize(FontRational.of(24, 1)),
+                FontRational.of(0, 1),
+                OpenTypeFeatureIntent.empty());
+    }
+
+    private static ExecutableTask compositeTaskWithoutSourceWindow() {
+        ExecutableTask task = mock(ExecutableTask.class);
+        ExecutableTaskMembership membership = mock(ExecutableTaskMembership.class);
+        PhysicalPlanUnit unit = mock(PhysicalPlanUnit.class);
+        InputBinding input = mock(InputBinding.class);
+        ExecutionInputId inputId = new ExecutionInputId("input-media");
+        when(input.inputId()).thenReturn(inputId);
+        when(input.dependencyVariant()).thenReturn(
+                new com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput(
+                        MediaTime.ZERO, MediaTime.ofRational(2, 1)));
+        when(unit.operationKey()).thenReturn("composite");
+        when(unit.typedInputs()).thenReturn(List.of(input));
+        when(unit.typedOutputs()).thenReturn(List.of(mock(OutputDeclaration.class)));
+        when(unit.capabilityRequirementRefs()).thenReturn(List.of(capabilityRef("render.composite")));
+        when(unit.executionIntentRefs()).thenReturn(List.of());
+        when(unit.temporalWindow()).thenReturn(null);
+        when(unit.propagatedExtent()).thenReturn(new RenderExtent(
+                MediaTime.ZERO, MediaTime.ofRational(2, 1), FrameRate.of(30, 1)));
+        when(unit.executionCoverage()).thenReturn(null);
+        when(membership.physicalPlanUnit()).thenReturn(unit);
+        when(task.id()).thenReturn(new ExecutableTaskId("e".repeat(64)));
+        when(task.providerBindingPin()).thenReturn(FfmpegCpuProvider.BINDING);
+        when(task.memberships()).thenReturn(List.of(membership));
+        ExecutableInputProjection runtime = mock(ExecutableInputProjection.class);
+        when(runtime.inputId()).thenReturn(inputId);
+        when(task.requiredRuntimeInputs()).thenReturn(List.of(runtime));
+        when(task.authoritativeOutputIds()).thenReturn(List.of(new ExecutionOutputId("output-media")));
+        return task;
+    }
+
+    private static ExecutableTask rasterTask(TimedTextMaterializationRequirement requirement) {
+        ExecutableTask task = mock(ExecutableTask.class);
+        ExecutableTaskMembership membership = mock(ExecutableTaskMembership.class);
+        PhysicalPlanUnit unit = mock(PhysicalPlanUnit.class);
+        when(unit.operationKey()).thenReturn("raster");
+        when(unit.typedInputs()).thenReturn(List.of());
+        when(unit.typedOutputs()).thenReturn(List.of(mock(OutputDeclaration.class)));
+        when(unit.capabilityRequirementRefs()).thenReturn(List.of(capabilityRef("subtitle.rasterize")));
+        when(unit.executionIntentRefs()).thenReturn(List.of());
+        when(unit.temporalWindow()).thenReturn(null);
+        when(unit.propagatedExtent()).thenReturn(new RenderExtent(
+                MediaTime.ZERO, MediaTime.ofRational(5, 1), FrameRate.of(30, 1)));
+        when(unit.executionCoverage()).thenReturn(new RenderExecutionCoverage(
+                MediaTime.ofRational(1, 1), MediaTime.ofRational(3, 1), FrameRate.of(30, 1)));
+        when(membership.physicalPlanUnit()).thenReturn(unit);
+        when(membership.mandatoryMaterializationMarkers()).thenReturn(List.of(requirement));
+        when(task.id()).thenReturn(new ExecutableTaskId("d".repeat(64)));
+        when(task.providerBindingPin()).thenReturn(FfmpegCpuProvider.BINDING);
+        when(task.memberships()).thenReturn(List.of(membership));
+        when(task.requiredRuntimeInputs()).thenReturn(List.of());
+        when(task.authoritativeOutputIds()).thenReturn(List.of(new ExecutionOutputId("output-media")));
+        return task;
     }
 
     @FunctionalInterface

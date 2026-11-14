@@ -46,10 +46,10 @@ class FfmpegArchitectureAndPathGuardTest {
                 new FfmpegSandboxWorkspace(
                         workspace, workspace.resolve("tmp"), outside, workspace),
                 Duration.ofSeconds(1), 4096,
-                SandboxRuntimeCapabilities.unavailable("path-test"));
+                SandboxRuntimeCapabilities.unavailable("path-test"), null);
         var exactWorkspace = new FfmpegSandboxExecutionPolicyResolver(
                 executable, FfmpegSandboxWorkspace.under(workspace), Duration.ofSeconds(1), 4096,
-                SandboxRuntimeCapabilities.unavailable("path-test"));
+                SandboxRuntimeCapabilities.unavailable("path-test"), null);
 
         assertThat(escaping.resolve(exactCommand, List.of(input)))
                 .isInstanceOf(SandboxResolution.Rejected.class);

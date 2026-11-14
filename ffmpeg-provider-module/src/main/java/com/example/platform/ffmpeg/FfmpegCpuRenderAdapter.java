@@ -95,6 +95,9 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
             arguments.add("-ss");
             arguments.add(seconds(parameters.position()));
         });
+        if (plan.operation() == FfmpegCpuRenderPlan.Operation.RASTER) {
+            return rasterArguments(arguments, plan);
+        }
         if (plan.compositeInputs().isEmpty()) {
             arguments.add("-i");
             arguments.add(materializedInputToken(plan.inputId()));
@@ -121,14 +124,14 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
                 }
                 filter.append("[clip").append(i).append(']');
             }
-            filter.append(";[canvas][clip0]overlay=enable='gte(t,")
+            filter.append(";[canvas][clip0]overlay=format=auto:enable='gte(t,")
                     .append(seconds(plan.compositeInputs().getFirst().start()))
                     .append(")*lt(t,").append(seconds(plan.compositeInputs().getFirst().end()))
                     .append(")'[base0]");
             for (int i = 1; i < plan.compositeInputs().size(); i++) {
                 var input = plan.compositeInputs().get(i);
                 filter.append(';').append("[base").append(i - 1).append("][clip").append(i)
-                        .append("]overlay=enable='gte(t,")
+                        .append("]overlay=format=auto:enable='gte(t,")
                         .append(seconds(input.start())).append(")*lt(t,")
                         .append(seconds(input.end())).append(")'[base").append(i).append(']');
             }
@@ -181,6 +184,53 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         LOG.info("FFMPEG_ARGV task={} operation={} argv={}",
                 plan.executableTaskId().sha256Hex(), plan.operation(), arguments);
         return arguments;
+    }
+
+    /**
+     * Rasterize authored timed text into a transparent-background stream. The stream carries its
+     * own visibility interval in the drawtext {@code enable} expression, so the composite overlay
+     * can span the whole extent and the alpha channel gates the visible interval.
+     */
+    private static List<String> rasterArguments(List<String> arguments, FfmpegCpuRenderPlan plan) {
+        var raster = plan.rasterParameters().orElseThrow();
+        var rate = plan.outputFrameRate().orElse(FrameRate.of(30, 1));
+        arguments.add("-f");
+        arguments.add("lavfi");
+        arguments.add("-i");
+        arguments.add("color=c=0x00000000:s=320x240:r="
+                + rate.numerator() + "/" + rate.denominator() + ",format=rgba");
+        arguments.add("-vf");
+        arguments.add("drawtext=fontfile=" + escapeDrawtextPath(raster.fontFile())
+                + ":text='" + escapeDrawtextText(raster.text()) + "'"
+                + ":fontcolor=white:fontsize=" + raster.fontSize()
+                + ":x=" + raster.x() + ":y=" + raster.y()
+                + ":enable='between(t," + seconds(raster.start()) + ","
+                + seconds(raster.end()) + ")'");
+        arguments.add("-c:v");
+        arguments.add("qtrle");
+        arguments.add("-pix_fmt");
+        arguments.add("argb");
+        arguments.add("-f");
+        arguments.add("mov");
+        arguments.add("pipe:1");
+        LOG.info("FFMPEG_RASTER_ARGV task={} argv={}",
+                plan.executableTaskId().sha256Hex(), arguments);
+        return arguments;
+    }
+
+    /** Escape a filesystem path for an FFmpeg filter option value. */
+    private static String escapeDrawtextPath(String path) {
+        return path.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'");
+    }
+
+    /** Escape authored text for FFmpeg drawtext (single-quoted filter option). */
+    private static String escapeDrawtextText(String text) {
+        return text.replace("\\", "\\\\")
+                .replace(":", "\\:")
+                .replace("'", "\\'")
+                .replace("%", "\\%")
+                .replace("\n", " ")
+                .replace("\r", " ");
     }
 
     /** Exact rational seconds, deterministic plain-decimal rendering. */

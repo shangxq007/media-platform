@@ -120,7 +120,8 @@ public class FirstRenderPlanningApplicationService {
         CapabilityContext capabilityContext = new CapabilityContext(Set.of(
                 RenderCapabilityVocabulary.videoDecode().capabilityId(),
                 RenderCapabilityVocabulary.composite().capabilityId(),
-                RenderCapabilityVocabulary.outputEncode().capabilityId()));
+                RenderCapabilityVocabulary.outputEncode().capabilityId(),
+                RenderCapabilityVocabulary.timedTextRasterize().capabilityId()));
 
         // 7. Declarations come from the Provider Interoperability Authority (OD5/R5).
         List<ProviderBoundaryCompatibilityDeclaration> declarations =

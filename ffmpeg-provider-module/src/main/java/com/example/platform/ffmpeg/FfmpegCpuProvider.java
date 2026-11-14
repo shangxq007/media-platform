@@ -52,6 +52,15 @@ public final class FfmpegCpuProvider {
     public static final CapabilityId COMPOSITE_CAPABILITY = CapabilityId.of("render.composite");
     /** #20 render-planning output encoding capability. */
     public static final CapabilityId OUTPUT_CAPABILITY = CapabilityId.of("render.output");
+    /**
+     * #20 render-planning timed-text/subtitle rasterization capability.
+     *
+     * <p>The bounded V1 rasterizer consumes the typed {@code TimedTextMaterializationRequirement}
+     * (text content, exact timing, frame, font size) and burns it into the frame stream with the
+     * FFmpeg {@code drawtext} filter. The font is a declared worker execution dependency (like the
+     * FFmpeg executable), never a request-supplied path.
+     */
+    public static final CapabilityId SUBTITLE_RASTERIZE_CAPABILITY = CapabilityId.of("subtitle.rasterize");
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
             ContractVersionRange.exactly(ContractVersion.of(1, 0));
 
@@ -75,6 +84,8 @@ public final class FfmpegCpuProvider {
                                     COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(
                                     OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
+                            new ProviderCapabilityContractReference(
+                                    SUBTITLE_RASTERIZE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 
@@ -90,6 +101,8 @@ public final class FfmpegCpuProvider {
                                     COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(
                                     OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
+                            ProviderCapabilitySupport.unpinned(
+                                    SUBTITLE_RASTERIZE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 

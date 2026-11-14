@@ -3,7 +3,12 @@ package com.example.platform.ffmpeg;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.planning.ExecutionIoProjection.CapabilityRequirementRef;
 import com.example.platform.execution.taskgraph.ExecutableTask;
+import com.example.platform.fonttext.text.StyledText;
+import com.example.platform.fonttext.typography.TextFrame;
+import com.example.platform.render.domain.renderplan.ExactTextTimelineTimeProjection;
 import com.example.platform.render.domain.renderplan.RenderSampleWindow;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.providernative.PlanLowerer;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
@@ -34,7 +39,23 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
             FfmpegCpuProvider.TRANSCODE_CAPABILITY.value(),
             FfmpegCpuProvider.VIDEO_DECODE_CAPABILITY.value(),
             FfmpegCpuProvider.COMPOSITE_CAPABILITY.value(),
-            FfmpegCpuProvider.OUTPUT_CAPABILITY.value());
+            FfmpegCpuProvider.OUTPUT_CAPABILITY.value(),
+            FfmpegCpuProvider.SUBTITLE_RASTERIZE_CAPABILITY.value());
+
+    /**
+     * Declared worker font execution dependency (absolute normalized path), or {@code null} when
+     * the worker did not declare one. Subtitle rasterization fails closed without it; the font is
+     * a worker environment dependency like the FFmpeg executable, never a request-supplied path.
+     */
+    private final String fontFile;
+
+    public FfmpegCpuRenderLowerer() {
+        this(null);
+    }
+
+    public FfmpegCpuRenderLowerer(String fontFile) {
+        this.fontFile = fontFile == null || fontFile.isBlank() ? null : fontFile;
+    }
 
     @Override
     public FfmpegCpuRenderPlan lower(
@@ -71,16 +92,35 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
                     .map(input -> input.inputId()).collect(java.util.stream.Collectors.toSet());
             var inputs = new java.util.ArrayList<FfmpegCpuRenderPlan.TimedInput>();
             for (var input : unit.typedInputs()) {
-                if (!(input.dependencyVariant() instanceof
-                        com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput timed)
-                        || !runtimeIds.contains(input.inputId())
-                        || timed.start().isLessThan(extent.start())
-                        || timed.end().isGreaterThan(extent.end())) {
+                MediaTime overlayStart;
+                MediaTime overlayEnd;
+                if (input.dependencyVariant() instanceof
+                        com.example.platform.render.domain.renderplan.RenderDependency.TimedCompositeInput timed) {
+                    if (!runtimeIds.contains(input.inputId())
+                            || timed.start().isLessThan(extent.start())
+                            || timed.end().isGreaterThan(extent.end())) {
+                        throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                                "each composition input requires exact in-extent timing");
+                    }
+                    overlayStart = timed.start();
+                    overlayEnd = timed.end();
+                } else if (input.dependencyVariant() instanceof
+                        com.example.platform.render.domain.renderplan.RenderDependency.CompositeInput) {
+                    // TIMED_TEXT raster streams carry their own visibility interval in the
+                    // drawtext `enable` expression, so the composite overlay spans the whole
+                    // propagated extent and the transparent stream gates the visible interval.
+                    if (!runtimeIds.contains(input.inputId())) {
+                        throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                                "each text overlay input requires a declared runtime input");
+                    }
+                    overlayStart = extent.start();
+                    overlayEnd = extent.end();
+                } else {
                     throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
-                            "each composition input requires exact in-extent timing");
+                            "each composition input requires a typed composite dependency");
                 }
                 inputs.add(new FfmpegCpuRenderPlan.TimedInput(input.inputId(),
-                        timed.start().subtract(extent.start()), timed.end().subtract(extent.start())));
+                        overlayStart.subtract(extent.start()), overlayEnd.subtract(extent.start())));
             }
             inputs.sort(java.util.Comparator.comparing(FfmpegCpuRenderPlan.TimedInput::start)
                     .thenComparing(input -> input.inputId().value()));
@@ -97,7 +137,10 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
                     inputs.getFirst().inputId(), task.authoritativeOutputIds().getFirst(),
                     Optional.empty(), Optional.empty(), inputs,
                     Optional.of(extent.end().subtract(extent.start())),
-                    Optional.of(extent.frameRate()));
+                    Optional.of(extent.frameRate()), Optional.empty());
+        }
+        if (operation == FfmpegCpuRenderPlan.Operation.RASTER) {
+            return rasterPlan(task, membership, unit);
         }
         if (unit.typedInputs().size() != 1 || task.requiredRuntimeInputs().size() != 1) {
             throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
@@ -133,7 +176,8 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
                 task.authoritativeOutputIds().getFirst(),
                 window, artifactRequest == null ? Optional.empty() : Optional.of(artifactRequest.parameters()),
                 java.util.List.of(), Optional.empty(),
-                extent == null ? Optional.empty() : Optional.of(extent.frameRate()));
+                extent == null ? Optional.empty() : Optional.of(extent.frameRate()),
+                Optional.empty());
     }
 
     private static FfmpegCpuRenderPlan.Operation operationOf(String operationKey) {
@@ -143,6 +187,7 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
             case "decode" -> FfmpegCpuRenderPlan.Operation.DECODE;
             case "composite" -> FfmpegCpuRenderPlan.Operation.COMPOSITE;
             case "encode" -> FfmpegCpuRenderPlan.Operation.ENCODE;
+            case "raster" -> FfmpegCpuRenderPlan.Operation.RASTER;
             default -> throw failure(ProviderNativeFailureCode.UNSUPPORTED_OPERATION_NATIVE_LOWERING,
                     "FFmpeg CPU provider does not lower operation: " + operationKey);
         };
@@ -162,6 +207,7 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
             case DECODE -> FfmpegCpuProvider.VIDEO_DECODE_CAPABILITY.value();
             case COMPOSITE -> FfmpegCpuProvider.COMPOSITE_CAPABILITY.value();
             case ENCODE -> FfmpegCpuProvider.OUTPUT_CAPABILITY.value();
+            case RASTER -> FfmpegCpuProvider.SUBTITLE_RASTERIZE_CAPABILITY.value();
             case TRANSCODE, FRAME_EXTRACT -> null;
         };
         if (required != null && references.stream()
@@ -170,6 +216,92 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
             throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                     "FFmpeg CPU " + operation + " lowering requires its own capability requirement");
         }
+    }
+
+    private FfmpegCpuRenderPlan rasterPlan(
+            ExecutableTask task, ExecutableTaskMembership membership,
+            com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit unit) {
+        if (fontFile == null) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires a declared worker font");
+        }
+        if (!unit.typedInputs().isEmpty() || !task.requiredRuntimeInputs().isEmpty()) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization is input-free (the font is a declared worker dependency)");
+        }
+        TimedTextMaterializationRequirement text = null;
+        for (var marker : membership.mandatoryMaterializationMarkers()) {
+            if (marker instanceof TimedTextMaterializationRequirement candidate) {
+                if (text != null) {
+                    throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                            "subtitle rasterization requires exactly one timed-text requirement");
+                }
+                text = candidate;
+            }
+        }
+        if (text == null) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires its typed TIMED_TEXT materialization requirement");
+        }
+        if (unit.capabilityRequirementRefs().size() != 1
+                || !unit.capabilityRequirementRefs().getFirst().declaration().capabilityId().value()
+                        .equals(FfmpegCpuProvider.SUBTITLE_RASTERIZE_CAPABILITY.value())) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires exactly the subtitle.rasterize capability");
+        }
+        var extent = unit.propagatedExtent();
+        if (extent == null) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires an exact propagated extent");
+        }
+        if (unit.executionCoverage() == null) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires exact execution coverage");
+        }
+        var startResult = ExactTextTimelineTimeProjection.project(text.start());
+        var endResult = ExactTextTimelineTimeProjection.projectEnd(text.start(), text.duration());
+        if (!startResult.exact() || !endResult.exact()) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization timing must project exactly");
+        }
+        var start = ((ExactTextTimelineTimeProjection.Projected) startResult).mediaTime();
+        var end = ((ExactTextTimelineTimeProjection.Projected) endResult).mediaTime();
+        if (start.isLessThan(extent.start()) || end.isGreaterThan(extent.end())) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization interval must be inside the propagated extent");
+        }
+        StyledText styledText = text.styledText();
+        String content = styledText.content().value();
+        if (content.isEmpty()) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires non-empty text content");
+        }
+        if (styledText.styleRuns().isEmpty()) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "subtitle rasterization requires at least one style run");
+        }
+        var fontSizeValue = styledText.styleRuns().getFirst().style().fontSize().value();
+        int fontSize = (int) Math.round(fontSizeValue.numerator().doubleValue()
+                / fontSizeValue.denominator().doubleValue());
+        String x = switch (text.frame().horizontalAlignment()) {
+            case START -> "20";
+            case CENTER -> "(w-text_w)/2";
+            case END -> "w-text_w-20";
+        };
+        String y = switch (text.frame().verticalAlignment()) {
+            case TOP -> "20";
+            case CENTER -> "(h-text_h)/2";
+            case BOTTOM -> "h-text_h-20";
+        };
+        var parameters = new FfmpegCpuRenderPlan.RasterParameters(
+                content, start.subtract(extent.start()), end.subtract(extent.start()),
+                fontSize, fontFile, x, y);
+        LOG.info("FFMPEG_RASTER_PLAN task={} start={} end={} fontSize={} contentLength={}",
+                task.id().sha256Hex(), parameters.start(), parameters.end(), fontSize, content.length());
+        return new FfmpegCpuRenderPlan(task.id(), task.providerBindingPin(),
+                FfmpegCpuRenderPlan.Operation.RASTER, null, task.authoritativeOutputIds().getFirst(),
+                Optional.empty(), Optional.empty(), java.util.List.of(), Optional.empty(),
+                Optional.of(extent.frameRate()), Optional.of(parameters));
     }
 
     private static Optional<FfmpegCpuRenderPlan.SourceWindow> sourceWindow(

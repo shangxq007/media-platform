@@ -27,12 +27,17 @@ dependencies {
     implementation(project(":extension-module"))
     // ABI companion referenced by canonical execution-plan record signatures.
     compileOnly(project(":render-module"))
+    // #20 timed-text rasterization lowering reads the typed TimedTextMaterializationRequirement
+    // and its authored StyledText/TextFrame values (no cycle: font-text -> shared-kernel only).
+    compileOnly(project(":font-text-module"))
     compileOnly("org.pf4j:pf4j:3.15.0")
     annotationProcessor("org.pf4j:pf4j:3.15.0")
 
     testImplementation(project(":artifact-module"))
     testImplementation(project(":storage-module"))
     testImplementation(project(":render-module"))
+    // #20 raster lowering tests construct the typed TimedTextMaterializationRequirement values.
+    testImplementation(project(":font-text-module"))
     // Canonical Audio Mix authority is needed by the TimelineDocument fixture of the
     // typed-chain integration test (render/timeline expose it only as an implementation dep).
     testImplementation(project(":audio-module"))

@@ -11,7 +11,8 @@ public record ProviderPluginRuntimeContext(
         Path workspaceRoot,
         Duration timeout,
         long captureBytes,
-        SandboxCancellation cancellation) {
+        SandboxCancellation cancellation,
+        Path fontFile) {
 
     public ProviderPluginRuntimeContext {
         executable = Objects.requireNonNull(executable, "executable").toAbsolutePath().normalize();
@@ -25,5 +26,6 @@ public record ProviderPluginRuntimeContext(
         if (captureBytes <= 0) {
             throw new IllegalArgumentException("captureBytes must be positive");
         }
+        fontFile = fontFile == null ? null : fontFile.toAbsolutePath().normalize();
     }
 }

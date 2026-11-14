@@ -167,7 +167,7 @@ final class ExternalProviderClosedLoopHarness {
             Path executable, Path workspace, boolean cancelled) {
         SandboxCancellation cancellation = cancelled ? () -> true : SandboxCancellation.never();
         return new ProviderPluginRuntimeContext(
-                executable, workspace, Duration.ofSeconds(20), 8 * 1024 * 1024, cancellation);
+                executable, workspace, Duration.ofSeconds(20), 8 * 1024 * 1024, cancellation, null);
     }
 
     record Outcome(

@@ -102,7 +102,7 @@ class BmfProviderExtensionTest {
     void creatingARuntimeBindingFailsClosedUntilBmfIsIntegrated() {
         assertThatThrownBy(() -> EXTENSION.createRuntimeBinding(new ProviderPluginRuntimeContext(
                 Path.of("/usr/bin/bmf"), Path.of("/tmp/bmf-workspace"),
-                Duration.ofMinutes(1), 4096, SandboxCancellation.never())))
+                Duration.ofMinutes(1), 4096, SandboxCancellation.never(), null)))
                 .isInstanceOf(ProviderNativeExecutionFailure.class)
                 .satisfies(failure -> assertThat(
                         ((ProviderNativeExecutionFailure) failure).code())

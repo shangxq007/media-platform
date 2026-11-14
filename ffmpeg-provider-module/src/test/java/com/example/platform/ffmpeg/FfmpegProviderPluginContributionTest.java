@@ -44,7 +44,7 @@ class FfmpegProviderPluginContributionTest {
         ProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
         ProviderPluginRuntimeContext context = new ProviderPluginRuntimeContext(
                 Path.of("/usr/bin/ffmpeg"), temp.resolve("workspace"),
-                Duration.ofSeconds(10), 1024 * 1024, SandboxCancellation.never());
+                Duration.ofSeconds(10), 1024 * 1024, SandboxCancellation.never(), null);
 
         assertThat(contribution.createRuntimeBinding(context)).isNotNull();
     }

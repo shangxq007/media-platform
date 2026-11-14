@@ -41,7 +41,10 @@ public class RemoteWorkerRuntimeConfiguration {
             try {
                 Path executionRoot = Files.createTempDirectory(root, "execution-");
                 return new ProviderPluginRuntimeContext(executables.get(contribution.pluginId()), executionRoot,
-                        timeout, captureBytes, cancellation);
+                        timeout, captureBytes, cancellation,
+                        environment.containsProperty("app.remote-worker.font")
+                                ? Path.of(environment.getProperty("app.remote-worker.font"))
+                                : null);
             } catch (java.io.IOException failure) { throw new IllegalStateException("Cannot create bounded runtime workspace", failure); }
         }, root);
     }

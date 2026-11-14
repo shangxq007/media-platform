@@ -15,6 +15,10 @@ platform:
     # The typed PF4J provider plugin JARs are loaded from this directory when the worker starts;
     # a missing directory fails the worker context closed.
     plugins-directory: ${FFMPEG_WORKER_PLUGINS_DIRECTORY:./.data/ffmpeg-worker-plugins}
+    # Declared worker font execution dependency for timed-text/subtitle rasterization.
+    # Blank means the worker declares no font; subtitle rasterization then fails closed.
+    sandbox:
+      font: ${FFMPEG_WORKER_FONT:}
     # Bounded workspace root handed to every provider runtime binding.
     workspace-root: ${FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT:/tmp/media-platform-ffmpeg-worker/plugin-workspace}
     # Provider runtime bounding applied to each catalog-derived runtime binding.

@@ -35,7 +35,7 @@ public final class FfmpegCpuRuntimeBindingFactory {
         return new ProviderNativeRuntimeBinding<>(
                 new FfmpegCpuTranscodeLowerer(),
                 new FfmpegCpuRuntimeAdapter(executable),
-                executor(executable, workspace, timeout, captureBytes, cancellation));
+                executor(executable, workspace, timeout, captureBytes, cancellation, null));
     }
 
     /** The capability-aware binding exposed by the provider contribution. */
@@ -44,11 +44,12 @@ public final class FfmpegCpuRuntimeBindingFactory {
             FfmpegSandboxWorkspace workspace,
             Duration timeout,
             long captureBytes,
-            SandboxCancellation cancellation) {
+            SandboxCancellation cancellation,
+            Path fontFile) {
         return new ProviderNativeRuntimeBinding<>(
-                new FfmpegCpuRenderLowerer(),
+                new FfmpegCpuRenderLowerer(fontFile == null ? null : fontFile.toString()),
                 new FfmpegCpuRenderAdapter(executable),
-                executor(executable, workspace, timeout, captureBytes, cancellation));
+                executor(executable, workspace, timeout, captureBytes, cancellation, fontFile));
     }
 
     private static SandboxRuntimeCommandExecutor executor(
@@ -56,7 +57,8 @@ public final class FfmpegCpuRuntimeBindingFactory {
             FfmpegSandboxWorkspace workspace,
             Duration timeout,
             long captureBytes,
-            SandboxCancellation cancellation) {
+            SandboxCancellation cancellation,
+            Path fontFile) {
         BubblewrapSandboxDetection detection = BubblewrapSandboxCapabilityDetector.detect();
         SandboxRuntimeCapabilities capabilities = detection.launcher()
                 .map(launcher -> launcher.capabilities())
@@ -68,7 +70,7 @@ public final class FfmpegCpuRuntimeBindingFactory {
         return new SandboxRuntimeCommandExecutor(
                 launcher,
                 new FfmpegSandboxExecutionPolicyResolver(
-                        executable, workspace, timeout, captureBytes, capabilities),
+                        executable, workspace, timeout, captureBytes, capabilities, fontFile),
                 cancellation);
     }
 

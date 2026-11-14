@@ -86,7 +86,7 @@ class RemoteRenderWorkerTest {
     RemoteRenderService worker(WorkerRuntimeSupportAdvertisement advertisement) {
         return new RemoteRenderService(WorkerRuntimeDescriptor.local(RUNTIME, RuntimeLifecycleKind.EPHEMERAL_TASK,
                 PhysicalHostId.of("host-a")), INCARNATION, advertisement, catalog,
-                (contribution, cancel) -> new ProviderPluginRuntimeContext(Path.of("/bin/true"), root, Duration.ofSeconds(5), 1024, cancel), root);
+                (contribution, cancel) -> new ProviderPluginRuntimeContext(Path.of("/bin/true"), root, Duration.ofSeconds(5), 1024, cancel, null), root);
     }
     RuntimeExecutionBundle bundle(ExecutionOwnershipGeneration generation) {
         var task = new ExecutableTaskId("a".repeat(64));
@@ -276,7 +276,7 @@ class RemoteRenderWorkerTest {
                 PhysicalHostId.of("host-a")), INCARNATION, new WorkerRuntimeSupportAdvertisement(RUNTIME,
                 RuntimeLifecycleKind.EPHEMERAL_TASK, Map.of(SUPPORT, new RuntimeSupportEvidence("provider-plugin", "test"))),
                 catalog, (contribution, cancel) -> new ProviderPluginRuntimeContext(Path.of("/bin/true"), scratch,
-                        Duration.ofSeconds(5), 1024, cancel), root);
+                        Duration.ofSeconds(5), 1024, cancel, null), root);
         try (var output = execute()) { assertEquals(3, output.content().readAllBytes().length); }
         assertFalse(Files.exists(scratch));
         assertTrue(Files.exists(input));

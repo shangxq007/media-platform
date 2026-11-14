@@ -86,9 +86,14 @@ public class FfmpegWorkerPluginConfiguration {
             @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
             @Value("${platform.ffmpeg-worker.workspace-root}") String workspaceRoot,
             @Value("${platform.ffmpeg-worker.plugin-timeout:PT1M}") String timeout,
-            @Value("${platform.ffmpeg-worker.plugin-capture-bytes:67108864}") String captureBytes) {
+            @Value("${platform.ffmpeg-worker.plugin-capture-bytes:67108864}") String captureBytes,
+            @Value("${platform.ffmpeg-worker.sandbox.font:}") String font) {
         Path executable = Path.of(ffmpeg).toAbsolutePath().normalize();
         Path workspace = Path.of(workspaceRoot).toAbsolutePath().normalize();
+        // Declared worker execution dependency for timed-text rasterization (subtitle burn-in).
+        // Blank means the worker declares no font and rasterization fails closed at lowering.
+        Path fontFile = font == null || font.isBlank()
+                ? null : Path.of(font).toAbsolutePath().normalize();
         long captureBudget = Long.parseLong(captureBytes);
         Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> bindings = new LinkedHashMap<>();
         for (ProviderPluginContribution contribution : providerPluginCatalog.contributions()) {
@@ -101,7 +106,7 @@ public class FfmpegWorkerPluginConfiguration {
             }
             ProviderNativeRuntimeBinding<?> binding = contribution.createRuntimeBinding(
                     new ProviderPluginRuntimeContext(executable, workspace, Duration.parse(timeout),
-                            captureBudget, SandboxCancellation.never()));
+                            captureBudget, SandboxCancellation.never(), fontFile));
             if (bindings.putIfAbsent(contribution.providerBindingPin(), binding) != null) {
                 throw new IllegalStateException(
                         "duplicate provider binding pin: " + contribution.providerBindingPin());
