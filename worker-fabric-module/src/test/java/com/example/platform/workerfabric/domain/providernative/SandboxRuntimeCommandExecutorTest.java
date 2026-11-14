@@ -203,9 +203,14 @@ class SandboxRuntimeCommandExecutorTest {
     void file_backed_provider_output_is_streamed_without_stdout_capture_bound() throws Exception {
         Path root = java.nio.file.Files.createTempDirectory("provider-output-test-");
         Path outputFile = root.resolve(ProviderNativeOutputFiles.RENDER_OUTPUT);
-        java.nio.file.Files.write(outputFile, new byte[]{1, 2, 3});
-        BoundedProcessLauncher launcher = (specification, cancellation) -> result(
-                OptionalInt.of(0), new byte[0], Optional.empty());
+        java.nio.file.Files.write(outputFile, new byte[]{99});
+        var executions = new java.util.concurrent.atomic.AtomicInteger();
+        BoundedProcessLauncher launcher = (specification, cancellation) -> {
+            int sequence = executions.incrementAndGet();
+            java.nio.file.Files.write(outputFile, new byte[]{(byte) sequence, 2, 3},
+                    java.nio.file.StandardOpenOption.CREATE_NEW);
+            return result(OptionalInt.of(0), new byte[0], Optional.empty());
+        };
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
                 launcher, (command, inputs) -> resolved(),
                 SandboxCancellation.never(), root);
@@ -214,6 +219,11 @@ class SandboxRuntimeCommandExecutorTest {
         try (var input = output.content()) {
             assertThat(input.readAllBytes()).containsExactly(1, 2, 3);
         }
+        assertThat(java.nio.file.Files.exists(outputFile)).isFalse();
+        try (var second = executor.execute(bundle(), List.of()).content()) {
+            assertThat(second.readAllBytes()).containsExactly(2, 2, 3);
+        }
+        assertThat(java.nio.file.Files.exists(outputFile)).isFalse();
     }
 
     private static SandboxResolution.Resolved resolved() {

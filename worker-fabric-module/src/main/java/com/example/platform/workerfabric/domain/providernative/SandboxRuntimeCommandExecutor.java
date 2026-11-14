@@ -8,6 +8,7 @@ import com.example.platform.sandbox.SandboxFailureCode;
 import com.example.platform.sandbox.SandboxResolution;
 import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,6 +63,7 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
             RuntimeExecutionBundle bundle, List<MaterializedExecutionInput> inputs) throws IOException {
         try {
             byte[] candidateOutput = null;
+            Path candidateOutputFile = null;
             for (ExecutionCommand command : bundle.commands()) {
                 if (!(command.invocationSpec() instanceof ProcessInvocationSpec)) {
                     throw mapped(SandboxFailure.of(
@@ -73,6 +75,15 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                     throw mapped(rejected.failure());
                 }
                 var resolved = ((SandboxResolution.Resolved) resolution).specification();
+                if (providerOutputDirectory != null) {
+                    Path working = resolved.filesystem().workingDirectory();
+                    if (working == null) working = providerOutputDirectory;
+                    if (!working.startsWith(providerOutputDirectory)) {
+                        throw new IllegalArgumentException("provider output directory escapes its configured root");
+                    }
+                    candidateOutputFile = ProviderNativeOutputFiles.renderOutput(working);
+                    Files.deleteIfExists(candidateOutputFile);
+                }
                 LOG.info("PROCESS_SPEC task={} attempt={} executable={} argv={} cwd={}",
                         bundle.executableTaskId().sha256Hex(),
                         bundle.platformExecutionAttemptId().value(),
@@ -102,13 +113,24 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                 candidateOutput = result.stdout().bytes();
             }
             if (providerOutputDirectory != null) {
-                Path outputFile = ProviderNativeOutputFiles.renderOutput(providerOutputDirectory);
+                Path outputFile = candidateOutputFile;
                 if (Files.exists(outputFile)) {
                     LOG.info("PROCESS_OUTPUT_FILE task={} attempt={} bytes={}",
                             bundle.executableTaskId().sha256Hex(),
                             bundle.platformExecutionAttemptId().value(),
                             Files.size(outputFile));
-                    return new ProviderExecutionOutput(Files.newInputStream(outputFile));
+                    var stream = Files.newInputStream(outputFile);
+                    return new ProviderExecutionOutput(new FilterInputStream(stream) {
+                        @Override public void close() throws IOException {
+                            try { super.close(); }
+                            finally {
+                                Files.deleteIfExists(outputFile);
+                                if (!outputFile.getParent().equals(providerOutputDirectory)) {
+                                    Files.deleteIfExists(outputFile.getParent());
+                                }
+                            }
+                        }
+                    });
                 }
             }
             if (candidateOutput == null || candidateOutput.length == 0) {

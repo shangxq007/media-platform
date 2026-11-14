@@ -106,7 +106,9 @@ public final class FfmpegSandboxExecutionPolicyResolver
                             workspace.root(),
                             workspace.temporaryRoot(),
                             workspace.outputStagingRoot(),
-                            workspace.workingDirectory()),
+                            workspace.workingDirectory().resolve("attempt-" +
+                                    java.util.UUID.nameUUIDFromBytes(command.platformExecutionAttemptId()
+                                            .value().getBytes(java.nio.charset.StandardCharsets.UTF_8)))),
                     NetworkPolicy.none(),
                     EnvironmentPolicy.exact(Map.of(
                             "PATH", "/usr/bin:/bin", "LANG", "C", "LC_ALL", "C")),
