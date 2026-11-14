@@ -358,11 +358,13 @@ public class TimelineMediaClipOperationService {
         } catch (OperationResolutionException failure) {
             throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
                     List.of(failure.getMessage()));
+        } catch (com.example.platform.timeline.semantics.selection.TimelineSelectionException failure) {
+            throw new TimelineOperationException(
+                    TimelineOperationException.Code.TARGET_MISSING,
+                    List.of(failure.getMessage() == null ? "invalid clip selection" : failure.getMessage()));
         } catch (IllegalArgumentException failure) {
             throw new TimelineOperationException(
-                    failure.getMessage() != null && failure.getMessage().contains("missing clip")
-                            ? TimelineOperationException.Code.TARGET_MISSING
-                            : TimelineOperationException.Code.CANDIDATE_INVALID,
+                    TimelineOperationException.Code.CANDIDATE_INVALID,
                     List.of(failure.getMessage() == null ? "invalid clip selection" : failure.getMessage()));
         }
         final OperationPlan plan;

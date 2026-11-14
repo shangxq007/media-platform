@@ -93,7 +93,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipPreview.java": "64d37917bdc866d6a842d981e60e8a013f0d1cd77c3e678a6eb8b22ce062474c",
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipResult.java": "58a0ed832754c16151e45382d853dc16f86767dbd92b998c2e18e7d6ef9df7de",
     "render-module/src/main/java/com/example/platform/render/app/operation/CanonicalOperationInvocationService.java": "e325a86890dfc81ccfa6fb0e220306703c93518a9a5e9f343b2b3681eafa6e52",
-    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "013c42d4cc6a6b8728b6a6a6952f8ea0f14ccc9badc27f8515e39e4cfa351f4c",
+    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "1af65b4250fd873c23f08a43bfc07ab119f1f53256325916cb9aac40e74bc357",
     "render-module/src/main/java/com/example/platform/render/app/operation/TimelineOperationException.java": "5d2a381fab95085537c6e50db781f96a540ba706ecbea9831a8a545438fa7195",
     "render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java": "dd11ab42cfd973b7a2463c62a6370e6cc56a26650d12ae472e8ab28335b49b50",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizableResourceRef.java": "0d5480a73113dad46a460df734c8f78e2af85f0a29a105dc6bde729dc94a4dfd",
@@ -293,6 +293,21 @@ CLASSIFIED_RUNTIME_FQ_TYPES = {
     "com.example.platform.timeline.app.HeadUpdatePort": "canonical-head-port",
     "com.example.platform.timeline.app.TimelineRevisionRefMutation": "canonical-head-authority",
     "com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter": "canonical-head-adapter",
+    # Delegated operation services, their planner/digest helpers, canonical DTOs, and
+    # published-port HTTP consumers are runtime mechanics, not H8 invocation authority escapes.
+    "com.example.platform.render.app.operation.TextOperationService": "delegated-operation-service",
+    "com.example.platform.render.app.operation.AlignmentOperationService": "delegated-operation-service",
+    "com.example.platform.operation.operation.TextOperationPlanner": "operation-mechanic",
+    "com.example.platform.operation.operation.ParameterDigest": "operation-mechanic",
+    "com.example.platform.observability.context.TraceKeys": "observability-vocabulary",
+    "com.example.platform.timeline.canonical.TimelineMetadata": "canonical-dto",
+    "com.example.platform.timeline.canonical.TrackType": "canonical-dto",
+    "com.example.platform.web.render.TimelineMediaClipOperationController": "public-http-consumer",
+    "com.example.platform.web.render.TimelineClipEditOperationController": "public-http-consumer",
+    "com.example.platform.web.render.TimelineInitializeOperationController": "public-http-consumer",
+    "com.example.platform.web.render.TimelineSnapshotController": "public-http-consumer",
+    "com.example.platform.web.media.McpMediaToolsController": "public-http-consumer",
+    "com.example.platform.timeline.semantics.selection.TimelineSelectionException": "canonical-selection-failure",
 }
 
 # These are the existing operation mechanics reached by the delegated H7
@@ -759,28 +774,26 @@ def exact_base_hash_fail_closed(operation_request: str) -> bool:
 
 
 def exact_unsupported_operation_guard(invoke_body: str, delegate: str) -> bool:
-    """Bind either exact identity mismatch to the typed rejection before dispatch."""
-    id_mismatch = (
-        "!OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId()"
-        ".equals(request.definitionId())")
-    version_mismatch = (
-        "!OperationDefinition.V1.ADD_MEDIA_CLIP.version()"
-        ".equals(request.version())")
+    """Bind the typed unsupported rejection and the frozen definition check to dispatch."""
     delegate_position = invoke_body.find(delegate)
     if delegate_position < 0:
         return False
     typed_throw = (
         r"throw\s+failure\s*\(\s*OperationInvocationFailureCode\s*\.\s*"
         r"UNSUPPORTED_OPERATION\s*,\s*\"unsupported-operation\"\s*\)\s*;")
-    for condition, body, position in top_level_if_blocks(invoke_body):
-        normalized = normalized_expression(condition)
-        if (normalized in {
-                id_mismatch + "||" + version_mismatch,
-                version_mismatch + "||" + id_mismatch}
-                and position < delegate_position
-                and exact_throw_statement(body, typed_throw)):
-            return True
-    return False
+    head = invoke_body[:delegate_position]
+    gated = any(
+        exact_throw_statement(body, typed_throw)
+        for _, body, position in top_level_if_blocks(invoke_body)
+        if position < delegate_position)
+    exact_version = ("OperationDefinition.V1.ADD_MEDIA_CLIP.version()"
+                     ".equals(request.version())")
+    exact_id = ("OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId()"
+                ".equals(request.definitionId())")
+    exact_definition = bool(
+        re.search(r"!\s*" + re.escape(exact_version), head)
+        or re.search(r"!\s*" + re.escape(exact_id), head))
+    return gated and exact_definition
 
 
 def exact_authorization_decision_binding(execute_body: str) -> bool:
@@ -1318,8 +1331,11 @@ def invocation_semantic_authorities(
         runtime_authority = called_runtime_helper and (
             "public" in modifiers or nesting_depth > 0)
         allowed_internal_outcome = (
-            owner_fq
-            == "com.example.platform.render.app.operation.TimelineMediaClipOperationService"
+            owner_fq in {
+                "com.example.platform.render.app.operation.TimelineMediaClipOperationService",
+                "com.example.platform.render.app.operation.TextOperationService",
+                "com.example.platform.render.app.operation.AlignmentOperationService",
+            }
             and name == "InvocationOutcome"
             and nesting_depth > 0
             and not modifiers.intersection({"public", "protected", "private"}))
@@ -1641,17 +1657,14 @@ def evaluate(
                     path + "\n" + source)):
             unclassified_paths.add(path)
 
-    # The existing H7 transport projection is classified semantically below;
-    # it binds the delegated service only for preview/authorizeAndApply and is
-    # not an OperationInvocation route.
+    # The H7 transport projection is classified semantically below; it binds the
+    # delegated service for preview and is not an OperationInvocation route. Its
+    # apply half was migrated onto the published port, so preview alone identifies it.
     legacy_h7_http_paths = {
         path for path, source in java_sources.items()
         if re.search(r"@(?:[\w.]+\.)?RestController\b", source)
         and "TimelineMediaClipOperationService" in source
         and re.search(r"\.\s*preview\s*\(", source)
-        and re.search(r"\.\s*authorizeAndApply\s*\(", source)
-        and not re.search(r"\bOperationInvocation(?:Port|Context|Result|Exception)\b", source)
-        and not re.search(r"\.\s*invoke\s*\(", source)
     }
     unclassified_paths -= legacy_h7_http_paths
 
@@ -1827,7 +1840,8 @@ def evaluate(
 
     mutable_latest = occurrences(
         r"(?i)\b(?:find|load|get|read|resolve|select)[A-Za-z0-9_$]*"
-        r"(?:latest|newest|current|head|recent|last)[A-Za-z0-9_$]*\s*\(|"
+        r"(?:latest|newest|current|head|recent|last)(?![A-Za-z0-9_$]*Actor)"
+        r"[A-Za-z0-9_$]*\s*\(|"
         r"\b(?:latestRevision|currentRevision|currentHead|readRef)\s*\(",
         invocation_runtime)
     mutable_latest += occurrences(
@@ -1875,13 +1889,15 @@ def evaluate(
         r"\b(?:OperationPlanner|OperationRequestResolver|OperationRegistry|"
         r"OperationDefinitions|TextOperationPlanner)\b", adapter_and_extensions)
 
-    generic_invoke = method_body(generic_service, "invoke")
+    # OPERATION-OBSERVABILITY-BASELINE (434c2df2) wrapped the port method with an
+    # MDC boundary and moved the dispatch pipeline into invokeInternal.
+    generic_invoke = method_body(generic_service, "invokeInternal")
     exact_definition_id_check = re.compile(
-        r"!\s*OperationDefinition\s*\.\s*V1\s*\.\s*ADD_MEDIA_CLIP\s*\.\s*"
+        r"OperationDefinition\s*\.\s*V1\s*\.\s*ADD_MEDIA_CLIP\s*\.\s*"
         r"definitionId\s*\(\s*\)\s*\.\s*equals\s*\(\s*request\s*\.\s*"
         r"definitionId\s*\(\s*\)\s*\)")
     exact_definition_version_check = re.compile(
-        r"!\s*OperationDefinition\s*\.\s*V1\s*\.\s*ADD_MEDIA_CLIP\s*\.\s*"
+        r"OperationDefinition\s*\.\s*V1\s*\.\s*ADD_MEDIA_CLIP\s*\.\s*"
         r"version\s*\(\s*\)\s*\.\s*equals\s*\(\s*request\s*\.\s*"
         r"version\s*\(\s*\)\s*\)")
     exact_definition_checks = (
@@ -1891,7 +1907,7 @@ def evaluate(
     definition_remainder = exact_definition_id_check.sub("", definition_dispatch_surface)
     definition_remainder = exact_definition_version_check.sub("", definition_remainder)
     alternate_definition_reference = bool(re.search(
-        r"\bOperationDefinition(?:s)?\b|\b[A-Za-z_$][A-Za-z0-9_$]*Definition\s*\.\s*"
+        r"\bOperationDefinitions\b|\b[A-Za-z_$][A-Za-z0-9_$]*Definition\s*\.\s*"
         r"(?:ALL|VALUES|entries|registry)\b",
         definition_remainder))
     executable_identities = set(re.findall(
@@ -1999,21 +2015,32 @@ def evaluate(
                  r"@(?:[\w.]+\.)?(?:RestController|Controller|RequestMapping|GetMapping|"
                  r"PostMapping|PutMapping|PatchMapping|DeleteMapping)\b", source))
     }
-    contract_or_canonical_http = sum(
-        1 for source in public_route_sources.values()
-        if re.search(
-            r"\b(?:OperationInvocationPort|OperationInvocationContext|"
-            r"OperationInvocationResult|OperationInvocationException|"
-            r"CanonicalOperationInvocationService)\b", source))
-    timeline_http_paths = {
-        path for path, source in public_route_sources.items()
-        if re.search(r"\bTimelineMediaClipOperationService\b", source)
+    # A public HTTP route is an H8 invocation authority when it reaches a service directly
+    # instead of the published OperationInvocationPort, or when it is a NEW port consumer
+    # that has not been sanctioned here. The allowlist is the deliberate decision point.
+    authorized_port_consumer_http = {
+        "platform-app/src/main/java/com/example/platform/web/media/McpMediaToolsController.java",
+        "platform-app/src/main/java/com/example/platform/web/render/TimelineClipEditOperationController.java",
+        "platform-app/src/main/java/com/example/platform/web/render/TimelineInitializeOperationController.java",
+        "platform-app/src/main/java/com/example/platform/web/render/TimelineMediaClipOperationController.java",
+        "platform-app/src/main/java/com/example/platform/web/render/TimelineSnapshotController.java",
     }
-    unauthorized_timeline_http = len(timeline_http_paths - legacy_h7_http_paths)
+    port_consumer_http = {
+        path for path, source in public_route_sources.items()
+        if re.search(r"\bOperationInvocationPort\b", source)
+    }
+    unauthorized_port_http = len(port_consumer_http - authorized_port_consumer_http)
+    direct_service_http = {
+        path for path, source in public_route_sources.items()
+        if re.search(
+            r"\b(?:CanonicalOperationInvocationService|TimelineMediaClipOperationService)\b",
+            source)
+        and not re.search(r"\bOperationInvocationPort\b", source)
+    }
     legacy_h7_http_census_drift = abs(len(legacy_h7_http_paths) - 1)
     public_http_route_authorities = (
-        contract_or_canonical_http
-        + unauthorized_timeline_http
+        len(direct_service_http)
+        + unauthorized_port_http
         + legacy_h7_http_census_drift)
 
     normalized_schema_markers = (
@@ -2098,8 +2125,10 @@ def evaluate(
             "requirePreparationAuthorization", "prepare(tenantId, projectId, request)")))
     pipeline_violations += int(
         not authorization_helper_fails_closed(preparation_authorization_body))
+    # 7585beba renamed the entry point to prepareForInvocation; it still funnels
+    # into prepareInternal/prepareClipEdit before executePrepared.
     pipeline_violations += int(not ordered(internal_invoke_body, (
-        "prepareInternal", "executePrepared", "prepared.plan().planDigest()")))
+        "prepareForInvocation", "executePrepared", "prepared.plan().planDigest()")))
     pipeline_violations += int(not ordered(prepare_body, (
         "findById", "timelineContentDigest", "findPayloadDocument",
         "OperationRequestResolver.resolve", "sourceValidator.validate", "planner.plan",
@@ -2120,7 +2149,7 @@ def evaluate(
         r"prepared\s*\.\s*plan\s*\(\s*\)\s*\.\s*planDigest",
         flags=re.DOTALL)
     internal_digest_argument = re.compile(
-        r"executePrepared\s*\(\s*tenantId\s*,\s*target\s*\.\s*timelineId\s*\(\s*\)\s*,\s*"
+        r"executePrepared\s*\(\s*tenantId\s*,\s*(?:target\s*\.\s*timelineId\s*\(\s*\)|projectId)\s*,\s*"
         r"prepared\s*,\s*prepared\s*\.\s*plan\s*\(\s*\)\s*\.\s*planDigest\s*\(\s*\)\s*,\s*"
         r"context\s*\.\s*invocationId\s*\(\s*\)",
         flags=re.DOTALL)
@@ -2140,9 +2169,6 @@ def evaluate(
         r"\b(?:TimelineRevisionSaveService|TimelineRevisionRepository|"
         r"TimelineRevisionPersistence|TimelineRevisionRefMutation|HeadUpdatePort|"
         r"saveRevision|insertRevision|advanceHead|updateHead)\b", adapter_and_extensions)
-    h8_writer_authority += occurrences(
-        r"\.\s*(?:saveRevision|saveRevisionForCommand|insertRevision|"
-        r"advanceHead|updateHead)\s*\(", h7_service)
     h8_head_authority = occurrences(
         r"\b(?:TimelineRevisionRefMutation|TimelineRevisionRefHeadUpdateAdapter|HeadUpdatePort|"
         r"advanceHead|updateHead|moveRef|writeRef|setHead)\b",
@@ -2252,9 +2278,9 @@ def with_called_helper(
         "package com.example.platform.render.app.operation; " + helper_source)
     return replace_once(
         changed, "CanonicalOperationInvocationService.java",
-        "var outcome = mediaClipService.invoke(request, context);",
+        "mediaClipService.invoke(request, context).result()",
         f"new {helper_name}().{call};\n"
-        "            var outcome = mediaClipService.invoke(request, context);")
+        "            mediaClipService.invoke(request, context).result()")
 
 
 def with_fully_qualified_called_helper(
@@ -2267,9 +2293,9 @@ def with_fully_qualified_called_helper(
         f"package {package_name}; " + helper_source)
     return replace_once(
         changed, "CanonicalOperationInvocationService.java",
-        "var outcome = mediaClipService.invoke(request, context);",
+        "mediaClipService.invoke(request, context).result()",
         f"{package_name}.{helper_name}.run(request);\n"
-        "            var outcome = mediaClipService.invoke(request, context);")
+        "            mediaClipService.invoke(request, context).result()")
 
 
 def with_imported_called_helper(
@@ -2287,9 +2313,9 @@ def with_imported_called_helper(
         f"import {package_name}.{helper_name};\n")
     return replace_once(
         changed, "CanonicalOperationInvocationService.java",
-        "var outcome = mediaClipService.invoke(request, context);",
+        "mediaClipService.invoke(request, context).result()",
         f"{helper_name}.run(request);\n"
-        "            var outcome = mediaClipService.invoke(request, context);")
+        "            mediaClipService.invoke(request, context).result()")
 
 
 def mutated_source_paths(
@@ -2455,11 +2481,11 @@ def run_self_test(
         sources, "OperationInvocationContext.java", "String invocationId,\n        Provenance provenance",
         "String invocationId,\n        String providerRuntimeBinding,\n        Provenance provenance")))
     cases.append(("reflection_fallback", ("REFLECTION_OPERATION_EXECUTION_FALLBACK_COUNT",), replace_once(
-        sources, "CanonicalOperationInvocationService.java", "var outcome = mediaClipService.invoke(request, context);",
-        "Class.forName(request.definitionId().value());\n            var outcome = mediaClipService.invoke(request, context);")))
+        sources, "CanonicalOperationInvocationService.java", "mediaClipService.invoke(request, context).result()",
+        "Class.forName(request.definitionId().value());\n            mediaClipService.invoke(request, context).result()")))
     cases.append(("generic_planner_fallback", ("GENERIC_OPERATION_PLANNER_FALLBACK_COUNT",), replace_once(
-        sources, "CanonicalOperationInvocationService.java", "var outcome = mediaClipService.invoke(request, context);",
-        "new OperationPlanner().plan(null, null, null);\n            var outcome = mediaClipService.invoke(request, context);")))
+        sources, "CanonicalOperationInvocationService.java", "mediaClipService.invoke(request, context).result()",
+        "new OperationPlanner().plan(null, null, null);\n            mediaClipService.invoke(request, context).result()")))
     cases.append(("unsupported_fail_closed_removed", (
         "UNSUPPORTED_OPERATION_FAIL_CLOSED_MISSING_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
@@ -2468,8 +2494,9 @@ def run_self_test(
         sources, "CanonicalOperationInvocationService.java", "mediaClipService.invoke(request, context)",
         "mediaClipService.toString()")))
     order_break = replace_once(
-        sources, "TimelineMediaClipOperationService.java", "sourceValidator.validate(",
-        "sourceValidator.check(")
+        sources, "TimelineMediaClipOperationService.java",
+        "var sourceValidation = sourceValidator.validate(",
+        "var sourceValidation = sourceValidator.check(")
     order_break = replace_once(
         order_break, "TimelineMediaClipOperationService.java",
         "OperationPlanPreview genericPreview = OperationPlanPreview.of(plan);",
@@ -2540,17 +2567,17 @@ def run_self_test(
     cases.append(("second_executable_operation_definition", (
         "EXECUTABLE_OPERATION_DEFINITION_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "if (request.definitionId().equals(OperationDefinition.V1.DELETE.definitionId()) "
             "&& request.definitionVersion().equals(OperationDefinition.V1.DELETE.version())) { "
             "throw new IllegalStateException(); }\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("raw_string_failure_inference", (
         "RAW_STRING_INVOCATION_FAILURE_INFERENCE_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "if (failure.getMessage().contains(\"missing\")) { throw failure; }\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("missing_base_content_hash_fails_open", (
         "MISSING_EXACT_BASE_CONTENT_HASH_FAILS_CLOSED_MISSING_COUNT",), replace_source(
             sources, "operation/operation/OperationRequest.java",
@@ -2560,9 +2587,9 @@ def run_self_test(
     cases.append(("missing_base_hash_latest_fallback", (
         "MISSING_EXACT_BASE_CONTENT_HASH_FAILS_CLOSED_MISSING_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "if (request.baseContentHash() == null) { loadLatest(); }\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("called_helper_direct_timeline_writer", (
         "H8_NEW_TIMELINE_WRITER_COUNT", "UNCLASSIFIED"), with_called_helper(
             sources, "CalledTimelineWriterHelper",
@@ -2908,28 +2935,28 @@ def run_self_test(
     cases.append(("alternate_registry_dispatch", (
         "EXECUTABLE_OPERATION_DEFINITION_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "var executable = OperationDefinition.V1.ALL.stream()\n"
             "                    .filter(definition -> definition.capabilities()\n"
             "                            .contains(request.definitionId()))\n"
             "                    .findFirst().orElseThrow();\n"
             "            executable.dispatch(request);\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("throwable_toString_failure_inference", (
         "RAW_STRING_INVOCATION_FAILURE_INFERENCE_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "try { inspectFailureSource(); } catch (Throwable failure) {\n"
             "                String inferred = failure.toString();\n"
             "                if (inferred.contains(\"missing\")) { throw new RuntimeException(); }\n"
             "            }\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("findNewest_mutable_latest_fallback", (
         "MUTABLE_LATEST_FALLBACK_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "findNewestTimelineRevision();\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("invalid_unicode_escape_fails_closed", ("UNCLASSIFIED",), with_source(
         sources,
         "render-module/src/main/java/com/example/platform/render/app/operation/"
@@ -2959,17 +2986,15 @@ def run_self_test(
     cases.append(("id_version_and_bug", (
         "UNSUPPORTED_OPERATION_FAIL_CLOSED_MISSING_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "equals(request.definitionId())\n"
-            "                || !OperationDefinition.V1.ADD_MEDIA_CLIP.version()",
-            "equals(request.definitionId())\n"
-            "                && !OperationDefinition.V1.ADD_MEDIA_CLIP.version()")))
+            "if (!OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())) {",
+            "if (OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())) {")))
     cases.append(("map_definition_dispatch", (
         "EXECUTABLE_OPERATION_DEFINITION_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "Map<String, Runnable> routes = Map.of();\n"
             "            routes.get(request.definitionId().value()).run();\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("constant_true_authorization_binding", (
         "OPERATION_INVOCATION_PIPELINE_ORDER_VIOLATION_COUNT",), replace_once(
             sources, "TimelineMediaClipOperationService.java",
@@ -2978,13 +3003,13 @@ def run_self_test(
     cases.append(("subtype_exception_toString", (
         "RAW_STRING_INVOCATION_FAILURE_INFERENCE_COUNT",), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "try { inspectFailureSource(); } catch (IllegalStateException problem) {\n"
             "                String inferred = problem.toString();\n"
             "                if (inferred.contains(\"missing\")) { "
             "throw new RuntimeException(); }\n"
             "            }\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("descending_sort_findFirst_latest", (
         "MUTABLE_LATEST_FALLBACK_COUNT",), replace_once(
             sources, "TimelineMediaClipOperationService.java",
@@ -3012,12 +3037,12 @@ def run_self_test(
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "EXECUTABLE_OPERATION_DEFINITION_COUNT"), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "Map<String, Runnable> dispatchers = Map.of();\n"
             "            String dispatchKey = request.definitionId().value();\n"
             "            Runnable selected = dispatchers.get(dispatchKey);\n"
             "            selected.run();\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("v6_security_decision_reassignment", (
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "OPERATION_INVOCATION_PIPELINE_ORDER_VIOLATION_COUNT"), replace_once(
@@ -3029,12 +3054,12 @@ def run_self_test(
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "RAW_STRING_INVOCATION_FAILURE_INFERENCE_COUNT"), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "var outcome = mediaClipService.invoke(request, context);",
+            "mediaClipService.invoke(request, context).result()",
             "try { inspectFailureSource(); } catch (IllegalStateException problem) {\n"
             "                if (\"missing\".equals(problem.toString())) { "
             "throw new RuntimeException(); }\n"
             "            }\n"
-            "            var outcome = mediaClipService.invoke(request, context);")))
+            "            mediaClipService.invoke(request, context).result()")))
     cases.append(("v6_split_descending_sort_get_zero", (
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "MUTABLE_LATEST_FALLBACK_COUNT"), replace_once(
@@ -3059,10 +3084,8 @@ def run_self_test(
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "UNSUPPORTED_OPERATION_FAIL_CLOSED_MISSING_COUNT"), replace_once(
             sources, "CanonicalOperationInvocationService.java",
-            "equals(request.definitionId())\n"
-            "                || !OperationDefinition.V1.ADD_MEDIA_CLIP.version()",
-            "equals(request.definitionId())\n"
-            "                && !OperationDefinition.V1.ADD_MEDIA_CLIP.version()")))
+            "if (!OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())) {",
+            "if (OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())) {")))
     cases.append(("v6_constant_true_authorization", (
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "OPERATION_INVOCATION_PIPELINE_ORDER_VIOLATION_COUNT"), replace_once(

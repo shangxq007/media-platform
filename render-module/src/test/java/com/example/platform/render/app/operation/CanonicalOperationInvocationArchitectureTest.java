@@ -22,7 +22,7 @@ class CanonicalOperationInvocationArchitectureTest {
 
     // The authorized normal-profile ADD transport now delegates Apply through Invocation.
     private static final String ACCEPTED_IDENTITY_SCOPE_CONTROLLER_SHA256 =
-            "1e3f181979ac1e74151da40ee409641503ce9777343001472efb7b8a0ec67d85";
+            "758c08debe6c46a4003570fc380347c72de87df9579934bc1c5685ddbeba208b";
     private static final Path ROOT = repositoryRoot(Path.of(System.getProperty("user.dir")));
     private static final Path RENDER_MAIN = ROOT.resolve("render-module/src/main/java");
     private static final Path SERVICE = RENDER_MAIN.resolve(

@@ -22,6 +22,8 @@ class H8OperationInvocationBoundaryGuardTest {
     private static final Path ROOT = repositoryRoot(Path.of(System.getProperty("user.dir")));
     private static final Path GUARD =
             ROOT.resolve("scripts/guards/h8-operation-invocation-boundary-guard.py");
+    private static final Path HELPER =
+            ROOT.resolve("scripts/guards/h7_input_boundary.py");
     private static final List<String> EXACT_CENSUS = List.of(
             "OPERATION_REQUEST_AUTHORITY_COUNT=1",
             "NEW_OPERATION_REQUEST_PEER_TYPE_COUNT=0",
@@ -274,6 +276,10 @@ class H8OperationInvocationBoundaryGuardTest {
                 "immutable accepted-checkpoint anchor must exist");
         Path temporaryDirectory = Files.createTempDirectory("h8-missing-accepted-checkpoint-");
         Path mutatedGuard = temporaryDirectory.resolve(GUARD.getFileName());
+        // The guard imports its git-tree input boundary helper, so the isolated copy must
+        // carry it too or the run fails on the import rather than on the mutated anchor.
+        Path mutatedHelper = temporaryDirectory.resolve(HELPER.getFileName());
+        Files.copy(HELPER, mutatedHelper);
         try {
             Files.writeString(mutatedGuard, original.replace(
                     acceptedCheckpoint,
@@ -294,6 +300,7 @@ class H8OperationInvocationBoundaryGuardTest {
                     result.output());
         } finally {
             Files.deleteIfExists(mutatedGuard);
+            Files.deleteIfExists(mutatedHelper);
             Files.deleteIfExists(temporaryDirectory);
         }
     }

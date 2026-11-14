@@ -52,7 +52,7 @@ public final class ScopeResolver {
         if (spec instanceof SelectionSpec.ExplicitObjectSelection exp) {
             for (TimelineClipId id : exp.clipIds()) {
                 if (!placementOrder.contains(id)) {
-                    throw new IllegalArgumentException(
+                    throw new TimelineSelectionException(
                             "selection references missing clip: " + id + " (fail closed)");
                 }
                 resolved.add(id);
