@@ -128,15 +128,16 @@ public final class FfmpegCpuProvider {
      * emits, CPU device class, a native child process executed under the sandbox,
      * SANDBOXED mode only (the binding factory fails closed when bubblewrap is
      * unavailable), deterministic output (bitexact + single-threaded), and supported
-     * lowering. Mandatory-materialization markers and boundary contracts are
-     * deliberately NOT declared: the bounded slice does not serve them, so a plan
-     * requiring them fails closed.</p>
+     * lowering. The raster capability consumes the exact timed-text materialization
+     * requirement; unsupported materialization shapes still fail in its lowerer.
+     * Boundary contracts remain undeclared.</p>
      */
     public static final ProviderStaticCompatibility STATIC_COMPATIBILITY =
             new ProviderStaticCompatibility(
                     ProviderStaticCompatibility.Knowledge.DECLARED,
                     List.of(
                             ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
+                            ProviderStaticCompatibility.ArtifactRequirementKind.MANDATORY_MATERIALIZATION,
                             ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
                             ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT),
                     List.of(StaticCompatibilityConstraint.CodecId.of("h264")),

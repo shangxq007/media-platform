@@ -39,6 +39,8 @@ import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderExecutionCoverage;
 import com.example.platform.render.domain.renderplan.RenderExecutionRequirement;
 import com.example.platform.render.domain.renderplan.RenderExtent;
+import com.example.platform.render.domain.renderplan.RenderMaterializationRequirement;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement;
 import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderNodeKind;
 import com.example.platform.render.domain.renderplan.RenderOutputRequirement;
@@ -52,6 +54,16 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.fonttext.resolution.FontFallbackPolicy;
+import com.example.platform.fonttext.text.ParagraphBaseDirection;
+import com.example.platform.fonttext.text.StyledText;
+import com.example.platform.fonttext.text.TextContent;
+import com.example.platform.fonttext.typography.FontFamilyName;
+import com.example.platform.fonttext.typography.FontRational;
+import com.example.platform.fonttext.typography.LineHeight;
+import com.example.platform.fonttext.typography.ParagraphStyle;
+import com.example.platform.fonttext.typography.TextFrame;
+import com.example.platform.timeline.canonical.TextElementId;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -80,6 +92,22 @@ class BoundedCodecTest {
         assertThat(PhysicalExecutionPlanCanonicalCodec.digestHex(plan))
                 .isEqualTo(PhysicalExecutionPlanCanonicalCodec.digestHex(
                         PhysicalExecutionPlanCanonicalCodec.decode(first)));
+    }
+
+    @Test
+    void physicalPlanRoundTripsTimedTextMaterializationRequirement() {
+        PhysicalExecutionPlan plan = planWithTimedTextMaterialization();
+
+        byte[] first = PhysicalExecutionPlanCanonicalCodec.encode(plan);
+        byte[] second = PhysicalExecutionPlanCanonicalCodec.encode(plan);
+
+        assertThat(first).containsExactly(second);
+        PhysicalExecutionPlan decoded = PhysicalExecutionPlanCanonicalCodec.decode(first);
+        assertThat(decoded).isEqualTo(plan);
+        assertThat(decoded.units().getFirst().typedOutputs().getFirst()
+                .materializationRequirements())
+                .containsExactlyElementsOf(plan.units().getFirst().typedOutputs().getFirst()
+                        .materializationRequirements());
     }
 
     @Test
@@ -216,5 +244,69 @@ class BoundedCodecTest {
                 List.of(unit),
                 new RenderExtent(ZERO, TWO, FPS),
                 new PhysicalExecutionPlanDigest("declared-digest"));
+    }
+
+    private static PhysicalExecutionPlan planWithTimedTextMaterialization() {
+        PhysicalExecutionPlan base = plan();
+        PhysicalPlanUnit unit = base.units().getFirst();
+        OutputDeclaration original = unit.typedOutputs().getFirst();
+        TimedTextMaterializationRequirement requirement =
+                new TimedTextMaterializationRequirement(
+                        new TextElementId("text-codec-requirement"),
+                        FontRational.whole(1),
+                        FontRational.whole(2),
+                        new StyledText(
+                                new TextContent("中文 Hello"),
+                                List.of(),
+                                List.of(),
+                                new ParagraphStyle(
+                                        ParagraphStyle.Alignment.START,
+                                        ParagraphStyle.Justification.NONE,
+                                        LineHeight.ratio(FontRational.of(6, 5)),
+                                        ParagraphStyle.WrapPolicy.WRAP,
+                                        ParagraphBaseDirection.AUTO,
+                                        ParagraphStyle.LineBreakPolicy.STANDARD)),
+                        new TextFrame(
+                                FontRational.whole(640),
+                                null,
+                                TextFrame.HorizontalAlignment.START,
+                                TextFrame.VerticalAlignment.TOP,
+                                ParagraphStyle.WrapPolicy.WRAP,
+                                TextFrame.OverflowBehavior.CLIP),
+                        new FontFallbackPolicy(
+                                List.of(new FontFamilyName("Noto Sans CJK SC")),
+                                List.of(), List.of(), List.of()),
+                        List.of());
+        OutputDeclaration output = new OutputDeclaration(
+                original.outputId(),
+                original.logicalNodeId(),
+                original.sourceRenderNodeId(),
+                original.outputRequirements(),
+                List.of((RenderMaterializationRequirement) requirement),
+                original.intermediateArtifactExpectations(),
+                original.finalArtifactExpectations());
+        PhysicalPlanUnit withText = new PhysicalPlanUnit(
+                unit.stepId(),
+                unit.logicalNodeId(),
+                unit.sourceRenderNodeId(),
+                unit.sourceRenderNodeKind(),
+                unit.operationKey(),
+                unit.typedInputs(),
+                List.of(output),
+                unit.typedDependencies(),
+                unit.temporalWindow(),
+                unit.executionCoverage(),
+                unit.capabilityRequirementRefs(),
+                unit.executionIntentRefs(),
+                unit.propagatedExtent(),
+                unit.deterministicallyCacheable());
+        return new PhysicalExecutionPlan(
+                base.formatVersion(),
+                base.planId(),
+                base.schemaVersion(),
+                base.planFingerprint(),
+                List.of(withText),
+                base.propagatedExtent(),
+                base.digest());
     }
 }

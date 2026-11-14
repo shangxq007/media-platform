@@ -24,6 +24,8 @@ import com.example.platform.render.domain.renderplan.RenderArtifactReference;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderExecutionCoverage;
 import com.example.platform.render.domain.renderplan.RenderExecutionRequirement;
+import com.example.platform.render.domain.renderplan.RenderMaterializationRequirement;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement;
 import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderNodeKind;
@@ -38,6 +40,9 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -58,9 +63,9 @@ import java.util.Objects;
  * <p>Explicitly NOT representable (the durable form must never drop semantics, so
  * these fail closed with {@link UnsupportedPersistedConstructException}):
  * {@code ColorDescription} and {@code RasterSampleDescription} on output requirements,
- * and every {@code RenderMaterializationRequirement} payload. Those payloads are not
- * produced by the bounded slice; a plan carrying them is rejected rather than
- * persisted lossily.
+ * and materialization variants outside the typed TIMED_TEXT requirement the bounded
+ * slice actually produces. The durable form must never drop semantics, so an
+ * unknown materialization variant is rejected rather than persisted lossily.
  */
 public final class PhysicalExecutionPlanCanonicalCodec {
 
@@ -289,9 +294,6 @@ public final class PhysicalExecutionPlanCanonicalCodec {
     }
 
     private static String output(OutputDeclaration declaration) {
-        if (!declaration.materializationRequirements().isEmpty()) {
-            throw new UnsupportedPersistedConstructException("RenderMaterializationRequirement");
-        }
         return new CanonicalWriter()
                 .tag("OutputDeclaration")
                 .field("outputId", declaration.outputId().value())
@@ -299,7 +301,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                 .field("sourceRenderNodeId", declaration.sourceRenderNodeId().value())
                 .list(declaration.outputRequirements().stream()
                         .map(PhysicalExecutionPlanCanonicalCodec::outputRequirement).toList())
-                .list(List.of())
+                .list(declaration.materializationRequirements().stream()
+                        .map(PhysicalExecutionPlanCanonicalCodec::materialization).toList())
                 .list(declaration.intermediateArtifactExpectations().stream()
                         .map(PhysicalExecutionPlanCanonicalCodec::intermediateArtifact).toList())
                 .list(declaration.finalArtifactExpectations().stream()
@@ -318,8 +321,9 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             requirements.add(outputRequirement(reader.nested()));
         }
         int materializationCount = reader.listCount();
-        if (materializationCount != 0) {
-            throw new UnsupportedPersistedConstructException("RenderMaterializationRequirement");
+        List<RenderMaterializationRequirement> materializations = new ArrayList<>(materializationCount);
+        for (int i = 0; i < materializationCount; i++) {
+            materializations.add(materialization(reader.text()));
         }
         List<RenderArtifactReference.IntermediateArtifactExpectation> intermediates = new ArrayList<>();
         int intermediateCount = reader.listCount();
@@ -332,7 +336,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             finals.add(finalArtifact(reader.nested()));
         }
         return new OutputDeclaration(
-                outputId, logicalNodeId, renderNodeId, requirements, List.of(), intermediates, finals);
+                outputId, logicalNodeId, renderNodeId, requirements, materializations,
+                intermediates, finals);
     }
 
     static String edge(LogicalDependencyEdge edge) {
@@ -406,6 +411,48 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                 RenderExecutionRequirement.RenderDeterminismClass.class, reader.field("determinism"));
         boolean sandboxed = reader.fieldBoolean("sandboxedIntent");
         return new ExecutionIntentRef(new RenderExecutionRequirement(gpu, determinism, sandboxed));
+    }
+
+    // ---------- materialization requirements ----------
+
+    private static final ObjectMapper MATERIALIZATION_MAPPER = new ObjectMapper();
+
+    private record MaterializationEnvelope(String variant, Object payload) {
+    }
+
+    /**
+     * Persists the typed materialization WHAT the bounded slice produces. The
+     * payload is the canonical Jackson form of the concrete requirement; the
+     * envelope keeps the variant discriminator explicit so an unknown kind can
+     * never be decoded as the wrong type.
+     */
+    private static String materialization(RenderMaterializationRequirement requirement) {
+        if (!(requirement instanceof TimedTextMaterializationRequirement timedText)) {
+            throw new UnsupportedPersistedConstructException(
+                    "RenderMaterializationRequirement variant " + requirement.variantKey());
+        }
+        try {
+            return MATERIALIZATION_MAPPER.writeValueAsString(
+                    new MaterializationEnvelope(requirement.variantKey(), timedText));
+        } catch (JsonProcessingException failure) {
+            throw new UnsupportedPersistedConstructException(
+                    "RenderMaterializationRequirement variant " + requirement.variantKey());
+        }
+    }
+
+    private static RenderMaterializationRequirement materialization(String encoded) {
+        try {
+            JsonNode root = MATERIALIZATION_MAPPER.readTree(encoded);
+            String variant = root == null ? "" : root.path("variant").asText();
+            if ("TIMED_TEXT".equals(variant)) {
+                return MATERIALIZATION_MAPPER.treeToValue(
+                        root.get("payload"), TimedTextMaterializationRequirement.class);
+            }
+            throw new UnsupportedPersistedConstructException(
+                    "RenderMaterializationRequirement variant " + variant);
+        } catch (JsonProcessingException failure) {
+            throw new UnsupportedPersistedConstructException("RenderMaterializationRequirement");
+        }
     }
 
     // ---------- render value types ----------

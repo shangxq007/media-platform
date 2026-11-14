@@ -2,6 +2,7 @@ package com.example.platform.ffmpeg;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.workerfabric.domain.CpuArchitecture;
 import com.example.platform.workerfabric.domain.ExecutionBackend;
@@ -75,5 +76,15 @@ class FfmpegProviderDeclarationTest {
         assertThat(support.knowledge()).isEqualTo(ProviderBackendExecutionSupport.Knowledge.DECLARED);
         assertThat(support.supportedBackends())
                 .containsExactly(ExecutionBackend.NATIVE_PULL_WORKER);
+    }
+
+    @Test
+    void ffmpegDeclaresMandatoryMaterializationForTheTimedTextRasterUnit() {
+        assertThat(FfmpegCpuProvider.STATIC_COMPATIBILITY.supportedArtifactRequirements())
+                .containsExactly(
+                        ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
+                        ProviderStaticCompatibility.ArtifactRequirementKind.MANDATORY_MATERIALIZATION,
+                        ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
+                        ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT);
     }
 }
