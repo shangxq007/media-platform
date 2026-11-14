@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""Fixed verification entry for local task work.
+
+Subcommands:
+  preflight [--level l1|l2|l3]  Fast environment gate; never starts heavy builds.
+  l1 --module <gradle module> [--tests <pattern> ...]
+                                Run one module's affected unit/contract tests.
+  guards                        Run architecture, jOOQ parity and OIDC build guards.
+  e2e --output <new dir>        Run the full product E2E through scripts/dev/first-render.
+
+Every run writes a JSON manifest (commit, tree, worktree state, command, exit code,
+log paths, tool versions) under VERIFY_EVIDENCE, defaulting to a sibling
+``<repository>-evidence/verify`` directory. Nothing here is a test scheduler: it
+wraps the existing Gradle/guard/E2E entries so later agents do not rediscover them.
+"""
+from __future__ import annotations
+import argparse, datetime, json, os, shutil, socket, subprocess, sys, time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_EVIDENCE = ROOT.parent / (ROOT.name + '-evidence') / 'verify'
+
+
+def git(*args: str) -> str:
+    return subprocess.run(['git', '-C', str(ROOT), *args],
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+def identity() -> dict:
+    return {
+        'commit': git('rev-parse', 'HEAD'),
+        'tree': git('rev-parse', 'HEAD^{tree}'),
+        'branch': git('branch', '--show-current'),
+        'dirty': [line for line in git('status', '--porcelain=v1', '-uall').splitlines() if line],
+    }
+
+
+def tool_version(command: list[str]) -> str:
+    try:
+        return subprocess.run(command, capture_output=True, text=True, timeout=20).stdout.splitlines()[0]
+    except Exception as failure:  # noqa: BLE001 - best-effort evidence
+        return f'unavailable: {type(failure).__name__}'
+
+
+def tcp(port: int) -> bool:
+    try:
+        with socket.create_connection(('127.0.0.1', port), timeout=2):
+            return True
+    except OSError:
+        return False
+
+
+def ffmpeg_features(binary: Path) -> dict:
+    if not binary.is_file():
+        return {'available': False}
+    try:
+        filters = subprocess.run([str(binary), '-hide_banner', '-filters'],
+                                 capture_output=True, text=True, timeout=30).stdout
+        encoders = subprocess.run([str(binary), '-hide_banner', '-encoders'],
+                                  capture_output=True, text=True, timeout=30).stdout
+    except Exception:  # noqa: BLE001
+        return {'available': False}
+    return {
+        'available': True,
+        'path': str(binary),
+        'drawtext': ' drawtext ' in filters or 'drawtext' in filters,
+        'overlay': 'overlay' in filters,
+        'libx264': 'libx264' in encoders,
+        'qtrle': 'qtrle' in encoders,
+    }
+
+
+def userns() -> dict:
+    podman = shutil.which('podman')
+    if not podman:
+        return {'available': False, 'reason': 'podman missing'}
+    try:
+        result = subprocess.run([podman, 'unshare', 'true'], capture_output=True,
+                                text=True, timeout=20)
+    except Exception as failure:  # noqa: BLE001
+        return {'available': False, 'reason': type(failure).__name__}
+    return {'available': result.returncode == 0,
+            'reason': '' if result.returncode == 0 else (result.stderr or 'podman unshare failed').strip()[-300:]}
+
+
+def preflight(level: str) -> dict:
+    worker_ffmpeg = Path(os.environ.get('FFMPEG_WORKER_FFMPEG_PATH', '/usr/bin/ffmpeg'))
+    evidence = Path(os.environ.get('VERIFY_EVIDENCE', DEFAULT_EVIDENCE))
+    evidence.mkdir(parents=True, exist_ok=True)
+    checks = {
+        'identity': identity(),
+        'tools': {name: shutil.which(name) for name in
+                  ('git', 'java', 'python3', 'node', 'google-chrome', 'ffmpeg', 'podman', 'bwrap')},
+        'userns': userns(),
+        'worker_ffmpeg': ffmpeg_features(worker_ffmpeg),
+        'pg18_port': int(os.environ.get('VERIFY_PG_PORT', '43057')),
+        'temporal_port': int(os.environ.get('VERIFY_TEMPORAL_PORT', '43233')),
+        'oidc_port': int(os.environ.get('VERIFY_OIDC_PORT', '43181')),
+        'token_present': Path(os.environ.get('VERIFY_OIDC_TOKEN', '/dev/shm/media-platform-nle-r1-token')).exists(),
+        'evidence_root': str(evidence),
+        'evidence_writable': os.access(evidence, os.W_OK),
+    }
+    checks['pg18_reachable'] = tcp(checks['pg18_port'])
+    checks['temporal_reachable'] = tcp(checks['temporal_port'])
+    checks['oidc_reachable'] = tcp(checks['oidc_port'])
+    if level == 'l1':
+        required = ['git', 'java', 'python3']
+    elif level == 'l2':
+        required = ['git', 'java', 'python3']
+    else:
+        required = ['git', 'java', 'python3', 'node', 'google-chrome']
+    blockers = [f'tool missing: {name}' for name in required if not checks['tools'].get(name)]
+    if level == 'l3':
+        features = checks['worker_ffmpeg']
+        for feature in ('drawtext', 'overlay', 'libx264', 'qtrle'):
+            if not features.get(feature):
+                blockers.append(f'worker ffmpeg lacks {feature}')
+        for name in ('pg18_reachable', 'temporal_reachable', 'oidc_reachable'):
+            if not checks[name]:
+                blockers.append(f'{name} is false')
+        if not checks['token_present']:
+            blockers.append('test OIDC token absent')
+        if not checks['userns']['available']:
+            blockers.append('rootless podman/namespace unavailable (native runner required)')
+    if not checks['evidence_writable']:
+        blockers.append('evidence root not writable')
+    checks.update(level=level, blockers=blockers, result='PASS' if not blockers else 'BLOCKED')
+    return checks
+
+
+def banner(text: str) -> None:
+    print(f'\n=== {text} ===', flush=True)
+
+
+def run_command(command: list[str], log_dir: Path, name: str, timeout: int) -> dict:
+    started = time.time()
+    stdout_path, stderr_path = log_dir / f'{name}.stdout', log_dir / f'{name}.stderr'
+    with stdout_path.open('w') as stdout, stderr_path.open('w') as stderr:
+        completed = subprocess.run(command, cwd=ROOT, stdout=stdout, stderr=stderr, timeout=timeout)
+    return {'name': name, 'argv': command, 'exit_code': completed.returncode,
+            'seconds': round(time.time() - started, 1),
+            'stdout': str(stdout_path), 'stderr': str(stderr_path)}
+
+
+def write_manifest(run_dir: Path, kind: str, results: list[dict]) -> None:
+    manifest = {
+        'kind': kind,
+        'recorded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'identity': identity(),
+        'results': results,
+        'results_pass': all(result['exit_code'] == 0 for result in results),
+        'environment': {
+            'java': tool_version(['java', '-version']),
+            'python': tool_version(['python3', '--version']),
+            'node': tool_version(['node', '--version']),
+            'gradle_wrapper': (ROOT / 'gradle/wrapper/gradle-wrapper.properties').read_text().strip().splitlines()[-1],
+        },
+    }
+    (run_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2))
+    print(json.dumps({'manifest': str(run_dir / 'manifest.json'), 'results_pass': manifest['results_pass']}))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest='command', required=True)
+    gate = sub.add_parser('preflight')
+    gate.add_argument('--level', choices=('l1', 'l2', 'l3'), default='l1')
+    gate.add_argument('--json', action='store_true')
+    unit = sub.add_parser('l1')
+    unit.add_argument('--module', required=True)
+    unit.add_argument('--tests', action='append', default=[])
+    unit.add_argument('--timeout', type=int, default=1800)
+    sub.add_parser('guards')
+    e2e = sub.add_parser('e2e')
+    e2e.add_argument('--output', type=Path, required=True)
+    e2e.add_argument('--source-ffmpeg', type=Path, default=Path('/usr/bin/ffmpeg'))
+    args = parser.parse_args()
+
+    if args.command == 'preflight':
+        report = preflight(args.level)
+        print(json.dumps(report, indent=2) if args.json else
+              'PREFLIGHT ' + report['result'] + ('\n' + '\n'.join('  - ' + b for b in report['blockers'])
+                                                 if report['blockers'] else ''))
+        return 0 if report['result'] == 'PASS' else 1
+
+    evidence_root = Path(os.environ.get('VERIFY_EVIDENCE', DEFAULT_EVIDENCE))
+    run_dir = evidence_root / time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+    run_dir.mkdir(parents=True, exist_ok=False)
+
+    if args.command == 'l1':
+        results = []
+        command = [str(ROOT / 'gradlew'), f':{args.module}:cleanTest', f':{args.module}:test']
+        for pattern in args.tests:
+            command += ['--tests', pattern]
+        command += ['--no-daemon', '--max-workers=2']
+        results.append(run_command(command, run_dir, 'gradle', args.timeout))
+        write_manifest(run_dir, 'l1', results)
+        return 0 if results[0]['exit_code'] == 0 else 1
+
+    if args.command == 'guards':
+        results = [
+            run_command(['bash', 'scripts/check-architecture-drift.sh'], run_dir, 'architecture-drift', 900),
+            run_command([str(ROOT / 'gradlew'), 'verifyJooqGeneratedSources', '--no-daemon', '--max-workers=2'],
+                        run_dir, 'jooq-parity', 600),
+            run_command(['bash', 'scripts/check-oidc-bundle-config.sh'], run_dir, 'oidc-bundle', 300),
+        ]
+        write_manifest(run_dir, 'guards', results)
+        return 0 if all(result['exit_code'] == 0 for result in results) else 1
+
+    report = preflight('l3')
+    (run_dir / 'preflight.json').write_text(json.dumps(report, indent=2))
+    if report['result'] != 'PASS':
+        print('L3 PREFLIGHT BLOCKED: ' + '; '.join(report['blockers']))
+        return 1
+    results = [run_command(
+        ['python3', '-B', 'scripts/dev/first-render', '--output', str(args.output),
+         '--source-ffmpeg', str(args.source_ffmpeg), '--timeline-operation-editing', '--nle-browser'],
+        run_dir, 'first-render', 7200)]
+    write_manifest(run_dir, 'l3', results)
+    return 0 if results[0]['exit_code'] == 0 else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
