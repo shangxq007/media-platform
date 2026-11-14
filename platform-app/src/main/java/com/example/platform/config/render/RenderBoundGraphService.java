@@ -4,7 +4,7 @@ import com.example.platform.execution.binding.*;
 import com.example.platform.render.api.GraphRenderLifecycle;
 import org.springframework.stereotype.Service;
 
-/** Saves immutable execution inputs inside the atomic First Render submission. No external dispatch here. */
+/** Saves immutable execution inputs inside the atomic RenderJob submission. No external dispatch here. */
 @Service
 public class RenderBoundGraphService {
     private final BoundGraphInputStore store;

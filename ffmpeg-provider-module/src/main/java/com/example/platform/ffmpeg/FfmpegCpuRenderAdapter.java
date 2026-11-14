@@ -207,7 +207,7 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
                 + ":text='" + escapeDrawtextText(raster.text()) + "'"
                 + ":fontcolor=white:fontsize=" + raster.fontSize()
                 + ":x=" + raster.x() + ":y=" + raster.y()
-                + ":enable='between(t," + seconds(raster.start()) + ","
+                + ":enable='gte(t," + seconds(raster.start()) + ")*lt(t,"
                 + seconds(raster.end()) + ")'");
         arguments.add("-c:v");
         arguments.add("qtrle");

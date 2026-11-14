@@ -340,7 +340,7 @@ class FfmpegCapabilityAwareLoweringTest {
                 .contains("fontsize=24")
                 .contains("x=(w-text_w)/2")
                 .contains("y=h-text_h-20")
-                .contains("enable='between(t,1,3)'");
+                .contains("enable='gte(t,1)*lt(t,3)'");
     }
 
     @Test

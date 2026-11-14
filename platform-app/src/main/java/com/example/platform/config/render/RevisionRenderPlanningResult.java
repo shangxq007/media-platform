@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Internal result of one First Render planning preparation.
+ * Internal result of one revision-pinned render planning preparation.
  *
  * <p>Carries only constructed inputs and context — no planning (#20), no execution planning (#21),
  * no provider binding (#22), no bound-graph persistence and no workflow start.

@@ -5,7 +5,7 @@ import com.example.platform.render.domain.renderplan.RenderExtent;
 import java.util.Objects;
 
 /**
- * Internal request accepted by the First Render Planning Application Service.
+ * Internal request accepted by the revision-pinned Render Planning Application Service.
  *
  * <p>This is an internal application DTO (not an HTTP DTO): the HTTP boundary (Phase 4) maps its
  * own request onto this type. It carries the caller-resolved render initiator and profile because

@@ -1,7 +1,7 @@
 package com.example.platform.config.render;
 
 /**
- * First Render output format intent (Phase 4).
+ * Formal RenderJob output format intent.
  *
  * <p>V0 supports exactly one value: {@link #MP4}. It maps to the canonical
  * {@code RenderOutputRequirement.of(RenderOutputRole.RENDER_MASTER)} produced by the Planning

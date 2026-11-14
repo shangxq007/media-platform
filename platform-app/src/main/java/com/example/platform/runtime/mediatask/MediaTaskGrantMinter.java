@@ -68,7 +68,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * First Render minimal grant minter: the one authorised production caller of Native Pull admission.
+ * MediaTask grant minter: the one authorised production caller of Native Pull admission.
  *
  * <p>When {@link MediaTaskActivity} finds no current grant for a task it delegates here. The minter
  * reads the authoritative persisted registration facts (host/runtime registration, host descriptor,

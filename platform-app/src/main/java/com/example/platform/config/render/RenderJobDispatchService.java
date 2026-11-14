@@ -43,7 +43,7 @@ public class RenderJobDispatchService {
             }));
         } catch (RuntimeException uncertain) {
             // Includes accepted-but-response-lost. Keep immutable intent; stable non-reusable workflow ID resolves ambiguity.
-            log.warn("First Render dispatch pending: tenant={} job={} cause={}", tenant, job, uncertain.getClass().getSimpleName());
+            log.warn("RenderJob dispatch pending: tenant={} job={} cause={}", tenant, job, uncertain.getClass().getSimpleName());
             return false;
         }
     }

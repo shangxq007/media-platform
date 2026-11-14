@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * First Render plan HTTP request body.
+ * Formal RenderJob submission HTTP request body.
  *
  * <p>Carries only the render target and the explicit output intent: the target revision, the real
  * render extent, the output format, and a mandatory profile. {@code tenantId} and the render

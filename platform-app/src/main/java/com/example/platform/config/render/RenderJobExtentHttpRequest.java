@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 /**
- * HTTP extent shape for the First Render plan request.
+ * HTTP extent shape for a formal RenderJob submission.
  *
  * <p>{@code startMillis}/{@code endMillis} are the requested half-open range start (inclusive) and
  * end (exclusive) in milliseconds; {@code frameRateNumerator}/{@code frameRateDenominator} express

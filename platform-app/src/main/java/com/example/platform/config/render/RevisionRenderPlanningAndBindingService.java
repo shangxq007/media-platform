@@ -24,7 +24,7 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 /**
- * First Render planning-and-binding coordinator (Phase 5).
+ * Revision-pinned RenderJob planning-and-binding coordinator.
  *
  * <p>Consumes the Phase 3 {@link RevisionRenderPlanningApplicationService} result and drives the typed
  * chain #20 → #21 → #22 to produce the complete {@link BoundGraphInputs}:

@@ -8,7 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Durable First Render idempotency reservation. The DB primary key is the concurrency authority. */
+/** Durable RenderJob submission idempotency reservation. The DB primary key is the concurrency authority. */
 @Service
 public class RenderSubmissionIdempotencyService {
     private final JdbcTemplate jdbc;

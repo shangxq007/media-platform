@@ -382,7 +382,7 @@ public final class MediaTaskActivity {
     }
 
     /**
-     * Resolves the current grant, delegating to the First Render minter exactly once when absent.
+     * Resolves the current grant, delegating to the MediaTask minter exactly once when absent.
      *
      * <p>Fail-closed: a missing or incomplete authoritative context still raises
      * {@code GRANT_ABSENT}; nothing is fabricated and the existing success path is unchanged.

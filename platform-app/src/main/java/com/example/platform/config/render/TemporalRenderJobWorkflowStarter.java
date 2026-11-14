@@ -65,7 +65,7 @@ public class TemporalRenderJobWorkflowStarter implements RenderJobWorkflowStarte
         WorkflowClient client = clients.getIfAvailable();
         if (client == null) {
             throw new IllegalStateException(
-                    "Temporal client unavailable; first render requires an enabled Temporal client");
+                    "Temporal client unavailable; render job requires an enabled Temporal client");
         }
         return client;
     }

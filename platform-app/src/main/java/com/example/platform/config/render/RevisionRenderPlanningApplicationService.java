@@ -32,9 +32,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * First Render Planning Application Service (Phase 3 skeleton).
+ * Revision-pinned RenderJob Planning Application Service.
  *
- * <p>Constructs the First Render planning inputs and context and creates the render job, and
+ * <p>Constructs the RenderJob planning inputs and context and creates the render job, and
  * <em>nothing else</em>: it does not invoke logical planning (#20), execution planning (#21),
  * provider binding (#22), bound-graph persistence, or any workflow start. Those belong to later
  * phases.
@@ -80,7 +80,7 @@ public class RevisionRenderPlanningApplicationService {
     }
 
     /**
-     * Prepares the First Render inputs and context for one request.
+     * Prepares the RenderJob inputs and context for one request.
      *
      * @throws IllegalArgumentException when the revision does not exist for the tenant
      * @throws IllegalStateException    when the revision's canonical snapshot is unavailable

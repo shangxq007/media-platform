@@ -1,7 +1,7 @@
 package com.example.platform.config.render;
 
 /**
- * First Render plan HTTP response body.
+ * Formal RenderJob submission HTTP response body.
  *
  * <p>Echoes the three independent identities plus the planning-only status ({@code "PLANNED"}), and
  * reports the target workflow id and whether this call confirmed the workflow started. It makes no

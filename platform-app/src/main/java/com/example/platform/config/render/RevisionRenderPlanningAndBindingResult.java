@@ -5,7 +5,7 @@ import com.example.platform.render.domain.renderplan.RenderRequestId;
 import java.util.Objects;
 
 /**
- * Result of the First Render planning-and-binding coordination.
+ * Result of the revision-pinned render planning-and-binding coordination.
  *
  * <p>Carries the complete {@link BoundGraphInputs} (physical plan + declared candidates + transition
  * declarations + the {@code expectedExecutableTaskGraphDigest} produced by the real #22 binding) plus
