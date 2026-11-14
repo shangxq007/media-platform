@@ -9,22 +9,30 @@ import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
 import com.example.platform.storage.domain.StorageObjectRef;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Profile;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Orchestrates raw media upload: file → BlobStorage → Asset → RAW_MEDIA Product.
+ * Orchestrates raw media upload: staged file → BlobStorage → Asset → RAW_MEDIA Product.
  *
  * <p>Pipeline:
  * <ol>
  *   <li>Generate storage key via {@link StorageKeyPolicy}</li>
- *   <li>Write bytes to {@link BlobStorage}</li>
+ *   <li>Stream the staged file to {@link BlobStorage} (file-based, never whole-file in memory)</li>
  *   <li>Register {@link Asset} in asset table</li>
  *   <li>Register RAW_MEDIA product through the render API boundary</li>
  * </ol>
+ *
+ * <p>The blob write is an external side effect and therefore happens OUTSIDE the database
+ * transaction; only the two registrations share one transaction boundary. The uploaded bytes
+ * are staged to a temp file by the controller, so the service never holds the whole upload
+ * in memory.
  *
  * <p>Safety: no signed URLs, no storage internals, no local paths exposed.
  */
@@ -40,70 +48,79 @@ public class RawMediaUploadService {
     private final BlobStorage blobStorage;
     private final MediaAssets assetRepository;
     private final RawMediaProductRegistrationFacade productRegistrationFacade;
+    private final TransactionTemplate registrationTransaction;
 
     public RawMediaUploadService(
             BlobStorage blobStorage,
             MediaAssets assetRepository,
-            RawMediaProductRegistrationFacade productRegistrationFacade) {
+            RawMediaProductRegistrationFacade productRegistrationFacade,
+            PlatformTransactionManager transactionManager) {
         this.blobStorage = blobStorage;
         this.assetRepository = assetRepository;
         this.productRegistrationFacade = productRegistrationFacade;
+        this.registrationTransaction = new TransactionTemplate(transactionManager);
     }
 
     /**
      * Upload raw media and register as a RAW_MEDIA Product.
      *
-     * @param tenantId    tenant from path variable
-     * @param projectId   project from path variable
-     * @param fileBytes   uploaded file content
-     * @param filename    original filename (used for storage key and asset metadata)
-     * @param contentType MIME type (declared by client or detected)
-     * @param displayName optional human-readable name (unused for now, reserved)
+     * @param tenantId       tenant from path variable
+     * @param projectId      project from path variable
+     * @param contentPath    staged uploaded file content (streamed, not read whole)
+     * @param filename       original filename (used for storage key and asset metadata)
+     * @param contentType    MIME type (declared by client or detected)
+     * @param displayName    optional human-readable name (unused for now, reserved)
      * @return the registered upload result
      */
-    @Transactional
-    public RawMediaUploadResult upload(String tenantId, String projectId, byte[] fileBytes,
+    public RawMediaUploadResult upload(String tenantId, String projectId, Path contentPath,
                           String filename, String contentType, String displayName) {
         assetRepository.requireRegistrationScope(tenantId, projectId);
         // 1. Generate IDs
         String assetId = ("asset_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String safeFilename = sanitizeFilename(filename);
 
-        // 2. Generate storage key and write to blob storage
+        // 2. Generate storage key and stream the staged file to blob storage
         String storageKey = StorageKeyPolicy.assetPath(tenantId, null, projectId, assetId, safeFilename);
         String bucket = DEFAULT_UPLOAD_BUCKET;
+        long contentLength;
+        try {
+            contentLength = Files.size(contentPath);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("staged upload content is not readable", e);
+        }
 
-        PutObjectCommand command = new PutObjectCommand(bucket, storageKey, fileBytes, contentType);
+        PutObjectCommand command = PutObjectCommand.fromPath(bucket, storageKey, contentPath, contentType);
         StorageObjectRef ref = blobStorage.put(command);
-        log.info("Upload stored: tenant={} project={} asset={} bucket={} key={}",
-                tenantId, projectId, assetId, ref.bucket(), ref.objectKey());
+        log.info("Upload stored: tenant={} project={} asset={} bucket={} key={} bytes={}",
+                tenantId, projectId, assetId, ref.bucket(), ref.objectKey(), contentLength);
 
         // 3. Register asset (MCMV2-C: structural truth captured via probe normalization)
-        Asset asset = assetRepository.register(
-                tenantId, projectId, storageKey,
-                detectMediaType(contentType, safeFilename),
-                safeFilename,
-                fileBytes != null ? (long) fileBytes.length : null,
-                null // checksum (future)
-        );
-        log.info("Asset registered: id={} mediaType={}", asset.id(), asset.mediaType());
-
         // 4. Build storage reference URI (provider://bucket/key)
         String storageReferenceUri = blobStorage.code() + "://" + ref.bucket() + "/" + ref.objectKey();
 
-        // 5. Register RAW_MEDIA Product through the render API boundary.
-        RawMediaProductRegistrationResult registered = productRegistrationFacade.registerRawMedia(
-                new RawMediaProductRegistrationCommand(
-                        tenantId,
-                        projectId,
-                        asset.id(),
-                        storageReferenceUri,
-                        contentType
-                )
-        );
-        log.info("RAW_MEDIA Product registered: id={} assetId={}", registered.productId(), asset.id());
+        // 5. Register RAW_MEDIA Product through the render API boundary, in one DB transaction.
+        return registrationTransaction.execute(status -> {
+            Asset asset = assetRepository.register(
+                    tenantId, projectId, storageKey,
+                    detectMediaType(contentType, safeFilename),
+                    safeFilename,
+                    contentLength,
+                    null // checksum (future)
+            );
+            log.info("Asset registered: id={} mediaType={}", asset.id(), asset.mediaType());
 
-        return new RawMediaUploadResult(registered.productId(), registered.createdAt());
+            RawMediaProductRegistrationResult registered = productRegistrationFacade.registerRawMedia(
+                    new RawMediaProductRegistrationCommand(
+                            tenantId,
+                            projectId,
+                            asset.id(),
+                            storageReferenceUri,
+                            contentType
+                    )
+            );
+            log.info("RAW_MEDIA Product registered: id={} assetId={}", registered.productId(), asset.id());
+            return new RawMediaUploadResult(registered.productId(), registered.createdAt());
+        });
     }
 
     /**

@@ -11,12 +11,16 @@ import com.example.platform.media.api.Asset;
 import com.example.platform.media.api.MediaAssets;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class RawMediaUploadServiceTest {
@@ -27,16 +31,26 @@ class RawMediaUploadServiceTest {
     private MediaAssets assetRepository;
     @Mock
     private RawMediaProductRegistrationFacade productRegistrationFacade;
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     private RawMediaUploadService service;
 
     @BeforeEach
     void setUp() {
-        service = new RawMediaUploadService(blobStorage, assetRepository, productRegistrationFacade);
+        lenient().when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        service = new RawMediaUploadService(blobStorage, assetRepository, productRegistrationFacade,
+                transactionManager);
+    }
+
+    private static Path stage(byte[] content) throws Exception {
+        Path path = Files.createTempFile("raw-media-test-", ".bin");
+        Files.write(path, content);
+        return path;
     }
 
     @Test
-    void upload_success() {
+    void upload_success() throws Exception {
         // Arrange
         byte[] fileBytes = new byte[]{1, 2, 3, 4, 5};
         String filename = "video.mp4";
@@ -58,15 +72,22 @@ class RawMediaUploadServiceTest {
                 .thenReturn(new RawMediaProductRegistrationResult("prod-1", createdAt));
 
         // Act
-        RawMediaUploadResult result = service.upload(tenantId, projectId, fileBytes, filename, contentType, null);
+        RawMediaUploadResult result = service.upload(tenantId, projectId,
+                stage(fileBytes), filename, contentType, null);
 
         // Assert
         assertNotNull(result);
         assertEquals("prod-1", result.productId());
         assertEquals(createdAt, result.createdAt());
 
-        verify(blobStorage).put(argThat(cmd ->
-                cmd.bucket().equals("uploads") && cmd.content() == fileBytes && cmd.contentType().equals(contentType)));
+        var putCaptor = org.mockito.ArgumentCaptor.forClass(
+                com.example.platform.storage.domain.PutObjectCommand.class);
+        verify(blobStorage).put(putCaptor.capture());
+        com.example.platform.storage.domain.PutObjectCommand captured = putCaptor.getValue();
+        assertEquals("uploads", captured.bucket());
+        assertTrue(captured.isFileBased());
+        assertEquals(contentType, captured.contentType());
+        assertArrayEquals(fileBytes, Files.readAllBytes(captured.contentPath()));
         verify(assetRepository).register(eq(tenantId), eq(projectId), any(), eq("VIDEO"),
                 eq(filename), eq(5L), isNull());
         verify(productRegistrationFacade).registerRawMedia(argThat(cmd ->
@@ -78,7 +99,7 @@ class RawMediaUploadServiceTest {
     }
 
     @Test
-    void upload_emptyFile_stillProcesses() {
+    void upload_emptyFile_stillProcesses() throws Exception {
         byte[] emptyBytes = new byte[0];
         when(blobStorage.code()).thenReturn("localFs");
         when(blobStorage.put(any())).thenReturn(new StorageObjectRef("localFs", "uploads", "key"));
@@ -91,7 +112,8 @@ class RawMediaUploadServiceTest {
         when(productRegistrationFacade.registerRawMedia(any()))
                 .thenReturn(new RawMediaProductRegistrationResult("p1", Instant.now()));
 
-        RawMediaUploadResult result = service.upload("t1", "p1", emptyBytes, "empty", null, null);
+        RawMediaUploadResult result = service.upload("t1", "p1",
+                stage(emptyBytes), "empty", null, null);
         assertNotNull(result);
     }
 

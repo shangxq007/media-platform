@@ -2,11 +2,13 @@ package com.example.platform.ingest.api;
 import org.springframework.context.annotation.Profile;
 
 import com.example.platform.ingest.api.dto.UploadRawMediaResponse;
-import com.example.platform.ingest.app.RawMediaUploadService;
 import com.example.platform.ingest.app.RawMediaUploadResult;
+import com.example.platform.ingest.app.RawMediaUploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -28,7 +30,9 @@ import org.springframework.web.multipart.MultipartFile;
  *
  * <p>Returns: {@code { productId, status, createdAt }}
  *
- * <p>Safety: no storage references, signed URLs, or internal paths exposed.
+ * <p>Safety: no storage references, signed URLs, or internal paths exposed. The upload is
+ * bounded by {@code spring.servlet.multipart.max-file-size} and spilled to a temp file so
+ * the service never buffers the whole upload in memory.
  */
 @RestController
 @Profile("legacy-media-disabled")
@@ -68,10 +72,14 @@ public class RawMediaUploadController {
         log.info("Upload received: tenant={} project={} filename={} size={} contentType={}",
                 tenantId, projectId, filename, file.getSize(), resolvedContentType);
 
+        // Bounded staging: the multipart boundary already caps the request size; the bytes are
+        // spilled to a temp file so the service streams them instead of buffering the upload.
+        Path staged = null;
         try {
-            byte[] bytes = file.getBytes();
+            staged = Files.createTempFile("raw-media-upload-", ".bin");
+            file.transferTo(staged);
             RawMediaUploadResult result = uploadService.upload(
-                    tenantId, projectId, bytes, filename, resolvedContentType, displayName);
+                    tenantId, projectId, staged, filename, resolvedContentType, displayName);
 
             log.info("Upload complete: tenant={} project={} productId={}",
                     tenantId, projectId, result.productId());
@@ -87,6 +95,14 @@ public class RawMediaUploadController {
         } catch (Exception e) {
             log.error("Upload processing error: tenant={} project={} filename={}", tenantId, projectId, filename, e);
             return ResponseEntity.internalServerError().body(UploadRawMediaResponse.failed());
+        } finally {
+            if (staged != null) {
+                try {
+                    Files.deleteIfExists(staged);
+                } catch (IOException cleanupFailure) {
+                    log.warn("Upload staging cleanup failed: {}", staged, cleanupFailure);
+                }
+            }
         }
     }
 }

@@ -71,7 +71,8 @@ public final class FfmpegCpuRuntimeBindingFactory {
                 launcher,
                 new FfmpegSandboxExecutionPolicyResolver(
                         executable, workspace, timeout, captureBytes, capabilities, fontFile),
-                cancellation);
+                cancellation,
+                workspace.workingDirectory());
     }
 
     private static SandboxExecutionResult unavailable(Path workingDirectory, String diagnostic) {

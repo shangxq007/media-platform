@@ -180,7 +180,10 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         arguments.add("frag_keyframe+empty_moov+default_base_moof");
         arguments.add("-f");
         arguments.add("mp4");
-        arguments.add("pipe:1");
+        // File-based output: a large render must not be buffered in memory or truncated by the
+        // sandbox stdout capture bound. The executor reads this file back as a stream.
+        arguments.add(com.example.platform.workerfabric.domain.providernative
+                .ProviderNativeOutputFiles.RENDER_OUTPUT);
         LOG.info("FFMPEG_ARGV task={} operation={} argv={}",
                 plan.executableTaskId().sha256Hex(), plan.operation(), arguments);
         return arguments;
@@ -212,7 +215,8 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         arguments.add("argb");
         arguments.add("-f");
         arguments.add("mov");
-        arguments.add("pipe:1");
+        arguments.add(com.example.platform.workerfabric.domain.providernative
+                .ProviderNativeOutputFiles.RENDER_OUTPUT);
         LOG.info("FFMPEG_RASTER_ARGV task={} argv={}",
                 plan.executableTaskId().sha256Hex(), arguments);
         return arguments;

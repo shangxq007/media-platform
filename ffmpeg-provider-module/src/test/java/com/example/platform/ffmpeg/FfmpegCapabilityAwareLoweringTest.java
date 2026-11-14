@@ -48,6 +48,7 @@ import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeOutputFiles;
 import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionContext;
 import com.example.platform.workerfabric.domain.providernative.StaticProviderExecutionContext;
 import java.nio.file.Path;
@@ -80,7 +81,8 @@ class FfmpegCapabilityAwareLoweringTest {
 
         List<String> arguments = arguments(plan);
         assertThat(arguments).containsSequence("-ss", "1.5", "-t", "2");
-        assertThat(arguments).contains("libx264", "yuv420p", "pipe:1");
+        assertThat(arguments).contains("libx264", "yuv420p",
+                ProviderNativeOutputFiles.RENDER_OUTPUT);
         assertThat(arguments).containsOnlyOnce(
                 FfmpegCpuRenderAdapter.materializedInputToken(plan.inputId()));
     }
@@ -143,7 +145,8 @@ class FfmpegCapabilityAwareLoweringTest {
         FfmpegCpuRenderPlan plan = LOWERER.lower(task("transcode", List.of(), null, 1), CONTEXT);
 
         assertThat(plan.operation()).isEqualTo(FfmpegCpuRenderPlan.Operation.TRANSCODE);
-        assertThat(arguments(plan)).containsSequence("-f", "mp4", "pipe:1");
+        assertThat(arguments(plan)).containsSequence("-f", "mp4",
+                ProviderNativeOutputFiles.RENDER_OUTPUT);
     }
 
     @Test
@@ -156,7 +159,7 @@ class FfmpegCapabilityAwareLoweringTest {
         assertThat(decode.stream().filter("-ss"::equals).count()).isEqualTo(1);
         assertThat(encode).doesNotContain("-ss");
         assertThat(encode).contains("-c:v", "libx264", "-pix_fmt", "yuv420p");
-        assertThat(encode).containsSequence("-f", "mp4", "pipe:1");
+        assertThat(encode).containsSequence("-f", "mp4", ProviderNativeOutputFiles.RENDER_OUTPUT);
         assertThat(encode).contains("+bitexact", "frag_keyframe+empty_moov+default_base_moof");
     }
 
@@ -299,7 +302,8 @@ class FfmpegCapabilityAwareLoweringTest {
         assertThat(raster.fontFile()).isEqualTo("/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf");
 
         List<String> arguments = arguments(plan);
-        assertThat(arguments).contains("-vf", "-c:v", "qtrle", "-pix_fmt", "argb", "-f", "mov", "pipe:1");
+        assertThat(arguments).contains("-vf", "-c:v", "qtrle", "-pix_fmt", "argb", "-f", "mov",
+                ProviderNativeOutputFiles.RENDER_OUTPUT);
         assertThat(arguments.get(arguments.indexOf("-vf") + 1))
                 .contains("drawtext=fontfile=/usr/share/fonts/truetype/NotoSansCJKsc-VF.otf")
                 .contains("text='你好世界'")

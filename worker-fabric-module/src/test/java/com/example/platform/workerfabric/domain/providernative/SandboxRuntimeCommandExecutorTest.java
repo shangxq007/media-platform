@@ -3,6 +3,7 @@ package com.example.platform.workerfabric.domain.providernative;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.example.platform.sandbox.BoundedCapture;
 import com.example.platform.sandbox.BoundedProcessLauncher;
@@ -12,6 +13,7 @@ import com.example.platform.sandbox.SandboxCleanupObservation;
 import com.example.platform.sandbox.SandboxExecutionHandle;
 import com.example.platform.sandbox.SandboxExecutionObservation;
 import com.example.platform.sandbox.SandboxExecutionRequirement;
+import com.example.platform.sandbox.ProcessRequirement;
 import com.example.platform.sandbox.SandboxExecutionResult;
 import com.example.platform.sandbox.SandboxFailure;
 import com.example.platform.sandbox.SandboxFailureCode;
@@ -32,7 +34,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Path;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.OptionalInt;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -61,8 +65,7 @@ class SandboxRuntimeCommandExecutorTest {
         BoundedProcessLauncher launcher = (specification, cancellation) -> result(
                 OptionalInt.of(0), new byte[0], Optional.empty());
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
-                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
-                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+                launcher, (command, inputs) -> resolved(), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class, failure ->
@@ -77,8 +80,7 @@ class SandboxRuntimeCommandExecutorTest {
         BoundedProcessLauncher launcher = (specification, cancellation) -> result(
                 OptionalInt.of(0), "candidate".getBytes(), Optional.of(cleanup));
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
-                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
-                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+                launcher, (command, inputs) -> resolved(), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
@@ -108,7 +110,7 @@ class SandboxRuntimeCommandExecutorTest {
                         new SandboxExecutionObservation(new SandboxExecutionHandle(child.pid(),born),root,Duration.ZERO,
                                 SandboxCleanupObservation.failed(1,List.of(child.pid()),"controlled surviving child")));
             };
-            var executor=new SandboxRuntimeCommandExecutor(launcher,(command,inputs)->new SandboxResolution.Resolved(mock(EffectiveSandboxExecutionSpecification.class)),()->true);
+            var executor=new SandboxRuntimeCommandExecutor(launcher,(command,inputs)->resolved(),()->true);
             assertThatThrownBy(()->executor.execute(bundle(),List.of())).isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
                     failure->assertThat(failure.code()).isEqualTo(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED));
             assertThat(child.isAlive()).isTrue();assertThat(child.info().startInstant()).contains(born);
@@ -126,8 +128,7 @@ class SandboxRuntimeCommandExecutorTest {
                 new BoundedCapture("partial-media".getBytes(), true),
                 Optional.empty());
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
-                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
-                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+                launcher, (command, inputs) -> resolved(), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
@@ -148,8 +149,7 @@ class SandboxRuntimeCommandExecutorTest {
             throw new IOException("unclassified launcher failure");
         };
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
-                unknown, (command, inputs) -> new SandboxResolution.Resolved(mock(
-                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+                unknown, (command, inputs) -> resolved(), SandboxCancellation.never());
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
                         failure -> assertThat(failure.code())
@@ -168,8 +168,7 @@ class SandboxRuntimeCommandExecutorTest {
                 new BoundedCapture(stderr.getBytes(StandardCharsets.UTF_8), true),
                 Optional.of(sandboxFailure));
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
-                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
-                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+                launcher, (command, inputs) -> resolved(), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class, failure -> {
@@ -193,12 +192,40 @@ class SandboxRuntimeCommandExecutorTest {
         BoundedProcessLauncher launcher = (specification, cancellation) -> result(
                 OptionalInt.empty(), new byte[0], Optional.of(sandboxFailure));
         SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
-                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
-                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+                launcher, (command, inputs) -> resolved(), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
                         failure -> assertThat(failure.code()).isEqualTo(expected));
+    }
+
+    @org.junit.jupiter.api.Test
+    void file_backed_provider_output_is_streamed_without_stdout_capture_bound() throws Exception {
+        Path root = java.nio.file.Files.createTempDirectory("provider-output-test-");
+        Path outputFile = root.resolve(ProviderNativeOutputFiles.RENDER_OUTPUT);
+        java.nio.file.Files.write(outputFile, new byte[]{1, 2, 3});
+        BoundedProcessLauncher launcher = (specification, cancellation) -> result(
+                OptionalInt.of(0), new byte[0], Optional.empty());
+        SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
+                launcher, (command, inputs) -> resolved(),
+                SandboxCancellation.never(), root);
+
+        ProviderExecutionOutput output = executor.execute(bundle(), List.of());
+        try (var input = output.content()) {
+            assertThat(input.readAllBytes()).containsExactly(1, 2, 3);
+        }
+    }
+
+    private static SandboxResolution.Resolved resolved() {
+        ProcessRequirement process = mock(ProcessRequirement.class);
+        when(process.executable()).thenReturn("/bin/true");
+        when(process.arguments()).thenReturn(List.of());
+        EffectiveSandboxExecutionSpecification specification =
+                mock(EffectiveSandboxExecutionSpecification.class);
+        when(specification.process()).thenReturn(process);
+        when(specification.filesystem()).thenReturn(mock(
+                com.example.platform.sandbox.FilesystemPolicy.class));
+        return new SandboxResolution.Resolved(specification);
     }
 
     private RuntimeExecutionBundle bundle() {

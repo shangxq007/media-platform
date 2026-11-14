@@ -9,6 +9,8 @@ import com.example.platform.sandbox.SandboxResolution;
 import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -24,18 +26,35 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
     private final BoundedProcessLauncher launcher;
     private final SandboxExecutionPolicyResolver specifications;
     private final SandboxCancellation cancellation;
+    private final Path providerOutputDirectory;
 
     public SandboxRuntimeCommandExecutor(
             BoundedProcessLauncher launcher,
             SandboxExecutionPolicyResolver specifications,
             SandboxCancellation cancellation) {
+        this(launcher, specifications, cancellation, null);
+    }
+
+    /**
+     * @param providerOutputDirectory sandbox working directory whose well-known provider output
+     *                                file is streamed back as the execution output; {@code null}
+     *                                keeps the legacy bounded-stdout behaviour
+     */
+    public SandboxRuntimeCommandExecutor(
+            BoundedProcessLauncher launcher,
+            SandboxExecutionPolicyResolver specifications,
+            SandboxCancellation cancellation,
+            Path providerOutputDirectory) {
         this.launcher = Objects.requireNonNull(launcher, "launcher");
         this.specifications = Objects.requireNonNull(specifications, "specifications");
         this.cancellation = Objects.requireNonNull(cancellation, "cancellation");
+        this.providerOutputDirectory = providerOutputDirectory == null
+                ? null : providerOutputDirectory.toAbsolutePath().normalize();
     }
 
     public SandboxRuntimeCommandExecutor withCancellation(SandboxCancellation cancellation) {
-        return new SandboxRuntimeCommandExecutor(launcher, specifications, cancellation);
+        return new SandboxRuntimeCommandExecutor(launcher, specifications, cancellation,
+                providerOutputDirectory);
     }
 
     @Override
@@ -75,12 +94,22 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                 if (result.failure().isPresent()) {
                     throw mapped(result);
                 }
-                if (result.stdout().truncated()) {
+                if (result.stdout().truncated() && providerOutputDirectory == null) {
                     throw new ProviderNativeExecutionFailure(
                             ProviderNativeFailureCode.PROCESS_OUTPUT_TRUNCATED,
                             "process stdout exceeded bounded capture limit");
                 }
                 candidateOutput = result.stdout().bytes();
+            }
+            if (providerOutputDirectory != null) {
+                Path outputFile = ProviderNativeOutputFiles.renderOutput(providerOutputDirectory);
+                if (Files.exists(outputFile)) {
+                    LOG.info("PROCESS_OUTPUT_FILE task={} attempt={} bytes={}",
+                            bundle.executableTaskId().sha256Hex(),
+                            bundle.platformExecutionAttemptId().value(),
+                            Files.size(outputFile));
+                    return new ProviderExecutionOutput(Files.newInputStream(outputFile));
+                }
             }
             if (candidateOutput == null || candidateOutput.length == 0) {
                 throw mapped(SandboxFailure.of(
