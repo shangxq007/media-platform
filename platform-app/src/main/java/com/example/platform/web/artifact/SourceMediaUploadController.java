@@ -109,7 +109,7 @@ public class SourceMediaUploadController {
                 "artifact.source.upload", "artifact.source.upload", "artifact.source.upload",
                 file.getSize(), month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
                 month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(), trace, now);
-        var decision = commercial.decideForAcceptance(admissionRequest);
+        var decision = transaction.execute(status -> commercial.decideForAcceptance(admissionRequest));
         // The quota authority performs the atomic limit check and recognizes retries.
         // A preliminary quota denial can include a previous successful use of this key.
         if (!decision.allowed() && decision.reason() != CommercialDecisionReason.QUOTA_EXCEEDED) {
@@ -137,11 +137,16 @@ public class SourceMediaUploadController {
                 idempotencyKey, "pending-quota");
         var prepared = artifacts.prepare(preflight);
         var result = transaction.execute(status -> {
+            // Recheck under the same lock and transaction as the quota consumption and Artifact commit.
+            var currentDecision = commercial.decideForAcceptance(admissionRequest);
+            if (!currentDecision.allowed() && currentDecision.reason() != CommercialDecisionReason.QUOTA_EXCEEDED) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "source upload admission denied");
+            }
             var quotaResult = quota.execute(new QuotaUsageCommand(
                     admissionRequest.principal(), admissionRequest.quotaKey(),
                     admissionRequest.periodStart(), admissionRequest.periodEnd(), file.getSize(),
                     quotaPolicies.getQuotaPolicy(admissionRequest.quotaKey()).limitValue().longValueExact(),
-                    trace, QuotaOperationKind.CONSUMPTION, decision.traceId(),
+                    trace, QuotaOperationKind.CONSUMPTION, currentDecision.traceId(),
                     "source media upload", now));
             if (!quotaResult.applied()) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "source upload quota exceeded");
