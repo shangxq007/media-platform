@@ -87,6 +87,7 @@ if '--bootstrap' in sys.argv:
           '--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/sbin','/sbin','--symlink','usr/lib64','/lib64','--symlink','usr/lib','/lib',
           '--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/etc','--ro-bind','/etc/ld.so.cache','/etc/ld.so.cache',
           '--ro-bind',str(R/'03-build/outputs'),str(R/'03-build/outputs'),'--ro-bind',c['ca'],c['ca'],
+          *( ['--ro-bind',bmf_root,bmf_root] if bmf_root else [] ),
           '--bind',str(out),str(out),'--tmpfs',str(control),'--chdir',str(out),'--',
           '/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',jar,'--platform.runtime.role='+profile.upper()]
   java_config=Path('/etc/java-25-openjdk')

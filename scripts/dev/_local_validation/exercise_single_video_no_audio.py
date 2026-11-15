@@ -57,7 +57,7 @@ insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updat
 insert into role(id,role_key,name,scope,created_at) values ('role-fr-e2e','F8_RENDER','Owned synthetic role','WORKSPACE',now());
 insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-e2e','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','render.job.create','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
 insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-upload','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','artifact.source.upload','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
-insert into role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from permission where permission_key in ('READ','WRITE','render.submit','artifact.read');
+insert into role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from permission where permission_key in ('READ','WRITE','render.submit','artifact.read','delivery.read','delivery.manage');
 insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
 commit;'''
 psql = base+['exec','-i','--user','postgres',ctx['container_id'],'psql','-X','-v','ON_ERROR_STOP=1','-U','mp_owner','-d',ctx['database']]
@@ -77,7 +77,7 @@ token = unsigned+'.'+encode(signature)
 (app/'token').chmod(0o600)
 
 client = app/'scenario-client.py'
-client.write_text(r'''import json, pathlib, sys, urllib.request, urllib.error, uuid
+client.write_text(r'''import json, pathlib, sys, time, urllib.request, urllib.error, uuid
 root=pathlib.Path(sys.argv[1]);token=(root/'token').read_text();base='http://127.0.0.1:18080'
 project='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e'
 results={}
@@ -101,7 +101,13 @@ def upload(key,auth=True):
            'Content-Type: video/mp4\r\n\r\n').encode()+data+('\r\n--'+boundary+'--\r\n').encode())
     return call(project+'/source-media',body,{'Content-Type':'multipart/form-data; boundary='+boundary,
                                               'Idempotency-Key':key},auth)
-required('readiness',call('/actuator/health/readiness',auth=False),{200})
+deadline=time.monotonic()+180
+while True:
+    readiness=call('/actuator/health/readiness',auth=False)
+    if readiness['status']==200:break
+    if time.monotonic()>deadline:raise AssertionError(('readiness timeout',readiness))
+    time.sleep(1)
+required('readiness',readiness,{200})
 required('unauthenticated_upload',upload('scenario-unauthorized',False),{401,403})
 pin=required('upload_source',upload('scenario-source-1'),{201})
 assert pin['artifactId'] and pin['contentDigest'] and pin['streams']
@@ -120,14 +126,14 @@ accepted=required('add_clip_apply',call(project+'/timeline-operations/add-media-
 assert accepted['status']=='APPLIED' and accepted['baseRevisionId']==revision
 retry=required('add_clip_retry',call(project+'/timeline-operations/add-media-clip/apply',
     {'request':draft,'expectedPlanDigest':preview['planDigest'],'applyCommandId':'bmf-add-clip-0'}),{201})
-assert json.loads(retry['body'])['newRevisionId']==accepted['newRevisionId']
+assert retry['newRevisionId']==accepted['newRevisionId']
 revision=accepted['newRevisionId'];content=accepted['newTimelineContentHash']
 head=required('head',call('/api/timeline-git/products/project-fr-e2e/revisions/current'),{200})
 assert head['revisionId']==revision and head['revision']['semanticContext']['timelineContentDigest']==content
 snapshot=required('canonical_snapshot',call('/api/render/projects/project-fr-e2e/timeline/revisions/'+revision+'/snapshot'),{200})
 document=json.loads(snapshot['canonicalTimelineJson'])
 tracks=document['tracks'];clips=[clip for track in tracks for clip in track['clips']]
-assert len(tracks)==1 and tracks[0]['type']=='VIDEO',tracks
+assert len(tracks)==1 and tracks[0]['type'].upper()=='VIDEO',tracks
 assert [clip['clipId'] for clip in clips]==['clip-0'],clips
 assert not document.get('textElements') and not document.get('audioMix',{}).get('routes'),document.keys()
 assert not document.get('transitions') and not document.get('automations'),document.keys()

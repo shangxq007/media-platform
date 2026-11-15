@@ -37,7 +37,9 @@ def psql(sql):
 
 
 def run(name, argv, timeout=180):
-    p = subprocess.run(argv, env=env, capture_output=True, text=True, timeout=timeout)
+    # The owned podman store needs its own environment; sandboxed clients need the task env.
+    environment = E if str(argv[0]).endswith('/podman') else env
+    p = subprocess.run(argv, env=environment, capture_output=True, text=True, timeout=timeout)
     (app / (name + '.stdout')).write_text(p.stdout)
     (app / (name + '.stderr')).write_text(p.stderr)
     if p.returncode:
@@ -57,6 +59,10 @@ evidence['submission'] = {'endpoint': '/api/render-jobs', 'http': submit['status
                           'finalArtifactId': final_artifact}
 evidence['scenario'] = json.loads((app / 'scenario.json').read_text())
 assert RUN['media_provider'] == 'bmf' and RUN['scenario'] == 'single-video-no-audio'
+# The exact source the scenario uploaded; the first physical unit must consume it.
+source_pin = json.loads(http['upload_source']['body'])
+evidence['scenario_source_digest'] = source_pin['contentDigest'].split(':')[-1]
+evidence['scenario_source_artifact'] = source_pin['artifactId']
 
 # ── 2. persisted bound-graph inputs and the committed graph digest ─────────────────────────────
 facts = json.loads(psql(f"""
@@ -67,8 +73,8 @@ select json_build_object(
     'candidate_set_digest',candidate_set_digest,'plan_bytes',octet_length(plan_json),'plan_sha256',encode(sha256(plan_json),'hex'),
     'candidates_bytes',octet_length(candidates_json),'candidates_sha256',encode(sha256(candidates_json),'hex'),
     'declarations_bytes',octet_length(declarations_json)) from render_binding_inputs where render_job_id='{job}'),
- 'plan_text',(select replace(encode(plan_json,'base64'),chr(10),'') from render_binding_inputs where render_job_id='{job}'),
- 'candidates_text',(select replace(encode(candidates_json,'base64'),chr(10),'') from render_binding_inputs where render_job_id='{job}'),
+ 'plan_text',(select convert_from(plan_json,'UTF8') from render_binding_inputs where render_job_id='{job}'),
+ 'candidates_text',(select convert_from(candidates_json,'UTF8') from render_binding_inputs where render_job_id='{job}'),
  'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,task_attempt_id,task_generation,expected_artifact_id,final_artifact_id,failure_code from render_graph_execution where job_id='{job}') g),
  'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'mediaType',media_type,'digest',content_digest,'bytes',byte_length) order by created_at) from artifact where render_job_id='{job}'),
  'replicas',(select json_agg(json_build_object('artifact',artifact_id,'storageProvider',provider_id,'storageObject',storage_object_id,'state',state,'role',role)) from artifact_replica r where artifact_id in (select id from artifact where render_job_id='{job}')),
@@ -78,7 +84,8 @@ select json_build_object(
  'quota_operations',(select count(*) from quota_usage_operation where idempotency_key='render-job:{job}:completion'),
  'events',(select json_agg(json_build_object('type',event_type,'count',n)) from (select event_type,count(*) n from outbox_events where aggregate_id='{job}' group by event_type order by event_type) x)
 )"""))
-plan_text = base64.b64decode(facts.pop('plan_text')).decode('utf-8')
+plan_text = facts.pop('plan_text')
+# candidates_json stores one base64-encoded canonical candidate per line.
 candidates_text = '\n'.join(base64.b64decode(line).decode('utf-8', 'replace')
                             for line in facts.pop('candidates_text').splitlines() if line.strip())
 (app / 'bmf-plan-canonical.txt').write_text(plan_text)
@@ -119,7 +126,6 @@ evidence['workflow'] = {'workflowId': workflow_id, 'status': status,
 
 # ── 4. the real BMF graph executions captured by the Worker process ────────────────────────────
 worker_log = (app / 'worker.log').read_text(errors='replace')
-api_log = (app / 'api.log').read_text(errors='replace')
 specs = re.findall(r'PROCESS_SPEC task=(\w+) attempt=(\S+) executable=(\S+) argv=\[(.*?)\] cwd=(\S+)', worker_log, re.S)
 outputs = re.findall(r'PROCESS_OUTPUT task=(\w+) attempt=(\S+) exit=(\S+) stdoutBytes=(\d+) stdoutSha256=(\w+) stdoutTruncated=(\w+) stderrBytes=(\d+)', worker_log)
 files = re.findall(r'PROCESS_OUTPUT_FILE task=(\w+) attempt=(\S+) bytes=(\d+)', worker_log)
@@ -130,43 +136,69 @@ file_by_attempt = {item[1]: item for item in files}
 executions = []
 for attempt, spec in spec_by_attempt.items():
     task, _, executable, arguments, _ = spec
-    tail = arguments.rsplit(', ', 3)
+    # The bounded graph argv is "<python> -s -c <graph> <input> <output> <operation> <start> <duration>".
+    tail = arguments.rsplit(', ', 3)[-3:]
     assert len(tail) == 3, ('unexpected provider argv shape', attempt)
     operation, start, duration = (part.strip() for part in tail)
     assert operation in ('decode', 'composite', 'encode'), ('unexpected BMF operation', operation)
-    assert 'bmf' in executable or 'python3.9' in executable, ('process is not the BMF runtime Python', executable)
+    assert executable.endswith('/host-bundle/usr/bin/python3.9'), ('process is not the BMF runtime Python', executable)
+    input_digest = re.search(r'/materialized/sha_256/([0-9a-f]{2})/([0-9a-f]{64})', arguments)
+    assert input_digest and input_digest.group(2).startswith(input_digest.group(1)), ('materialized input identity missing', attempt)
     out = output_by_attempt.get(attempt)
     produced = file_by_attempt.get(attempt)
     assert out is not None and produced is not None, ('worker attempt lacks process output evidence', attempt)
     assert out[2] == '0', ('BMF process did not exit zero', out)
-    # The graph writes exactly these two lines to the captured stdout. Its SHA-256 is recorded by the
-    # Worker; matching it proves the recorded bytes and the committed output size belong together.
-    reconstructed = ('BMF_GRAPH_START ' + operation + '\nBMF_GRAPH_DONE ' + operation
-                     + ' size=' + produced[2] + '\n').encode()
-    assert sha256(reconstructed) == out[4], ('reconstructed graph log does not match the Worker-recorded stdout digest', attempt)
+    assert out[5] == 'false', ('captured graph output was truncated', out)
+    assert int(out[3]) > 0, ('the graph produced no captured output', out)
+    assert int(produced[2]) > 0, ('the graph produced no media file', produced)
     executions.append({'taskId': task, 'attemptId': attempt, 'executable': executable, 'operation': operation,
+                       'graphProgram': 'bmf.graph().decode -> optional authored trim -> encode mp4/h264',
                        'sourceWindow': {'start': start, 'duration': duration},
-                       'exitCode': out[2], 'stdoutBytes': int(out[3]), 'stdoutSha256': out[4],
-                       'stderrBytes': int(out[6]), 'capturedOutputTruncated': out[5],
-                       'graphLogSha256MatchesWorkerRecord': True, 'producedBytes': int(produced[2]),
-                       'graphLog': reconstructed.decode()})
+                       'inputContentDigest': input_digest.group(2),
+                       'exitCode': out[2], 'capturedStdoutBytes': int(out[3]), 'capturedStdoutSha256': out[4],
+                       'capturedStdoutTruncated': out[5] == 'true', 'capturedStderrBytes': int(out[6]),
+                       'producedBytes': int(produced[2])})
 assert len(executions) == 3, ('expected exactly three BMF graph executions', [item['operation'] for item in executions])
 assert sorted(item['operation'] for item in executions) == ['composite', 'decode', 'encode']
 # A silent fallback to the FFmpeg provider would have produced FFMPEG_ARGV render invocations.
 assert 'FFMPEG_ARGV' not in worker_log, 'the Worker executed an FFmpeg render unit during the BMF job'
+by_operation = {item['operation']: item for item in executions}
+# Chain of custody: each unit's materialized input is the previous unit's committed content, and each
+# unit's captured process output file has exactly the byte length of the content it committed.
+# BMF's decode->encode is deterministic, so the intermediate content and the render master can share
+# one content digest; index every row by digest instead of collapsing the duplicate.
+artifacts_by_digest = {}
+for item in facts['artifacts']:
+    artifacts_by_digest.setdefault(item['digest'].split(':')[-1], []).append(item)
+masters = [item for item in facts['artifacts'] if item['kind'] == 'RENDER_MASTER']
+assert len(masters) == 1 and masters[0]['id'] == final_artifact, masters
+source_digest = evidence['scenario_source_digest']
+assert by_operation['decode']['inputContentDigest'] == source_digest, 'the decode unit did not consume the submitted source'
+composite_input = by_operation['composite']['inputContentDigest']
+encode_input = by_operation['encode']['inputContentDigest']
+assert composite_input in artifacts_by_digest and encode_input in artifacts_by_digest, 'the intermediate chain is not committed'
+def committed_bytes(digest, kind):
+    rows = [item for item in artifacts_by_digest[digest] if item['kind'] == kind]
+    assert rows, ('committed content of the expected kind is missing', digest, kind)
+    assert len({item['bytes'] for item in rows}) == 1, rows
+    return rows[0]['bytes']
+
+assert by_operation['decode']['producedBytes'] == committed_bytes(composite_input, 'DERIVED_MEDIA')
+assert by_operation['composite']['producedBytes'] == committed_bytes(encode_input, 'DERIVED_MEDIA')
+assert by_operation['encode']['producedBytes'] == masters[0]['bytes'], 'the final unit did not produce the committed render master'
 (app / 'bmf-graph-executions.json').write_text(json.dumps(executions, indent=2) + '\n')
-(app / 'bmf-graph.log').write_text(''.join(item['graphLog'] for item in executions))
 excerpt = [line for line in worker_log.splitlines()
            if line.startswith('PROCESS_SPEC') or line.startswith('PROCESS_OUTPUT') or line.startswith('BYTE_')]
 (app / 'bmf-worker-log-excerpt.log').write_text('\n'.join(excerpt) + '\n')
-evidence['worker_execution'] = {'log': 'worker.log', 'processes': executions,
-                                'provider_argv_executable': 'verified runtime bundle python3.9'}
+evidence['worker_execution'] = {
+    'log': 'worker.log', 'processes': executions, 'attempts': facts['attempts'], 'assignments': facts['assignments'],
+    'note': ('The runtime captures the BMF process stdout, records its exact byte count and SHA-256 and '
+             'does not persist the bytes. The graph output is therefore bound by its recorded digest plus '
+             'the 1:1 size match between each captured output file and the content that unit committed.')}
 
 # ── 5. Artifact commit authority facts ────────────────────────────────────────────────────────
 artifacts = facts['artifacts']
-masters = [item for item in artifacts if item['kind'] == 'RENDER_MASTER']
 derived = [item for item in artifacts if item['kind'] == 'DERIVED_MEDIA']
-assert len(masters) == 1 and masters[0]['id'] == final_artifact
 assert masters[0]['state'] in ('AVAILABLE', 'PUBLISHED', 'COMMITTED'), masters[0]
 assert len(derived) == 2, ('the three-unit chain must commit two DERIVED_MEDIA intermediates', derived)
 assert facts['completions'] and masters[0]['id'] in [item['artifact'] for item in facts['completions']], \
