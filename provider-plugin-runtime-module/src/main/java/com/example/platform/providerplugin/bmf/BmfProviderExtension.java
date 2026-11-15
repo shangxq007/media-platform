@@ -76,7 +76,8 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
             ContractVersionRange.exactly(ContractVersion.of(1, 0));
 
-    private static final List<CapabilityId> CAPABILITIES = List.of(TRANSCODE_CAPABILITY);
+    private static final List<CapabilityId> CAPABILITIES = List.of(
+            TRANSCODE_CAPABILITY, VIDEO_DECODE_CAPABILITY, COMPOSITE_CAPABILITY, OUTPUT_CAPABILITY);
 
     private final Path runtimeRoot;
 
@@ -126,9 +127,19 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
             BmfCpuProvider.VERSION.value(),
             "1",
             "media-platform",
-            List.of(new CapabilityDescriptor(
-                    TRANSCODE_CAPABILITY.value(), "1.0", "transcode", "ExecutableTask",
-                    "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
+            List.of(
+                    new CapabilityDescriptor(
+                            TRANSCODE_CAPABILITY.value(), "1.0", "transcode", "ExecutableTask",
+                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor(
+                            VIDEO_DECODE_CAPABILITY.value(), "1.0", "decode", "ExecutableTask",
+                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor(
+                            COMPOSITE_CAPABILITY.value(), "1.0", "composite", "ExecutableTask",
+                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor(
+                            OUTPUT_CAPABILITY.value(), "1.0", "encode", "ExecutableTask",
+                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
             List.of(new HandledObjectDescriptor(
                     "ExecutableTask", "1",
                     "com.example.platform.execution.taskgraph.ExecutableTask",

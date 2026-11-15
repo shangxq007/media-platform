@@ -201,4 +201,25 @@ class PhysicalPlanningEntryServiceIntegrationTest {
         assertEquals(first.logicalExecutionGraph(), second.logicalExecutionGraph());
         assertEquals(first.physicalExecutionPlan(), second.physicalExecutionPlan());
     }
+
+    @Test
+    void realRevisionProducesTheThreeVideoUnitsAndCapabilities() {
+        RenderPlanningResult renderResult = planRender(RenderSourceResolutionState.RESOLVED);
+        ExecutionPlanningEntry.PlanningResult planned =
+                physicalPlanningEntry.plan(renderResult, new ExecutionPlanId("pep-p21-p22-video-units"));
+
+        java.util.Map<String, java.util.List<String>> capabilitiesByOperation = new java.util.TreeMap<>();
+        for (var unit : planned.physicalExecutionPlan().units()) {
+            capabilitiesByOperation.put(unit.operationKey(), unit.capabilityRequirementRefs().stream()
+                    .map(reference -> reference.declaration().capabilityId().value())
+                    .sorted()
+                    .toList());
+        }
+        assertEquals(java.util.Map.of(
+                        "decode", java.util.List.of("video.decode"),
+                        "composite", java.util.List.of("render.composite"),
+                        "encode", java.util.List.of("render.output")),
+                capabilitiesByOperation,
+                "a single silent video clip requires exactly the three video capabilities");
+    }
 }

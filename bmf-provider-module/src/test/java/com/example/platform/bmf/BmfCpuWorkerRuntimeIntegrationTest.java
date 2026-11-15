@@ -9,14 +9,19 @@ import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.ExecutionOutputId;
+import com.example.platform.execution.planning.ExecutionIoProjection.CapabilityRequirementRef;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
 import com.example.platform.execution.planning.ExecutionIoProjection.OutputDeclaration;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.execution.taskgraph.ExecutableInputProjection;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
+import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.sandbox.SandboxCancellation;
 import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.ContractVersion;
+import com.example.platform.shared.capability.ContractVersionRange;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
@@ -99,7 +104,10 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         when(task.memberships()).thenReturn(List.of(membership));
         when(membership.physicalPlanUnit()).thenReturn(unit);
         when(unit.operationKey()).thenReturn("transcode");
-        when(unit.capabilityRequirementRefs()).thenReturn(List.of());
+        when(unit.capabilityRequirementRefs()).thenReturn(List.of(
+                new CapabilityRequirementRef(CapabilityRequirement.of(
+                        CapabilityId.of("media.transcode"),
+                        ContractVersionRange.exactly(ContractVersion.of(1, 0))))));
         when(unit.executionIntentRefs()).thenReturn(List.of());
         when(unit.typedInputs()).thenReturn(List.of(mock(InputBinding.class)));
         when(unit.typedOutputs()).thenReturn(List.of(mock(OutputDeclaration.class)));

@@ -37,13 +37,29 @@ public final class BmfRuntimeBundleVerifier {
                     || !BmfCpuProvider.SOURCE_ARCHIVE_SHA256.equals(metadata.getProperty("source.sha256"))
                     || !BmfCpuProvider.RUNTIME_BUNDLE_SHA256.equals(metadata.getProperty("bundle.sha256"))
                     || !Files.isExecutable(root.resolve("host-bundle/usr/bin/python3.9"))
-                    || !Files.isRegularFile(root.resolve("output/bmf/lib/libbuiltin_modules.so"))) {
+                    || !insideBundle(root, root.resolve("output/bmf/lib/libbuiltin_modules.so"))) {
                 return false;
             }
             return BmfCpuProvider.RUNTIME_BUNDLE_SHA256.equals(bundleDigest(root));
         } catch (IOException | RuntimeException failure) {
             return false;
         }
+    }
+
+    /**
+     * A versioned distribution may expose shared libraries through in-bundle soname symlinks;
+     * the bundle digest already covers each link target, so a link is accepted only when it
+     * resolves to a regular file that stays inside the verified root.
+     */
+    private static boolean insideBundle(Path root, Path path) throws IOException {
+        if (!Files.isRegularFile(path)) {
+            return false;
+        }
+        if (!Files.isSymbolicLink(path)) {
+            return true;
+        }
+        Path real = path.toRealPath();
+        return real.startsWith(root.toRealPath());
     }
 
     static String bundleDigest(Path root) throws IOException {

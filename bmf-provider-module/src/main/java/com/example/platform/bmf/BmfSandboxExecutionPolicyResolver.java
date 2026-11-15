@@ -58,13 +58,16 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             List<MaterializedExecutionInput> runtimeLocalInputs) {
         if (!(command.invocationSpec() instanceof ProcessInvocationSpec invocation)
                 || !invocation.executable().equals(python.toString())
-                || invocation.arguments().size() != 5
+                || invocation.arguments().size() != 8
                 || !invocation.arguments().get(0).equals("-s")
                 || !invocation.arguments().get(1).equals("-c")
                 || !invocation.arguments().get(2).equals(BmfCpuRuntimeAdapter.GRAPH_PROGRAM)
                 || !invocation.arguments().get(4).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
+                || !isKnownOperation(invocation.arguments().get(5))
+                || !isNonNegativeSeconds(invocation.arguments().get(6))
+                || !isNonNegativeSeconds(invocation.arguments().get(7))
                 || runtimeLocalInputs.size() != 1) {
-            return rejected("BMF requires the exact graph program and one materialized input");
+            return rejected("BMF requires the exact graph program, one materialized input and a bounded operation");
         }
         var input = runtimeLocalInputs.getFirst();
         if (!invocation.arguments().get(3).equals(
@@ -88,7 +91,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     + UUID.nameUUIDFromBytes(command.platformExecutionAttemptId().value()
                             .getBytes(StandardCharsets.UTF_8)));
             List<String> args = List.of("-s", "-c", BmfCpuRuntimeAdapter.GRAPH_PROGRAM,
-                    inputPath.toString(), ProviderNativeOutputFiles.RENDER_OUTPUT);
+                    inputPath.toString(), ProviderNativeOutputFiles.RENDER_OUTPUT,
+                    invocation.arguments().get(5), invocation.arguments().get(6),
+                    invocation.arguments().get(7));
             var requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(Set.of(python.toString()), python.toString(), args, timeout),
                     FilesystemPolicy.exact(Set.copyOf(mounts), workspace.root(),
@@ -118,6 +123,19 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             throw new IllegalArgumentException(label + " must be absolute and normalized");
         }
         return path;
+    }
+
+    private static boolean isKnownOperation(String operation) {
+        try {
+            BmfOperation.ofOperationKey(operation);
+            return true;
+        } catch (IllegalArgumentException unsupported) {
+            return false;
+        }
+    }
+
+    private static boolean isNonNegativeSeconds(String value) {
+        return value.matches("[0-9]+(\\.[0-9]{1,9})?");
     }
 
     private static SandboxResolution rejected(String reason) {

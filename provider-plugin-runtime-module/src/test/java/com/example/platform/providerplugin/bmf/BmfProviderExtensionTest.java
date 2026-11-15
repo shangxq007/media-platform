@@ -45,16 +45,18 @@ class BmfProviderExtensionTest {
     }
 
     @Test
-    void capabilityProfileAndContractDeclareOnlyTheImplementedTranscodeSlice() {
+    void capabilityProfileAndContractDeclareOnlyTheImplementedRenderSlices() {
         // ProviderCapabilityProfile canonicalises its declarations by capability id.
         assertThat(EXTENSION.providerCapabilityProfile().supportDeclarations())
                 .extracting(ProviderCapabilitySupport::capabilityId)
-                .containsExactly(CapabilityId.of("media.transcode"));
+                .containsExactlyInAnyOrder(CapabilityId.of("media.transcode"),
+                        CapabilityId.of("video.decode"), CapabilityId.of("render.composite"),
+                        CapabilityId.of("render.output"));
         assertThat(EXTENSION.providerCapabilityProfile().supportDeclarations())
                 .allSatisfy(support -> assertThat(support.contractVersionRange())
                         .isEqualTo(ContractVersionRange.exactly(ContractVersion.of(1, 0))));
         assertThat(EXTENSION.providerExecutionContract().capabilityContractReferences())
-                .hasSize(1);
+                .hasSize(4);
     }
 
     @Test
@@ -85,10 +87,11 @@ class BmfProviderExtensionTest {
     }
 
     @Test
-    void pluginDescriptorDeclaresTheTranscodeCapabilityAndTheThreePermissions() {
-        assertThat(EXTENSION.pluginDescriptor().capabilities()).hasSize(1);
-        assertThat(EXTENSION.pluginDescriptor().capabilities().getFirst().capabilityId())
-                .isEqualTo("media.transcode");
+    void pluginDescriptorDeclaresTheRenderCapabilitiesAndTheThreePermissions() {
+        assertThat(EXTENSION.pluginDescriptor().capabilities())
+                .extracting(capability -> capability.capabilityId())
+                .containsExactlyInAnyOrder("media.transcode", "video.decode", "render.composite",
+                        "render.output");
         assertThat(EXTENSION.pluginDescriptor().permissions())
                 .extracting(permission -> permission.permissionId())
                 .containsExactly("bmf.cpu", "bmf.ffmpeg", "bmf.python");

@@ -149,11 +149,13 @@ class BmfArchitectureGuardTest {
                 .toList();
 
         assertThat(instanceFields).extracting(Field::getName)
-                .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin", "inputId", "outputId");
-        assertThat(instanceFields).extracting(Field::getType)
-                .containsExactlyInAnyOrder(ExecutableTaskId.class, ProviderBindingPin.class,
-                        com.example.platform.execution.domain.ExecutionInputId.class,
-                        com.example.platform.execution.domain.ExecutionOutputId.class);
+                .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin", "operation",
+                        "inputId", "outputId", "sourceWindow");
+        for (Field field : instanceFields) {
+            assertThat(field.getName().toLowerCase())
+                    .as("provider-local plan component must not leak graph/canonical authority")
+                    .doesNotContain("graph", "sql", "providerid", "worker", "device", "node", "layer");
+        }
     }
 
     @Test
@@ -238,6 +240,7 @@ class BmfArchitectureGuardTest {
                         root.resolve("bmf-provider-module")))
                 .containsExactlyInAnyOrder(
                         "src/main/java/com/example/platform/bmf/BmfCpuProvider.java",
+                        "src/main/java/com/example/platform/bmf/BmfOperation.java",
                         "src/main/java/com/example/platform/bmf/BmfExecutionBackend.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuTranscodePlan.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuTranscodeLowerer.java",
