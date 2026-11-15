@@ -157,9 +157,10 @@ try:
  if a.services_only:
   command('services-health',['python3','-B',str(HELP/'check_services.py')],timeout=240)
  else:
-  exercises=['exercise_timeline_operation_editing' if a.timeline_operation_editing else 'exercise_first_render',
+  primary='exercise_single_video_no_audio' if a.scenario=='single-video-no-audio' else ('exercise_timeline_operation_editing' if a.timeline_operation_editing else 'exercise_first_render')
+  exercises=[primary,
              'check_product','runtime_proof',*(['bmf_render_evidence'] if a.provider=='bmf' else []),
-             *([] if a.timeline_operation_editing else ['check_media_capabilities']),
+             *([] if primary!='exercise_first_render' else ['check_media_capabilities']),
              *([] if a.combined_smoke else ['check_cancel'])]
   for name in exercises:command(name,['python3','-B',str(HELP/(name+'.py'))],timeout=300)
   if a.nle_browser:command('nle-browser',['python3','-B',str(HELP/'nle_browser.py')],timeout=900)

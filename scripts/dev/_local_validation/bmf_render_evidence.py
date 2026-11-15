@@ -241,7 +241,9 @@ full_decode = subprocess.run([str(tools / 'ffmpeg'), '-v', 'error', '-nostdin', 
                               '-f', 'null', '-'], capture_output=True, text=True, timeout=120, env=media_env)
 assert full_decode.returncode == 0, ('full decode failed', full_decode.stderr[:500])
 assert not re.search(r'(?i)error|invalid data|corrupt', full_decode.stderr), full_decode.stderr[:500]
-source_sha = sha256((app / 'source.mp4').read_bytes())
+source_path = app / 'scenario-source.mp4'
+assert source_path.is_file(), 'scenario source media is missing'
+source_sha = sha256(source_path.read_bytes())
 assert delivery['sha256'] != source_sha, 'the delivered file is the source file copied unchanged'
 (app / 'delivery-ffprobe.json').write_text(json.dumps({'probe': probe_data, 'fullDecode': 'clean',
                                                        'sha256': delivery['sha256'], 'sourceSha256': source_sha,
