@@ -242,6 +242,8 @@ def main() -> int:
     sub = parser.add_subparsers(dest='command', required=True)
     gate = sub.add_parser('preflight')
     gate.add_argument('--level', choices=('l1', 'l2', 'l3'), default='l1')
+    gate.add_argument('--provider', choices=('ffmpeg', 'bmf'), default='ffmpeg')
+    gate.add_argument('--bmf-runtime-root', type=Path, default=None)
     gate.add_argument('--json', action='store_true')
     unit = sub.add_parser('l1')
     unit.add_argument('--module', required=True)
