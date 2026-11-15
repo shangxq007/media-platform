@@ -1,6 +1,6 @@
 # Kilo Agent Adapter — Main
 
-Short tool-facing adapter. Read [`AGENTS.md`](../AGENTS.md) first; it is the canonical repository
+Short tool-facing adapter. Read [`AGENTS.md`](../../AGENTS.md) first; it is the canonical repository
 instruction authority for architecture, API, security, domain, persistence, testing and delivery.
 This file only describes how to run work in this repository and must not restate or extend those
 rules.
@@ -19,7 +19,7 @@ rules.
 - Verification entry: `python3 scripts/dev/verify preflight --level l1`,
   `python3 scripts/dev/verify l1 --module <module>`, `python3 scripts/dev/verify guards`.
 - PostgreSQL 18 tests use the controlled launcher and fail closed without a protected binding.
-- L1/L2/L3 definitions: [`docs/dev/verify.md`](../docs/dev/verify.md).
+- L1/L2/L3 definitions: [`docs/dev/verify.md`](../../docs/dev/verify.md).
 
 ## Reporting
 
