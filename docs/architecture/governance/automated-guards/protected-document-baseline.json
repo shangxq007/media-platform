@@ -24,8 +24,12 @@
       "authority_class": "CANONICAL_ACCEPTED",
       "lifecycle_state": "ACTIVE",
       "acceptance_state": "NOT_APPLICABLE",
-      "semantic_body_sha256": "f66f1019d59255741cf20b6b08b9a200bf429d5906b1a4e18433a78bd4ed8728",
-      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+      "semantic_body_sha256": "6c7a217d8474237d657c357bfd3fe4080372512f4503464aaabf8835de32f2af",
+      "previous_semantic_body_sha256": "f66f1019d59255741cf20b6b08b9a200bf429d5906b1a4e18433a78bd4ed8728",
+      "baseline_commit": "e7cea1cb052e2d35d405efe6451f0f52c96d74a1",
+      "governance_change_id": "COMPOSITION_FOUNDATION_AUTHORITY_ALIGNMENT_20260923",
+      "semantic_reason": "The ACCEPTED composition-foundation owner decision added the provider-neutral public-boundary section to the canonical API contract, but the protected hash was not refreshed in the same governance commit.",
+      "governance_decision": "docs/architecture/governance/composition-foundation-authority-decision.md"
     },
     {
       "document_id": "architecture-governance-canonical-contracts-canonical-contract-phase-crosswalk",

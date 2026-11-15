@@ -83,4 +83,4 @@ stop implementation, require an exact-path governance finding and require
 explicit alignment before feature work resumes. The inventory and automated
 check are maintained in
 [`instruction-authority-inventory.tsv`](../instruction-authority-inventory.tsv)
-and [`check-instruction-governance.py`](../../../scripts/governance/check-instruction-governance.py).
+and [`check-instruction-governance.py`](../../../../scripts/governance/check-instruction-governance.py).

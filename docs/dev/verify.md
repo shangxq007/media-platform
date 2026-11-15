@@ -39,8 +39,13 @@ reachability and evidence-directory writability. It prints `PASS` or `BLOCKED` w
 # L1: one module's affected tests (gradle wrapper, no daemon)
 python3 scripts/dev/verify l1 --module artifact-module --tests '*ProvenanceErrorContextTest*'
 
-# Guards: architecture drift, instruction governance (+self-test), jOOQ parity, OIDC bundle
+# Guards: architecture drift, instruction governance (+self-test), document-governance
+# self-test, jOOQ parity, OIDC bundle
 python3 scripts/dev/verify guards
+
+# Document governance (16 guards incl. DG-006 protected bodies and DG-011 broken links),
+# checked for HEAD against an integration base
+python3 scripts/dev/verify docs --base main
 
 # L2: the controlled PostgreSQL18 selection (protected launcher inputs required)
 python3 scripts/dev/verify l2 \
@@ -52,13 +57,19 @@ python3 scripts/dev/verify l2 \
 python3 scripts/dev/verify e2e --output /external/new-first-render
 ```
 
-`l2` reuses the existing controlled launcher (`scripts/test-infra pg18-local`) and fails closed with
-`L2 BLOCKED` when the binding/credential/classpath inputs are absent. It does not invent a second
+`l2` reuses the existing controlled launcher (`scripts/test-infra pg18-local`) and fails closed with`L2 BLOCKED` when the binding/credential/classpath inputs are absent. It does not invent a second
 PostgreSQL runtime, publish ports or accept ad-hoc JDBC URLs. The launcher contract is in
 [scripts/testinfra/README.md](../../scripts/testinfra/README.md).
 
 `e2e` wraps [`scripts/dev/first-render`](../../scripts/dev/first-render); First Render is an E2E
 scenario over the formal `POST /api/render-jobs` path, not a product entry.
+
+Document governance is commit-bound: DG-006 reads protected bodies from the `--head` commit and
+DG-011 compares the broken-link sets of `--base` and `--head`. Both fail closed on invalid refs, so
+`--head == --base` yields zero introduced links and dirty working-tree files cannot contaminate the
+result. `verify guards` runs the document-governance self-test (10 controlled cases) but not the full
+16-guard document governance; use `verify docs` for that (it also re-runs the architecture drift guard
+through DG-016).
 
 ## Evidence
 

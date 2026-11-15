@@ -7,8 +7,27 @@ cd "$ROOT_DIR"
 FAILED=0
 CHECKS=0
 
-pass() { printf "✅ PASS: %s\n" "$1"; CHECKS=$((CHECKS + 1)); }
+QUIET=false
+for argument in "$@"; do
+    case "$argument" in
+        --quiet) QUIET=true ;;
+        *) echo "unknown argument: $argument" >&2; exit 2 ;;
+    esac
+done
+
+pass() { if [ "$QUIET" = false ]; then printf "✅ PASS: %s\n" "$1"; fi; CHECKS=$((CHECKS + 1)); }
 fail() { printf "❌ FAIL: %s\n" "$1" >&2; FAILED=1; CHECKS=$((CHECKS + 1)); }
+
+# Shared single-execution assertions. Several roadmap rule ids below protect the same
+# current invariant; the source is inspected once and every rule id keeps its own
+# PASS/FAIL line, so coverage and failure attribution do not change.
+HAS_JGIT=$(grep -rl 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null | head -1 || true)
+CREDENTIAL_RESIDUE_COUNT=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
+COLOR_PRIMARIES_STATES=no
+COLOR_PRIMARIES_FILE=color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java
+if grep -q 'UNSPECIFIED' "$COLOR_PRIMARIES_FILE" 2>/dev/null && grep -q 'UNKNOWN' "$COLOR_PRIMARIES_FILE" 2>/dev/null; then
+    COLOR_PRIMARIES_STATES=yes
+fi
 
 # Structural H7 V2 proofs shared by the legacy roadmap checks below. These
 # checks strip Java/SQL comments, fail closed when an input or unique authority
@@ -1247,7 +1266,7 @@ else
 fi
 
 # OPTG-26: no JGit introduced
-if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
+if [ -n "$HAS_JGIT" ]; then
     fail "JGit introduced"
 else
     pass "no JGit dependency"
@@ -1304,7 +1323,7 @@ else
 fi
 
 # OPCG-13/14: no JGit, no alternative backend
-if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
+if [ -n "$HAS_JGIT" ]; then
     fail "JGit introduced"
 else
     pass "no JGit"
@@ -1378,7 +1397,7 @@ else
 fi
 
 # RCG-38/39: no JGit, no new backend
-if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
+if [ -n "$HAS_JGIT" ]; then
     fail "JGit introduced"
 else
     pass "no JGit"
@@ -1488,7 +1507,7 @@ fi
 
 # ROADMAP_18 FINAL POST-CLOSE CIPG gates
 # CIPG5-9: primaries UNSPECIFIED vs UNKNOWN
-if grep -q 'UNSPECIFIED' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java && grep -q 'UNKNOWN' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java; then
+if [ "$COLOR_PRIMARIES_STATES" = yes ]; then
     pass "CIPG5/CIPG7 primaries UNSPECIFIED + UNKNOWN present"
 else
     fail "CIPG5-7 primaries missing/unknown states incomplete"
@@ -1516,7 +1535,7 @@ else
     fail "CIPG4 missing test"
 fi
 # CIPG1: credential residue gate (numeric)
-CR=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
+CR="$CREDENTIAL_RESIDUE_COUNT"
 if [ "$CR" = "0" ]; then
     pass "CIPG1 CREDENTIAL_RESIDUE_FINAL = 0 (numeric)"
 else
@@ -1560,7 +1579,7 @@ else
     pass "CIP2G9 color-image-module zero outward dependency"
 fi
 # CIP2G13: UNSPECIFIED/UNKNOWN retained
-if grep -q 'UNSPECIFIED' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java && grep -q 'UNKNOWN' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java; then
+if [ "$COLOR_PRIMARIES_STATES" = yes ]; then
     pass "CIP2G13 primaries UNSPECIFIED/UNKNOWN retained"
 else
     fail "CIP2G13 primaries states lost"
@@ -1609,7 +1628,7 @@ else
     pass "CIP2DG12 Timeline module has zero production color-image dependency"
 fi
 # CIP2EG1/2: credential numeric zero evidence
-CR=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
+CR="$CREDENTIAL_RESIDUE_COUNT"
 if [ "$CR" = "0" ]; then
     pass "CIP2EG1 CREDENTIAL_RESIDUE_FINAL = 0 (numeric)"
 else
@@ -1812,6 +1831,13 @@ else
     fail "formal RenderJob submission idempotency authority missing or duplicated"
 fi
 
+if [ "$QUIET" = true ]; then
+    if [ $FAILED -eq 0 ]; then
+        echo "ARCHITECTURE_DRIFT: PASS ($CHECKS checks)"
+    else
+        echo "ARCHITECTURE_DRIFT: FAIL ($CHECKS checks)"
+    fi
+fi
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

@@ -5,9 +5,11 @@ Subcommands:
   preflight [--level l1|l2|l3]  Fast environment gate; never starts heavy builds.
   l1 --module <gradle module> [--tests <pattern> ...]
                                 Run one module's affected unit/contract tests.
-  guards                        Run architecture, instruction, jOOQ parity and OIDC guards.
+  guards                        Run architecture, instruction, document-guard self-test,
+                                jOOQ parity and OIDC guards.
   l2 --binding <json> --password-file <file> --classpath-file <file>
                                 Run the controlled PostgreSQL18 integration selection.
+  docs --base <git-ref>         Run document governance for HEAD against an integration base.
   e2e --output <new dir>        Run the full product E2E through scripts/dev/first-render.
 
 Every run writes a JSON manifest (commit, tree, worktree state, command, exit code,
@@ -182,6 +184,10 @@ def main() -> int:
     unit.add_argument('--tests', action='append', default=[])
     unit.add_argument('--timeout', type=int, default=1800)
     sub.add_parser('guards')
+    docs = sub.add_parser('docs')
+    docs.add_argument('--base', default='main')
+    docs.add_argument('--head', default='HEAD')
+    docs.add_argument('--timeout', type=int, default=900)
     integration = sub.add_parser('l2')
     integration.add_argument('--binding', type=Path, required=True)
     integration.add_argument('--password-file', type=Path, required=True)
@@ -233,9 +239,17 @@ def main() -> int:
         write_manifest(run_dir, 'l2', results)
         return 0 if results[0]['exit_code'] == 0 else 1
 
+    if args.command == 'docs':
+        results = [run_command(
+            ['bash', 'scripts/check-document-governance.sh', '--head', args.head, '--base', args.base,
+             '--output', str(run_dir / 'document-governance.json')],
+            run_dir, 'document-governance', args.timeout)]
+        write_manifest(run_dir, 'docs', results)
+        return 0 if results[0]['exit_code'] == 0 else 1
+
     if args.command == 'guards':
         results = [
-            run_command(['bash', 'scripts/check-architecture-drift.sh'], run_dir, 'architecture-drift', 900),
+            run_command(['bash', 'scripts/check-architecture-drift.sh', '--quiet'], run_dir, 'architecture-drift', 900),
             run_command([str(ROOT / 'gradlew'), 'verifyJooqGeneratedSources', '--no-daemon', '--max-workers=2'],
                         run_dir, 'jooq-parity', 600),
             run_command(['bash', 'scripts/check-oidc-bundle-config.sh'], run_dir, 'oidc-bundle', 300),
@@ -243,6 +257,8 @@ def main() -> int:
                         run_dir, 'instruction-governance', 120),
             run_command(['python3', 'scripts/governance/test_check_instruction_governance.py'],
                         run_dir, 'instruction-governance-selftest', 300),
+            run_command(['python3', 'scripts/document-governance/test_document_governance_guard.py'],
+                        run_dir, 'document-governance-selftest', 300),
         ]
         write_manifest(run_dir, 'guards', results)
         return 0 if all(result['exit_code'] == 0 for result in results) else 1
