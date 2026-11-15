@@ -30,6 +30,10 @@ but no protected container binding. No product runtime, deployment or production
 exit 0, instruction-governance exit 0, instruction-governance-selftest exit 0. Manifest identity:
 commit `0cf42bdd`, tree `f5cfb38…`, no dirty paths.
 
+The guard suite was re-run after the documentation-only final commit; the newest manifest under
+`…-evidence/verify/` carries `identity.commit` equal to the reviewed SHA and `results_pass: true`.
+Always read that manifest instead of trusting this table for a different commit.
+
 ## Artifact test arithmetic
 
 | Metric | Before | After |
