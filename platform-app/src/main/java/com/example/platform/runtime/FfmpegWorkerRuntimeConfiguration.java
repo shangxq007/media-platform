@@ -175,7 +175,7 @@ public class FfmpegWorkerRuntimeConfiguration {
     }
 
     @Bean
-    MediaTaskAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory(
+    MediaTaskAdmissionEvidenceFactory mediaTaskAdmissionEvidenceFactory(
             ProviderPluginCatalog providerPluginCatalog,
             @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
             @Value("${platform.ffmpeg-worker.workspace-root}") String workspaceRoot,
@@ -200,11 +200,11 @@ public class FfmpegWorkerRuntimeConfiguration {
     }
 
     @Bean
-    MediaTaskGrantMinter firstRenderGrantMinter(
+    MediaTaskGrantMinter mediaTaskGrantMinter(
             WorkerFabricRegistrationBoundary workerFabricRegistrationBoundary,
             AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
             NativePullAdmissionPort nativePullAdmissionPort,
-            MediaTaskAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory,
+            MediaTaskAdmissionEvidenceFactory mediaTaskAdmissionEvidenceFactory,
             ReservationFeasibilityQuery reservationFeasibilityQuery,
             Clock clock,
             com.example.platform.workerfabric.domain.LocalHostRegistrationLoop localHostRegistrationLoop) {
@@ -212,7 +212,7 @@ public class FfmpegWorkerRuntimeConfiguration {
                 workerFabricRegistrationBoundary,
                 atomicAssignmentGrantBoundary,
                 nativePullAdmissionPort,
-                firstRenderAdmissionEvidenceFactory,
+                mediaTaskAdmissionEvidenceFactory,
                 reservationFeasibilityQuery,
                 clock,localHostRegistrationLoop.workerRuntimeIncarnationId());
     }
@@ -223,7 +223,7 @@ public class FfmpegWorkerRuntimeConfiguration {
             AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
             RuntimeClosedLoopOrchestrator runtimeClosedLoopOrchestrator,
             MediaTaskPublicationSettings mediaTaskPublicationSettings,
-            MediaTaskGrantMinter firstRenderGrantMinter,
+            MediaTaskGrantMinter mediaTaskGrantMinter,
             ProviderPluginCatalog providerPluginCatalog,
             com.example.platform.workerfabric.domain.ExecutionLifecycleBoundary nativeLifecycle) {
         return new MediaTaskActivity(
@@ -231,7 +231,7 @@ public class FfmpegWorkerRuntimeConfiguration {
                 atomicAssignmentGrantBoundary,
                 runtimeClosedLoopOrchestrator,
                 mediaTaskPublicationSettings,
-                firstRenderGrantMinter,
+                mediaTaskGrantMinter,
                 providerPluginCatalog, nativeLifecycle);
     }
 }

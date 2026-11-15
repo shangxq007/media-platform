@@ -53,6 +53,7 @@ identifier file is a cross-view key, not a third architecture model.
 | Default engineering guidance | [功能驱动开发与模块架构原则](../../engineering/functional-development-and-module-principles.md) | CURRENT adopted guidance; original full text not recovered, explicitly consolidated from adopted decisions | Owner decisions + AGENTS; not a second domain authority |
 | Execution architecture supplement | [执行架构原则](execution-architecture-principles.md) | CURRENT adopted boundaries; incomplete/deferred implementation explicitly labelled | Owner decisions, ADR-025 and adopted execution amendments |
 | Database development policy | [Flyway baseline](../../database/flyway-migration-baseline.md) | CURRENT pre-launch single-V1 policy; revalidation required for changed bytes | Owner decision + current migration identity |
+| Product execution paths | [current product execution paths](current-product-execution-paths.md) | CURRENT formal render entries, First Render scenario boundary, planning/binding and subtitle facts | source, controllers, migration bytes |
 | Logical architecture | [01-system-architecture](../01-system-architecture.md), [03-module-architecture](../03-module-architecture.md) | CURRENT + TARGET labels in source docs | ADRs, canonical contracts, source |
 | Physical/deployment architecture | [08-deployment-architecture](../08-deployment-architecture.md), [deployment trust view](../maps/likec4/media-platform.likec4) | CURRENT deployment units; TARGET boundaries explicitly marked | source, deployment configuration, LikeC4 intent |
 | Human intent map | [LikeC4 source](../maps/likec4/media-platform.likec4) | CURRENT/TARGET/DEFERRED intent | human-curated |
@@ -101,4 +102,4 @@ win for what is implemented. When a semantic decision conflicts with a guide,
 the accepted ADR or canonical contract wins. Resolve conflicts in the authority
 model and change ledger; do not edit a generated view to hide drift.
 
-Legacy implementation dispositions and explicit remaining dependencies: [current bounded consolidation](../../development/legacy-work-consolidation.md). This is a maintenance record, not a competing authority.
+Legacy implementation dispositions: [current bounded consolidation](../../development/legacy-work-consolidation.md) is **ARCHIVED/HISTORICAL**; current paths are in [current product execution paths](current-product-execution-paths.md). It is not a competing authority.

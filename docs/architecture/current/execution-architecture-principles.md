@@ -92,9 +92,11 @@ JuiceFS 是**可选共享文件系统和缓存基础设施**，不是领域模�
 
 ## First Render 与当前实施边界
 
-First Render 是可长期保留的**薄型架构验证探针**；保留正式 `/api/first-render` 入口。
-底层复用通用规划、执行、Artifact 和 Render 的公开契约，不形成独立长期业务领域系统。
-相关实现和当前验证方式见[开发指南](../../development/canonical-baseline.md)与
+First Render 是 **E2E / 自动化验证场景**，不是生产入口：不拥有生产 Controller、编排、表或
+workflow；`/api/first-render/**` 探测路由已退役，并由架构守卫保证不再出现。
+正式产品入口是 `POST /api/render-jobs`（普通渲染）与 `POST /api/incremental-render/plans`
+（增量渲染），MCP 复用同一应用服务。完整路径见
+[当前产品执行路径](current-product-execution-paths.md) 与
 [First Render 说明](../../testing/first-render.md)；本文件不修改、禁用入口或新增执行链。
 
 已有局部实现或历史验收不证明全路径已收敛 Operation、规划级增量渲染、完整多产物、BMF/OpenCue 生产接入、

@@ -1,3 +1,11 @@
+> **Status:** Archived / Superseded (2026-11-15)
+> **Reason:** OWN01–OWN07 bounded consolidation record written before the NLE consolidation merged
+> into `main`. Its OWN07 row still describes the `/api/first-render` probe adapter, which has since
+> been retired. Kept for traceability of the earlier source identity; not current guidance.
+> **Superseded by:** [current product execution paths](../architecture/current/current-product-execution-paths.md)
+> and [First Render E2E scenario](../testing/first-render.md).
+> **Do not use as a current reference.**
+
 # Legacy work disposition and current owners
 
 This bounded OWN01–OWN07 task starts from main509e6aca. It adopts the Owner's OD1–OD3 decisions;

@@ -1,7 +1,16 @@
-# First Render through platform owner contracts
+# First Render E2E scenario
 
-First Render exercises the platform's existing Render planning/binding, Execution, Workflow,
-Artifact and Storage contracts. It is not a second render product or a parallel lifecycle.
+> **Status:** CURRENT scenario definition (2026-11-15). First Render is an automation/E2E scenario,
+> **not** a production business type or entry point.
+
+First Render exercises the platform's existing render planning/binding, Execution, Workflow, Artifact
+and Storage contracts end to end. It owns no production Controller, orchestration service, database
+table, workflow type or idempotency store; the scenario runs through the formal `POST /api/render-jobs`
+entry. The retired `/api/first-render/**` probe route is absent from production source and guarded by
+[scripts/check-architecture-drift.sh](../../scripts/check-architecture-drift.sh).
+
+Current product paths are named in
+[current product execution paths](../architecture/current/current-product-execution-paths.md).
 
 ## Runtime and API
 
@@ -11,8 +20,13 @@ only media-platform-tasks; API is Temporal client-only. pg18-integration is an i
 with real OIDC/RBAC and explicit local storage reads, not production admission. Synthetic BWS stubs
 are permitted only in test evidence. Never pass real management credentials to Java/JUnit.
 
+The worker also needs an FFmpeg build with `drawtext`, `overlay`, `libx264` and `qtrle`, plus an
+explicit font: `FFMPEG_WORKER_FFMPEG_PATH` and `FFMPEG_WORKER_FONT` (see
+[runtime contract](../dev/ffmpeg-worker-runtime-contract.md)).
+
 1. Authenticate normally and POST a timeline snapshot via /api/render/timeline-snapshots.
-2. POST /api/first-render/plans with its revisionId, extent, MP4 outputFormat and profile.
+2. POST /api/render-jobs with `revisionId`, `extent`, MP4 `outputFormat` and `profile`; an optional
+   `Idempotency-Key` header replays the same submission.
 3. Query GET /api/tenants/{tenant}/projects/{project}/render-jobs/{job} and /result.
 4. /status-history exposes the canonical transitions. /cancel invokes the same authorized Render
    cancellation contract as other render entry points.
@@ -44,9 +58,9 @@ projection cannot turn failed/cancelled jobs into success. Do not use SQL to adv
 - ArtifactCommitService remains the sole Artifact commit authority, including durable exact replay.
   Render only references its committed logical identity. Artifact resolves accepted outputs through
   a Render-implemented public query port, never through a Render repository/table import.
-- Storage owns object bytes, checksum and secure local reads. The local provider moved from the
-  application cover-image package to storage-module so API/worker reuse the same implementation.
-  Public endpoints never accept physical object coordinates or return absolute filesystem paths.
+- Storage owns object bytes, checksum and secure local reads. The local provider lives in
+  storage-module so API/worker reuse the same implementation. Public endpoints never accept physical
+  object coordinates or return absolute filesystem paths.
 - Temporal owns workflow/activity scheduling, cancellation and retry history. It performs no domain
   SQL. Media execution and terminal projection are separate activities: transient projection faults
   retry without repeating FFmpeg, and the workflow cannot succeed until Render commits completion.
@@ -70,24 +84,17 @@ and quota together. Late failure cannot overwrite accepted success.
 Downloads require tenant/project authorization on every access. Nonexistent scope returns404;
 unavailable/corrupt/unsupported content returns a redacted unavailable response. No environment,
 path, signed-URL or default-credential fallback exists. Current validated downloads are bounded at
-64 MiB, fully checked before response; larger-object streaming is separate future work.
+64 MiB and fully checked before the response; the old stdout-truncation path is statically
+unreachable. Streaming larger objects is separate future work and is not validated here.
 
 ## Migration and deployment boundary
 
-The canonical greenfield migration is now a single V1, containing the accepted graph execution
-bindings and scope/native constraints previously validated as V1+V2. The historical accepted
-snapshot remains immutable outside this Git workspace. Old two-step and new one-step empty-PG18
-schemas and the then-current447 generated jOOQ sources were compared. Later Owner-approved Schema changes require fresh generation with the actual new count. Never point this baseline at a historical
-populated database or rewrite an applied Flyway history. See ../development/canonical-baseline.md.
+The canonical greenfield migration is a single V1 containing the accepted graph-execution bindings and
+scope/native constraints previously validated as V1+V2. The historical accepted snapshot remains
+immutable outside this Git workspace. Later owner-approved schema changes require a fresh empty-PG18
+run, real jOOQ regeneration and the actual new generated file set; no generated-file count is
+permanent. Never point this baseline at a historical populated database, and never rewrite an applied
+database's Flyway history.
 
-Dedicated protected runner, cross-UID/executor/cgroup containment and real Neon/BWS scopes remain
-separate deployment gates (DEPLOYMENT_ISOLATION_NOT_VERIFIED). This local PG18/FFmpeg product test
-requires no real cloud credentials and does not prove production readiness. Historical audit packets
-and dirty main workspaces remain untouched; integration requires separate authorization.
-
-The optional `--combined-smoke` flag verifies the same authenticated video/image path in a single
-COMBINED process using the production assembly. The default remains independent API and WORKER.
-Queue-before-start cancellation is tested in the independent-process run; the combined smoke does
-not pause its HTTP process or claim that cancellation scenario. Active contained-process cancellation
-and cleanup uncertainty have separate sandbox/native regressions. All fixtures use synthetic secrets
-and task-owned resources; none establish protected runner/OS isolation.
+Schema policy: [Flyway development baseline](../database/flyway-migration-baseline.md). Development
+and regeneration: [canonical development baseline](../development/canonical-baseline.md).

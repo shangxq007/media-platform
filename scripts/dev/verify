@@ -5,7 +5,9 @@ Subcommands:
   preflight [--level l1|l2|l3]  Fast environment gate; never starts heavy builds.
   l1 --module <gradle module> [--tests <pattern> ...]
                                 Run one module's affected unit/contract tests.
-  guards                        Run architecture, jOOQ parity and OIDC build guards.
+  guards                        Run architecture, instruction, jOOQ parity and OIDC guards.
+  l2 --binding <json> --password-file <file> --classpath-file <file>
+                                Run the controlled PostgreSQL18 integration selection.
   e2e --output <new dir>        Run the full product E2E through scripts/dev/first-render.
 
 Every run writes a JSON manifest (commit, tree, worktree state, command, exit code,
@@ -85,6 +87,8 @@ def userns() -> dict:
 
 def preflight(level: str) -> dict:
     worker_ffmpeg = Path(os.environ.get('FFMPEG_WORKER_FFMPEG_PATH', '/usr/bin/ffmpeg'))
+    worker_font_value = os.environ.get('FFMPEG_WORKER_FONT', '')
+    worker_font = Path(worker_font_value) if worker_font_value else None
     evidence = Path(os.environ.get('VERIFY_EVIDENCE', DEFAULT_EVIDENCE))
     evidence.mkdir(parents=True, exist_ok=True)
     checks = {
@@ -93,6 +97,8 @@ def preflight(level: str) -> dict:
                   ('git', 'java', 'python3', 'node', 'google-chrome', 'ffmpeg', 'podman', 'bwrap')},
         'userns': userns(),
         'worker_ffmpeg': ffmpeg_features(worker_ffmpeg),
+        'worker_font': {'configured': bool(worker_font_value), 'path': worker_font_value,
+                        'readable': bool(worker_font and worker_font.is_file())},
         'pg18_port': int(os.environ.get('VERIFY_PG_PORT', '43057')),
         'temporal_port': int(os.environ.get('VERIFY_TEMPORAL_PORT', '43233')),
         'oidc_port': int(os.environ.get('VERIFY_OIDC_PORT', '43181')),
@@ -118,6 +124,10 @@ def preflight(level: str) -> dict:
         for name in ('pg18_reachable', 'temporal_reachable', 'oidc_reachable'):
             if not checks[name]:
                 blockers.append(f'{name} is false')
+        if not checks['worker_font']['configured']:
+            blockers.append('FFMPEG_WORKER_FONT is not configured (subtitle rasterization fails closed)')
+        elif not checks['worker_font']['readable']:
+            blockers.append('FFMPEG_WORKER_FONT is not a readable file')
         if not checks['token_present']:
             blockers.append('test OIDC token absent')
         if not checks['userns']['available']:
@@ -172,6 +182,11 @@ def main() -> int:
     unit.add_argument('--tests', action='append', default=[])
     unit.add_argument('--timeout', type=int, default=1800)
     sub.add_parser('guards')
+    integration = sub.add_parser('l2')
+    integration.add_argument('--binding', type=Path, required=True)
+    integration.add_argument('--password-file', type=Path, required=True)
+    integration.add_argument('--classpath-file', type=Path, required=True)
+    integration.add_argument('--timeout', type=int, default=5400)
     e2e = sub.add_parser('e2e')
     e2e.add_argument('--output', type=Path, required=True)
     e2e.add_argument('--source-ffmpeg', type=Path, default=Path('/usr/bin/ffmpeg'))
@@ -198,12 +213,36 @@ def main() -> int:
         write_manifest(run_dir, 'l1', results)
         return 0 if results[0]['exit_code'] == 0 else 1
 
+    if args.command == 'l2':
+        report = preflight('l2')
+        (run_dir / 'preflight.json').write_text(json.dumps(report, indent=2))
+        inputs = {'binding': args.binding, 'password-file': args.password_file,
+                  'classpath-file': args.classpath_file}
+        missing = [f'{name}={path}' for name, path in inputs.items() if not path.is_file()]
+        if missing:
+            print('L2 BLOCKED: protected PG18 launcher inputs missing: ' + ', '.join(missing))
+            return 1
+        if report['result'] != 'PASS':
+            print('L2 PREFLIGHT BLOCKED: ' + '; '.join(report['blockers']))
+            return 1
+        results = [run_command(
+            ['python3', '-B', 'scripts/test-infra', 'pg18-local',
+             '--output', str(run_dir / 'pg18-local'), '--binding', str(args.binding),
+             '--password-file', str(args.password_file), '--classpath-file', str(args.classpath_file)],
+            run_dir, 'pg18-local', args.timeout)]
+        write_manifest(run_dir, 'l2', results)
+        return 0 if results[0]['exit_code'] == 0 else 1
+
     if args.command == 'guards':
         results = [
             run_command(['bash', 'scripts/check-architecture-drift.sh'], run_dir, 'architecture-drift', 900),
             run_command([str(ROOT / 'gradlew'), 'verifyJooqGeneratedSources', '--no-daemon', '--max-workers=2'],
                         run_dir, 'jooq-parity', 600),
             run_command(['bash', 'scripts/check-oidc-bundle-config.sh'], run_dir, 'oidc-bundle', 300),
+            run_command(['python3', 'scripts/governance/check-instruction-governance.py'],
+                        run_dir, 'instruction-governance', 120),
+            run_command(['python3', 'scripts/governance/test_check_instruction_governance.py'],
+                        run_dir, 'instruction-governance-selftest', 300),
         ]
         write_manifest(run_dir, 'guards', results)
         return 0 if all(result['exit_code'] == 0 for result in results) else 1

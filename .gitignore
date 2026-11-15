@@ -83,3 +83,7 @@ AGENT_TASK.md
 platform-app/docs/architecture/maps/generated/
 
 /dist/
+
+# Python bytecode produced by guard scripts
+__pycache__/
+*.pyc

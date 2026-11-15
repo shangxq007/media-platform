@@ -57,6 +57,20 @@ Storage endpoints must be provided by an authorized protected launcher; see scri
 and docs/testing/first-render.md. Do not manually inherit cloud management secrets into either JVM.
 The local validation entry demonstrates the exact independent processes using synthetic configuration.
 
+## Worker FFmpeg runtime
+
+The worker does not use the host FFmpeg. It reads `FFMPEG_WORKER_FFMPEG_PATH` and
+`FFMPEG_WORKER_FONT` (see `application-ffmpeg-worker.yml`). The configured binary must expose
+`drawtext`, `overlay`, `libx264` and `qtrle`; a missing binary, filter, encoder or font fails the
+render closed instead of producing a partial artifact. Check it cheaply before heavy validation:
+
+```sh
+python3 scripts/dev/verify preflight --level l3
+```
+
+The exact contract and packaging/licensing notes are in
+[FFmpeg worker runtime contract](../dev/ffmpeg-worker-runtime-contract.md).
+
 ## Schema and generated code
 
 There is exactly one active migration: platform-app/src/main/resources/db/migration/V1__baseline.sql.
@@ -78,8 +92,9 @@ functions, indexes and views are included. Subsequent Owner-approved Schema chan
 
 Render owns job transitions/history/final-output acceptance and completion quota/outbox transaction.
 Artifact owns commits/replicas; native Execution owns fenced attempts/completions; Temporal owns
-scheduling/retry/cancel; Storage owns bytes. First Render is a platform use-case probe, not a second
-render lifecycle. Local downloads currently validate whole objects up to64MiB before responding.
+scheduling/retry/cancel; Storage owns bytes. First Render is an E2E/automation scenario over the
+formal `POST /api/render-jobs` entry, not a second render lifecycle or production entry.
+Formal product paths: [current product execution paths](../architecture/current/current-product-execution-paths.md). Local downloads currently validate whole objects up to64MiB before responding.
 
 Original dirty repository changes are not overwritten or assumed obsolete. Divergent later work is
 preserved in the external integration audit with per-path dispositions; choosing it over the accepted

@@ -400,16 +400,19 @@ fi
 echo ""
 echo "--- Deferred Status ---"
 
-if grep -q "^- OpenCue: NOT_STARTED$" .hermes.md 2>/dev/null; then
-    pass "OpenCue canonical status is NOT_STARTED"
+# Deferred capability status is asserted in the accepted architecture records, not in a
+# tool adapter. These replace the retired .hermes.md string checks (tool adapters now defer
+# to AGENTS.md and carry no independent status facts).
+if grep -q 'FUT-001 | OpenCue remains NOT_STARTED' docs/architecture/current/architecture-assertions.md 2>/dev/null; then
+    pass "OpenCue canonical status is NOT_STARTED (architecture-assertions FUT-001)"
 else
-    fail "OpenCue canonical status is not NOT_STARTED in .hermes.md"
+    fail "OpenCue NOT_STARTED assertion missing from docs/architecture/current/architecture-assertions.md"
 fi
 
-if grep -q "^- Artifact DAG: POSTPONED$" .hermes.md 2>/dev/null; then
-    pass "Artifact DAG canonical status is POSTPONED"
+if grep -q 'Artifact DAG is postponed indefinitely' docs/architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md 2>/dev/null; then
+    pass "Artifact DAG canonical status is POSTPONED (ADR-025)"
 else
-    fail "Artifact DAG canonical status is not POSTPONED in .hermes.md"
+    fail "Artifact DAG POSTPONED decision missing from docs/architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md"
 fi
 
 echo ""

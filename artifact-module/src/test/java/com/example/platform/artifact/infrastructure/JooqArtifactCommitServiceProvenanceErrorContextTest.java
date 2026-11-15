@@ -1,8 +1,5 @@
 package com.example.platform.artifact.infrastructure;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ARTIFACT_RELATION;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ARTIFACT_REPLICA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
@@ -18,12 +15,15 @@ import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.StorageReplicaId;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
+import org.jooq.impl.DefaultConfiguration;
+import org.jooq.tools.jdbc.MockConnection;
+import org.jooq.tools.jdbc.MockResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,8 +39,7 @@ class JooqArtifactCommitServiceProvenanceErrorContextTest {
     @BeforeEach
     void setUp() {
         recordingDsl = new RecordingDsl();
-        DSLContext dsl = (DSLContext) Proxy.newProxyInstance(
-                DSLContext.class.getClassLoader(), new Class<?>[]{DSLContext.class}, recordingDsl);
+        DSLContext dsl = recordingDsl.context();
         commitService = new JooqArtifactCommitService(
                 new ArtifactRepository(dsl), new ArtifactRelationRepository(dsl), dsl);
     }
@@ -139,9 +138,7 @@ class JooqArtifactCommitServiceProvenanceErrorContextTest {
                 ArtifactErrorCode.ProvenanceException.class);
 
         assertThat(failure.code()).isEqualTo(expectedCode);
-        assertThat(recordingDsl.artifactRowCount).isZero();
-        assertThat(recordingDsl.replicaRowCount).isZero();
-        assertThat(recordingDsl.relationRowCount).isZero();
+        assertThat(recordingDsl.executedSql).as("no row-writing SQL may be executed").isEmpty();
         assertThat(failure.error())
                 .extracting(
                         ArtifactErrorCode.Error::parentArtifactId,
@@ -176,45 +173,23 @@ class JooqArtifactCommitServiceProvenanceErrorContextTest {
                 operationId, 1, attemptId, "request-digest", "result-digest");
     }
 
-    private static final class RecordingDsl implements InvocationHandler {
+    /**
+     * jOOQ MockConnection recorder. JDK 25 cannot build a dynamic proxy for the large DSLContext
+     * interface ("Code length ... outside the allowed range"), so the test uses jOOQ's own mock
+     * connection and records executed SQL instead of intercepting interface methods.
+     */
+    private static final class RecordingDsl {
 
-        private int artifactRowCount;
-        private int replicaRowCount;
-        private int relationRowCount;
+        private final List<String> executedSql = new ArrayList<>();
 
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) {
-            if (method.getDeclaringClass() == Object.class) {
-                return switch (method.getName()) {
-                    case "toString" -> "RecordingDsl";
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "equals" -> proxy == args[0];
-                    default -> null;
-                };
-            }
-            if ("insertInto".equals(method.getName()) && args != null && args.length > 0) {
-                if (args[0] == ARTIFACT) {
-                    artifactRowCount++;
-                } else if (args[0] == ARTIFACT_REPLICA) {
-                    replicaRowCount++;
-                } else if (args[0] == ARTIFACT_RELATION) {
-                    relationRowCount++;
-                }
-            }
-            return defaultValue(method.getReturnType());
-        }
-
-        private static Object defaultValue(Class<?> returnType) {
-            if (!returnType.isPrimitive()) {
-                return null;
-            }
-            if (returnType == boolean.class) {
-                return false;
-            }
-            if (returnType == char.class) {
-                return '\0';
-            }
-            return 0;
+        private DSLContext context() {
+            MockConnection connection = new MockConnection(context -> {
+                executedSql.add(context.sql());
+                return new MockResult[0];
+            });
+            return DSL.using(new DefaultConfiguration()
+                    .set(SQLDialect.DEFAULT)
+                    .set(connection));
         }
     }
 }
