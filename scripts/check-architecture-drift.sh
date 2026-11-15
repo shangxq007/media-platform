@@ -1805,6 +1805,14 @@ if grep -rq 'first-render/plans' platform-app/src/main/java 2>/dev/null; then
 else
     pass "First Render probe route absent from production sources"
 fi
+# TIMELINE_SNAPSHOT_ENDPOINT_DISPOSITION_R1: the standalone snapshot import route was a second
+# HTTP entry over the same canonical IMPORT_TIMELINE operation and is retired. Timeline writes
+# go through the Operation API only; the canonical snapshot stays a read model.
+if grep -rq '/api/render/timeline-snapshots' platform-app/src/main/java 2>/dev/null; then
+    fail "retired timeline-snapshot import route still present in production sources"
+else
+    pass "retired timeline-snapshot import route absent from production sources"
+fi
 if grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/render/RenderJobSubmissionController.java 2>/dev/null \
     && grep -q 'RevisionRenderSubmissionService' platform-app/src/main/java/com/example/platform/config/render/IncrementalRenderController.java 2>/dev/null; then
     pass "full and incremental render entries share the formal submission service"

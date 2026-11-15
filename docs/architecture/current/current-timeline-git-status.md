@@ -15,7 +15,7 @@ owner: platform
 | Capability | Status | Implemented In | Tests | REST API | Known Gaps |
 |-----------|--------|---------------|-------|----------|------------|
 | **Revision (Commit)** | ✅ Production Ready | `TimelineRevisionService`, `TimelineRevisionRepository`, `timeline_revision` table | ✅ | `GET /revisions`, `GET /head`, `GET /{id}` | None |
-| **Snapshot** | ✅ Production Ready | `TimelineSnapshotService`, `timeline_snapshot` table | ✅ | `POST /timeline-snapshots` | None |
+| **Snapshot** | ✅ Production Ready | `TimelineSnapshotService`, `timeline_snapshot` table | ✅ | `GET /api/render/projects/{projectId}/timeline/revisions/{revisionId}/snapshot` (read); written by canonical Operations | The standalone `POST /timeline-snapshots` import route is retired |
 | **Patch (RFC6902)** | ✅ Production Ready | `TimelinePatchService`, `TimelinePatchOpsJson` | ✅ | `POST /patch_timeline` | JSON Path-based; no semantic patch type mapper |
 | **Structural Diff** | ✅ Production Ready | `TimelineRevisionDiffService` | ✅ | `GET /compare?from=&to=` | Entity-level only (counts + verbs) |
 | **Semantic Diff** | ✅ Production Ready | `TimelineSemanticDiffService` (25 change types), `SemanticChange`, `EntityRef`, `DirtyScope` | ✅ | `POST /diff_timelines`, `POST /analyze_render_impact` | None |

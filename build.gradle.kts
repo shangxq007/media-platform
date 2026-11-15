@@ -1447,11 +1447,20 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
             "FAIL: timeline-module depends on render-module"
         }
 
-        // Canonical import now uses the same typed Operation ingress as other Timeline mutations.
-        val snapshotIngress = file("platform-app/src/main/java/com/example/platform/web/render/TimelineSnapshotController.java").readText()
-        require(snapshotIngress.contains("OperationInvocationPort") && snapshotIngress.contains("ImportTimelineParameters")
-                && !snapshotIngress.contains("TimelineConversionService")) {
-            "FAIL: canonical snapshot import must enter the formal Operation authority"
+        // Timeline writes enter the formal Operation authority only. The standalone snapshot-import
+        // HTTP adapter that wrapped IMPORT_TIMELINE is retired (TIMELINE_SNAPSHOT_ENDPOINT_DISPOSITION_R1),
+        // so no public web controller may carry a whole-document import parameter again.
+        val renderWebDir = file("platform-app/src/main/java/com/example/platform/web/render")
+        require(!file(renderWebDir.resolve("TimelineSnapshotController.java")).exists()) {
+            "FAIL: retired standalone snapshot import controller reintroduced"
+        }
+        val webImportConsumers = fileTree(renderWebDir).matching { include("*.java") }.files.filter {
+            it.readText().contains("ImportTimelineParameters")
+                    || it.readText().contains("TimelineConversionService")
+        }
+        val webImportConsumerNames = webImportConsumers.joinToString { it.name }
+        require(webImportConsumers.isEmpty()) {
+            "FAIL: a web controller bypasses the formal Operation authority with a direct document import: $webImportConsumerNames"
         }
         require(!file(renderTimelineDir.resolve("TimelineConversionService.java")).exists()
                 && !file(renderTimelineDir.resolve("TimelineSpecImportAdapter.java")).exists()) {

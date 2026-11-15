@@ -109,6 +109,9 @@ while True:
     time.sleep(1)
 required('readiness',readiness,{200})
 required('unauthenticated_upload',upload('scenario-unauthorized',False),{401,403})
+# The retired standalone snapshot-import route must stay absent from the running application.
+required('retired_snapshot_endpoint_absent',
+         call('/api/render/timeline-snapshots',{'projectId':'project-fr-e2e','payloadJson':'{}'}),{404})
 pin=required('upload_source',upload('scenario-source-1'),{201})
 assert pin['artifactId'] and pin['contentDigest'] and pin['streams']
 init=required('initialize',call(project+'/timeline-operations/initialize',{'trackId':'track-1','commandId':'bmf-init-1'}),{201})

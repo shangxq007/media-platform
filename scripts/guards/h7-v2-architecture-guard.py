@@ -251,7 +251,6 @@ def main() -> int:
     for controller in (
         "TimelineGitV1Controller.java",
         "TimelineRevisionController.java",
-        "TimelineSnapshotController.java",
         "TimelineEditorSyncController.java",
         "TimelineWorkbenchController.java",
         "TimelineReviewController.java",

@@ -95,6 +95,9 @@ def await_readiness(deadline_seconds=60):
     raise AssertionError(('readiness timeout',last))
 required('readiness',await_readiness(),{200})
 required('unauthenticated_upload',upload('red','unauthorized',False),{401,403})
+# The retired standalone snapshot-import route must stay absent from the running application.
+required('retired_snapshot_endpoint_absent',
+         call('/api/render/timeline-snapshots',{'projectId':'project-fr-e2e','payloadJson':'{}'}),{404})
 red=required('upload_red',upload('red','red-1'),{201})
 blue=required('upload_blue',upload('blue','blue-1'),{201})
 assert red['artifactId']!=blue['artifactId'] and red['contentDigest']!=blue['contentDigest']

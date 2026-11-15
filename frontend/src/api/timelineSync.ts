@@ -81,18 +81,5 @@ export const TimelineSyncAPI = {
       source: options?.source,
     })
     return data
-  },
-
-  async saveSnapshotInternal(
-    projectId: string,
-    editorTimeline: unknown
-  ): Promise<{ snapshotId: string; projectId: string }> {
-    const { data } = await api.post('/render/timeline-snapshots', {
-      projectId,
-      editorTimeline,
-      schemaVersion: '2.0.0',
-      ensureInternal: true
-    })
-    return data
   }
 }

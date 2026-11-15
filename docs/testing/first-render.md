@@ -24,7 +24,10 @@ The worker also needs an FFmpeg build with `drawtext`, `overlay`, `libx264` and 
 explicit font: `FFMPEG_WORKER_FFMPEG_PATH` and `FFMPEG_WORKER_FONT` (see
 [runtime contract](../dev/ffmpeg-worker-runtime-contract.md)).
 
-1. Authenticate normally and POST a timeline snapshot via /api/render/timeline-snapshots.
+1. Authenticate normally and create the revision through the canonical Operation API
+   (`/timeline-operations/initialize` then `/timeline-operations/add-media-clip/apply`); read it back
+   from `/api/render/projects/{projectId}/timeline/revisions/{revisionId}/snapshot`. The former
+   standalone `/api/render/timeline-snapshots` import route is retired.
 2. POST /api/render-jobs with `revisionId`, `extent`, MP4 `outputFormat` and `profile`; an optional
    `Idempotency-Key` header replays the same submission.
 3. Query GET /api/tenants/{tenant}/projects/{project}/render-jobs/{job} and /result.

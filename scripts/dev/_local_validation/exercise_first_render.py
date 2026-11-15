@@ -47,6 +47,7 @@ insert into "user"(id,tenant_id,account_id,username,email,role,status,created_at
 insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values ('member-fr-e2e','workspace-fr-e2e','actor-fr-e2e','OWNER','ACTIVE',now(),now());
 insert into role(id,role_key,name,scope,created_at) values ('role-fr-e2e','F8_RENDER','F8 exact synthetic role','WORKSPACE',now());
 insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-e2e','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','render.job.create','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
+insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-upload','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','artifact.source.upload','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
 insert into role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from permission where permission_key in ('READ','WRITE','render.submit','artifact.read');
 insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
 '''+f"insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at,audit_provenance) values ('art-f8-source','tenant-fr-e2e','project-fr-e2e','workspace-fr-e2e','{m['digest']}',{m['length']},'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now(),jsonb_build_object('sourceProbeV1',jsonb_build_object('version',1,'durationTicks',1,'durationScale',1,'streams',jsonb_build_array(jsonb_build_object('id','stream-0','kind','VIDEO','durationTicks',1,'durationScale',1)))));\ninsert into artifact_replica(artifact_id,replica_id,provider_id,storage_object_id,region,role,state,created_at) values ('art-f8-source','{m['replica']}','local-object-store','{m['object']}','local','PRIMARY','ACTIVE',now());\ncommit;"
@@ -56,22 +57,50 @@ now=int(time.time());payload=dict(iss='http://127.0.0.1:18081',sub='f8-subject',
 tbs=b64(json.dumps({'alg':'RS256','typ':'JWT','kid':'f8-local'}).encode())+'.'+b64(json.dumps(payload).encode())
 sign=subprocess.run(['openssl','dgst','-sha256','-sign',str(R/'07-runtime/private/oidc-private.pem')],env=env,input=tbs.encode(),capture_output=True,check=True).stdout
 token=tbs+'.'+b64(sign);p=a/'token';p.write_text(token);p.chmod(0o600)
-client=a/'client.py';client.write_text('''import urllib.request,urllib.error,json,sys,pathlib
+client=a/'client.py';client.write_text('''import urllib.request,urllib.error,json,sys,pathlib,uuid
 r=pathlib.Path(sys.argv[1]);token=(r/'token').read_text()
-def call(path,data,auth=True):
- req=urllib.request.Request('http://127.0.0.1:18080'+path,data=json.dumps(data).encode() if data is not None else None,headers={'Content-Type':'application/json',**({'Authorization':'Bearer '+token} if auth else {})})
+def call(path,data,auth=True,headers=None):
+ h={'Authorization':'Bearer '+token} if auth else {}
+ h.update(headers or {})
+ if isinstance(data,dict):data=json.dumps(data).encode();h['Content-Type']='application/json'
+ req=urllib.request.Request('http://127.0.0.1:18080'+path,data=data,headers=h)
  try:
-  with urllib.request.urlopen(req,timeout=40) as f:status=f.status;body=f.read().decode()
+  with urllib.request.urlopen(req,timeout=60) as f:status=f.status;body=f.read().decode()
  except urllib.error.HTTPError as f:status=f.code;body=f.read().decode()
  return {'status':status,'body':body}
+def upload(key):
+ boundary='owned-first-render-'+uuid.uuid4().hex
+ data=(r/'source.mp4').read_bytes()
+ body=(('--'+boundary+'\\r\\nContent-Disposition: form-data; name="file"; filename="source.mp4"\\r\\n'
+        'Content-Type: video/mp4\\r\\n\\r\\n').encode()+data+('\\r\\n--'+boundary+'--\\r\\n').encode())
+ return call('/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/source-media',body,
+             headers={'Content-Type':'multipart/form-data; boundary='+boundary,'Idempotency-Key':key})
 result={}
 result['readiness']=call('/actuator/health/readiness',None,False)
 result['unauthenticated']=call('/api/render-jobs',{},False)
-data={'projectId':'project-fr-e2e','payloadJson':(r/'timeline.json').read_text()}
-result['snapshot']=call('/api/render/timeline-snapshots',data)
-if result['snapshot']['status']==201:
- revision=json.loads(result['snapshot']['body'])['revisionId']
- result['first_render']=call('/api/render-jobs',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})
+# The retired standalone snapshot-import route must stay absent from the running application.
+result['retired_snapshot_endpoint_absent']=call('/api/render/timeline-snapshots',
+    {'projectId':'project-fr-e2e','payloadJson':'{}'})
+assert result['retired_snapshot_endpoint_absent']['status']==404,result
+submitted=upload('first-render-source-1');result['upload_source']=submitted
+assert submitted['status']==201,submitted
+pin=json.loads(submitted['body'])
+project='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e'
+init=call(project+'/timeline-operations/initialize',{'trackId':'track-1','commandId':'init-1'});result['initialize']=init
+assert init['status']==201,init
+revision=json.loads(init['body'])['newRevisionId'];content=json.loads(init['body'])['resultContentHash']
+draft={'baseRevisionId':revision,'baseContentHash':content,'trackId':'track-1','clipId':'clip-0',
+ 'mediaAssetId':pin['artifactId'],'mediaStreamId':next(s['streamId'] for s in pin['streams'] if s['kind']=='VIDEO'),
+ 'artifactId':pin['artifactId'],'contentDigest':pin['contentDigest'],
+ 'sourceStart':'0','sourceEnd':'1','timelineStart':'0','timelineEnd':'1',
+ 'rateNumerator':1,'rateDenominator':1,'direction':'FORWARD'}
+preview=call(project+'/timeline-operations/add-media-clip/preview',draft);result['add_media_clip_preview']=preview
+assert preview['status']==200,preview
+applied=call(project+'/timeline-operations/add-media-clip/apply',{'request':draft,'expectedPlanDigest':json.loads(preview['body'])['planDigest'],'applyCommandId':'add-clip-0'});result['add_media_clip_apply']=applied
+assert applied['status']==201,applied
+revision=json.loads(applied['body'])['newRevisionId']
+result['snapshot']={'status':201,'body':json.dumps({'revisionId':revision})}
+result['first_render']=call('/api/render-jobs',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})
 (r/'http-results.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
 ''')
 print(run('http',prefix+['/usr/bin/python3','-B',str(client),str(a)]))

@@ -40,7 +40,7 @@
 | 服务端渲染 | **Internal 1.0** | `TimelineConversionService` |
 | 预览 | `POST .../timeline/preview-internal` | 转换对比 |
 | 双向同步 | `POST/GET /render/timeline-sync/*` | push / pull / sync |
-| 快照 | `POST /render/timeline-snapshots` | `ensureInternal: true` 落库 internal-1.0 |
+| 快照 | `GET .../timeline/revisions/{revisionId}/snapshot`（读取） | 由正式 Operation 写入；`POST /render/timeline-snapshots` 已退役 |
 
 ---
 

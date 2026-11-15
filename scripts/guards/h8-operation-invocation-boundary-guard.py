@@ -305,7 +305,6 @@ CLASSIFIED_RUNTIME_FQ_TYPES = {
     "com.example.platform.web.render.TimelineMediaClipOperationController": "public-http-consumer",
     "com.example.platform.web.render.TimelineClipEditOperationController": "public-http-consumer",
     "com.example.platform.web.render.TimelineInitializeOperationController": "public-http-consumer",
-    "com.example.platform.web.render.TimelineSnapshotController": "public-http-consumer",
     "com.example.platform.web.media.McpMediaToolsController": "public-http-consumer",
     "com.example.platform.timeline.semantics.selection.TimelineSelectionException": "canonical-selection-failure",
 }
@@ -2023,7 +2022,6 @@ def evaluate(
         "platform-app/src/main/java/com/example/platform/web/render/TimelineClipEditOperationController.java",
         "platform-app/src/main/java/com/example/platform/web/render/TimelineInitializeOperationController.java",
         "platform-app/src/main/java/com/example/platform/web/render/TimelineMediaClipOperationController.java",
-        "platform-app/src/main/java/com/example/platform/web/render/TimelineSnapshotController.java",
     }
     port_consumer_http = {
         path for path, source in public_route_sources.items()
