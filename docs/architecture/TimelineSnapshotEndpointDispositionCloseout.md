@@ -63,10 +63,11 @@ CANDIDATE_TREE:   eda2992d39c82eee7e0ba1628bbb9cb3b5ec486f
 REPORTS_COMMIT:   the commit that contains this file (its only difference from the code candidate
                   is this closeout and the test matrix)
 
-FINAL_RESULT: PARTIAL
-  Endpoint disposition: complete (RETIRED), Operation authority preserved, Revision/Snapshot/
-  RenderJob path verified. Two guard gates stay partially red for one pre-existing false positive
-  that predates this task (see §5); no guard was weakened and nothing unrelated was modified.
+FINAL_RESULT: PASS
+  Endpoint disposition complete (RETIRED), Operation authority preserved, Revision/Snapshot/
+  RenderJob path verified on the unchanged product code, and the pre-existing credential-residue
+  false positive resolved in this round (see §5) so architecture, document governance and
+  `verify guards` are green again.
 ```
 
 ## 1. What was verified in a real application
@@ -129,26 +130,42 @@ transport* with a bounded command id — not as a second write path.
 No Flyway migration, no public RenderJob API, no Operation SPI, no Revision CAS, no Artifact
 fencing, no second write API, no compatibility adapter. `Task`/`Snapshot` domain models remain.
 
-## 5. Pre-existing guard failure (not caused by this task, not fixed here)
+## 5. Credential-residue false positive (found on the base, fixed in this round)
 
-On the base commit `c4096d79` the architecture drift guard already fails:
+On the base commit `c4096d79` the architecture drift guard already failed:
 
 ```text
 ❌ FAIL: CIPG1 credential residue > 0 (3)
 ❌ FAIL: CIPG2EG1 credential residue > 0 (3)
-ARCHITECTURE_DRIFT: FAIL (219 checks)     <- on base, before this change
+ARCHITECTURE_DRIFT: FAIL (219 checks)
 ```
 
-Root cause: the credential regex `sk-[A-Za-z0-9]{20,}` matches the substring inside the
-`render-task-<64 hex>` Artifact ids recorded in the BMF R1 reports
-(`docs/architecture/BmfR1FinalCloseout.md`, `BmfR1FinalTestMatrix.md`). Those are false positives.
+Root cause: the credential pattern `sk-[A-Za-z0-9]{20,}` matched a substring inside the
+`render-task-<64 hex>` Artifact ids recorded in the BMF R1 reports. Those were false positives, and
+through `DG-016` they also blocked document governance.
 
-Effect on this task: `scripts/dev/verify guards` and `scripts/check-document-governance.sh`
-(DG-016 delegates to the architecture guard) cannot report a full PASS. Per the task rule
-("不修改与本任务无关的 Guard") this was not modified. Recommended follow-up (owner decision):
-tighten the regex with a leading boundary (`(?<![A-Za-z0-9])sk-[A-Za-z0-9]{20,}`), which keeps
-real key detection and stops matching `…task-<hex>`. With that one-line fix the base guard returns
-to `PASS (220 checks)` and DG-016 follows.
+Fix (this round, guards only): the scan runs under POSIX ERE (`git grep -E`), which has no
+lookbehind, so the `sk-` branch now carries an explicit leading boundary —
+`(^|[^A-Za-z0-9])sk-[A-Za-z0-9]{20,}` — meaning a credential-shaped token must start a line or
+follow a non-alphanumeric character. The pattern lives in
+`scripts/guards/credential-pattern.sh`, shared by the guard and its regression test.
+
+Unchanged on purpose: the `ghp_`/`AKIA`/`xox` patterns, the scanned file set, the
+`AKIAIO|REDACTED|xxx` exclusions, the zero-check exit semantics and the file-level failure signal.
+No directory was excluded, no report file skipped, no check relabelled.
+
+New regression test `scripts/guards/test_credential_residue_pattern.sh` (wired into
+`scripts/dev/verify guards`) proves, with synthetic samples only:
+
+- `render-task-<hex>`, a bare artifact id and `disk-<hex>` produce zero matches;
+- quoted `"sk-…"`, `API_KEY=sk-…`, line-start `sk-…`, `ghp_…`, `AKIA…` and `xoxb-…` are detected;
+- the residue count is non-zero for a positive sample and zero for the artifact id (the guard's
+  zero-check fails closed either way);
+- the BMF R1 reports are still tracked and in scan scope, and contain `render-task-` ids with zero
+  residue; whole-repository residue is 0.
+
+Result: `ARCHITECTURE_DRIFT: PASS (220 checks)`, document governance `16/16 PASS` (DG-016 PASS),
+`scripts/dev/verify guards` 7/7 components PASS.
 
 ## 6. Reproduction
 
