@@ -22,7 +22,10 @@ fail() { printf "❌ FAIL: %s\n" "$1" >&2; FAILED=1; CHECKS=$((CHECKS + 1)); }
 # current invariant; the source is inspected once and every rule id keeps its own
 # PASS/FAIL line, so coverage and failure attribution do not change.
 HAS_JGIT=$(grep -rl 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null | head -1 || true)
-CREDENTIAL_RESIDUE_COUNT=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
+# CIPG1/CIPG2EG1 credential residue: the pattern lives in scripts/guards/credential-pattern.sh so the
+# guard and its positive/negative regression test share one authority.
+. "$ROOT_DIR/scripts/guards/credential-pattern.sh"
+CREDENTIAL_RESIDUE_COUNT=$(git grep -InE "$CREDENTIAL_RESIDUE_PATTERN" -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE "$CREDENTIAL_RESIDUE_EXCLUSIONS" | wc -l || true)
 COLOR_PRIMARIES_STATES=no
 COLOR_PRIMARIES_FILE=color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java
 if grep -q 'UNSPECIFIED' "$COLOR_PRIMARIES_FILE" 2>/dev/null && grep -q 'UNKNOWN' "$COLOR_PRIMARIES_FILE" 2>/dev/null; then

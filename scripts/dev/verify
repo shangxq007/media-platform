@@ -321,6 +321,8 @@ def main() -> int:
     if args.command == 'guards':
         results = [
             run_command(['bash', 'scripts/check-architecture-drift.sh', '--quiet'], run_dir, 'architecture-drift', 900),
+            run_command(['bash', 'scripts/guards/test_credential_residue_pattern.sh'],
+                        run_dir, 'credential-residue-pattern', 120),
             run_command([str(ROOT / 'gradlew'), 'verifyJooqGeneratedSources', '--no-daemon', '--max-workers=2'],
                         run_dir, 'jooq-parity', 600),
             run_command(['bash', 'scripts/check-oidc-bundle-config.sh'], run_dir, 'oidc-bundle', 300),
