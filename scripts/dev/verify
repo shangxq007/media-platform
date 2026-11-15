@@ -87,7 +87,57 @@ def userns() -> dict:
             'reason': '' if result.returncode == 0 else (result.stderr or 'podman unshare failed').strip()[-300:]}
 
 
-def preflight(level: str) -> dict:
+def bmf_runtime(root: Path | None) -> dict:
+    """Provider-aware preflight input: the exact verified BMF 0.2.0 runtime distribution."""
+    import hashlib
+    source = '8fb3ec03b06ba56e5276a6844614879cdc0ae3886b42a4bf783782708130e327'
+    bundle = '0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1'
+    report = {'configured': bool(root), 'path': str(root) if root else '', 'certificate': 'NOT_RUN',
+              'digest': None, 'blockers': []}
+    if root is None:
+        report['blockers'].append('--bmf-runtime-root is required by the bmf provider')
+        return report
+    candidate = root.absolute()
+    if candidate.is_symlink() or not candidate.is_dir():
+        report['blockers'].append('bmf runtime root is not an existing real directory')
+        return report
+    resolved = candidate.resolve()
+    manifest = resolved / 'runtime-manifest.properties'
+    metadata = {}
+    if manifest.is_file() and not manifest.is_symlink():
+        for line in manifest.read_text().splitlines():
+            if '=' in line:
+                key, _, value = line.partition('=')
+                metadata[key.strip()] = value.strip()
+    expected = {'bmf.version': '0.2.0', 'ffmpeg.version': '4.3.7', 'python.version': '3.9.2',
+                'numpy.version': '1.19.5', 'source.sha256': source, 'bundle.sha256': bundle}
+    if any(metadata.get(key) != value for key, value in expected.items()):
+        report['blockers'].append('bmf runtime manifest does not declare the pinned distribution')
+        return report
+    python = resolved / 'host-bundle/usr/bin/python3.9'
+    if python.is_symlink() or not python.is_file() or not os.access(python, os.X_OK):
+        report['blockers'].append('bmf runtime Python is unavailable')
+        return report
+    digest = hashlib.sha256()
+    for subtree in ('output/bmf', 'host-bundle'):
+        for path in sorted((resolved / subtree).rglob('*'),
+                           key=lambda item: item.relative_to(resolved).as_posix()):
+            if path.is_symlink():
+                value = 'link:' + os.readlink(path)
+            elif path.is_file():
+                with path.open('rb') as data:
+                    value = 'file:' + hashlib.file_digest(data, 'sha256').hexdigest()
+            else:
+                continue
+            digest.update((path.relative_to(resolved).as_posix() + '\0' + value + '\n').encode())
+    report['digest'] = digest.hexdigest()
+    report['certificate'] = 'PASS' if report['digest'] == bundle else 'FAIL'
+    if report['digest'] != bundle:
+        report['blockers'].append('bmf runtime bundle digest does not match the pinned distribution')
+    return report
+
+
+def preflight(level: str, provider: str = 'ffmpeg', bmf_root: Path | None = None) -> dict:
     worker_ffmpeg = Path(os.environ.get('FFMPEG_WORKER_FFMPEG_PATH', '/usr/bin/ffmpeg'))
     worker_font_value = os.environ.get('FFMPEG_WORKER_FONT', '')
     worker_font = Path(worker_font_value) if worker_font_value else None
@@ -95,8 +145,10 @@ def preflight(level: str) -> dict:
     evidence.mkdir(parents=True, exist_ok=True)
     checks = {
         'identity': identity(),
+        'protocol': {'provider': provider, 'worker_font_required': provider == 'ffmpeg'},
         'tools': {name: shutil.which(name) for name in
-                  ('git', 'java', 'python3', 'node', 'google-chrome', 'ffmpeg', 'podman', 'bwrap')},
+                  ('git', 'java', 'python3', 'node', 'google-chrome', 'ffmpeg', 'podman', 'bwrap',
+                   'nsenter', 'openssl', 'javac', 'curl')},
         'userns': userns(),
         'worker_ffmpeg': ffmpeg_features(worker_ffmpeg),
         'worker_font': {'configured': bool(worker_font_value), 'path': worker_font_value,
@@ -115,10 +167,22 @@ def preflight(level: str) -> dict:
         required = ['git', 'java', 'python3']
     elif level == 'l2':
         required = ['git', 'java', 'python3']
+    elif provider == 'bmf':
+        required = ['git', 'java', 'python3', 'podman', 'bwrap', 'nsenter', 'openssl', 'javac',
+                    'ffmpeg', 'curl']
     else:
         required = ['git', 'java', 'python3', 'node', 'google-chrome']
     blockers = [f'tool missing: {name}' for name in required if not checks['tools'].get(name)]
-    if level == 'l3':
+    if level == 'l3' and provider == 'bmf':
+        # Provider-aware L3 preflight: the BMF scenario is a silent single-clip render. It needs no
+        # host FFmpeg filter/encoder, no subtitle font and no externally provisioned service, because
+        # scripts/dev/first-render owns PG18/Temporal/OIDC and the BMF bundle carries its own FFmpeg.
+        # It does require rootless namespaces and the exact verified runtime distribution.
+        checks['bmf_runtime'] = bmf_runtime(bmf_root)
+        blockers += checks['bmf_runtime']['blockers']
+        if not checks['userns']['available']:
+            blockers.append('rootless podman/namespace unavailable (native runner required)')
+    elif level == 'l3':
         features = checks['worker_ffmpeg']
         for feature in ('drawtext', 'overlay', 'libx264', 'qtrle'):
             if not features.get(feature):
@@ -196,10 +260,15 @@ def main() -> int:
     e2e = sub.add_parser('e2e')
     e2e.add_argument('--output', type=Path, required=True)
     e2e.add_argument('--source-ffmpeg', type=Path, default=Path('/usr/bin/ffmpeg'))
+    e2e.add_argument('--provider', choices=('ffmpeg', 'bmf'), default='ffmpeg',
+                     help='internal media provider for the formal render binding (default ffmpeg)')
+    e2e.add_argument('--scenario', choices=('default', 'single-video-no-audio'), default=None)
+    e2e.add_argument('--bmf-runtime-root', type=Path, default=None)
     args = parser.parse_args()
 
     if args.command == 'preflight':
-        report = preflight(args.level)
+        report = preflight(args.level, getattr(args, 'provider', 'ffmpeg'),
+                           getattr(args, 'bmf_runtime_root', None))
         print(json.dumps(report, indent=2) if args.json else
               'PREFLIGHT ' + report['result'] + ('\n' + '\n'.join('  - ' + b for b in report['blockers'])
                                                  if report['blockers'] else ''))
@@ -263,15 +332,22 @@ def main() -> int:
         write_manifest(run_dir, 'guards', results)
         return 0 if all(result['exit_code'] == 0 for result in results) else 1
 
-    report = preflight('l3')
+    report = preflight('l3', args.provider, args.bmf_runtime_root)
     (run_dir / 'preflight.json').write_text(json.dumps(report, indent=2))
     if report['result'] != 'PASS':
         print('L3 PREFLIGHT BLOCKED: ' + '; '.join(report['blockers']))
         return 1
-    results = [run_command(
-        ['python3', '-B', 'scripts/dev/first-render', '--output', str(args.output),
-         '--source-ffmpeg', str(args.source_ffmpeg), '--timeline-operation-editing', '--nle-browser'],
-        run_dir, 'first-render', 7200)]
+    command = ['python3', '-B', 'scripts/dev/first-render', '--output', str(args.output),
+               '--source-ffmpeg', str(args.source_ffmpeg)]
+    if args.provider == 'bmf':
+        # The BMF scenario is a silent single-clip formal RenderJob, not the browser NLE flow.
+        command += ['--provider', 'bmf', '--scenario', args.scenario or 'single-video-no-audio',
+                    '--bmf-runtime-root', str(args.bmf_runtime_root)]
+    else:
+        command += ['--timeline-operation-editing', '--nle-browser']
+        if args.scenario:
+            command += ['--scenario', args.scenario]
+    results = [run_command(command, run_dir, 'first-render', 7200)]
     write_manifest(run_dir, 'l3', results)
     return 0 if results[0]['exit_code'] == 0 else 1
 

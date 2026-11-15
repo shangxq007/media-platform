@@ -4,11 +4,16 @@ from pathlib import Path
 import json,subprocess,os,sys,time,base64,hashlib
 R=Path(os.environ['MEDIA_PLATFORM_VALIDATION_OUTPUT']);RUN_ID=json.loads((R/'07-runtime/run.json').read_text())['id'];W=Path(__file__).resolve().parents[3];a=Path((R/'07-runtime/current-apps.txt').read_text().strip());sys.path.insert(0,str(W/'scripts/testinfra'));from local_runtime import sandbox_prefix
 prefix=sandbox_prefix(a/'binding.json');env={'PATH':'/usr/bin:/bin','HOME':str(a),'LANG':'C.UTF-8','PYTHONDONTWRITEBYTECODE':'1'}
+# Scenario source. single-video-no-audio matches the formal bounded canvas (320x240) and the requested
+# extent frame rate (1/1) exactly, so a provider that preserves the input raster and rate is compliant.
+scenario=os.environ.get('MEDIA_PLATFORM_SCENARIO','default')
+source_fps,source_color=('1','green') if scenario=='single-video-no-audio' else ('30','red')
+(a/'scenario.json').write_text(json.dumps({'scenario':scenario,'source':{'width':320,'height':240,'frameRate':source_fps,'durationSeconds':1,'audio':False},'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1}}))
 def run(name,cmd,input=None):
  p=subprocess.run(cmd,env=env,input=input,capture_output=True,text=True,timeout=60);(a/(name+'.stdout')).write_text(p.stdout);(a/(name+'.stderr')).write_text(p.stderr)
  if p.returncode:raise RuntimeError(name+' exit '+str(p.returncode))
  return p.stdout
-run('source-video',prefix+['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi','-i','color=c=red:s=320x240:r=30','-t','1','-c:v','libopenh264','-pix_fmt','yuv420p',str(a/'source.mp4')])
+run('source-video',prefix+['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi','-i','color=c='+source_color+':s=320x240:r='+source_fps,'-t','1','-c:v','libopenh264','-pix_fmt','yuv420p',str(a/'source.mp4')])
 cp=(R/'03-build/platform-app-test-classpath.txt').read_text().strip();classes=a/'fixture-classes';classes.mkdir(exist_ok=True)
 src=a/'Fixture.java';src.write_text('''import java.nio.file.*;import java.util.*;
 import com.example.platform.timeline.canonical.*;
