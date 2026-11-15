@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -36,8 +37,9 @@ import org.springframework.context.annotation.Configuration;
  * {@link ProviderBindingPin} is rejected rather than silently overwritten. An empty catalog yields an
  * empty map — the orchestrator then fails closed at execution time for the missing exact binding.
  *
- * <p>The worker is runtime-grouped (one ffmpeg runtime), so every contribution's runtime context uses
- * the guard-validated {@code platform.ffmpeg-worker.sandbox.ffmpeg} executable. The binding map is
+ * <p>FFmpeg contributions use the guard-validated {@code platform.ffmpeg-worker.sandbox.ffmpeg}
+ * executable; the BMF contribution uses the Python executable in its verified runtime bundle.
+ * The binding map is
  * worker-scoped, its immutable bindings are copied with each execution's cancellation signal; the default remains
  * {@link SandboxCancellation#never()} and never carries another execution's mutable cancellation state.
  */
@@ -65,8 +67,10 @@ public class FfmpegWorkerPluginConfiguration {
     }
 
     @Bean
-    BmfProviderExtension bmfProviderExtension() {
-        return new BmfProviderExtension();
+    @ConditionalOnProperty(name = "platform.bmf-provider.enabled", havingValue = "true")
+    BmfProviderExtension bmfProviderExtension(
+            @Value("${platform.bmf-worker.runtime-root}") String runtimeRoot) {
+        return new BmfProviderExtension(Path.of(runtimeRoot));
     }
 
     /**
@@ -75,9 +79,11 @@ public class FfmpegWorkerPluginConfiguration {
      */
     @Bean
     ProviderPluginCatalog providerPluginCatalog(
-            ProviderPluginHost providerPluginHost, BmfProviderExtension bmfProviderExtension) {
+            ProviderPluginHost providerPluginHost,
+            org.springframework.beans.factory.ObjectProvider<BmfProviderExtension> bmfProviderExtension) {
         return InProcessProviderPlugins.catalogWith(
-                providerPluginHost.catalog(), List.of(bmfProviderExtension));
+                providerPluginHost.catalog(), bmfProviderExtension.stream()
+                        .map(value -> (ProviderPluginContribution) value).toList());
     }
 
     @Bean
@@ -97,15 +103,17 @@ public class FfmpegWorkerPluginConfiguration {
         long captureBudget = Long.parseLong(captureBytes);
         Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> bindings = new LinkedHashMap<>();
         for (ProviderPluginContribution contribution : providerPluginCatalog.contributions()) {
-            // A contribution whose lowering is declared unsupported has no executable binding: it
-            // stays registry-visible (the Stage-1 kernel refuses it) and contributes nothing here.
+            // Unsupported lowering contributes no executable binding.
             if (contribution.providerStaticCompatibility().loweringSupport()
                     == com.example.platform.execution.compatibility.ProviderStaticCompatibility
                             .LoweringSupport.UNSUPPORTED) {
                 continue;
             }
             ProviderNativeRuntimeBinding<?> binding = contribution.createRuntimeBinding(
-                    new ProviderPluginRuntimeContext(executable, workspace, Duration.parse(timeout),
+                    new ProviderPluginRuntimeContext(
+                            contribution instanceof BmfProviderExtension bmf
+                                    ? bmf.runtimeExecutable() : executable,
+                            workspace, Duration.parse(timeout),
                             captureBudget, SandboxCancellation.never(), fontFile));
             if (bindings.putIfAbsent(contribution.providerBindingPin(), binding) != null) {
                 throw new IllegalStateException(

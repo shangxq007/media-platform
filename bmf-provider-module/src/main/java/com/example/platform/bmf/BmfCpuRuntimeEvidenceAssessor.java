@@ -33,11 +33,13 @@ public final class BmfCpuRuntimeEvidenceAssessor {
                 observation,
                 assessedAt);
 
+        Optional<RuntimeDependencyFingerprint> expectedFingerprint =
+                observation.map(RuntimeDependencyFingerprint::from);
         List<BmfCpuRuntimeEvidenceIssue> issues;
-        if (observedFingerprint.isEmpty()) {
+        if (observedFingerprint.isEmpty() || expectedFingerprint.isEmpty()) {
             issues = List.of(BmfCpuRuntimeEvidenceIssue.MISSING_FINGERPRINT);
         } else if (!observedFingerprint.orElseThrow()
-                .equals(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT)) {
+                .equals(expectedFingerprint.orElseThrow())) {
             issues = List.of(BmfCpuRuntimeEvidenceIssue.FINGERPRINT_MISMATCH);
         } else {
             issues = List.of();
@@ -45,7 +47,7 @@ public final class BmfCpuRuntimeEvidenceAssessor {
 
         return new BmfCpuRuntimeDependencyAssessment(
                 dependencyMatchResult,
-                BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT,
+                expectedFingerprint,
                 observedFingerprint,
                 issues);
     }

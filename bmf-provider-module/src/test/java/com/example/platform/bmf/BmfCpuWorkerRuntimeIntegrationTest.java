@@ -1,0 +1,124 @@
+package com.example.platform.bmf;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
+import com.example.platform.execution.composition.ExecutableTaskMembership;
+import com.example.platform.execution.domain.ExecutionInputId;
+import com.example.platform.execution.domain.ExecutionOutputId;
+import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
+import com.example.platform.execution.planning.ExecutionIoProjection.OutputDeclaration;
+import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
+import com.example.platform.execution.taskgraph.ExecutableInputProjection;
+import com.example.platform.execution.taskgraph.ExecutableTask;
+import com.example.platform.execution.taskgraph.ExecutableTaskId;
+import com.example.platform.sandbox.SandboxCancellation;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.workerfabric.domain.ExecutionAttemptId;
+import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
+import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionContext;
+import com.example.platform.workerfabric.reuse.MaterializedArtifact;
+import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.time.Duration;
+import java.util.HexFormat;
+import java.util.List;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/** Runs the actual provider binding, worker sandbox, BMF graph and output stream when a pinned runtime is supplied. */
+class BmfCpuWorkerRuntimeIntegrationTest {
+    private static final ExecutableTaskId TASK_ID = new ExecutableTaskId("a".repeat(64));
+    private static final ExecutionInputId INPUT_ID = new ExecutionInputId("source");
+    private static final ExecutionOutputId OUTPUT_ID = new ExecutionOutputId("rendered");
+
+    @TempDir Path temp;
+
+    @Test
+    void real_graph_runs_under_the_native_worker_sandbox_and_returns_media_bytes() throws Exception {
+        Path runtimeRoot = configuredRuntime();
+        Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("source.mp4"));
+        var binding = BmfCpuRuntimeBindingFactory.create(
+                runtimeRoot.resolve("host-bundle/usr/bin/python3.9"), runtimeRoot,
+                temp.resolve("workspace"), Duration.ofSeconds(30), 2_000_000,
+                SandboxCancellation.never());
+        byte[] bytes;
+        try (var output = binding.execute(task(), context("success"), List.of(materialized(source)))) {
+            bytes = output.content().readAllBytes();
+        }
+        assertThat(bytes.length).isGreaterThan(1000);
+        assertThat(new String(bytes, 4, 4, java.nio.charset.StandardCharsets.US_ASCII))
+                .isEqualTo("ftyp");
+        String preserved = System.getenv("BMF_TEST_OUTPUT");
+        if (preserved != null && !preserved.isBlank()) {
+            Files.write(Path.of(preserved), bytes);
+        }
+    }
+
+    @Test
+    void corrupt_input_fails_through_the_native_process_error_path() throws Exception {
+        Path runtimeRoot = configuredRuntime();
+        Path source = Files.writeString(temp.resolve("corrupt.mp4"), "not media");
+        var binding = BmfCpuRuntimeBindingFactory.create(
+                runtimeRoot.resolve("host-bundle/usr/bin/python3.9"), runtimeRoot,
+                temp.resolve("failure-workspace"), Duration.ofSeconds(30), 2_000_000,
+                SandboxCancellation.never());
+        assertThatThrownBy(() -> binding.execute(task(), context("corrupt"),
+                List.of(materialized(source))))
+                .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
+                        failure -> assertThat(failure.code())
+                                .isEqualTo(ProviderNativeFailureCode.PROCESS_NONZERO_EXIT));
+    }
+
+    private static Path configuredRuntime() {
+        String root = System.getenv("BMF_TEST_RUNTIME_ROOT");
+        String source = System.getenv("BMF_TEST_SOURCE");
+        Assumptions.assumeTrue(root != null && source != null,
+                "controlled BMF runtime and source are not configured");
+        Path runtime = Path.of(root).toAbsolutePath().normalize();
+        assertThat(BmfRuntimeBundleVerifier.verify(runtime)).isTrue();
+        return runtime;
+    }
+
+    private static ExecutableTask task() {
+        var task = mock(ExecutableTask.class);
+        var membership = mock(ExecutableTaskMembership.class);
+        var unit = mock(PhysicalPlanUnit.class);
+        var input = mock(ExecutableInputProjection.class);
+        when(task.id()).thenReturn(TASK_ID);
+        when(task.providerBindingPin()).thenReturn(BmfCpuProvider.BINDING);
+        when(task.memberships()).thenReturn(List.of(membership));
+        when(membership.physicalPlanUnit()).thenReturn(unit);
+        when(unit.operationKey()).thenReturn("transcode");
+        when(unit.capabilityRequirementRefs()).thenReturn(List.of());
+        when(unit.executionIntentRefs()).thenReturn(List.of());
+        when(unit.typedInputs()).thenReturn(List.of(mock(InputBinding.class)));
+        when(unit.typedOutputs()).thenReturn(List.of(mock(OutputDeclaration.class)));
+        when(task.requiredRuntimeInputs()).thenReturn(List.of(input));
+        when(input.inputId()).thenReturn(INPUT_ID);
+        when(task.authoritativeOutputIds()).thenReturn(List.of(OUTPUT_ID));
+        return task;
+    }
+
+    private static MaterializedExecutionInput materialized(Path source) throws Exception {
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(source));
+        var pin = new ArtifactPin(new ArtifactId("bmf-source"),
+                ContentDigest.sha256(HexFormat.of().formatHex(digest)));
+        return new MaterializedExecutionInput(INPUT_ID, pin,
+                new MaterializedArtifact(pin, source, Files.size(source)));
+    }
+
+    private static RuntimeExecutionContext context(String attempt) {
+        return new RuntimeExecutionContext(TASK_ID, BmfCpuProvider.BINDING,
+                ExecutionAttemptId.of(attempt), ExecutionOwnershipGeneration.first());
+    }
+}

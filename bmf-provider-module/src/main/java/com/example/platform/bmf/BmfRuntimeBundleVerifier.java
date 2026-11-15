@@ -1,0 +1,91 @@
+package com.example.platform.bmf;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Properties;
+
+/** Checks the exact prepared BMF distribution before the Worker advertises runtime evidence. */
+public final class BmfRuntimeBundleVerifier {
+    private BmfRuntimeBundleVerifier() {}
+
+    public static boolean verify(Path root) {
+        if (root == null || !root.isAbsolute() || !root.equals(root.normalize())) {
+            return false;
+        }
+        try {
+            Path manifest = root.resolve("runtime-manifest.properties");
+            if (!Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS)) {
+                return false;
+            }
+            Properties metadata = new Properties();
+            try (InputStream data = Files.newInputStream(manifest)) {
+                metadata.load(data);
+            }
+            if (!"0.2.0".equals(metadata.getProperty("bmf.version"))
+                    || !"4.3.7".equals(metadata.getProperty("ffmpeg.version"))
+                    || !"3.9.2".equals(metadata.getProperty("python.version"))
+                    || !"1.19.5".equals(metadata.getProperty("numpy.version"))
+                    || !BmfCpuProvider.SOURCE_ARCHIVE_SHA256.equals(metadata.getProperty("source.sha256"))
+                    || !BmfCpuProvider.RUNTIME_BUNDLE_SHA256.equals(metadata.getProperty("bundle.sha256"))
+                    || !Files.isExecutable(root.resolve("host-bundle/usr/bin/python3.9"))
+                    || !Files.isRegularFile(root.resolve("output/bmf/lib/libbuiltin_modules.so"))) {
+                return false;
+            }
+            return BmfCpuProvider.RUNTIME_BUNDLE_SHA256.equals(bundleDigest(root));
+        } catch (IOException | RuntimeException failure) {
+            return false;
+        }
+    }
+
+    static String bundleDigest(Path root) throws IOException {
+        MessageDigest digest = sha256();
+        for (String subtree : List.of("output/bmf", "host-bundle")) {
+            try (var paths = Files.walk(root.resolve(subtree))) {
+                for (Path path : paths.sorted(Comparator.comparing(
+                        value -> root.relativize(value).toString().replace('\\', '/'))).toList()) {
+                    String relative = root.relativize(path).toString().replace('\\', '/');
+                    String value;
+                    if (Files.isSymbolicLink(path)) {
+                        Path target = Files.readSymbolicLink(path);
+                        if (target.isAbsolute()) throw new IOException("absolute runtime link");
+                        value = "link:" + target;
+                    } else if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+                        value = "file:" + fileSha256(path);
+                    } else {
+                        continue;
+                    }
+                    digest.update((relative + "\u0000" + value + "\n").getBytes(StandardCharsets.UTF_8));
+                }
+            }
+        }
+        return HexFormat.of().formatHex(digest.digest());
+    }
+
+    private static String fileSha256(Path file) throws IOException {
+        MessageDigest digest = sha256();
+        try (InputStream data = Files.newInputStream(file)) {
+            byte[] buffer = new byte[1024 * 1024];
+            for (int size; (size = data.read(buffer)) != -1; ) {
+                digest.update(buffer, 0, size);
+            }
+        }
+        return HexFormat.of().formatHex(digest.digest());
+    }
+
+    private static MessageDigest sha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException failure) {
+            throw new IllegalStateException("SHA-256 unavailable", failure);
+        }
+    }
+}

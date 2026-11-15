@@ -3,6 +3,7 @@ package com.example.platform.runtime.mediatask;
 import com.example.platform.execution.domain.provider.ProviderImplementationId;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
+import com.example.platform.providerplugin.bmf.BmfProviderExtension;
 import com.example.platform.runtime.CpuArchitectureProbe;
 import com.example.platform.runtime.ProviderExecutableDependencyProbe;
 import com.example.platform.runtime.ExecutableIdentity;
@@ -101,6 +102,18 @@ public final class MediaTaskAdmissionEvidenceFactory implements AdmissionEvidenc
         Objects.requireNonNull(providerImplementationId, "providerImplementationId");
         Instant observedAt = clock.instant();
         Instant expiresAt = observedAt.plus(validity);
+        for (ProviderPluginContribution contribution : catalog.contributions()) {
+            if (contribution instanceof BmfProviderExtension bmf
+                    && contribution.providerDescriptor().providerImplementationId()
+                            .equals(providerImplementationId)) {
+                Optional<BmfProviderExtension.RuntimeObservation> observation =
+                        architectureProbe.probe().flatMap(architecture -> bmf.observeRuntime(
+                                workerRuntimeId, physicalHostId, architecture, observedAt, expiresAt));
+                return new Evidence(runtimeSupportAdvertisement(workerRuntimeId),
+                        observation.map(BmfProviderExtension.RuntimeObservation::hardware),
+                        observation.map(BmfProviderExtension.RuntimeObservation::dependencies));
+            }
+        }
         return new Evidence(
                 runtimeSupportAdvertisement(workerRuntimeId),
                 providerHardwareObservation(

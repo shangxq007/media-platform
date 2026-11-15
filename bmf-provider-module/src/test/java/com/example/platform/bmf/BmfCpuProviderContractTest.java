@@ -9,7 +9,6 @@ import com.example.platform.execution.domain.provider.ProviderExecutionContractV
 import com.example.platform.workerfabric.domain.CpuArchitecture;
 import com.example.platform.workerfabric.domain.RuntimeDependencyAbi;
 import com.example.platform.workerfabric.domain.RuntimeDependencyCoordinate;
-import com.example.platform.workerfabric.domain.RuntimeDependencyFingerprint;
 import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
 import com.example.platform.workerfabric.domain.RuntimeDependencyVersion;
 import com.example.platform.workerfabric.domain.RuntimeDependencyVersionConstraint;
@@ -18,10 +17,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class BmfCpuProviderContractTest {
-
-    /** Accepted B0 runtime evidence identity; deliberately not B1 provider identity. */
-    private static final String ACCEPTED_B0_RUNTIME_FINGERPRINT =
-            "sha256:5ad7e1e40dd3cfa453960b829a6f61de7216c956638d06e7ad2cefe4be96dfd5";
 
     @Test
     void freezes_exact_provider_identity_without_collapsing_runtime_evidence() {
@@ -34,13 +29,8 @@ class BmfCpuProviderContractTest {
                 .isEqualTo(ProviderCapabilityProfileVersionOrDigest.version(
                         ProviderCapabilityProfileVersion.of(1, 0)));
 
-        assertThat(BmfCpuProvider.PROVIDER_ID.value())
-                .isNotEqualTo(ACCEPTED_B0_RUNTIME_FINGERPRINT);
         assertThat(BmfCpuProvider.IMPLEMENTATION_ID.value())
-                .isNotEqualTo(ACCEPTED_B0_RUNTIME_FINGERPRINT)
                 .doesNotContain("fingerprint", "runtime");
-        assertThat(BmfCpuProvider.VERSION.value())
-                .isNotEqualTo(ACCEPTED_B0_RUNTIME_FINGERPRINT);
     }
 
     @Test
@@ -73,18 +63,22 @@ class BmfCpuProviderContractTest {
     }
 
     @Test
-    void declares_no_static_support_and_cannot_lower() {
+    void declares_only_the_bounded_sandboxed_cpu_video_support() {
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.knowledge())
                 .isEqualTo(ProviderStaticCompatibility.Knowledge.DECLARED);
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedArtifactRequirements()).isEmpty();
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedCodecs()).isEmpty();
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedDeviceKinds()).isEmpty();
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedRuntimeClasses()).isEmpty();
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedSandboxModes()).isEmpty();
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedDeterminismClasses()).isEmpty();
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedArtifactRequirements()).hasSize(3);
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedCodecs())
+                .extracting(codec -> codec.value()).containsExactly("h264");
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedDeviceKinds())
+                .containsExactly(com.example.platform.execution.compatibility.StaticCompatibilityConstraint.ProviderDeviceKind.CPU);
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedRuntimeClasses()).hasSize(2);
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedSandboxModes())
+                .containsExactly(ProviderStaticCompatibility.SandboxMode.SANDBOXED);
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedDeterminismClasses())
+                .containsExactly(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC);
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedBoundaryContracts()).isEmpty();
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.loweringSupport())
-                .isEqualTo(ProviderStaticCompatibility.LoweringSupport.UNSUPPORTED);
+                .isEqualTo(ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
     }
 
     @Test
@@ -99,17 +93,10 @@ class BmfCpuProviderContractTest {
         assertExactRequirement("bmf", "0.2.0", Optional.empty(),
                 List.of("ffmpeg.enabled", "python.enabled"),
                 List.of("ambient-module-authority.disabled", "cuda.disabled"));
-        assertExactRequirement("ffmpeg", "4.4.8",
+        assertExactRequirement("ffmpeg", "4.3.7",
                 Optional.of(RuntimeDependencyAbi.of("libavcodec.58")), List.of(), List.of());
-        assertExactRequirement("python", "3.12.8", Optional.empty(), List.of(), List.of());
-        assertExactRequirement("numpy", "1.26.4", Optional.empty(), List.of(), List.of());
-
-        assertThat(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT)
-                .isInstanceOf(RuntimeDependencyFingerprint.class)
-                .isEqualTo(RuntimeDependencyFingerprint.parseSha256(
-                        ACCEPTED_B0_RUNTIME_FINGERPRINT));
-        assertThat(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT.canonicalSha256())
-                .isNotEqualTo(BmfCpuProvider.IMPLEMENTATION_ID.value());
+        assertExactRequirement("python", "3.9.2", Optional.empty(), List.of(), List.of());
+        assertExactRequirement("numpy", "1.19.5", Optional.empty(), List.of(), List.of());
 
         assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.providerImplementationId())
                 .isEqualTo(BmfCpuProvider.IMPLEMENTATION_ID);

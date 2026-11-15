@@ -1,6 +1,8 @@
 package com.example.platform.providerplugin.bmf;
 
 import com.example.platform.bmf.BmfCpuProvider;
+import com.example.platform.bmf.BmfCpuRuntimeBindingFactory;
+import com.example.platform.bmf.BmfRuntimeBundleVerifier;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.domain.provider.ProviderCapabilityContractReference;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
@@ -31,12 +33,25 @@ import com.example.platform.workerfabric.domain.RuntimeLifecycleKind;
 import com.example.platform.workerfabric.domain.RuntimeSupportIdentifier;
 import com.example.platform.workerfabric.domain.SandboxRuntimeRequirement;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
+import com.example.platform.workerfabric.domain.CpuArchitecture;
+import com.example.platform.workerfabric.domain.PhysicalHostId;
+import com.example.platform.workerfabric.domain.ProviderHardwareAvailableEvidence;
+import com.example.platform.workerfabric.domain.ProviderHardwareObservation;
+import com.example.platform.workerfabric.domain.RuntimeDependencyAbi;
+import com.example.platform.workerfabric.domain.RuntimeDependencyCoordinate;
+import com.example.platform.workerfabric.domain.RuntimeDependencyObservation;
+import com.example.platform.workerfabric.domain.RuntimeDependencyObservedDependency;
+import com.example.platform.workerfabric.domain.RuntimeDependencyProbeSchemaVersion;
+import com.example.platform.workerfabric.domain.RuntimeDependencyVersion;
+import com.example.platform.workerfabric.domain.WorkerRuntimeId;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.nio.file.Path;
+import java.time.Instant;
 
 /**
  * BMF-PROVIDER-INTEGRATION-001 (Sprint 047, `docs/architecture/bmf-integration.md:100`): BMF
@@ -48,10 +63,8 @@ import java.util.Set;
  *
  * <p>Honest declarations only: identity, descriptor, binding, static compatibility, hardware
  * requirements and runtime dependencies are the frozen {@link BmfCpuProvider} constants; the
- * capability profile and execution contract are declared here because those frozen constants carry
- * no support declarations; the runtime itself is not integrated yet, so
- * {@link #createRuntimeBinding} fails closed and {@code LoweringSupport.UNSUPPORTED} keeps the
- * Stage-1 kernel from ever scheduling BMF.
+ * capability profile and execution contract are declared here because those constants carry
+ * no support declarations. The Worker form requires an exact verified runtime bundle.
  */
 public final class BmfProviderExtension implements ProviderPluginContribution {
 
@@ -63,11 +76,27 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
             ContractVersionRange.exactly(ContractVersion.of(1, 0));
 
-    private static final List<CapabilityId> CAPABILITIES = List.of(
-            TRANSCODE_CAPABILITY,
-            VIDEO_DECODE_CAPABILITY,
-            COMPOSITE_CAPABILITY,
-            OUTPUT_CAPABILITY);
+    private static final List<CapabilityId> CAPABILITIES = List.of(TRANSCODE_CAPABILITY);
+
+    private final Path runtimeRoot;
+
+    /** Declaration-only form used by API planning; a Worker supplies the pinned distribution root. */
+    public BmfProviderExtension() {
+        this.runtimeRoot = null;
+    }
+
+    public BmfProviderExtension(Path runtimeRoot) {
+        this.runtimeRoot = java.util.Objects.requireNonNull(runtimeRoot, "runtimeRoot")
+                .toAbsolutePath().normalize();
+    }
+
+    /** Exact executable inside the distribution supplied to this Worker. */
+    public Path runtimeExecutable() {
+        if (runtimeRoot == null) {
+            throw new IllegalStateException("BMF Worker runtime root is not configured");
+        }
+        return runtimeRoot.resolve("host-bundle/usr/bin/python3.9");
+    }
 
     private static final ProviderCapabilityProfile CAPABILITY_PROFILE =
             new ProviderCapabilityProfile(
@@ -166,8 +195,8 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
 
     @Override
     public Optional<ProviderResourceProfile> resourceProfile() {
-        // No BMF runtime measurement exists; the demand derivation fails closed instead.
-        return Optional.empty();
+        return Optional.of(new ProviderResourceProfile(2000L, 1073741824L, 2147483648L,
+                java.util.Map.of()));
     }
 
     @Override
@@ -186,13 +215,62 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
         return BmfCpuProvider.BINDING;
     }
 
-    /** The BMF runtime is not integrated yet: declaring a provider does not fake an execution. */
+    /** Provider-local evidence is emitted only for the verified, exact runtime distribution. */
+    public Optional<RuntimeObservation> observeRuntime(WorkerRuntimeId runtimeId,
+            PhysicalHostId hostId, CpuArchitecture architecture, Instant observedAt,
+            Instant expiresAt) {
+        if (runtimeRoot == null || architecture != CpuArchitecture.X86_64
+                || !BmfRuntimeBundleVerifier.verify(runtimeRoot)) {
+            return Optional.empty();
+        }
+        var hardware = new ProviderHardwareObservation(BmfCpuProvider.IMPLEMENTATION_ID,
+                runtimeId, hostId, Optional.empty(), observedAt, expiresAt,
+                new ProviderHardwareAvailableEvidence(architecture,
+                        List.of("bmf.cpu.enabled", "bmf.ffmpeg.enabled", "bmf.python.enabled"),
+                        List.of(), List.of("ambient-module-authority.disabled"), Optional.empty()));
+        var dependencies = new RuntimeDependencyObservation(BmfCpuProvider.IMPLEMENTATION_ID,
+                runtimeId, Optional.empty(), RuntimeDependencyProbeSchemaVersion.CURRENT,
+                observedAt, expiresAt, List.of(
+                        dependency("bmf", "0.2.0", Optional.empty(),
+                                List.of("ffmpeg.enabled", "python.enabled"),
+                                List.of("ambient-module-authority.disabled", "cuda.disabled")),
+                        dependency("ffmpeg", "4.3.7", Optional.of(RuntimeDependencyAbi.of("libavcodec.58")),
+                                List.of(), List.of()),
+                        dependency("numpy", "1.19.5", Optional.empty(), List.of(), List.of()),
+                        dependency("python", "3.9.2", Optional.empty(), List.of(), List.of())));
+        return Optional.of(new RuntimeObservation(hardware, dependencies));
+    }
+
+    public record RuntimeObservation(ProviderHardwareObservation hardware,
+            RuntimeDependencyObservation dependencies) {}
+
+    private static RuntimeDependencyObservedDependency dependency(String coordinate, String version,
+            Optional<RuntimeDependencyAbi> abi, List<String> features, List<String> flags) {
+        return new RuntimeDependencyObservedDependency(RuntimeDependencyCoordinate.of(coordinate),
+                RuntimeDependencyVersion.of(version), abi, features, flags);
+    }
+
     @Override
     public ProviderNativeRuntimeBinding<?> createRuntimeBinding(
             ProviderPluginRuntimeContext context) {
-        throw new ProviderNativeExecutionFailure(
-                ProviderNativeFailureCode.RUNTIME_ADAPTER_UNSUPPORTED_PLAN,
-                "BMF runtime not yet integrated");
+        if (runtimeRoot == null) {
+            throw new ProviderNativeExecutionFailure(
+                    ProviderNativeFailureCode.RUNTIME_ADAPTER_UNSUPPORTED_PLAN,
+                    "BMF Worker runtime root is not configured");
+        }
+        if (!BmfRuntimeBundleVerifier.verify(runtimeRoot)) {
+            throw new ProviderNativeExecutionFailure(
+                    ProviderNativeFailureCode.RUNTIME_ADAPTER_UNSUPPORTED_PLAN,
+                    "BMF Worker runtime bundle failed verification");
+        }
+        if (!runtimeExecutable().equals(context.executable())) {
+            throw new ProviderNativeExecutionFailure(
+                    ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH,
+                    "BMF Python must be the executable in the verified runtime bundle");
+        }
+        return BmfCpuRuntimeBindingFactory.create(context.executable(), runtimeRoot,
+                context.workspaceRoot(), context.timeout(), context.captureBytes(),
+                context.cancellation());
     }
 
     private static ResourceRequirement bmfResourceRequirements() {

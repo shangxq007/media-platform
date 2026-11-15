@@ -14,10 +14,13 @@ import com.example.platform.execution.domain.provider.ProviderVersion;
 import com.example.platform.providerplugin.InProcessProviderPlugins;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
+import com.example.platform.providerplugin.bmf.BmfProviderExtension;
 import com.example.platform.runtime.mediatask.MediaTaskAdmissionEvidenceFactory;
 import com.example.platform.workerfabric.domain.CpuArchitecture;
 import com.example.platform.workerfabric.domain.PhysicalHostId;
+import com.example.platform.workerfabric.domain.ProviderHardwareConformanceEvaluator;
 import com.example.platform.workerfabric.domain.ProviderHardwareAvailableEvidence;
+import com.example.platform.workerfabric.domain.RuntimeDependencyMatcher;
 import com.example.platform.workerfabric.domain.RuntimeDependencyObservation;
 import com.example.platform.workerfabric.domain.RuntimeLifecycleKind;
 import com.example.platform.workerfabric.domain.RuntimeSupportIdentifier;
@@ -37,6 +40,7 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
@@ -55,6 +59,45 @@ class MediaTaskAdmissionEvidenceFactoryTest {
             "ffmpeg version 7.0.2-static Copyright (c) 2000-2024\nconfiguration: --enable-libx264\n";
 
     @TempDir Path temp;
+
+    @Test
+    void verifiedBmfBundleProducesItsOwnAdmissionEvidence() throws IOException {
+        String root = System.getenv("BMF_TEST_RUNTIME_ROOT");
+        Assumptions.assumeTrue(root != null, "controlled BMF runtime is not configured");
+        var bmf = new BmfProviderExtension(Path.of(root));
+        var factory = factory(catalog(bmf),
+                writeElf("unused-ffmpeg", 1), new CpuArchitectureProbe(),
+                new FakeStartProbe(SandboxedExecutableStartProbe.Status.FAILED, ""));
+
+        var evidence = factory.produce(RUNTIME, HOST,
+                ProviderImplementationId.of("bmf.cpu.v1"));
+        assertThat(evidence.runtimeSupportAdvertisement()).isPresent();
+        var hardware = (ProviderHardwareAvailableEvidence)
+                evidence.providerHardwareObservation().orElseThrow().evidence();
+        assertThat(hardware.providerBuildFeatures()).contains("bmf.cpu.enabled");
+        assertThat(evidence.runtimeDependencyObservation().orElseThrow().dependencies())
+                .extracting(dependency -> dependency.coordinate().value())
+                .containsExactly("bmf", "ffmpeg", "numpy", "python");
+        assertThat(ProviderHardwareConformanceEvaluator.evaluate(
+                bmf.providerDescriptor().providerImplementationId(), RUNTIME, HOST,
+                java.util.Optional.empty(), bmf.providerHardwareRequirement().orElseThrow(),
+                evidence.providerHardwareObservation(), CLOCK.instant()).canRun()).isTrue();
+        assertThat(RuntimeDependencyMatcher.match(
+                bmf.providerDescriptor().providerImplementationId(), RUNTIME,
+                java.util.Optional.empty(), bmf.runtimeDependencyRequirements(),
+                evidence.runtimeDependencyObservation(), CLOCK.instant()).canMatch()).isTrue();
+    }
+
+    @Test
+    void unverifiedBmfBundleFailsClosedAtAdmission() throws IOException {
+        var factory = factory(catalog(new BmfProviderExtension(temp)),
+                writeElf("unused-ffmpeg", 1), new CpuArchitectureProbe(),
+                new FakeStartProbe(SandboxedExecutableStartProbe.Status.STARTED, HEALTHY_STDOUT));
+        var evidence = factory.produce(RUNTIME, HOST,
+                ProviderImplementationId.of("bmf.cpu.v1"));
+        assertThat(evidence.providerHardwareObservation()).isEmpty();
+        assertThat(evidence.runtimeDependencyObservation()).isEmpty();
+    }
 
     @Test
     void producesTheThreeIndependentInputsFromTheirOwnAuthorities() throws IOException {

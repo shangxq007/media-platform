@@ -1,6 +1,7 @@
 package com.example.platform.bmf;
 
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
+import com.example.platform.execution.compatibility.StaticCompatibilityConstraint;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
@@ -16,7 +17,6 @@ import com.example.platform.workerfabric.domain.CpuArchitecture;
 import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
 import com.example.platform.workerfabric.domain.RuntimeDependencyAbi;
 import com.example.platform.workerfabric.domain.RuntimeDependencyCoordinate;
-import com.example.platform.workerfabric.domain.RuntimeDependencyFingerprint;
 import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
 import com.example.platform.workerfabric.domain.RuntimeDependencyVersion;
 import com.example.platform.workerfabric.domain.RuntimeDependencyVersionConstraint;
@@ -25,6 +25,12 @@ import java.util.Optional;
 
 /** Immutable identity and fail-closed static declarations for the bounded BMF CPU provider. */
 public final class BmfCpuProvider {
+
+    /** Exact, locally executed official release and isolated Debian 11 runtime content. */
+    public static final String SOURCE_ARCHIVE_SHA256 =
+            "8fb3ec03b06ba56e5276a6844614879cdc0ae3886b42a4bf783782708130e327";
+    public static final String RUNTIME_BUNDLE_SHA256 =
+            "0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1";
 
     public static final ProviderId PROVIDER_ID = ProviderId.of("bmf");
     public static final ProviderImplementationId IMPLEMENTATION_ID =
@@ -63,14 +69,17 @@ public final class BmfCpuProvider {
     public static final ProviderStaticCompatibility STATIC_COMPATIBILITY =
             new ProviderStaticCompatibility(
                     ProviderStaticCompatibility.Knowledge.DECLARED,
+                    List.of(ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
+                            ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
+                            ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT),
+                    List.of(StaticCompatibilityConstraint.CodecId.of("h264")),
+                    List.of(StaticCompatibilityConstraint.ProviderDeviceKind.CPU),
+                    List.of(StaticCompatibilityConstraint.ProviderRuntimeClass.NATIVE_PROCESS,
+                            StaticCompatibilityConstraint.ProviderRuntimeClass.ISOLATED_PROCESS),
+                    List.of(ProviderStaticCompatibility.SandboxMode.SANDBOXED),
+                    List.of(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC),
                     List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    ProviderStaticCompatibility.LoweringSupport.UNSUPPORTED);
+                    ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
 
     /** Exact top-level B0 closure inputs; H1 remains the dependency authority. */
     public static final List<RuntimeDependencyRequirement> RUNTIME_DEPENDENCY_REQUIREMENTS = List.of(
@@ -82,17 +91,12 @@ public final class BmfCpuProvider {
                     List.of("ambient-module-authority.disabled", "cuda.disabled")),
             exactDependency(
                     "ffmpeg",
-                    "4.4.8",
+                    "4.3.7",
                     Optional.of(RuntimeDependencyAbi.of("libavcodec.58")),
                     List.of(),
                     List.of()),
-            exactDependency("numpy", "1.26.4", Optional.empty(), List.of(), List.of()),
-            exactDependency("python", "3.12.8", Optional.empty(), List.of(), List.of()));
-
-    /** Authoritative B0 dependency evidence identity, distinct from provider identity. */
-    public static final RuntimeDependencyFingerprint EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT =
-            RuntimeDependencyFingerprint.parseSha256(
-                    "sha256:5ad7e1e40dd3cfa453960b829a6f61de7216c956638d06e7ad2cefe4be96dfd5");
+            exactDependency("numpy", "1.19.5", Optional.empty(), List.of(), List.of()),
+            exactDependency("python", "3.9.2", Optional.empty(), List.of(), List.of()));
 
     /** CPU-only B0 runtime shape; no device or semantic capability is claimed. */
     public static final ProviderHardwareRequirement HARDWARE_REQUIREMENT =

@@ -22,6 +22,7 @@ import com.example.platform.timeline.version.TimelineRevision;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Revision-pinned RenderJob planning-and-binding coordinator.
@@ -55,6 +56,10 @@ public class RevisionRenderPlanningAndBindingService {
     private final RenderPlanningEntryService renderPlanningEntryService;
     private final PhysicalPlanningEntryService physicalPlanningEntryService;
     private final ProviderBindingEntryService providerBindingEntryService;
+
+    /** Internal planning input: the selected media provider is persisted in each bound task pin. */
+    @Value("${platform.render.media-provider:ffmpeg}")
+    private String mediaProvider = "ffmpeg";
 
     public RevisionRenderPlanningAndBindingService(
             RevisionRenderPlanningApplicationService planningApplicationService,
@@ -138,7 +143,8 @@ public class RevisionRenderPlanningAndBindingService {
         stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BINDING;
         lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
         // Declared provider candidates from the catalog projection.
-        List<ProviderCandidate> candidates = ProviderCandidateProjection.project(providerPluginCatalog);
+        List<ProviderCandidate> candidates = selectedMediaCandidates(
+                ProviderCandidateProjection.project(providerPluginCatalog), mediaProvider);
 
         // #22 provider binding (pure): the digest comes only from the real binding result.
         ProviderBindingEntryService.ProviderBindingOutcome outcome = providerBindingEntryService.bind(
@@ -154,5 +160,16 @@ public class RevisionRenderPlanningAndBindingService {
             catch (RuntimeException projectionFailure) { preparationFailure.addSuppressed(projectionFailure); }
             throw preparationFailure;
         }
+    }
+
+    static List<ProviderCandidate> selectedMediaCandidates(
+            List<ProviderCandidate> candidates, String mediaProvider) {
+        if (!mediaProvider.equals("ffmpeg") && !mediaProvider.equals("bmf")) {
+            throw new IllegalArgumentException("unsupported internal media provider selection: " + mediaProvider);
+        }
+        String excluded = mediaProvider.equals("bmf") ? "ffmpeg" : "bmf";
+        return candidates.stream()
+                .filter(candidate -> !candidate.bindingPin().providerId().value().equals(excluded))
+                .toList();
     }
 }

@@ -35,9 +35,11 @@ public class ProviderPluginManagerConfiguration {
     /** API planning consumes the same typed provider declarations as the worker. */
     @Bean
     @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "API", matchIfMissing = true)
-    ProviderPluginCatalog providerPluginCatalog(ProviderPluginHost providerPluginHost) {
+    ProviderPluginCatalog providerPluginCatalog(ProviderPluginHost providerPluginHost,
+            @Value("${platform.bmf-provider.enabled:false}") boolean bmfEnabled) {
         return InProcessProviderPlugins.catalogWith(
-                providerPluginHost.catalog(), List.of(new BmfProviderExtension()));
+                providerPluginHost.catalog(), bmfEnabled
+                        ? List.of(new BmfProviderExtension()) : List.of());
     }
 }
 

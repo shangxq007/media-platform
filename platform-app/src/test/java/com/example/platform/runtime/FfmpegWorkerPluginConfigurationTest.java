@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -52,6 +53,33 @@ class FfmpegWorkerPluginConfigurationTest {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasBean("providerNativeRuntimeBindings");
                 });
+    }
+
+    @Test
+    void explicitlyEnabledBmfContributesItsExactNativeWorkerBinding() throws Exception {
+        String root = System.getenv("BMF_TEST_RUNTIME_ROOT");
+        Assumptions.assumeTrue(root != null, "controlled BMF runtime is not configured");
+        Path plugins = Files.createDirectory(temp.resolve("plugins"));
+        runner(plugins).withPropertyValues(
+                "platform.bmf-provider.enabled=true",
+                "platform.bmf-worker.runtime-root=" + root)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(bindings(context)).hasSize(1);
+                    assertThat(bindings(context).keySet())
+                            .extracting(pin -> pin.providerId().value())
+                            .containsExactly("bmf");
+                });
+    }
+
+    @Test
+    void invalidBmfRuntimeFailsWorkerStartup() throws Exception {
+        Path plugins = Files.createDirectory(temp.resolve("plugins"));
+        Path runtime = Files.createDirectory(temp.resolve("bmf-runtime"));
+        runner(plugins).withPropertyValues(
+                "platform.bmf-provider.enabled=true",
+                "platform.bmf-worker.runtime-root=" + runtime)
+                .run(context -> assertThat(context).hasFailed());
     }
 
     @Test

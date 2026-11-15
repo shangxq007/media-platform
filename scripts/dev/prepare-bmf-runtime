@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""Stage the pinned BMF 0.2.0 CPU runtime outside the repository.
+
+Usage: python3 scripts/dev/prepare-bmf-runtime --output /external/new-bmf-runtime
+The output root is passed as platform.bmf-worker.runtime-root and its
+host-bundle/usr/bin/python3.9 as platform.bmf-worker.python.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import tarfile
+import tempfile
+import urllib.request
+
+ROOT = Path(__file__).resolve().parents[2]
+SOURCE_URL = ("https://github.com/BabitMF/bmf/releases/download/v0.2.0/"
+              "bmf-bin-linux-x86_64-cp310.tar.gz")
+SOURCE_SHA256 = "8fb3ec03b06ba56e5276a6844614879cdc0ae3886b42a4bf783782708130e327"
+BASE_IMAGE = ("docker.io/library/debian@sha256:"
+              "c0a2ad73611131275b0e9a2e7544cfe3725f4268d4085d8c6f61fdd55aef7917")
+RUNTIME_IMAGE = "localhost/media-platform-bmf-runtime:0.2.0-r1"
+
+
+def run(*argv: str, **kwargs) -> subprocess.CompletedProcess:
+    return subprocess.run(argv, check=True, **kwargs)
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as data:
+        for chunk in iter(lambda: data.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def bundle_digest(root: Path) -> str:
+    digest = hashlib.sha256()
+    for subtree in (root / "output/bmf", root / "host-bundle"):
+        for path in sorted(subtree.rglob("*"), key=lambda value: value.relative_to(root).as_posix()):
+            relative = path.relative_to(root).as_posix()
+            if path.is_symlink():
+                value = "link:" + os.readlink(path)
+            elif path.is_file():
+                value = "file:" + sha256(path)
+            else:
+                continue
+            digest.update(f"{relative}\0{value}\n".encode("utf-8"))
+    return digest.hexdigest()
+
+
+def extract(archive: Path, target: Path) -> None:
+    with tarfile.open(archive, "r:gz") as tar:
+        tar.extractall(target, filter="data")
+
+
+def export_image_paths(target: Path) -> None:
+    paths = ("usr/bin/python3.9", "usr/lib/python3.9",
+             "usr/lib/python3/dist-packages/numpy", "usr/lib/x86_64-linux-gnu",
+             "usr/lib/x86_64-linux-gnu/blas/libblas.so.3.9.0",
+             "usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.9.0")
+    archive = target / "image-export.tar"
+    with archive.open("wb") as output:
+        run("podman", "run", "--rm", RUNTIME_IMAGE, "tar", "-C", "/", "-cf", "-",
+            *paths, stdout=output)
+    def safe_image_member(member: tarfile.TarInfo, destination: str):
+        # Debian's sitecustomize.py is an absolute link. The bundle uses its own
+        # PYTHONHOME and never needs that ambient image link.
+        if member.issym() and Path(member.linkname).is_absolute():
+            return None
+        return tarfile.data_filter(member, destination)
+    with tarfile.open(archive, mode="r:") as tar:
+        tar.extractall(target, filter=safe_image_member)
+    archive.unlink()
+
+
+def selected_libraries(staged: Path, exported: Path) -> None:
+    source = exported / "usr/lib/x86_64-linux-gnu"
+    selected = staged / "host-bundle/selected-lib"
+    selected.mkdir(parents=True)
+    for pattern in ("libavcodec.so.*", "libavformat.so.*", "libavfilter.so.*",
+                    "libavdevice.so.*", "libavutil.so.*", "libswscale.so.*",
+                    "libswresample.so.*", "libpython3.9.so.*", "libgfortran.so.*"):
+        for path in source.glob(pattern):
+            if path.exists() and path.is_file():
+                shutil.copyfile(path.resolve(), selected / path.name)
+    shutil.copyfile(source / "blas/libblas.so.3.9.0", selected / "libblas.so.3")
+    shutil.copyfile(source / "lapack/liblapack.so.3.9.0", selected / "liblapack.so.3")
+
+    bmf_lib = staged / "output/bmf/lib"
+    targets = [bmf_lib / name for name in ("libbuiltin_modules.so",
+               "_bmf.cpython-39-x86_64-linux-gnu.so",
+               "_hmp.cpython-39-x86_64-linux-gnu.so")]
+    targets += list((staged / "host-bundle/usr/lib/python3.9").rglob("*.so"))
+    targets += list((staged / "host-bundle/usr/lib/python3/dist-packages/numpy").rglob("*.so"))
+    env = dict(os.environ, LD_LIBRARY_PATH=f"{selected}:{bmf_lib}")
+    for _ in range(12):
+        missing: set[str] = set()
+        for target in targets:
+            result = subprocess.run(["ldd", str(target)], capture_output=True, text=True, env=env)
+            missing.update(re.findall(r"\s(\S+) => not found", result.stdout))
+        added = 0
+        for name in sorted(missing):
+            path = source / name
+            if path.exists() and path.is_file() and not (selected / name).exists():
+                shutil.copyfile(path.resolve(), selected / name)
+                added += 1
+        if not added:
+            if missing:
+                raise RuntimeError("unresolved BMF library dependencies: " + ", ".join(sorted(missing)))
+            break
+    else:
+        raise RuntimeError("BMF library closure did not converge")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--archive", type=Path, help="already downloaded official release tarball")
+    args = parser.parse_args()
+    output = args.output.resolve()
+    if output.is_relative_to(ROOT) or output == Path("/") or output.exists():
+        parser.error("--output must be a new directory outside the repository")
+    output.mkdir(parents=True)
+    archive = args.archive or output / "bmf-bin-linux-x86_64-cp310.tar.gz"
+    if args.archive is None:
+        urllib.request.urlretrieve(SOURCE_URL, archive)
+    if sha256(archive) != SOURCE_SHA256:
+        raise RuntimeError("official BMF release SHA-256 mismatch")
+    extract(archive, output)
+    run("podman", "pull", BASE_IMAGE)
+    run("podman", "build", "--pull=never", "-t", RUNTIME_IMAGE,
+        "-f", str(ROOT / "scripts/dev/bmf-runtime.Containerfile"), str(ROOT))
+    with tempfile.TemporaryDirectory(prefix="bmf-export-", dir=output) as temporary:
+        exported = Path(temporary)
+        export_image_paths(exported)
+        for relative in ("usr/bin/python3.9", "usr/lib/python3.9",
+                         "usr/lib/python3/dist-packages/numpy"):
+            destination = output / "host-bundle" / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(exported / relative), destination)
+        selected_libraries(output, exported)
+    bundle = bundle_digest(output)
+    if bundle != "0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1":
+        raise RuntimeError("prepared BMF runtime bundle differs from the verified distribution")
+    (output / "runtime-manifest.properties").write_text(
+        "bmf.version=0.2.0\n"
+        "ffmpeg.version=4.3.7\n"
+        "python.version=3.9.2\n"
+        "numpy.version=1.19.5\n"
+        f"source.sha256={SOURCE_SHA256}\n"
+        f"bundle.sha256={bundle}\n")
+    print(f"BMF_RUNTIME_ROOT={output}")
+    print(f"BMF_PYTHON={output / 'host-bundle/usr/bin/python3.9'}")
+    print(f"BMF_RELEASE_SHA256={SOURCE_SHA256}")
+    print(f"BMF_BUNDLE_SHA256={bundle}")
+
+
+if __name__ == "__main__":
+    main()

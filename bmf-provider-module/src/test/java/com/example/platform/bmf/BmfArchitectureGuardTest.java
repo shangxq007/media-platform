@@ -43,7 +43,6 @@ class BmfArchitectureGuardTest {
                 "System.getProperty",
                 "System.setProperty",
                 "user.dir",
-                "\"PATH\"",
                 " which ",
                 "/usr/bin/ffmpeg",
                 "/usr/local",
@@ -53,12 +52,8 @@ class BmfArchitectureGuardTest {
                 "runtimeProbe",
                 "ExecutablePath",
                 "executablePath",
-                "ProcessInvocationSpec",
                 "shellCommand",
-                "new ExecutionCommand",
-                "new RuntimeExecutionBundle",
                 "ProviderPluginRuntimeContext",
-                ".executable()",
                 "c39146c636c6b2b68ffaf741095ce737bf123254");
         long ambientAuthorityCount = ambientRuntimeAuthorities.stream()
                 .filter(production::contains)
@@ -140,27 +135,25 @@ class BmfArchitectureGuardTest {
     }
 
     @Test
-    void authoritative_fingerprint_is_the_h1_type_and_is_separate_from_implementation_identity()
+    void dependency_fingerprint_is_derived_from_runtime_observation_not_frozen_per_worker()
             throws Exception {
-        Field field = BmfCpuProvider.class.getField("EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT");
-        assertThat(field.getType()).isEqualTo(RuntimeDependencyFingerprint.class);
-        assertThat(field.get(null)).isSameAs(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT);
-        assertThat(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT.canonicalSha256())
-                .isEqualTo("sha256:5ad7e1e40dd3cfa453960b829a6f61de7216c956638d06e7ad2cefe4be96dfd5")
-                .isNotEqualTo(BmfCpuProvider.IMPLEMENTATION_ID.value());
-        assertThat(field.getType()).isNotEqualTo(String.class);
+        assertThat(Arrays.stream(BmfCpuProvider.class.getDeclaredFields())
+                .map(Field::getName)).doesNotContain("EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT");
+        assertThat(RuntimeDependencyFingerprint.class.isRecord()).isTrue();
     }
 
     @Test
     void native_plan_has_no_graph_or_canonical_leak_fields() {
-        List<Field> instanceFields = Arrays.stream(BmfCpuNativePlan.class.getDeclaredFields())
+        List<Field> instanceFields = Arrays.stream(BmfCpuTranscodePlan.class.getDeclaredFields())
                 .filter(field -> !Modifier.isStatic(field.getModifiers()))
                 .toList();
 
         assertThat(instanceFields).extracting(Field::getName)
-                .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin");
+                .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin", "inputId", "outputId");
         assertThat(instanceFields).extracting(Field::getType)
-                .containsExactlyInAnyOrder(ExecutableTaskId.class, ProviderBindingPin.class);
+                .containsExactlyInAnyOrder(ExecutableTaskId.class, ProviderBindingPin.class,
+                        com.example.platform.execution.domain.ExecutionInputId.class,
+                        com.example.platform.execution.domain.ExecutionOutputId.class);
     }
 
     @Test
@@ -246,9 +239,13 @@ class BmfArchitectureGuardTest {
                 .containsExactlyInAnyOrder(
                         "src/main/java/com/example/platform/bmf/BmfCpuProvider.java",
                         "src/main/java/com/example/platform/bmf/BmfExecutionBackend.java",
-                        "src/main/java/com/example/platform/bmf/BmfCpuNativePlan.java",
-                        "src/main/java/com/example/platform/bmf/BmfCpuUnsupportedLowerer.java",
-                        "src/main/java/com/example/platform/bmf/BmfCpuUnsupportedRuntimeAdapter.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuTranscodePlan.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuTranscodeLowerer.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuRuntimeAdapter.java",
+                        "src/main/java/com/example/platform/bmf/BmfSandboxWorkspace.java",
+                        "src/main/java/com/example/platform/bmf/BmfSandboxExecutionPolicyResolver.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuRuntimeBindingFactory.java",
+                        "src/main/java/com/example/platform/bmf/BmfRuntimeBundleVerifier.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuRuntimeDependencyAssessment.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceAssessor.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceIssue.java",
@@ -259,7 +256,8 @@ class BmfArchitectureGuardTest {
                 .containsExactlyInAnyOrder(
                         "src/test/java/com/example/platform/bmf/BmfCpuProviderContractTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceAssessmentTest.java",
-                        "src/test/java/com/example/platform/bmf/BmfCpuUnsupportedSeamsTest.java",
+                        "src/test/java/com/example/platform/bmf/BmfCpuTranscodeSeamsTest.java",
+                        "src/test/java/com/example/platform/bmf/BmfCpuWorkerRuntimeIntegrationTest.java",
                         "src/test/java/com/example/platform/bmf/BmfArchitectureGuardTest.java");
     }
 

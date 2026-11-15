@@ -9,7 +9,7 @@ import java.util.Optional;
 /** Provider-local diagnostic composition of H1 dependency and fingerprint evidence. */
 public record BmfCpuRuntimeDependencyAssessment(
         RuntimeDependencyMatchResult dependencyMatchResult,
-        RuntimeDependencyFingerprint expectedFingerprint,
+        Optional<RuntimeDependencyFingerprint> expectedFingerprint,
         Optional<RuntimeDependencyFingerprint> observedFingerprint,
         List<BmfCpuRuntimeEvidenceIssue> issues) {
 

@@ -32,7 +32,7 @@ class BmfCpuRuntimeEvidenceAssessmentTest {
         BmfCpuRuntimeDependencyAssessment assessment = BmfCpuRuntimeEvidenceAssessor.assess(
                 RUNTIME,
                 Optional.of(observation),
-                Optional.of(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT),
+                Optional.of(RuntimeDependencyFingerprint.from(observation)),
                 OBSERVED_AT);
 
         assertThat(assessment.matchesRuntimeEvidence()).isTrue();
@@ -40,9 +40,9 @@ class BmfCpuRuntimeEvidenceAssessmentTest {
                 .isEqualTo(RuntimeDependencyMatchStatus.CAN_MATCH);
         assertThat(assessment.dependencyMatchResult().reasons()).isEmpty();
         assertThat(assessment.expectedFingerprint())
-                .isSameAs(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT);
+                .contains(RuntimeDependencyFingerprint.from(observation));
         assertThat(assessment.observedFingerprint())
-                .contains(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT);
+                .contains(RuntimeDependencyFingerprint.from(observation));
         assertThat(assessment.issues()).isEmpty();
     }
 
@@ -220,7 +220,7 @@ class BmfCpuRuntimeEvidenceAssessmentTest {
     }
 
     private static Optional<RuntimeDependencyFingerprint> exactFingerprint() {
-        return Optional.of(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT);
+        return Optional.of(RuntimeDependencyFingerprint.from(exactObservation()));
     }
 
     private static BmfCpuRuntimeDependencyAssessment assess(

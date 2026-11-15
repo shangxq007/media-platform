@@ -45,26 +45,22 @@ class BmfProviderExtensionTest {
     }
 
     @Test
-    void capabilityProfileAndContractAreDeclaredHereWithFourCapabilities() {
+    void capabilityProfileAndContractDeclareOnlyTheImplementedTranscodeSlice() {
         // ProviderCapabilityProfile canonicalises its declarations by capability id.
         assertThat(EXTENSION.providerCapabilityProfile().supportDeclarations())
                 .extracting(ProviderCapabilitySupport::capabilityId)
-                .containsExactly(
-                        CapabilityId.of("media.transcode"),
-                        CapabilityId.of("render.composite"),
-                        CapabilityId.of("render.output"),
-                        CapabilityId.of("video.decode"));
+                .containsExactly(CapabilityId.of("media.transcode"));
         assertThat(EXTENSION.providerCapabilityProfile().supportDeclarations())
                 .allSatisfy(support -> assertThat(support.contractVersionRange())
                         .isEqualTo(ContractVersionRange.exactly(ContractVersion.of(1, 0))));
         assertThat(EXTENSION.providerExecutionContract().capabilityContractReferences())
-                .hasSize(4);
+                .hasSize(1);
     }
 
     @Test
-    void loweringStaysUnsupportedSoTheKernelRefusesBmf() {
+    void loweringDeclaresTheImplementedTranscodeSlice() {
         assertThat(EXTENSION.providerStaticCompatibility().loweringSupport())
-                .isEqualTo(ProviderStaticCompatibility.LoweringSupport.UNSUPPORTED);
+                .isEqualTo(ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
         assertThat(EXTENSION.providerStaticCompatibility().knowledge())
                 .isEqualTo(ProviderStaticCompatibility.Knowledge.DECLARED);
     }
@@ -72,7 +68,7 @@ class BmfProviderExtensionTest {
     @Test
     void sandboxBackendWorkerSupportAndResourceProfileAreDeclaredHonestly() {
         assertThat(EXTENSION.sandboxRequirement()).isEqualTo(SandboxRuntimeRequirement.REQUIRED);
-        assertThat(EXTENSION.resourceProfile()).isEmpty();
+        assertThat(EXTENSION.resourceProfile()).isPresent();
         assertThat(EXTENSION.providerBackendExecutionSupport()).hasValueSatisfying(support -> {
             assertThat(support.providerBindingPin()).isEqualTo(BmfCpuProvider.BINDING);
             assertThat(support.knowledge())
@@ -107,6 +103,6 @@ class BmfProviderExtensionTest {
                 .satisfies(failure -> assertThat(
                         ((ProviderNativeExecutionFailure) failure).code())
                         .isEqualTo(ProviderNativeFailureCode.RUNTIME_ADAPTER_UNSUPPORTED_PLAN))
-                .hasMessageContaining("BMF runtime not yet integrated");
+                .hasMessageContaining("BMF Worker runtime root is not configured");
     }
 }
