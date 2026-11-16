@@ -7,4 +7,5 @@
  * The separate Entitlement → FeatureFlag → Capability → Quota composition stays
  * independent of this package.</p>
  */
+@org.springframework.modulith.NamedInterface("authorization")
 package com.example.platform.shared.authorization;

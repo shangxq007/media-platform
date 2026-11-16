@@ -19,6 +19,7 @@ import java.util.List;
  * (text resolution inputs are structurally absent at apply). It is NEVER an
  * input to {@link OperationPlanDigest}, so it does not affect the plan digest.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public record OperationPlan(
         String formatVersion,
         String baseRevisionId,

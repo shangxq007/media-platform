@@ -20,6 +20,10 @@
             "workerfabric :: domain",
             "workerfabric :: reuse",
             "workerfabric :: runtime"
+        ,
+            "shared :: time"
+        ,
+            "shared :: capability"
         }
 )
 package com.example.platform.bmf;

@@ -44,6 +44,32 @@
             "fontpipeline :: sanitize"
         ,
             "operation :: operation"
+        ,
+            "extension :: runtime",
+            "typedschema :: jooq-tables"
+        ,
+            "shared :: digest",
+            "shared :: identity",
+            "shared :: time",
+            "shared :: web"
+        ,
+            "audio :: mix",
+            "colorimage",
+            "fonttext :: resolution",
+            "fonttext :: text",
+            "operation :: plan",
+            "timeline :: canonicalmodel",
+            "timeline :: clip",
+            "timeline :: diff",
+            "timeline :: relationship",
+            "timeline :: revisioncommand",
+            "timeline :: selection",
+            "timeline :: temporal"
+        ,
+            "graph :: api",
+            "graph :: result",
+            "shared :: authorization",
+            "shared :: capability"
         }
 )
 package com.example.platform.render;

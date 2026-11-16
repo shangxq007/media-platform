@@ -7,6 +7,7 @@ package com.example.platform.operation.plan;
  * transaction/application context, NEVER Operation semantic targets, NEVER
  * part of Timeline canonical content, NEVER part of PlanDigest.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public record TargetRevisionRef(String refId) {
 
     public TargetRevisionRef {

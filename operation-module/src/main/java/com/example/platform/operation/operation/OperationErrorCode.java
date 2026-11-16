@@ -5,6 +5,7 @@ package com.example.platform.operation.operation;
  * vocabulary. Capability/policy execution errors stay future (OperationPlan/
  * application layer); only categories needed by Operation Model are active now.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public enum OperationErrorCode {
     INVALID_PARAMETER,
     INVALID_SCOPE,

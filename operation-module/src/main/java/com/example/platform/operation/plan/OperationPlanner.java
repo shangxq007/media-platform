@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
  * candidate hash == base hash, and computes the deterministic PlanDigest.
  * Never generates/apply patches; never reads mutable latest.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public final class OperationPlanner {
 
     private final TimelineContentDigester digester = new TimelineContentDigester();

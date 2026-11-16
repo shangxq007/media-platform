@@ -6,6 +6,7 @@ package com.example.platform.operation.plan;
  * AuthorizationDecision to one apply attempt. Apply verifies authorization
  * PlanDigest == plan PlanDigest and authorization context == apply context.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public record ApplyContext(
         String applyCommandId,
         TargetRevisionRef targetRef,

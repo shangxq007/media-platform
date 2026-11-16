@@ -19,6 +19,7 @@ import java.util.Objects;
  * mismatch between requested base and handed base FAILS CLOSED
  * (STALE_BASE_REVISION). No mutable-latest fallback.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public final class OperationRequestResolver {
 
     private OperationRequestResolver() {

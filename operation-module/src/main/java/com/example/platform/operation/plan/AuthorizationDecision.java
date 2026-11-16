@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
  * context (project/workspace/tenant + target ref). Reuse on a different
  * target/principal/plan is rejected. No generalized IAM.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public record AuthorizationDecision(
         boolean allowed,
         String planDigest,

@@ -7,6 +7,8 @@
             "shared"
         ,
             "execution :: admission"
+        ,
+            "shared :: web"
         }
 )
 package com.example.platform.coverimage;

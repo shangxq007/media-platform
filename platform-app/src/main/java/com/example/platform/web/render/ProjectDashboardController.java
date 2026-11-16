@@ -1,6 +1,5 @@
 package com.example.platform.web.render;
 
-import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.coordination.PlatformJobRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
@@ -25,20 +24,17 @@ public class ProjectDashboardController {
     private static final Logger log = LoggerFactory.getLogger(ProjectDashboardController.class);
     private final MarketplaceApi marketplaceRepo;
     private final SearchProjectionRepository searchProjectionRepo;
-    private final TimelineRevisionRepository revisionRepo;
     private final ReviewQueries reviewRepo;
     private final OutboxEventService outboxService;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
     public ProjectDashboardController(MarketplaceApi marketplaceRepo,
                                         SearchProjectionRepository searchProjectionRepo,
-                                        TimelineRevisionRepository revisionRepo,
                                         ReviewQueries reviewRepo,
                                         OutboxEventService outboxService,
                                         TimelineProjectAuthorizationService projectAuthorization) {
         this.marketplaceRepo = marketplaceRepo;
         this.searchProjectionRepo = searchProjectionRepo;
-        this.revisionRepo = revisionRepo;
         this.reviewRepo = reviewRepo;
         this.outboxService = outboxService;
         this.projectAuthorization = projectAuthorization;

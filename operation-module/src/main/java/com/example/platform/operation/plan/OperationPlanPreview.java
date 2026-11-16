@@ -7,6 +7,7 @@ import java.util.List;
  * an immutable OperationPlan. Binds exact PlanDigest; never mutates plan,
  * never re-resolves latest. Primary/secondary/warnings/blockers distinguished.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public record OperationPlanPreview(
         String planDigest,
         String definitionId,

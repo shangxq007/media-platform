@@ -8,5 +8,9 @@
             "identity :: domain",
             "identity :: infrastructure",
             "entitlement :: app"
+        ,
+            "shared :: web"
+        ,
+            "shared :: authorization"
         })
 package com.example.platform.security;

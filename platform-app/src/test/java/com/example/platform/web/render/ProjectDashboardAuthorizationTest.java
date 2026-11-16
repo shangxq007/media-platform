@@ -14,7 +14,6 @@ import com.example.platform.shared.authorization.AuthorizationDecision;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.api.review.ReviewQueries;
 import java.util.Optional;
 import java.util.Set;
@@ -49,7 +48,6 @@ class ProjectDashboardAuthorizationTest {
         controller = new ProjectDashboardController(
                 mock(MarketplaceApi.class),
                 mock(SearchProjectionRepository.class),
-                mock(TimelineRevisionRepository.class),
                 mock(ReviewQueries.class),
                 outbox,
                 authorization);

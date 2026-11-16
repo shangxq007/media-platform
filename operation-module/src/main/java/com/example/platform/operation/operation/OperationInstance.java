@@ -10,6 +10,7 @@ import java.util.Objects;
  * typed parameters, deterministic parameter digest, optional auxiliary
  * invocation id. NEVER Timeline canonical state; never affects Timeline hash.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public record OperationInstance(
         OperationDefinitionId definitionId,
         OperationDefinitionVersion version,

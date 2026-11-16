@@ -66,5 +66,31 @@
             "artifact :: contract",
             "config :: render",
             "operation :: operation"
+        ,
+            "storage :: contract"
+        ,
+            "shared :: digest",
+            "shared :: identity",
+            "shared :: time",
+            "shared :: web"
+        ,
+            "fonttext :: resolution",
+            "fonttext :: text",
+            "ingest :: diagnostics",
+            "outbox :: app",
+            "render :: asset",
+            "render :: operation",
+            "render :: product",
+            "render :: search",
+            "render :: semantic",
+            "storage :: diagnostics",
+            "timeline :: canonicalmodel",
+            "timeline :: diff",
+            "timeline :: merge",
+            "timeline :: otio",
+            "timeline :: patch",
+            "timeline :: relationship"
+        ,
+            "shared :: authorization"
         })
 package com.example.platform.web;

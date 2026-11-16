@@ -7,5 +7,9 @@
             "billing :: domain",
             "entitlement :: app",
             "entitlement :: domain"
+        ,
+            "typedschema :: jooq-tables"
+        ,
+            "shared :: web"
         })
 package com.example.platform.commerce;

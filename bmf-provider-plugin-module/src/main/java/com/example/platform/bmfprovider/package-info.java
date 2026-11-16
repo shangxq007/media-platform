@@ -23,6 +23,8 @@
             "workerfabric :: domain",
             "workerfabric :: providernative",
             "workerfabric :: runtime"
+        ,
+            "shared :: capability"
         }
 )
 package com.example.platform.bmfprovider;

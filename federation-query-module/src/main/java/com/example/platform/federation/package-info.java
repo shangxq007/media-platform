@@ -13,5 +13,9 @@
             "ai :: domain",
             "policy :: feature-flags",
             "observability :: monitoring"
+        ,
+            "shared :: web"
+        ,
+            "shared :: authorization"
         })
 package com.example.platform.federation;

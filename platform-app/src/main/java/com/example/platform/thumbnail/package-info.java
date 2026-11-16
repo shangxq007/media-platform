@@ -8,6 +8,9 @@
         ,
             "artifact :: app",
             "execution :: admission"
+        ,
+            "shared :: digest",
+            "shared :: identity"
         }
 )
 package com.example.platform.thumbnail;

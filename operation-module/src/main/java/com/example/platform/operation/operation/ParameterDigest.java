@@ -14,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
  * Same definition/version + semantically equal parameters => same digest
  * regardless of target/revision — intentional. Never Timeline content hash.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public final class ParameterDigest {
 
     private static final String FORMAT_VERSION = "operation-parameter-format-v1";

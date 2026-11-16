@@ -9,4 +9,5 @@
  * (code-owned sealed interface, validating records, no
  * {@code Map<String,Object>}/{@code JsonNode}/{@code Object}).</p>
  */
+@org.springframework.modulith.NamedInterface("capability")
 package com.example.platform.shared.capability;

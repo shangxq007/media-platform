@@ -31,6 +31,10 @@
             "storage :: contract",
             "storage :: infrastructure",
             "workflow :: temporal"
+        ,
+            "shared :: digest",
+            "shared :: identity",
+            "shared :: web"
         }
 )
 package com.example.platform.runtime;

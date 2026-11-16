@@ -43,6 +43,15 @@
             "sandbox :: Execution",
             "storage :: API",
             "timeline :: revision"
+        ,
+            "typedschema :: jooq-tables"
+        ,
+            "shared :: identity",
+            "shared :: time",
+            "shared :: web"
+        ,
+            "shared :: authorization",
+            "shared :: capability"
         }
 )
 package com.example.platform.config;

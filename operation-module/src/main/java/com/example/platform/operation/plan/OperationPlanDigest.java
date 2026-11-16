@@ -13,6 +13,7 @@ import java.util.List;
  * EXCLUDES targetRef, expectedHead, principal, authorization, invocation
  * metadata. Distinct from ParameterDigest/TimelineContentHash/RevisionId.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public final class OperationPlanDigest {
 
     private OperationPlanDigest() {

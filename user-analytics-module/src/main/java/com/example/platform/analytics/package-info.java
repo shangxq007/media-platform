@@ -6,6 +6,8 @@
                 "observability",
                 "outbox",
                 "audit"
+        ,
+            "shared :: web"
         }
 )
 package com.example.platform.analytics;

@@ -4,6 +4,7 @@ package com.example.platform.operation.plan;
  * OPERATION_PLAN_TRANSACTION_MODEL_V1 (PT31/§43): typed planning/apply errors.
  * Extends the typed error vocabulary; never exception strings as stable API.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public enum PlanErrorCode {
     INVALID_PLAN,
     STALE_BASE_REVISION,

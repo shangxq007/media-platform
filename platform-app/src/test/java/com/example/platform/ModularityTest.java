@@ -17,25 +17,15 @@ class ModularityTest {
      */
     private static final List<String> ALLOWED_VIOLATIONS = List.of(
         // identity -> storage: required for project asset storage during import/export
-        "identity' depends on named interface(s) 'storage",
         // render -> outbox: render module records delivery coordination intents for marketplace/search
-        "render' depends on module 'outbox",
         // PMPR-ST1-CRR1: web StorageRuntimeController consumes storage contracts through storage authority
-        "web' depends on named interface(s) 'storage :: contract",
         // web -> render: web controllers delegate to render app/domain services
-        "web' depends on module 'render",
         // web -> outbox: ProjectDashboardController uses OutboxEventService
-        "web' depends on named interface(s) 'outbox",
         // web -> ingest: DevIngestPreflightPolicyDiagnosticsController uses ingest diagnostics
-        "web' depends on module 'ingest",
         // web -> storage: DevStorageDeliveryProfileDiagnosticsController uses storage diagnostics
-        "web' depends on module 'storage",
         // root -> ingest non-exposed types: PlatformBeanConfiguration references ingest config properties
-        "root:com.example.platform' depends on non-exposed type",
         // Migration: typedschema jooq-tables are now used across modules for typed SQL generation
-        "depends on named interface(s) 'typedschema :: jooq-tables'",
         // Migration: ingest module uses non-exposed typed schema record types
-        "depends on non-exposed type com.example.platform.typedschema.jooq.generated.tables.records",
         // W2 V1 (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2): the frozen conditional
         // path activated workflow-module -> platform-algorithms:graph (graph
         // kernel reuse for deterministic validation). The graph module is a
@@ -45,36 +35,22 @@ class ModularityTest {
         "workflow' depends on module 'graph",
         // PMPR-S1: render providers implement canonical PluginRuntimeProviderBinding
         // (extension::runtime) — provider effect binding under single PluginRuntime authority.
-        "render' depends on named interface(s) 'extension :: runtime",
         // ROADMAP_19 (C1/C34): render (Timeline) consumes font-text-module value
         // semantics for the Timeline-owned TextElement (frozen direction:
         // Render -> FontText; pure domain, zero outward deps).
-        "render' depends on module 'fonttext",
         // ROADMAP_19 CORR-2: web MCP controller supplies explicit SRT import font
         // policy (application-layer); font-text value semantics consumed at API boundary.
-        "web' depends on module 'fonttext",
         // MCMV2-C (F1-F4): render -> media is the frozen dependency direction
         // (Timeline/Render/Workflow/AI/Delivery/Adapter -> Media Canonical Model).
         // MediaProbeController/MediaAssetProbeService consume the canonical media model;
         // the direction is additionally enforced by check-architecture-drift.sh.
-        "render' depends on module 'media",
         // AUDIO_V2 (frozen: render -> audio): TimelineDocument carries the canonical
         // AudioMix reference (A3); audio-module is pure domain with no reverse dependency.
-        "render' depends on module 'audio",
         // GCR-1 (frozen directions: Render -> Timeline -> Operation; Media/Audio/
         // FontText -> Timeline -> Operation): the new canonical modules consume
         // upstream value semantics. audio/fonttext/media modules are pure domain
         // with no named-interface exposure, so Modulith reports non-exposed-type
         // violations — same class as the pre-existing render entries above.
-        "render' depends on module 'timeline",
-        "render' depends on module 'operation",
-        "web' depends on module 'timeline",
-        "timeline' depends on non-exposed type com.example.platform.audio",
-        "timeline' depends on non-exposed type com.example.platform.fonttext",
-        "timeline' depends on non-exposed type com.example.platform.media",
-        "operation' depends on non-exposed type com.example.platform.timeline",
-        "operation' depends on non-exposed type com.example.platform.audio",
-        "operation' depends on non-exposed type com.example.platform.fonttext",
         // ROADMAP20 (C14/C30): render-planning consumes color-image-module value
         // semantics (ColorDescription, RasterSampleDescription) for typed output
         // requirements and delegates graph mechanics to platform-algorithms:graph.
@@ -82,28 +58,13 @@ class ModularityTest {
         // neither target depends on render. The graph module is a deliberately
         // non-Spring library module (no @ApplicationModule), so Modulith cannot
         // express it in allowedDependencies; registered here per debt-register pattern.
-        "render' depends on module 'colorimage",
         "render' depends on module 'graph",
         // ROADMAP_22_EPOCH_3: adding worker-fabric to platform-app also makes the
         // media-execution-plan library visible to Modulith. These are its frozen
         // #21 render-plan/audio inputs and shared graph-mechanics dependencies.
         // The target packages are not exposed named interfaces, so retain the
         // repository debt-register convention with package-specific matches.
-        "execution' depends on non-exposed type com.example.platform.render.domain.renderplan",
-        "execution' depends on non-exposed type com.example.platform.audio.domain.mix",
-        "execution' depends on non-exposed type com.example.platform.graph",
-        // ROADMAP_22_PHASE_16: worker-fabric reuse materialization consumes the
-        // storage contract (StorageProvider / StorageReadRequest /
-        // IntegrityRequirement) through the frozen Storage authority boundary.
-        // The storage named interfaces are registered, but the consumed contract
-        // types surface as non-exposed through the platform-app Modulith scan;
-        // retain the repository debt-register convention with a package-specific match.
-        "workerfabric' depends on non-exposed type com.example.platform.storage.contract",
-        // ROADMAP_22_PHASE_19: provider-plugin-runtime is the integration layer above
-        // worker-fabric and consumes these existing typed contracts; worker-fabric does
-        // not depend back on plugin/extension.
-        "providerplugin' depends on non-exposed type com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding",
-        "providerplugin' depends on non-exposed type com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement"
+        "execution' depends on non-exposed type com.example.platform.graph"
     );
 
     @Test

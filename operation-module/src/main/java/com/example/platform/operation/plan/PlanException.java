@@ -3,6 +3,7 @@ package com.example.platform.operation.plan;
 /**
  * OPERATION_PLAN_TRANSACTION_MODEL_V1: typed plan/apply exception.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public class PlanException extends RuntimeException {
 
     private final PlanErrorCode code;

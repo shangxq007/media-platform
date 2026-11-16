@@ -4,6 +4,7 @@ package com.example.platform.operation.operation;
  * OPERATION_MODEL_FOUNDATION_V1 (OM17): typed Operation resolution exception.
  * Stable semantic error code, never arbitrary message strings as API.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public class OperationResolutionException extends RuntimeException {
 
     private final OperationErrorCode code;

@@ -8,6 +8,7 @@ import com.example.platform.operation.operation.OperationDefinitionVersion;
  * cardinality), parameter contract, OperationDefinitionVersion and lifecycle.
  * No dynamic registry; no Map schema; no String action dispatch.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public record OperationDefinition(
         OperationDefinitionId definitionId,
         OperationDefinitionVersion version,
@@ -43,6 +44,7 @@ public record OperationDefinition(
     }
 
     /** Static code-owned V1 vocabulary (exactly 25, frozen). */
+    @org.springframework.modulith.NamedInterface("operation")
     public static final class V1 {
         /** H7: first vertically complete real-media authoring operation. */
         public static final OperationDefinition ADD_MEDIA_CLIP = new OperationDefinition(
@@ -106,6 +108,7 @@ public record OperationDefinition(
      * <p>{@code V1} is frozen and literally unchanged; the added definition carries per-definition
      * version {@code 1.0} (V2 is a vocabulary snapshot, NOT an "Operation 2.0").
      */
+    @org.springframework.modulith.NamedInterface("operation")
     public static final class V2 {
         /** L5: creates one directional source-units -> derived-units alignment. */
         public static final OperationDefinition CREATE_ALIGNMENT = new OperationDefinition(
@@ -123,6 +126,7 @@ public record OperationDefinition(
     }
 
     /** Additive initialization vocabulary; the frozen V1 and V2 sets remain unchanged. */
+    @org.springframework.modulith.NamedInterface("operation")
     public static final class V3 {
         public static final OperationDefinition INITIALIZE_TIMELINE = new OperationDefinition(
                 OperationDefinitionId.of("timeline.initialize"), OperationDefinitionVersion.of(1, 0),

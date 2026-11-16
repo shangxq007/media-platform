@@ -38,6 +38,7 @@ import java.util.Objects;
  * Atomic apply NEVER queries the mutable catalog: resolution inputs are
  * structurally absent from the apply path.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public final class TextOperationPlanner {
 
     /** Plan-phase font resolution inputs (never available at apply). */
@@ -50,6 +51,8 @@ public final class TextOperationPlanner {
             Objects.requireNonNull(catalog, "catalog");
         }
     }
+
+    @org.springframework.modulith.NamedInterface("operation")
 
     public static final class TextPlanException extends RuntimeException {
         public TextPlanException(String message) {

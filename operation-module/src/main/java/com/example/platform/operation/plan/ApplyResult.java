@@ -6,6 +6,7 @@ package com.example.platform.operation.plan;
  * unchanged; durable idempotency replays the same result for the same
  * ApplyCommandId.
  */
+@org.springframework.modulith.NamedInterface("plan")
 public record ApplyResult(
         String status,
         String planDigest,
