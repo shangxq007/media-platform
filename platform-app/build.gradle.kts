@@ -55,7 +55,6 @@ dependencies {
     implementation(project(":entitlement-module"))
     implementation(project(":policy-governance-module"))
     implementation(project(":artifact-module"))
-    implementation(project(":extension-module"))
     implementation(project(":federation-query-module"))
     implementation(project(":user-analytics-module"))
     implementation(project(":social-publish-module"))
