@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | 1 | Base identity | `git rev-parse main`, `git ls-remote --heads origin main` | 0 | `cf0bb5ad…` / `ec539442…`, remote matches |
 | 2 | Stale rules removed | 7 entries deleted from `ModularityTest` | — | 33 → 26; gate still PASS (0 unexpected) |
-| 3 | Contract rules removed | 17 remaining contract entries deleted after declarations | — | 26 → 3 (graph only) |
+| 3 | Contract rules removed | 23 remaining contract entries deleted after declarations (7 stale removed first, then the 23 contract entries) | — | 26 → 3 (graph only); 33 − 7 − 3 = 23 |
 | 4 | Modulith gate | `./gradlew :platform-app:test --tests '*ModularityTest' --no-daemon` | 0 | PASS, 1 test, 0 failures, **0 unexpected, 0 cycles, 3 rules** |
 | 5 | Negative 1 — undeclared dependency | remove `artifact` → `typedschema :: records`, run the gate | 1 | FAIL as expected, 3 messages (`artifact` → `typedschema :: records`) |
 | 6 | Negative 2 — direct adapter dependency | add `TimelineRevisionRepository` to `ProjectDashboardController`, run the gate | 1 | FAIL as expected (`web → timeline` on `TimelineRevisionRepository`) |
