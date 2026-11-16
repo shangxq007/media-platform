@@ -2,6 +2,7 @@ package com.example.platform.runtime.mediatask;
 
 import com.example.platform.workerfabric.admission.CapabilityExecutionRequested;
 import com.example.platform.execution.admission.PlatformExecutionAdmissionPort;
+import com.example.platform.execution.admission.CapabilityExecutionWorkflowIds;
 import com.example.platform.execution.admission.PlatformExecutionState;
 import com.example.platform.workflow.temporal.RenderTaskQueue;
 import com.example.platform.workflow.temporal.mediatask.CapabilityExecutionWorkflow;
@@ -19,9 +20,6 @@ public class CapabilityExecutionDispatcher {
     public CapabilityExecutionDispatcher(ObjectProvider<WorkflowClient> clients,PlatformExecutionAdmissionPort.ArtifactCapabilities executions) {
         this.clients=clients;this.executions=executions;
     }
-    public static String workflowId(String tenant,String execution,long generation) {
-        return "capability:"+tenant+":"+execution+":"+generation;
-    }
     @EventListener public void dispatch(CapabilityExecutionRequested command) {
         var current=executions.find(command.tenantId(),command.projectId(),command.executionId())
                 .orElseThrow(()->new IllegalStateException("dispatch admission not found"));
@@ -30,7 +28,7 @@ public class CapabilityExecutionDispatcher {
         var client=clients.getIfAvailable();
         if(client==null)throw new IllegalStateException("Temporal client unavailable for accepted execution dispatch");
         var workflow=client.newWorkflowStub(CapabilityExecutionWorkflow.class,WorkflowOptions.newBuilder()
-                .setTaskQueue(RenderTaskQueue.NAME).setWorkflowId(workflowId(command.tenantId(),command.executionId(),command.generation()))
+                .setTaskQueue(RenderTaskQueue.NAME).setWorkflowId(CapabilityExecutionWorkflowIds.workflowId(command.tenantId(),command.executionId(),command.generation()))
                 .setWorkflowIdReusePolicy(WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE).build());
         try { WorkflowClient.start(workflow::run,command.tenantId(),command.projectId(),command.executionId(),command.generation()); }
         catch(WorkflowExecutionAlreadyStarted duplicate) { /* One workflow owns this exact generation. */ }

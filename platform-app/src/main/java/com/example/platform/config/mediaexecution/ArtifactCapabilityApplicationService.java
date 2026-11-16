@@ -83,7 +83,7 @@ public class ArtifactCapabilityApplicationService {
         if(result.state()==PlatformExecutionState.CANCELLED) {
             var client=clients.getIfAvailable();
             if(client!=null)try {
-                client.newUntypedWorkflowStub(com.example.platform.runtime.mediatask.CapabilityExecutionDispatcher.workflowId(tenant,execution,accepted.generation())).cancel();
+                client.newUntypedWorkflowStub(com.example.platform.execution.admission.CapabilityExecutionWorkflowIds.workflowId(tenant,execution,accepted.generation())).cancel();
             } catch(io.temporal.client.WorkflowNotFoundException notDispatched) { /* A later outbox delivery observes CANCELLED and starts nothing. */ }
         }
         return result;
