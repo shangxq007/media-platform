@@ -18,10 +18,10 @@ NAMED_INTERFACES_ADDED: 34 new package-info files + 23 extended package-info fil
   source files carrying 21 type-level annotations
 APPLICATION_MODULES_ADDED: seven modules gained a root @ApplicationModule they did not have at base
   — six new root files (execution, ingest, media, operation, persistence, timeline) and artifact
-  (its existing package-info was extended with the annotation); other existing roots were extended
+  (its existing package-info was extended with the annotation); other changed roots were extended
   with allowedDependencies entries (commerce, entitlement, identity, render, workflow, outbox,
-  delivery, federation, analytics, providerplugin, bmfprovider, and the platform-app slices),
-  per the declaration matrix
+  delivery, federation, analytics, bmf, bmfprovider, and the platform-app slices), per the
+  declaration matrix
 ALLOWED_DEPENDENCIES_ADDED: per consumer module root, matching the measured edges only
 
 TYPEDSCHEMA_RECORDS_CONTRACT: PACKAGE_LEVEL_NAMED_INTERFACE (D3-A), declared from the
@@ -35,9 +35,9 @@ NEGATIVE_BOUNDARY_TEST: PASS (two checks: undeclared dependency fails; direct
   web -> timeline.adapter import fails)
 
 GRADLE_DEPENDENCY_GRAPH: PASS (no new cycles; provider host <-> BMF still absent)
-AFFECTED_MODULE_TESTS: PASS except two pre-existing failures unrelated to this change
-  (see the test matrix: a stale restore-guard expectation and a test that requires the
-  controlled-launch PostgreSQL harness)
+AFFECTED_MODULE_TESTS: PASS except three pre-existing failures unrelated to this change
+  (test matrix: stale restore-guard expectation, controlled-launch PostgreSQL test, and the jOOQ
+  version authority test whose expectation predates the pinned gradle.properties)
 ARCHITECTURE_GUARDS: PASS (drift 220 checks; verify guards 7/7)
 DOCUMENT_GOVERNANCE: PASS (16/16)
 
@@ -87,7 +87,7 @@ marked as historical.
 | Negative 1: remove `artifact` → `typedschema :: records` | FAIL as expected (3 messages) |
 | Negative 2: re-add `web` → `timeline.adapter` | FAIL as expected (`web → timeline`) |
 | `compileJava compileTestJava` | PASS |
-| Affected modules (platform-app web/dashboard/assembly, operation, timeline, execution, typed-schema, provider host, bridge) | 1 274+ tests run; only two pre-existing failures (below) |
+| Affected modules, final runs | platform-app/operation/execution/typed-schema: 504 tests, 1 pre-existing failure; provider host: 40 tests, 0 failures; bridge: 9 tests, 0 failures; timeline: 820 tests, 2 pre-existing failures (= 1 373 tests, 3 pre-existing failures, all below) |
 | `scripts/check-architecture-drift.sh --quiet` | PASS |
 | `python3 -B scripts/dev/verify guards` | PASS 7/7 |
 | `check-document-governance.sh` | PASS 16/16 |
@@ -99,5 +99,8 @@ Pre-existing failures (verified unchanged from the base commit):
 - `RevisionCreatedEventTest` extends `PostgresTestContainerSupport` and requires the controlled
   launch harness (`CONTROLLED_LAUNCH_REQUIRED`), like the worker-fabric context test.
 
-Neither is caused by this change and neither weakens the new contract surface; fixing the stale
-guard is a separate owner decision (see the test matrix).
+- `JooqVersionAuthorityTest.versionMatchesExpected` expects `jooq.codegen.version=3.19.30` while
+  `gradle.properties` pins `3.21.9`; both files are unchanged from the base commit.
+
+None is caused by this change and none weakens the new contract surface; fixing the stale guard or
+the jOOQ expectation is a separate owner decision (see the test matrix).
