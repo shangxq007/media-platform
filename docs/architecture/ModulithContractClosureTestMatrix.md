@@ -14,7 +14,7 @@
 | 5 | Negative 1 — undeclared dependency | remove `artifact` → `typedschema :: records`, run the gate | 1 | FAIL as expected, 3 messages (`artifact` → `typedschema :: records`) |
 | 6 | Negative 2 — direct adapter dependency | add `TimelineRevisionRepository` to `ProjectDashboardController`, run the gate | 1 | FAIL as expected (`web → timeline` on `TimelineRevisionRepository`) |
 | 7 | Whole-build compile | `./gradlew compileJava compileTestJava --no-daemon` | 0 | PASS |
-| 8 | Affected module tests | `./gradlew :operation-module:test :timeline-module:test :media-execution-plan-module:test :typed-schema-module:test :provider-plugin-runtime-module:test :bmf-provider-plugin-module:test` plus platform-app web/dashboard/assembly/Modulith | 1 | 1 274 tests run; 2 failures, **both pre-existing and unchanged from base** (see below) |
+| 8 | Affected module tests (final run, after all code changes) | `./gradlew :platform-app:test --tests '*ModularityTest' --tests '*ProjectDashboard*' :operation-module:test :media-execution-plan-module:test :typed-schema-module:test :provider-plugin-runtime-module:test :bmf-provider-plugin-module:test` | 1 | 504 tests, 1 failure — `JooqVersionAuthorityTest` (pre-existing: `gradle.properties` pins 3.21.9, the test expects 3.19.30; both unchanged from base) |
 | 9 | D6 regression | `ProjectDashboardAuthorizationTest` (updated constructor) + the controller's endpoints | 0 | PASS (all dashboard/health/pending authorization tests) |
 | 10 | Architecture drift | `bash scripts/check-architecture-drift.sh --quiet` | 0 | PASS (220 checks) |
 | 11 | Guard suite | `python3 -B scripts/dev/verify guards` | 0 | PASS 7/7 |
@@ -29,6 +29,7 @@
 |---|---|---|
 | `timeline-module: Cfrhi1LegacyWriteAuthorityGuardTest.canonicalRestoreAuthorityIsActive` | The guard expects `TimelineRevisionController` to call `revisionSaveService.restoreRevision(...)` once, but direct restore was retired before this round (the controller returns "Direct revision restore retired; use a versioned Timeline Operation"). `git show HEAD:…TimelineRevisionController.java` contains 0 `restoreRevision` references. | `git diff HEAD --` the controller/test is empty |
 | `timeline-module: RevisionCreatedEventTest.initializationError` | Extends `PostgresTestContainerSupport`; requires the controlled-launch PostgreSQL harness (`CONTROLLED_LAUNCH_REQUIRED`), same class of environment constraint as `WorkerFabricApplicationContextTest`. | initializer stack shows `PostgresTestContainerSupport.<clinit>` |
+| `typed-schema-module: JooqVersionAuthorityTest.versionMatchesExpected` | The test expects `jooq.codegen.version=3.19.30`, but `gradle.properties` pins `3.21.9`; both files are unchanged from the base commit. | `git diff cf0bb5ad -- gradle.properties …/JooqVersionAuthorityTest.java` is empty |
 
 Neither failure is caused by this round; the affected contract surface (Modulith gate, operation
 contract guard, platform-app web tests, provider suites) passes.

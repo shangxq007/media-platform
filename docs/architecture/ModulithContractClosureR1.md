@@ -16,11 +16,12 @@ ALLOWED_VIOLATIONS_FINAL: 3
 
 NAMED_INTERFACES_ADDED: 34 new package-info files + 23 extended package-info files + 17 operation
   source files carrying 21 type-level annotations
-APPLICATION_MODULES_ADDED: new root package-info for execution, ingest, media, operation,
-  persistence and timeline; existing roots extended with @ApplicationModule/allowedDependencies in
-  artifact, workerfabric, outbox, delivery, federation, analytics, bmf, providerplugin, bmfprovider,
-  fonttext, fontpipeline, audio, colorimage, commerce, entitlement, identity, render, workflow and
-  the platform-app composition slices (see the declaration matrix)
+APPLICATION_MODULES_ADDED: seven modules gained a root @ApplicationModule they did not have at base
+  — six new root files (execution, ingest, media, operation, persistence, timeline) and artifact
+  (its existing package-info was extended with the annotation); other existing roots were extended
+  with allowedDependencies entries (commerce, entitlement, identity, render, workflow, outbox,
+  delivery, federation, analytics, providerplugin, bmfprovider, and the platform-app slices),
+  per the declaration matrix
 ALLOWED_DEPENDENCIES_ADDED: per consumer module root, matching the measured edges only
 
 TYPEDSCHEMA_RECORDS_CONTRACT: PACKAGE_LEVEL_NAMED_INTERFACE (D3-A), declared from the

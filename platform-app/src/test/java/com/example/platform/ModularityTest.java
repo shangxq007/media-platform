@@ -26,12 +26,11 @@ class ModularityTest {
         // root -> ingest non-exposed types: PlatformBeanConfiguration references ingest config properties
         // Migration: typedschema jooq-tables are now used across modules for typed SQL generation
         // Migration: ingest module uses non-exposed typed schema record types
-        // W2 V1 (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2): the frozen conditional
-        // path activated workflow-module -> platform-algorithms:graph (graph
-        // kernel reuse for deterministic validation). The graph module is a
-        // deliberately non-Spring library module (no @ApplicationModule, no
-        // named interfaces), so Modulith cannot express the dependency in
-        // allowedDependencies; registered here per the debt-register pattern.
+        // D4 (MODULITH_CONTRACT_CLOSURE_R1): platform-algorithms:graph is a deliberately
+        // non-Spring, unannotated kernel. Its consumers declare graph :: api / graph :: result,
+        // so these three rules currently match no diagnostics; they are retained by explicit owner
+        // decision D4 as the policy marker for the graph boundary and are removed once the kernel
+        // is formally modelled (see docs/modulith-debt-register.md, graph section).
         "workflow' depends on module 'graph",
         // PMPR-S1: render providers implement canonical PluginRuntimeProviderBinding
         // (extension::runtime) — provider effect binding under single PluginRuntime authority.
@@ -52,18 +51,11 @@ class ModularityTest {
         // with no named-interface exposure, so Modulith reports non-exposed-type
         // violations — same class as the pre-existing render entries above.
         // ROADMAP20 (C14/C30): render-planning consumes color-image-module value
-        // semantics (ColorDescription, RasterSampleDescription) for typed output
-        // requirements and delegates graph mechanics to platform-algorithms:graph.
-        // Both are frozen dependency directions (Render -> ColorImage, Render -> Graph);
-        // neither target depends on render. The graph module is a deliberately
-        // non-Spring library module (no @ApplicationModule), so Modulith cannot
-        // express it in allowedDependencies; registered here per debt-register pattern.
+        // semantics and delegates graph mechanics to platform-algorithms:graph (D4 rule, see above).
         "render' depends on module 'graph",
-        // ROADMAP_22_EPOCH_3: adding worker-fabric to platform-app also makes the
-        // media-execution-plan library visible to Modulith. These are its frozen
-        // #21 render-plan/audio inputs and shared graph-mechanics dependencies.
-        // The target packages are not exposed named interfaces, so retain the
-        // repository debt-register convention with package-specific matches.
+        // ROADMAP_22_EPOCH_3 + D4: media-execution-plan consumes graph.api/result; the
+        // consumer declares those interfaces, so this rule currently matches no diagnostics and is
+        // retained by owner decision D4 as the graph-boundary policy marker.
         "execution' depends on non-exposed type com.example.platform.graph"
     );
 
