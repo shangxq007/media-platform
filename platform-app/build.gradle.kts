@@ -60,6 +60,7 @@ dependencies {
     implementation(project(":social-publish-module"))
     implementation(project(":worker-fabric-module"))
     implementation(project(":provider-plugin-runtime-module"))
+    implementation(project(":bmf-provider-plugin-module"))
     implementation(project(":composition-module"))
     implementation(project(":media-capability-contracts"))
 

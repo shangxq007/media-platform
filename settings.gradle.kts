@@ -47,6 +47,7 @@ include(
     "provider-plugin-runtime-module",
     "ffmpeg-provider-module",
     "bmf-provider-module",
+    "bmf-provider-plugin-module",
     "platform-distribution",
     "media-module",
     "color-image-module",

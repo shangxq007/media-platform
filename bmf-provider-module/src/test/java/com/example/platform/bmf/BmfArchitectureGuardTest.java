@@ -161,19 +161,22 @@ class BmfArchitectureGuardTest {
     @Test
     void canonical_and_h1_modules_have_no_reverse_bmf_dependency_or_import() throws Exception {
         Path root = repositoryRoot();
-        // EP05: runtime composition owns the one task-facing BMF binding; core/H1 stay neutral.
+        // EP05 (owner-approved revision, MODULE_BOUNDARY_CONSOLIDATION_R1): the generic provider
+        // host is provider-neutral. The BMF contribution lives in the dedicated bridge module
+        // (bmf-provider-plugin-module) which depends on both the host SPI and the BMF engine; the
+        // host and BMF must not depend on each other in either direction.
         assertThat(Files.readString(root.resolve("provider-plugin-runtime-module/build.gradle.kts")))
-                .contains("implementation(project(\":bmf-provider-module\"))");
+                .doesNotContain("bmf-provider-module")
+                .doesNotContain("bmf-provider-plugin-module");
         for (String module : CORE_MODULES) {
             Path moduleRoot = root.resolve(module);
             if (module.equals("provider-plugin-runtime-module")) {
-                // EP05 (docs/governance/domain-authority-targeted-tests.md:21): "Provider runtime
-                // alone may depend on the BMF binding; core/H1 no-private-topology assertions
-                // remain." The provider runtime is therefore allowed to reference BMF — including
-                // the BMF provider contribution (Sprint 047, docs/architecture/bmf-integration.md:100)
-                // — while every other core/H1 module stays BMF-free below. The previous form of this
-                // assertion additionally required that the ONLY tolerated import was
-                // BmfExecutionBackend, which the accepted EP05 text does not state.
+                // Host production must stay free of the BMF engine (no import) even though it is
+                // listed in CORE_MODULES; its build-file neutrality is asserted above.
+                assertThat(readJava(moduleRoot.resolve("src/main/java")))
+                        .as("provider host production import")
+                        .doesNotContain("com.example.platform.bmf.")
+                        .doesNotContain("import com.example.platform.bmf;");
                 continue;
             }
             assertThat(Files.readString(moduleRoot.resolve("build.gradle.kts")))
@@ -181,8 +184,22 @@ class BmfArchitectureGuardTest {
                     .doesNotContain("bmf-provider-module");
             assertThat(readJava(moduleRoot.resolve("src/main/java")))
                     .as("%s production import", module)
-                    .doesNotContain("com.example.platform.bmf");
+                    .doesNotContain("com.example.platform.bmf.")
+                    .doesNotContain("import com.example.platform.bmf;");
         }
+        // The bridge owns the only BMF <-> provider-plugin connection.
+        String bridgeBuild = Files.readString(root.resolve("bmf-provider-plugin-module/build.gradle.kts"));
+        assertThat(bridgeBuild)
+                .contains("provider-plugin-runtime-module")
+                .contains("bmf-provider-module");
+        assertThat(readJava(root.resolve("bmf-provider-plugin-module/src/main/java")))
+                .as("bridge production contribution")
+                .contains("ProviderPluginContribution");
+        // The engine module never depends on the host or the bridge.
+        String bmfBuild = Files.readString(root.resolve("bmf-provider-module/build.gradle.kts"));
+        assertThat(bmfBuild)
+                .doesNotContain("provider-plugin-runtime-module")
+                .doesNotContain("bmf-provider-plugin-module");
     }
 
     @Test

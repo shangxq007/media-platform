@@ -1,8 +1,6 @@
 package com.example.platform.providerplugin.execution;
 
 import com.example.platform.sandbox.execution.*;
-import com.example.platform.bmf.BmfExecutionBackend;
-
 import com.example.platform.sandbox.execution.TaskCapability;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,10 +28,6 @@ public final class RuntimeExecutionBackends implements ExecutionBackendRegistry 
                 }
             }
         }
-    }
-
-    public static ExecutionBackendRegistry create() {
-        return new RuntimeExecutionBackends(List.of(new LocalProcessExecutionBackend(), new BmfExecutionBackend()));
     }
 
     public Optional<ExecutionBackend> resolve(TaskCapability capability) {

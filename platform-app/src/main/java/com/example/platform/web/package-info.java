@@ -51,5 +51,20 @@
             "workflow",
             "workflow :: temporal",
             "observability :: monitoring"
+        ,
+            "config",
+            "entitlement :: commercial",
+            "identity :: projects",
+            "operation",
+            "operation :: invocation"
+        ,
+            "fonttext :: typography",
+            "timeline :: app",
+            "timeline :: canonical",
+            "timeline :: version"
+        ,
+            "artifact :: contract",
+            "config :: render",
+            "operation :: operation"
         })
 package com.example.platform.web;

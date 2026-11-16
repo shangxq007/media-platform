@@ -14,7 +14,7 @@ import com.example.platform.execution.domain.provider.ProviderVersion;
 import com.example.platform.providerplugin.InProcessProviderPlugins;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
-import com.example.platform.providerplugin.bmf.BmfProviderExtension;
+import com.example.platform.bmfprovider.BmfProviderExtension;
 import com.example.platform.runtime.mediatask.MediaTaskAdmissionEvidenceFactory;
 import com.example.platform.workerfabric.domain.CpuArchitecture;
 import com.example.platform.workerfabric.domain.PhysicalHostId;

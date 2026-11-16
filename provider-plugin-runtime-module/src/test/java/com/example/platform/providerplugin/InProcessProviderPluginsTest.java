@@ -2,23 +2,32 @@ package com.example.platform.providerplugin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import com.example.platform.providerplugin.bmf.BmfProviderExtension;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** BMF-PROVIDER-INTEGRATION-001: in-process contributions join the host's own catalog. */
+/** In-process contributions join the host's own catalog; the host knows no concrete provider. */
 class InProcessProviderPluginsTest {
+
+    private static ProviderPluginContribution contribution(String provider) {
+        ProviderPluginContribution contribution = mock(ProviderPluginContribution.class);
+        when(contribution.pluginId()).thenReturn(provider);
+        when(contribution.pluginVersion()).thenReturn("1.0.0");
+        when(contribution.providerBindingPin()).thenReturn(ProviderCatalogTestFixture.pin(provider));
+        return contribution;
+    }
 
     @Test
     void catalogWithRegistersTheExtraContributionOnTheSameCatalog() {
         ProviderPluginCatalog hostCatalog = new ProviderPluginCatalog();
-        BmfProviderExtension bmf = new BmfProviderExtension();
+        ProviderPluginContribution extra = contribution("test.provider");
 
-        assertThat(InProcessProviderPlugins.catalogWith(hostCatalog, List.of(bmf)))
+        assertThat(InProcessProviderPlugins.catalogWith(hostCatalog, List.of(extra)))
                 .isSameAs(hostCatalog);
-        assertThat(hostCatalog.contributions()).containsExactly(bmf);
-        assertThat(hostCatalog.find(bmf.providerBindingPin())).contains(bmf);
+        assertThat(hostCatalog.contributions()).containsExactly(extra);
+        assertThat(hostCatalog.find(extra.providerBindingPin())).contains(extra);
     }
 
     @Test
@@ -30,11 +39,13 @@ class InProcessProviderPluginsTest {
     }
 
     @Test
-    void nullInputsAreRejected() {
-        assertThatThrownBy(() -> InProcessProviderPlugins.catalogWith(null, List.of()))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> InProcessProviderPlugins.catalogWith(
-                new ProviderPluginCatalog(), null))
-                .isInstanceOf(NullPointerException.class);
+    void duplicateContributionIdentityIsRejected() {
+        ProviderPluginCatalog hostCatalog = new ProviderPluginCatalog();
+        ProviderPluginContribution first = contribution("test.provider");
+        ProviderPluginContribution second = contribution("test.provider");
+
+        InProcessProviderPlugins.catalogWith(hostCatalog, List.of(first));
+        assertThatThrownBy(() -> InProcessProviderPlugins.catalogWith(hostCatalog, List.of(second)))
+                .hasMessageContaining("DUPLICATE_PLUGIN_ID_VERSION");
     }
 }

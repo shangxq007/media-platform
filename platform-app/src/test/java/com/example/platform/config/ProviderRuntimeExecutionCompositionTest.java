@@ -17,7 +17,8 @@ class ProviderRuntimeExecutionCompositionTest {
     @Test void platformOwnsOneRuntimeCompositionAndActualWhisperCallerUsesIt() {
         new ApplicationContextRunner()
                 .withUserConfiguration(ProviderPluginManagerConfiguration.class)
-                .withPropertyValues("app.extensions.plugins-dir=" + plugins)
+                .withPropertyValues("app.extensions.plugins-dir=" + plugins,
+                        "platform.bmf-provider.enabled=true")
                 .withBean(PluginRegistryImpl.class, () -> mock(PluginRegistryImpl.class))
                 .withBean(WhisperAsrProvider.class)
                 .run(context -> {

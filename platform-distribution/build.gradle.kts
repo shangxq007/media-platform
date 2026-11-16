@@ -16,6 +16,7 @@ version = "1.0.0"
 
 dependencies {
     implementation(project(":provider-plugin-runtime-module"))
+    implementation(project(":bmf-provider-plugin-module"))
     implementation(project(":worker-fabric-module"))
     implementation(project(":extension-module"))
     implementation(project(":media-execution-plan-module"))

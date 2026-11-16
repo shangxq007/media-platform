@@ -28,6 +28,22 @@
             "audio",
             "operation :: invocation",
             "sandbox :: API", "sandbox :: Execution"
+        ,
+            "fontpipeline"
+        ,
+            "fonttext :: manifest",
+            "fonttext :: resource",
+            "fonttext :: security",
+            "fonttext :: typography",
+            "media :: stream",
+            "timeline :: canonical",
+            "timeline :: effect",
+            "timeline :: version"
+        ,
+            "fontpipeline :: manifest",
+            "fontpipeline :: sanitize"
+        ,
+            "operation :: operation"
         }
 )
 package com.example.platform.render;

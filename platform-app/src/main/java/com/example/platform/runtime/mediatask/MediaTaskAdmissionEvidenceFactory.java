@@ -3,7 +3,7 @@ package com.example.platform.runtime.mediatask;
 import com.example.platform.execution.domain.provider.ProviderImplementationId;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
-import com.example.platform.providerplugin.bmf.BmfProviderExtension;
+import com.example.platform.bmfprovider.BmfProviderExtension;
 import com.example.platform.runtime.CpuArchitectureProbe;
 import com.example.platform.runtime.ProviderExecutableDependencyProbe;
 import com.example.platform.runtime.ExecutableIdentity;

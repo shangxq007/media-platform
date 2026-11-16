@@ -20,7 +20,6 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
-    implementation(project(":bmf-provider-module"))
     api(project(":extension-module"))
     api(project(":worker-fabric-module"))
     api(project(":media-execution-plan-module"))

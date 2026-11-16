@@ -1,4 +1,4 @@
-package com.example.platform.providerplugin.bmf;
+package com.example.platform.bmfprovider;
 
 import com.example.platform.bmf.BmfCpuProvider;
 import com.example.platform.bmf.BmfCpuRuntimeBindingFactory;

@@ -5,7 +5,7 @@ import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginHost;
 import com.example.platform.providerplugin.InProcessProviderPlugins;
-import com.example.platform.providerplugin.bmf.BmfProviderExtension;
+import com.example.platform.bmfprovider.BmfProviderExtension;
 import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
 import com.example.platform.sandbox.SandboxCancellation;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
