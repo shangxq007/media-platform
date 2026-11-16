@@ -3,7 +3,6 @@
         allowedDependencies = {
             "workerfabric :: domain"
         ,
-            "bmf",
             "shared"
         ,
             "execution :: compatibility",

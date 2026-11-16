@@ -1,5 +1,7 @@
 # Module Boundary Final Closure — F-01 / F-02
 
+> **SUPERSEDED (historical record).** This document records the state of the previous round (candidate `b58fc22d`). The owner-approved final implementation now delivers a green Modulith gate and the BMF bridge; see `ModuleBoundaryOwnerApprovedCloseout.md` and `ModuleBoundaryOwnerApprovedTestMatrix.md` for the current state.
+
 **Task:** `MEDIA_PLATFORM_MODULE_BOUNDARY_CONSOLIDATION_R1_FINAL_CLOSURE`
 **Branch:** `task/module-boundary-consolidation-r1` (existing task worktree)
 **Worktree:** `/home/user/Documents/workspace/projects/media-platform-module-boundary-consolidation-r1`

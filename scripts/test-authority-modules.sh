@@ -60,7 +60,7 @@ case "${1:-}" in
     ;;
   execution)
     ./gradlew --no-daemon --console=plain \
-      :bmf-provider-module:test :provider-plugin-runtime-module:test \
+      :bmf-provider-module:test :bmf-provider-plugin-module:test :provider-plugin-runtime-module:test \
       :worker-fabric-module:test --tests '*RuntimeClosedLoopConformanceTest' --tests '*RuntimeClosedLoopArchitectureGuardTest' \
       :remote-render-worker:test --tests '*RemoteRenderWorkerTest' \
       :outbox-event-module:test \

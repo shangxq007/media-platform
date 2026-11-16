@@ -1,5 +1,7 @@
 # Module Boundary Final — Test Matrix
 
+> **SUPERSEDED (historical record).** This document records the state of the previous round (candidate `b58fc22d`). The owner-approved final implementation now delivers a green Modulith gate and the BMF bridge; see `ModuleBoundaryOwnerApprovedCloseout.md` and `ModuleBoundaryOwnerApprovedTestMatrix.md` for the current state.
+
 **Task:** `MEDIA_PLATFORM_MODULE_BOUNDARY_CONSOLIDATION_R1_FINAL_CLOSURE`
 **Base:** `4765eda5f0527c25d61139b2af4dbb5824db3efc` / `636186a192c509fca6c326400b1b6bcb8386d3a1`
 **Previous candidate:** `ef80d09d07c73a4ae6b199b5b7bcd36945aecd83` / `379d2c9c12d77687e145d9bea0e84b6c85f7402d`
