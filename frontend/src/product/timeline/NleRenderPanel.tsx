@@ -15,6 +15,7 @@ function save(blob: Blob) {
 
 export function NleRenderPanel({ head }: { head: CanonicalHeadReference | null }) {
   const project = useProjectContext()
+  const [startMillis, setStartMillis] = useState(0)
   const [endMillis, setEndMillis] = useState(3000)
   const [fps, setFps] = useState(24)
   const [jobs, setJobs] = useState<RenderJobSummary[]>([])
@@ -59,7 +60,7 @@ export function NleRenderPanel({ head }: { head: CanonicalHeadReference | null }
   }
   function submit() {
     if (!head || !project.tenantId) return
-    const intent = { revisionId: head.revisionId, extent: { startMillis: 0, endMillis,
+    const intent = { revisionId: head.revisionId, extent: { startMillis, endMillis,
       frameRateNumerator: fps, frameRateDenominator: 1 }, outputFormat: 'MP4' as const, profile: 'default' }
     void run(async () => {
       const accepted = await FormalRenderAPI.submit(intent, key([project.projectId, intent]))
@@ -75,9 +76,10 @@ export function NleRenderPanel({ head }: { head: CanonicalHeadReference | null }
   return <section aria-label="Render and delivery">
     <h3>Render current revision</h3>
     <p>{head ? 'Current authoritative revision is ready to render.' : 'Authoritative revision unavailable.'}</p>
+    <label>Output start (ms) <input type="number" min={0} value={startMillis} onChange={event => setStartMillis(Number(event.target.value))} /></label>
     <label>Output end (ms) <input type="number" min={1} value={endMillis} onChange={event => setEndMillis(Number(event.target.value))} /></label>
     <label>Frame rate <input type="number" min={1} value={fps} onChange={event => setFps(Number(event.target.value))} /></label>
-    <button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || fps <= 0} onClick={submit}>Submit RenderJob</button>
+    <button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || endMillis <= startMillis || startMillis < 0 || fps <= 0} onClick={submit}>Submit RenderJob</button>
     <button type="button" disabled={busy} onClick={() => void refresh()}>Refresh jobs</button>
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
     <h4>Render jobs</h4>

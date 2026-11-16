@@ -37,6 +37,12 @@ export const FormalRenderAPI = {
       .parse(await request(c => versionlessApi.post(`/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/apply`, command, c), signal))
     return { revisionId: value.newRevisionId ?? value.baseRevisionId, contentHash: value.resultContentHash ?? value.unchangedContentHash ?? '' }
   },
+  async previewOperation(tenant: string, project: string, command: ClipEdit, signal?: AbortSignal) {
+    return z.object({ status: z.literal('VALID'), definitionId: z.string(), clipId: z.string(),
+      type: z.string(), edge: z.string().nullable(), delta: z.string().nullable() })
+      .parse(await request(c => versionlessApi.post(
+        `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/preview`, command, c), signal))
+  },
   async submit(intent: RenderIntent, key: string, signal?: AbortSignal) {
     return Submission.parse(await request(c => versionlessApi.post('/render-jobs', intent, { ...c, headers: { 'Idempotency-Key': key } }), signal))
   },

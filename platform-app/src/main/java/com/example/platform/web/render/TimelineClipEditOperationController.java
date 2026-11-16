@@ -60,6 +60,36 @@ public class TimelineClipEditOperationController {
                 ? HttpStatus.CREATED : HttpStatus.OK).body(result);
     }
 
+    /**
+     * Side-effect-free preview of the exact clip edit the same command would apply.
+     *
+     * <p>It runs the canonical Operation owner's preflight ({@link OperationInvocationPort#validate})
+     * so source-range, duration and placement rules are evaluated by the same authority, and it
+     * never writes a Revision. The client pairs it with the projected range it renders locally.
+     */
+    @PostMapping("/preview")
+    public ResponseEntity<ClipEditPreview> preview(
+            @PathVariable String tenantId, @PathVariable String projectId,
+            @RequestBody com.example.platform.render.app.operation.TimelineClipEditCommand body) {
+        requireId(tenantId, "tenantId");
+        requireId(projectId, "projectId");
+        CanonicalActor actor = actors.resolveCurrentActor()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "authenticated actor required"));
+        if (!tenantId.equals(TenantContext.get()) || !tenantId.equals(actor.tenantId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "tenant scope mismatch");
+        }
+        OperationRequest request = body.toOperationRequest(projectId);
+        invocations.validate(request,
+                new OperationInvocationContext(actor, body.commandId(), null, "timeline-http"), projectId);
+        return ResponseEntity.ok(new ClipEditPreview("VALID",
+                request.definitionId().value(), body.clipId(), body.type(), body.edge(), body.delta()));
+    }
+
+    /** Preview acknowledgement: the exact command shape is accepted; nothing was persisted. */
+    public record ClipEditPreview(String status, String definitionId, String clipId, String type,
+                                  String edge, String delta) {}
+
     @ExceptionHandler(OperationInvocationException.class)
     ResponseEntity<ProblemDetail> operationFailure(OperationInvocationException failure) {
         HttpStatus status = switch (failure.code()) {

@@ -53,6 +53,7 @@ export const POST_H7_GOVERNED_PATHS = [
   'product/timeline/NleRenderPanel.tsx',
   'product/timeline/SemanticDiff.tsx',
   'product/timeline/SourceBrowser.tsx',
+  'product/timeline/trim.ts',
   'product/timeline/TimelineNavigation.tsx',
   'product/timeline/editor-state.ts',
   'product/timeline/gateways.ts',

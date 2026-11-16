@@ -35,6 +35,63 @@ class TimelineClipEditOperationControllerTest {
 
     @AfterEach void clearTenant() { TenantContext.clear(); }
 
+    private static final String PREVIEW_PATH =
+            "/api/tenants/tenant-a/projects/project-a/timeline-operations/clips/preview";
+
+    private static String trimBody(String edge, String delta) {
+        return """
+                {"type":"TRIM_CLIP","baseRevisionId":"rev-1","baseContentHash":"%s",
+                 "clipId":"clip-1","delta":"%s","edge":"%s","commandId":"preview-1"}
+                """.formatted(HASH, delta, edge);
+    }
+
+    @Test
+    void trimPreviewValidatesThroughTheCanonicalAuthorityWithoutPersisting() throws Exception {
+        TenantContext.set("tenant-a");
+        var actors = mock(CanonicalActorResolver.class);
+        var invocations = mock(OperationInvocationPort.class);
+        when(actors.resolveCurrentActor()).thenReturn(Optional.of(
+                CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
+        var mvc = MockMvcBuilders.standaloneSetup(
+                new TimelineClipEditOperationController(invocations, actors)).build();
+
+        mvc.perform(post(PREVIEW_PATH).contentType(MediaType.APPLICATION_JSON)
+                        .content(trimBody("START", "1/2")))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.status").value("VALID"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.edge").value("START"));
+
+        var requests = ArgumentCaptor.forClass(OperationRequest.class);
+        verify(invocations).validate(requests.capture(), any(), org.mockito.ArgumentMatchers.eq("project-a"));
+        verify(invocations, org.mockito.Mockito.never()).invoke(any(), any());
+        assertEquals(OperationDefinition.V1.TRIM.definitionId(), requests.getValue().definitionId());
+        var trim = assertInstanceOf(OperationParameters.TrimParameters.class, requests.getValue().parameters());
+        assertEquals(OperationParameters.TrimParameters.TrimEdge.START, trim.edge());
+    }
+
+    @Test
+    void trimPreviewSurfacesTheCanonicalRejection() throws Exception {
+        TenantContext.set("tenant-a");
+        var actors = mock(CanonicalActorResolver.class);
+        var invocations = mock(OperationInvocationPort.class);
+        when(actors.resolveCurrentActor()).thenReturn(Optional.of(
+                CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("trim must leave a positive media range"))
+                .when(invocations).validate(any(), any(), any());
+        var mvc = MockMvcBuilders.standaloneSetup(
+                new TimelineClipEditOperationController(invocations, actors)).build();
+
+        mvc.perform(post(PREVIEW_PATH).contentType(MediaType.APPLICATION_JSON)
+                        .content(trimBody("END", "1/2")))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.errorCode").value("INVALID_REQUEST"));
+        verify(invocations, org.mockito.Mockito.never()).invoke(any(), any());
+    }
+
+
     @Test
     void eachEditIsSubmittedAsExactProjectScopedOperation() throws Exception {
         TenantContext.set("tenant-a");
