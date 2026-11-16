@@ -11,14 +11,16 @@ BASE_TREE:   ec5394422872affb60e8c1fa2bd8656ec04bdf8a
 RULES_BEFORE: 33
 RULES_REMOVED_STALE: 7          (AV-008, AV-015, AV-022, AV-028, AV-031, AV-032, AV-033)
 RULES_REPLACED_WITH_CONTRACT: 23 (AV-001..029 contractual items)
-RULES_RETAINED: 3               (AV-011, AV-027, AV-030 — graph kernel)
+RULES_RETAINED: 3               (AV-011, AV-027, AV-030 — graph kernel, owner decision D4)
 ALLOWED_VIOLATIONS_FINAL: 3
 
-NAMED_INTERFACES_ADDED: 19 new package-info files + 23 extended/annotated + 22 type-level
-APPLICATION_MODULES_ADDED: operation, timeline, execution, artifact, media, typedschema,
-  fonttext, fontpipeline, audio, colorimage, ingest, persistence, workerfabric, outbox,
-  delivery, federation, analytics, bmf, providerplugin, bmfprovider, and the platform-app
-  composition slices that needed an explicit root (see the declaration matrix)
+NAMED_INTERFACES_ADDED: 34 new package-info files + 23 extended package-info files + 17 operation
+  source files carrying 21 type-level annotations
+APPLICATION_MODULES_ADDED: new root package-info for execution, ingest, media, operation,
+  persistence and timeline; existing roots extended with @ApplicationModule/allowedDependencies in
+  artifact, workerfabric, outbox, delivery, federation, analytics, bmf, providerplugin, bmfprovider,
+  fonttext, fontpipeline, audio, colorimage, commerce, entitlement, identity, render, workflow and
+  the platform-app composition slices (see the declaration matrix)
 ALLOWED_DEPENDENCIES_ADDED: per consumer module root, matching the measured edges only
 
 TYPEDSCHEMA_RECORDS_CONTRACT: PACKAGE_LEVEL_NAMED_INTERFACE (D3-A), declared from the

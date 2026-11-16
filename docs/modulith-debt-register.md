@@ -34,6 +34,14 @@
 
 保留规则文本与本轮审计前完全一致，未放宽匹配范围。
 
+**当前匹配状态（实测）：3 条规则当前匹配 0 条诊断。** 原因：本轮为 render / workflow / execution
+补写根 `@ApplicationModule` 后，它们对 graph 的合法依赖以
+`graph :: api` / `graph :: result` 的形式显式声明（graph 模块本身仍未标注、未引入 Spring 依赖），
+因此 Modulith 报告形态从旧的 module/non-exposed 文本变为 named interface 文本。
+Owner 决定 D4 明确保留这三条规则作为 graph 政策标记；它们不是"当前有效过滤"，而是
+"未来若以旧形态出现 graph 依赖时必须失败"的精确约束。三条规则将在 graph 内核被正式建模
+（或等价 peer contract）时删除。
+
 ## TypedSchema Generated Records
 
 ```text

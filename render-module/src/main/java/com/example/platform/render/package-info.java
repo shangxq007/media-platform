@@ -66,10 +66,11 @@
             "timeline :: selection",
             "timeline :: temporal"
         ,
-            "graph :: api",
-            "graph :: result",
             "shared :: authorization",
             "shared :: capability"
+,
+            "graph :: api",
+            "graph :: result"
         }
 )
 package com.example.platform.render;

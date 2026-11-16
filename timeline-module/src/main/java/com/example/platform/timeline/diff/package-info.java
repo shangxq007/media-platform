@@ -1,8 +1,7 @@
 /**
  * Semantic Diff V1 - read-only diff engine for Timeline Git.
  *
- * <p>This
-package provides:</p>
+ * <p>This package provides:</p>
  * <ul>
  *   <li>{@link com.example.platform.timeline.diff.TimelineDiffEngine} - pure domain diff engine</li>
  *   <li>{@link com.example.platform.timeline.diff.TimelineChangeSet} - immutable result model</li>

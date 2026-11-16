@@ -5,8 +5,9 @@
         ,
             "shared :: time"
         ,
-            "graph :: api",
-            "graph :: result",
             "shared :: authorization"
+,
+            "graph :: api",
+            "graph :: result"
         })
 package com.example.platform.workflow;

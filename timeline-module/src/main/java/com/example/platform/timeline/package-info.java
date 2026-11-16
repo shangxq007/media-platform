@@ -6,7 +6,6 @@
             "fonttext :: text"
         ,
             "artifact :: app",
-            "artifact :: app",
             "artifact :: contract",
             "artifact :: domain",
             "fonttext :: resource",
