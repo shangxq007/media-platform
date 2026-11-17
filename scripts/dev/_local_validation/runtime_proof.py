@@ -33,8 +33,14 @@ for label,path,token,expected in [('history',base+'/status-history','token',{200
 (r/'authorization-negatives.json').write_text(json.dumps(results,indent=2));print('AUTHORIZATION_NEGATIVES_PASS')
 '''
 (app/'authorization-negatives.py').write_text(client);execute('authorization-negatives',sandbox_prefix(app/'binding.json')+['/usr/bin/python3','-B',str(app/'authorization-negatives.py'),str(app)])
-tools=R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl';env={'PATH':'/usr/bin:/bin','LD_LIBRARY_PATH':str(tools)};argv=[str(tools/'ffprobe'),'-v','error','-show_entries','stream=codec_name,width,height:format=duration','-of','json',str(app/'downloaded-final.mp4')];p=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=30);assert p.returncode==0;probe=json.loads(p.stdout);expected_duration=2.0 if (app/'operation-http.stdout').exists() else 1.0
-assert probe['streams'][0]['codec_name']=='h264' and probe['streams'][0]['width']==320 and abs(float(probe['format']['duration'])-expected_duration) <= 1.0/30.0 + 1e-6;(app/'downloaded-ffprobe.json').write_text(json.dumps(dict(argv=argv,exit_code=p.returncode,probe=probe,sha256=hashlib.sha256((app/'downloaded-final.mp4').read_bytes()).hexdigest()),indent=2));print('REAL_HTTP_PRODUCT_FACTS_AND_FFPROBE_PASS',job)
+tools=R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl';env={'PATH':'/usr/bin:/bin','LD_LIBRARY_PATH':str(tools)};argv=[str(tools/'ffprobe'),'-v','error','-show_entries','stream=codec_name,width,height:format=duration','-of','json',str(app/'downloaded-final.mp4')];p=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=30);assert p.returncode==0;probe=json.loads(p.stdout);scenario=json.loads((R/'07-runtime/run.json').read_text()).get('scenario')
+if scenario=='multi-clip-no-audio':
+    expected_duration=3.0
+    duration_tolerance=0.1
+else:
+    expected_duration=2.0 if (app/'operation-http.stdout').exists() else 1.0
+    duration_tolerance=1.0/30.0 + 1e-6
+assert probe['streams'][0]['codec_name']=='h264' and probe['streams'][0]['width']==320 and abs(float(probe['format']['duration'])-expected_duration) <= duration_tolerance;(app/'downloaded-ffprobe.json').write_text(json.dumps(dict(argv=argv,exit_code=p.returncode,probe=probe,sha256=hashlib.sha256((app/'downloaded-final.mp4').read_bytes()).hexdigest()),indent=2));print('REAL_HTTP_PRODUCT_FACTS_AND_FFPROBE_PASS',job)
 if (app/'operation-http.stdout').exists():
     frame_evidence = {}
     for label, second, dominant in [('red', '0', 0), ('blue', '1', 2)]:

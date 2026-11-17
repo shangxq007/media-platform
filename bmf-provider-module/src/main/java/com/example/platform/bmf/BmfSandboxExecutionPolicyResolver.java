@@ -58,23 +58,68 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             List<MaterializedExecutionInput> runtimeLocalInputs) {
         if (!(command.invocationSpec() instanceof ProcessInvocationSpec invocation)
                 || !invocation.executable().equals(python.toString())
-                || invocation.arguments().size() != 8
+                || invocation.arguments().size() < 4
                 || !invocation.arguments().get(0).equals("-s")
-                || !invocation.arguments().get(1).equals("-c")
-                || !invocation.arguments().get(2).equals(BmfCpuRuntimeAdapter.GRAPH_PROGRAM)
-                || !invocation.arguments().get(4).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
-                || !isKnownOperation(invocation.arguments().get(5))
-                || !isNonNegativeSeconds(invocation.arguments().get(6))
-                || !isNonNegativeSeconds(invocation.arguments().get(7))
-                || runtimeLocalInputs.size() != 1) {
-            return rejected("BMF requires the exact graph program, one materialized input and a bounded operation");
+                || !invocation.arguments().get(1).equals("-c")) {
+            return rejected("BMF requires the exact graph program, materialized inputs and bounded timing");
         }
-        var input = runtimeLocalInputs.getFirst();
-        if (!invocation.arguments().get(3).equals(
-                BmfCpuRuntimeAdapter.materializedInputToken(input.inputId()))) {
+        var arguments = invocation.arguments();
+        String program = arguments.get(2);
+        boolean multiInput = BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM.equals(program);
+        List<String> inputTokens;
+        String operation;
+        String start;
+        String duration;
+        String rate = null;
+        if (multiInput) {
+            int count;
+            try {
+                count = Integer.parseInt(arguments.get(3));
+            } catch (NumberFormatException malformed) {
+                return rejected("BMF composite input count is invalid");
+            }
+            if (count < 1 || arguments.size() != count + 7
+                    || !arguments.get(4 + count).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
+                    || !isNonNegativeSeconds(arguments.get(5 + count))
+                    || !arguments.get(6 + count).matches("[0-9]+/[0-9]+")) {
+                return rejected("BMF composite requires the exact program, inputs and timing");
+            }
+            inputTokens = List.copyOf(arguments.subList(4, 4 + count));
+            operation = "composite";
+            start = "0";
+            duration = arguments.get(5 + count);
+            rate = arguments.get(6 + count);
+        } else if (BmfCpuRuntimeAdapter.GRAPH_PROGRAM.equals(program)) {
+            if (arguments.size() != 8
+                    || !arguments.get(4).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
+                    || !isKnownOperation(arguments.get(5))
+                    || !isNonNegativeSeconds(arguments.get(6))
+                    || !isNonNegativeSeconds(arguments.get(7))) {
+                return rejected("BMF requires the exact graph program, one materialized input and a bounded operation");
+            }
+            inputTokens = List.of(arguments.get(3));
+            operation = arguments.get(5);
+            start = arguments.get(6);
+            duration = arguments.get(7);
+        } else {
+            return rejected("BMF requires the exact graph program");
+        }
+        if (runtimeLocalInputs.size() != inputTokens.size()) {
+            return rejected("BMF input count does not match the materialized inputs");
+        }
+        Map<String, MaterializedExecutionInput> byToken = new java.util.LinkedHashMap<>();
+        for (var input : runtimeLocalInputs) {
+            byToken.put(BmfCpuRuntimeAdapter.materializedInputToken(input.inputId()), input);
+        }
+        if (byToken.size() != runtimeLocalInputs.size()
+                || new java.util.HashSet<>(inputTokens).size() != inputTokens.size()
+                || !byToken.keySet().containsAll(inputTokens)) {
             return rejected("BMF input identity does not match the materialized Artifact");
         }
-        Path inputPath = input.materializedArtifact().path().toAbsolutePath().normalize();
+        List<Path> mounts = new ArrayList<>(List.of(python, runtimeRoot));
+        for (var token : inputTokens) {
+            mounts.add(byToken.get(token).materializedArtifact().path().toAbsolutePath().normalize());
+        }
         if (!Files.isRegularFile(python) || !Files.isExecutable(python)
                 || !Files.isDirectory(runtimeRoot.resolve("output/bmf"))
                 || !Files.isRegularFile(runtimeRoot.resolve("output/bmf/lib/libbuiltin_modules.so"))
@@ -83,17 +128,31 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             return rejected("BMF Python or pinned runtime distribution is unavailable");
         }
         try {
-            List<Path> mounts = new ArrayList<>(List.of(python, runtimeRoot, inputPath));
             mounts.sort(Comparator.comparing(Path::toString));
             int runtimeIndex = mounts.indexOf(runtimeRoot);
             Path sandboxRuntime = Path.of("/sandbox-inputs/input-" + runtimeIndex);
             Path working = workspace.outputStagingRoot().resolve("attempt-"
                     + UUID.nameUUIDFromBytes(command.platformExecutionAttemptId().value()
                             .getBytes(StandardCharsets.UTF_8)));
-            List<String> args = List.of("-s", "-c", BmfCpuRuntimeAdapter.GRAPH_PROGRAM,
-                    inputPath.toString(), ProviderNativeOutputFiles.RENDER_OUTPUT,
-                    invocation.arguments().get(5), invocation.arguments().get(6),
-                    invocation.arguments().get(7));
+            List<String> args = new ArrayList<>(List.of("-s", "-c", program));
+            if (multiInput) {
+                args.add(Integer.toString(inputTokens.size()));
+                for (var token : inputTokens) {
+                    Path inputPath = byToken.get(token).materializedArtifact().path().toAbsolutePath().normalize();
+                    args.add("/sandbox-inputs/input-" + mounts.indexOf(inputPath));
+                }
+                args.add(ProviderNativeOutputFiles.RENDER_OUTPUT);
+                args.add(duration);
+                args.add(rate);
+            } else {
+                Path inputPath = byToken.get(inputTokens.getFirst())
+                        .materializedArtifact().path().toAbsolutePath().normalize();
+                args.add("/sandbox-inputs/input-" + mounts.indexOf(inputPath));
+                args.add(ProviderNativeOutputFiles.RENDER_OUTPUT);
+                args.add(operation);
+                args.add(start);
+                args.add(duration);
+            }
             var requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(Set.of(python.toString()), python.toString(), args, timeout),
                     FilesystemPolicy.exact(Set.copyOf(mounts), workspace.root(),

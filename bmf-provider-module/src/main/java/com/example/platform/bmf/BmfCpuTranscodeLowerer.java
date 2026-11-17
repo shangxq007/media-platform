@@ -3,6 +3,7 @@ package com.example.platform.bmf;
 import com.example.platform.execution.planning.ExecutionIoProjection.CapabilityRequirementRef;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.render.domain.renderplan.RenderDependency;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.providernative.PlanLowerer;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
@@ -12,12 +13,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Admits the bounded BMF render units: one materialized video input, one authoritative output.
+ * Admits the bounded BMF render units: one materialized video input or a contiguous multi-input
+ * composite, one authoritative output.
  *
  * <p>Supported operation keys are {@code decode}, {@code composite}, {@code encode} and
- * {@code transcode} ({@link BmfOperation}). Anything else fails before a runtime process starts.
- * The bounded V1 does not compose timed text, multiple base inputs, audio or authored execution
- * intents; those cases are rejected instead of being silently ignored.
+ * {@code transcode} ({@link BmfOperation}). A COMPOSITE unit with several timed base inputs is
+ * lowered only when the inputs are contiguous and cover the whole propagated extent; a gap, an
+ * overlap or a timed-text input is rejected so BMF never silently compresses the timeline. Audio and
+ * authored execution intents remain unsupported.
  */
 public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscodePlan> {
     @Override
@@ -50,6 +53,9 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
             throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                     "BMF does not accept authored execution intents or artifact capability parameters");
         }
+        if (operation == BmfOperation.COMPOSITE && isMultiInputComposite(unit)) {
+            return compositePlan(task, unit);
+        }
         if (unit.typedInputs().size() != 1 || task.requiredRuntimeInputs().size() != 1) {
             throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                     "BMF requires exactly one materialized input");
@@ -72,6 +78,81 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), operation,
                 task.requiredRuntimeInputs().getFirst().inputId(),
                 task.authoritativeOutputIds().getFirst(), window);
+    }
+
+    private static boolean isMultiInputComposite(
+            com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit unit) {
+        if (unit.typedInputs().size() > 1) {
+            return true;
+        }
+        return unit.typedInputs().stream().anyMatch(input ->
+                input.dependencyVariant() instanceof RenderDependency.TimedCompositeInput);
+    }
+
+    /**
+     * Multi-input composite: every input must be a timed base video, the inputs must be contiguous
+     * and cover the whole propagated extent. BMF V1 concatenates them, so a gap must fail closed
+     * rather than being silently compressed.
+     */
+    private static BmfCpuTranscodePlan compositePlan(
+            ExecutableTask task,
+            com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit unit) {
+        var extent = unit.propagatedExtent();
+        if (extent == null || !extent.end().isGreaterThan(extent.start())) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "BMF multi-input composition requires an exact propagated extent");
+        }
+        var runtimeIds = task.requiredRuntimeInputs().stream()
+                .map(input -> input.inputId()).collect(java.util.stream.Collectors.toSet());
+        if (runtimeIds.size() != unit.typedInputs().size()
+                || task.requiredRuntimeInputs().size() != unit.typedInputs().size()) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "BMF multi-input composition requires every declared input");
+        }
+        var timed = new java.util.ArrayList<BmfCpuTranscodePlan.TimedInput>();
+        for (var input : unit.typedInputs()) {
+            if (input.dependencyVariant() instanceof RenderDependency.CompositeInput) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "BMF V1 does not compose timed text");
+            }
+            if (!(input.dependencyVariant() instanceof RenderDependency.TimedCompositeInput window)) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "BMF multi-input composition requires timed composite dependencies");
+            }
+            if (!runtimeIds.contains(input.inputId())
+                    || window.start().isLessThan(extent.start())
+                    || window.end().isGreaterThan(extent.end())
+                    || !window.end().isGreaterThan(window.start())) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "each composition input requires exact in-extent timing");
+            }
+            timed.add(new BmfCpuTranscodePlan.TimedInput(input.inputId(),
+                    window.start().subtract(extent.start()), window.end().subtract(extent.start())));
+        }
+        timed.sort(java.util.Comparator.comparing(BmfCpuTranscodePlan.TimedInput::start)
+                .thenComparing(input -> input.inputId().value()));
+        var previous = timed.getFirst();
+        if (!previous.start().equals(MediaTime.ZERO)) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "BMF composition cannot express a timeline gap before the first input");
+        }
+        for (int index = 1; index < timed.size(); index++) {
+            var current = timed.get(index);
+            if (!previous.end().equals(current.start())) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "BMF composition requires contiguous non-overlapping inputs (no timeline gap)");
+            }
+            previous = current;
+        }
+        MediaTime duration = extent.end().subtract(extent.start());
+        if (!previous.end().equals(duration)) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "BMF composition requires the inputs to cover the whole extent");
+        }
+        return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), BmfOperation.COMPOSITE,
+                timed.getFirst().inputId(), task.authoritativeOutputIds().getFirst(),
+                Optional.empty(), java.util.List.copyOf(timed), Optional.of(duration),
+                Optional.of(extent.frameRate()));
     }
 
     private static Optional<BmfCpuTranscodePlan.SourceWindow> sourceWindow(

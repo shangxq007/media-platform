@@ -18,6 +18,7 @@ import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.render.domain.renderplan.RenderDependency;
+import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.domain.renderplan.RenderSampleWindow;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
@@ -133,6 +134,103 @@ class BmfCpuTranscodeSeamsTest {
                 ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH);
         assertThatThrownBy(() -> new BmfCpuRuntimeAdapter(Path.of("python3.9")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void contiguous_multi_input_composite_lowers_to_a_concatenated_plan() {
+        var task = compositeTask(new int[][]{{0, 2000}, {2000, 3000}}, 0, 3000);
+        var plan = new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING));
+        assertThat(plan.operation()).isEqualTo(BmfOperation.COMPOSITE);
+        assertThat(plan.compositeInputs()).hasSize(2);
+        assertThat(plan.compositeDuration()).contains(MediaTime.ofMillis(3000));
+        assertThat(plan.compositeFrameRate()).contains(FrameRate.of(24, 1));
+        assertThat(plan.compositeInputs().getFirst().start()).isEqualTo(MediaTime.ZERO);
+        assertThat(plan.compositeInputs().getLast().end()).isEqualTo(MediaTime.ofMillis(3000));
+    }
+
+    @Test
+    void composite_with_a_timeline_gap_is_rejected() {
+        var task = compositeTask(new int[][]{{0, 2000}, {2500, 3000}}, 0, 3000);
+        assertFailure(() -> new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING)),
+                ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS);
+    }
+
+    @Test
+    void composite_with_overlapping_inputs_is_rejected() {
+        var task = compositeTask(new int[][]{{0, 2000}, {1500, 3000}}, 0, 3000);
+        assertFailure(() -> new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING)),
+                ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS);
+    }
+
+    @Test
+    void composite_with_a_timed_text_input_is_rejected() {
+        var task = compositeTask(new int[][]{{0, 2000}, {2000, 3000}}, 0, 3000);
+        var unit = task.memberships().getFirst().physicalPlanUnit();
+        var text = mock(InputBinding.class);
+        when(text.inputId()).thenReturn(new ExecutionInputId("text-0"));
+        when(text.dependencyVariant()).thenReturn(mock(RenderDependency.CompositeInput.class));
+        var original = unit.typedInputs();
+        when(unit.typedInputs()).thenReturn(List.of(original.getFirst(), text));
+        assertFailure(() -> new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING)),
+                ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS);
+    }
+
+    @Test
+    void adapter_emits_the_multi_input_concat_graph() {
+        var adapter = new BmfCpuRuntimeAdapter(Path.of("/usr/bin/" + "python3.9"));
+        var second = new ExecutionInputId("in-1");
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.COMPOSITE,
+                INPUT_ID, OUTPUT_ID, Optional.empty(),
+                List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, MediaTime.ofMillis(2000)),
+                        new BmfCpuTranscodePlan.TimedInput(second, MediaTime.ofMillis(2000), MediaTime.ofMillis(3000))),
+                Optional.of(MediaTime.ofMillis(3000)), Optional.of(FrameRate.of(24, 1)));
+        var bundle = adapter.adapt(plan, runtimeContext(TASK_ID));
+        var invocation = (ProcessInvocationSpec) bundle.commands().getFirst().invocationSpec();
+        assertThat(invocation.arguments()).containsExactly("-s", "-c",
+                BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM, "2",
+                BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID),
+                BmfCpuRuntimeAdapter.materializedInputToken(second),
+                "platform-provider-output.bin", "3", "24/1");
+    }
+
+    private static ExecutableTask compositeTask(int[][] intervals, int extentStartMillis,
+            int extentEndMillis) {
+        var task = mock(ExecutableTask.class);
+        var membership = mock(ExecutableTaskMembership.class);
+        var unit = mock(PhysicalPlanUnit.class);
+        when(task.id()).thenReturn(TASK_ID);
+        when(task.providerBindingPin()).thenReturn(BmfCpuProvider.BINDING);
+        when(task.memberships()).thenReturn(List.of(membership));
+        when(membership.physicalPlanUnit()).thenReturn(unit);
+        when(unit.operationKey()).thenReturn("composite");
+        when(unit.propagatedExtent()).thenReturn(new RenderExtent(
+                MediaTime.ofMillis(extentStartMillis), MediaTime.ofMillis(extentEndMillis), FrameRate.of(24, 1)));
+        when(unit.capabilityRequirementRefs()).thenReturn(List.of(
+                new CapabilityRequirementRef(CapabilityRequirement.of(
+                        CapabilityId.of("render.composite"), RANGE))));
+        when(unit.executionIntentRefs()).thenReturn(List.of());
+        var inputs = new java.util.ArrayList<InputBinding>();
+        var runtimeInputs = new java.util.ArrayList<com.example.platform.execution.taskgraph.ExecutableInputProjection>();
+        for (int index = 0; index < intervals.length; index++) {
+            var id = new ExecutionInputId("in-" + index);
+            var binding = mock(InputBinding.class);
+            when(binding.inputId()).thenReturn(id);
+            when(binding.dependencyVariant()).thenReturn(new RenderDependency.TimedCompositeInput(
+                    MediaTime.ofMillis(intervals[index][0]), MediaTime.ofMillis(intervals[index][1])));
+            inputs.add(binding);
+            var runtime = mock(com.example.platform.execution.taskgraph.ExecutableInputProjection.class);
+            when(runtime.inputId()).thenReturn(id);
+            runtimeInputs.add(runtime);
+        }
+        when(unit.typedInputs()).thenReturn(List.copyOf(inputs));
+        when(unit.typedOutputs()).thenReturn(List.of(mock(OutputDeclaration.class)));
+        when(task.requiredRuntimeInputs()).thenReturn(List.copyOf(runtimeInputs));
+        when(task.authoritativeOutputIds()).thenReturn(List.of(OUTPUT_ID));
+        return task;
     }
 
     private static ExecutableTask task(String operation, String capabilityId) {

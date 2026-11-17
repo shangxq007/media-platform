@@ -150,7 +150,8 @@ class BmfArchitectureGuardTest {
 
         assertThat(instanceFields).extracting(Field::getName)
                 .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin", "operation",
-                        "inputId", "outputId", "sourceWindow");
+                        "inputId", "outputId", "sourceWindow",
+                        "compositeInputs", "compositeDuration", "compositeFrameRate");
         for (Field field : instanceFields) {
             assertThat(field.getName().toLowerCase())
                     .as("provider-local plan component must not leak graph/canonical authority")
