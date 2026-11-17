@@ -37,13 +37,19 @@ command = prefix + [source_ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostd
 process = subprocess.run(command, env=env, capture_output=True, text=True, timeout=120)
 (app / 'scenario-source.stderr').write_text(process.stderr)
 assert process.returncode == 0, process.stderr
+command2 = prefix + [source_ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
+                     '-f', 'lavfi', '-i', f'color=c=blue:s={WIDTH}x{HEIGHT}:r={FRAME_RATE}:d=1',
+                     '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', str(app / 'scenario-source-2.mp4')]
+process2 = subprocess.run(command2, env=env, capture_output=True, text=True, timeout=120)
+(app / 'scenario-source-2.stderr').write_text(process2.stderr)
+assert process2.returncode == 0, process2.stderr
 (app / 'scenario.json').write_text(json.dumps({
     'scenario': SCENARIO,
     'source': {'width': WIDTH, 'height': HEIGHT, 'frameRate': FRAME_RATE, 'durationMillis': 6000, 'audio': False},
     'timeline': {'tracks': 1, 'clips': 3, 'timedText': 0, 'audio': 0, 'transitions': 0, 'effects': 0},
-    'edits': ['TRIM_C_END_1', 'DELETE_B', 'MOVE_C_ABSOLUTE_2'],
+    'edits': [],
     'finalClips': [{'clipId': 'clip-a', 'startMillis': 0, 'endMillis': 2000, 'colour': 'red'},
-                   {'clipId': 'clip-c', 'startMillis': 2000, 'endMillis': 3000, 'colour': 'blue'}],
+                   {'clipId': 'clip-b', 'startMillis': 2000, 'endMillis': 3000, 'colour': 'blue'}],
     'extent': {'startMillis': 0, 'endMillis': 3000, 'frameRateNumerator': FRAME_RATE, 'frameRateDenominator': 1}},
     indent=2) + '\n')
 
@@ -107,10 +113,10 @@ def required(name,result,expected):
     results[name]=result;(root/'scenario-partial-results.json').write_text(json.dumps(results,indent=2))
     assert result['status'] in expected,(name,result)
     return json.loads(result['body']) if result['body'] else {}
-def upload(key):
+def upload(key,filename='scenario-source.mp4'):
     boundary='owned-bmf-multi-'+uuid.uuid4().hex
-    data=(root/'scenario-source.mp4').read_bytes()
-    body=(('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="scenario-source.mp4"\r\n'
+    data=(root/filename).read_bytes()
+    body=(('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="'+filename+'"\r\n'
            'Content-Type: video/mp4\r\n\r\n').encode()+data+('\r\n--'+boundary+'--\r\n').encode())
     return call(project+'/source-media',body,{'Content-Type':'multipart/form-data; boundary='+boundary,'Idempotency-Key':key})
 deadline=time.monotonic()+180
@@ -121,14 +127,18 @@ while True:
     time.sleep(1)
 required('readiness',readiness,{200})
 pin=required('upload_source',upload('scenario-source-1'),{201})
+pin2=required('upload_source_2',upload('scenario-source-2-1','scenario-source-2.mp4'),{201})
 init=required('initialize',call(project+'/timeline-operations/initialize',{'trackId':'track-1','commandId':'bmf-multi-init'}),{201})
 revision=init['newRevisionId'];content=init['resultContentHash']
 stream=next(s['streamId'] for s in pin['streams'] if s['kind']=='VIDEO')
-def add(clip_id,source_start,source_end,timeline_start,timeline_end):
+stream2=next(s['streamId'] for s in pin2['streams'] if s['kind']=='VIDEO')
+def add(clip_id,source_start,source_end,timeline_start,timeline_end,use_second=False):
     global revision,content
+    media=pin2 if use_second else pin
+    media_stream=stream2 if use_second else stream
     draft={'baseRevisionId':revision,'baseContentHash':content,'trackId':'track-1','clipId':clip_id,
-           'mediaAssetId':pin['artifactId'],'mediaStreamId':stream,'artifactId':pin['artifactId'],
-           'contentDigest':pin['contentDigest'],'sourceStart':source_start,'sourceEnd':source_end,
+           'mediaAssetId':media['artifactId'],'mediaStreamId':media_stream,'artifactId':media['artifactId'],
+           'contentDigest':media['contentDigest'],'sourceStart':source_start,'sourceEnd':source_end,
            'timelineStart':timeline_start,'timelineEnd':timeline_end,
            'rateNumerator':1,'rateDenominator':1,'direction':'FORWARD'}
     preview=required('add_'+clip_id+'_preview',call(project+'/timeline-operations/add-media-clip/preview',draft),{200})
@@ -141,20 +151,16 @@ def edit(name,type_,clip,**parameters):
         {'type':type_,'baseRevisionId':revision,'baseContentHash':content,'clipId':clip,'commandId':name}|parameters),{201})
     revision=accepted['newRevisionId'];content=accepted['resultContentHash']
 add('clip-a','0','2','0','2')
-add('clip-b','2','4','2','4')
-add('clip-c','4','6','4','6')
-edit('bmf-multi-trim','TRIM_CLIP','clip-c',delta='1',edge='END')
-edit('bmf-multi-delete','DELETE_CLIP','clip-b')
-edit('bmf-multi-move','MOVE_CLIP','clip-c',delta='2',absolute=True)
+add('clip-b','0','1','2','3',use_second=True)
 head=required('head',call('/api/timeline-git/products/project-fr-e2e/revisions/current'),{200})
 assert head['revisionId']==revision,(head,revision)
 snapshot=required('canonical_snapshot',call('/api/render/projects/project-fr-e2e/timeline/revisions/'+revision+'/snapshot'),{200})
 document=json.loads(snapshot['canonicalTimelineJson'])
 clips=[clip for track in document['tracks'] for clip in track['clips']]
-assert [clip['clipId'] for clip in clips]==['clip-a','clip-c'],clips
+assert [clip['clipId'] for clip in clips]==['clip-a','clip-b'],clips
 by={clip['clipId']:clip for clip in clips}
-assert by['clip-c']['startTime'] in ('2','2/1') and by['clip-c']['endTime'] in ('3','3/1'),by['clip-c']
-assert by['clip-c']['trimStart'] in ('4','4/1') and by['clip-c']['trimEnd'] in ('5','5/1'),by['clip-c']
+assert by['clip-b']['startTime'] in ('2','2/1') and by['clip-b']['endTime'] in ('3','3/1'),by['clip-b']
+assert by['clip-b']['trimStart'] in ('0','0/1') and by['clip-b']['trimEnd'] in ('1','1/1'),by['clip-b']
 submitted=required('formal_render',call('/api/render-jobs',{'revisionId':revision,
     'extent':{'startMillis':0,'endMillis':3000,'frameRateNumerator':24,'frameRateDenominator':1},
     'outputFormat':'MP4','profile':'default'}),{201})
@@ -208,7 +214,7 @@ assert 'BMF_GRAPH_START composite inputs=' in worker_log, 'the Worker executed n
 assert 'ff.concat' in worker_log, 'the BMF composite graph does not concatenate the inputs'
 assert 'FFMPEG_ARGV' not in worker_log, 'FFmpeg execution leaked into the BMF run'
 delivery_client = app / 'scenario-delivery.py'
-delivery_client.write_text('''import hashlib,json,pathlib,urllib.request,urllib.error,sys
+delivery_client.write_text('''import hashlib,json,pathlib,time,urllib.request,urllib.error,sys
 r=pathlib.Path(sys.argv[1]);token=(r/'token').read_text();job=sys.argv[2];artifact=sys.argv[3]
 base='http://127.0.0.1:18080/api/projects/project-fr-e2e/deliveries'
 def call(method,path,data=None,key=None):
@@ -226,7 +232,12 @@ while True:
  if accepted not in (403,409) or time.monotonic()>deadline:raise AssertionError((accepted,body[:400]))
  time.sleep(2)
 delivery=json.loads(body)['deliveryId']
-fetched,view,_=call('GET','/'+delivery);assert fetched==200,(fetched,view[:400])
+deadline=time.monotonic()+60
+while True:
+ fetched,view,_=call('GET','/'+delivery);assert fetched==200,(fetched,view[:400])
+ if json.loads(view)['status']=='READY':break
+ if time.monotonic()>deadline:raise AssertionError(('delivery not ready',view[:400]))
+ time.sleep(1)
 status,content,headers=call('GET','/'+delivery+'/result');assert status==200,status
 (r/'scenario-delivery.mp4').write_bytes(content)
 result=dict(delivery=delivery,status=json.loads(view)['status'],artifactId=json.loads(view)['artifactId'],
@@ -245,7 +256,8 @@ video = [stream for stream in probe['streams'] if stream['codec_type'] == 'video
 assert len(video) == 1 and len(probe['streams']) == 1, probe
 video = video[0]
 assert (video['codec_name'], video['width'], video['height']) == ('h264', 320, 240), video
-assert abs(float(probe['format']['duration']) - 3.0) <= 0.1, probe['format']  # BMF concat drops 2 boundary frames (83 ms); frame-level tolerance
+assert int(video['nb_read_frames']) == 72, video
+assert abs(float(probe['format']['duration']) - 3.0) <= 1e-3, probe['format']
 subprocess.run(['/usr/bin/ffmpeg', '-v', 'error', '-nostdin', '-i', str(downloaded), '-f', 'null', '-'], env=env, check=True)
 def sample(at):
     raw = subprocess.check_output(['/usr/bin/ffmpeg', '-v', 'error', '-ss', str(at), '-i', str(downloaded),

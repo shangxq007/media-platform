@@ -69,6 +69,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 video = ff.setpts(video, 'PTS-STARTPTS')
                 video = ff.scale(video, '320x240')
                 video = ff.fps(video, rate)
+                # BMF drops the final frame of every decoded/normalized segment; holding exactly one
+                # frame restores the authored frame count without duplicating visible content.
+                video = ff.ff_filter([video], 'tpad', stop='1', stop_mode='clone')
                 clips.append(video)
             composed = clips[0] if len(clips) == 1 else ff.concat(*clips, n=len(clips), v=1, a=0)
             composed.encode(None, {'output_path': output, 'format': 'mp4',
