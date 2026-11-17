@@ -309,7 +309,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                         new JdbcEffectSemanticSnapshotStore(dsl)),
                 new JdbcTimelineRevisionSemanticContextStore(dsl),
                 (tx, revision, project, snapshotId, schemaVersion, timelineContentDigest,
-                 revisionNumber, tenantId, source) -> {
+                 revisionNumber, tenantId, source, provenance) -> {
                     throw new IllegalStateException("TX3 injected revision insert failure");
                 },
                 new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(currentRevisionService),
