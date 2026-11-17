@@ -331,7 +331,7 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
                       onPointerMove={dragMove}
                       onPointerUp={event => void endMove(event)}
                       onPointerCancel={() => { moveOrigin.current = null; setMoving(null) }}
-                      title="Drag the clip body to move it; drag an orange edge to trim" 
+                      title="Drag the clip body to move it; drag an orange edge to trim"
                       style={{ position: 'absolute', left: left * TRIM_PIXELS_PER_SECOND,
                                width: Math.max(6, (right - left) * TRIM_PIXELS_PER_SECOND), top: 0, height: 40,
                                background: isActive ? '#1d4ed8aa' : '#374151aa',
