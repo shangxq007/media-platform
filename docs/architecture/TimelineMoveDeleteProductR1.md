@@ -19,7 +19,8 @@ FRONTEND_DELETE:       PASS (Delete/Backspace with focus guard + explicit delete
 REVISION_PERSISTENCE:  PASS (each edit is a canonical revision; refresh restores HEAD)
 REVISION_CAS:          PASS (stale base → 404/409; the E2E stale move on a deleted clip is rejected)
 MULTI_CLIP_TIMELINE:   PASS (A 0–2, B 2–4, C 4–6 → trim C → delete B → move C to 2–3)
-FFMPEG_REAL_RENDER:    PASS (formal RenderJob, 3.0 s output, pixel-proven ordering, deleted clip absent)
+FFMPEG_REAL_RENDER:    PASS (formal RenderJob, 3.0 s output, pixel-proven ordering, deleted clip absent;
+                       the internal #22 bound-graph identity is not exposed by the product API evidence)
 TRIM_REGRESSION:       PASS (trim drag + apply still works; trim→delete→move sequence in one E2E)
 ARCHITECTURE_GUARDS:   PASS (Modulith 0 unexpected, frontend guard, drift, doc governance)
 HERMES_REVIEW:         APPROVE (see TimelineMoveDeleteHermesReview.md)

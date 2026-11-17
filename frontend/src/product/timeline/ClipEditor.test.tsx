@@ -239,3 +239,23 @@ describe('ClipEditor move and delete interaction', () => {
     expect(api.applyOperation).not.toHaveBeenCalled()
   })
 })
+
+
+describe('ClipEditor overlap rejection', () => {
+  it('surfaces a canonical same-track overlap rejection and never applies the move', async () => {
+    api.snapshot.mockResolvedValue(multiClipSnapshot)
+    const onRevisionChanged = vi.fn(async () => {})
+    api.previewOperation.mockRejectedValue(Object.assign(new Error('Clips overlap on the same track'),
+      { response: { status: 422 } }))
+    render(<ClipEditor head={head} onRevisionChanged={onRevisionChanged} />)
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-c')).toBeTruthy())
+    const body = screen.getByLabelText('Timeline clip clip-c')
+    fireEvent.pointerDown(body, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(body, { clientX: 100 - 240, pointerId: 1 })
+    fireEvent.pointerUp(body, { clientX: 100 - 240, pointerId: 1 })
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(screen.getByRole('alert').textContent).toMatch(/overlap/i)
+    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(onRevisionChanged).toHaveBeenCalled()
+  })
+})

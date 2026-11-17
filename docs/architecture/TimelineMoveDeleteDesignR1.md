@@ -21,8 +21,9 @@
 - targets one existing clip (`ExplicitObjectSelection`, `EXACT`);
 - keeps clip ID, track, source range (`trimStart`/`trimEnd`), duration, effects, temporal mapping;
 - absolute mode sets the timeline start to an exact rational; relative mode adds a non-negative exact rational;
-- no other clip moves; gaps and same-track overlaps are legal at the canonical layer (the render planner
-  receives the resulting document unchanged — no new fill/blend rule is invented here);
+- no other clip moves; gaps are legal, but a positive same-track overlap is a fatal canonical
+  validation error (`TIMELINE_CLIP_OVERLAP`, HTTP 422) — the editor surfaces that rejection and
+  re-reads the authoritative revision, so no invalid timeline is ever persisted;
 - a target start before 0 is impossible by construction: `MediaTime` rejects negative ticks and the
   transport regex accepts only non-negative exact rationals;
 - the UI clamps the drag at 0.

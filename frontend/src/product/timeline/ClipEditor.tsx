@@ -84,8 +84,9 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
   const active = clips.find(clip => clip.clipId === selected) ?? null
   const projection = active && pending ? projectTrim(active, pending.edge, pending.delta) : null
 
-  function commandIdFor(clipId: string, kind: string, deltaValue: Rational): string {
-    const fingerprint = JSON.stringify([project.projectId, clipId, kind, formatRational(deltaValue), head?.revisionId])
+  function commandIdFor(clipId: string, kind: string, deltaValue: Rational, edgeValue?: TrimEdge): string {
+    const fingerprint = JSON.stringify([project.projectId, clipId, kind, edgeValue ?? null,
+      formatRational(deltaValue), head?.revisionId])
     keys.current[fingerprint] ??= crypto.randomUUID()
     return keys.current[fingerprint]
   }
@@ -121,7 +122,7 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     if (!head || !project.tenantId || !active || busy) return
     if (compare(deltaValue, { numerator: 0n, denominator: 1n }) <= 0) { setPending(null); return }
     setBusy(true); setMessage(''); setActionFailed(false)
-    const commandId = commandIdFor(active.clipId, 'TRIM_CLIP', deltaValue)
+    const commandId = commandIdFor(active.clipId, 'TRIM_CLIP', deltaValue, trimEdge)
     try {
       await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, {
         type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
