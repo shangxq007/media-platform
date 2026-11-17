@@ -18,6 +18,20 @@ RevisionWriteResult saveRevisionForCommand(
             TimelineDocument document,
             RevisionWriteCommand command);
 
+/**
+ * Command-aware write with atomic commit provenance ({@code change_summary_json})
+ * and optional {@code message}. Both columns are written in the SAME transaction
+ * as the revision, snapshot, parent edge and ref CAS; no later transaction may
+ * backfill them.
+ */
+RevisionWriteResult saveRevisionForCommand(
+            TimelineMutationContext context,
+            RevisionRef targetRef,
+            String expectedCurrentRevisionId,
+            TimelineDocument document,
+            RevisionWriteCommand command,
+            RevisionProvenance provenance);
+
 RevisionWriteResult recordNoOpCommand(
             TimelineMutationContext context,
             RevisionRef targetRef,

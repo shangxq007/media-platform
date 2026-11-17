@@ -12,6 +12,7 @@
         ,
             "fonttext :: typography",
             "shared :: authorization",
+            "shared :: digest",
             "shared :: time",
             "timeline :: canonical"
         }

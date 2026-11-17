@@ -56,7 +56,8 @@
             "entitlement :: commercial",
             "identity :: projects",
             "operation",
-            "operation :: invocation"
+            "operation :: invocation",
+            "operation :: batch"
         ,
             "fonttext :: typography",
             "timeline :: app",

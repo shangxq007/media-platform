@@ -142,7 +142,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         authorizeMutation(context, "save");
         return saveRevisionInternal(context.tenantId(), context.projectId(),
                 expectedCurrentRevisionId, document,
-                java.util.List.of(), java.util.List.of(), context.authorUserId(), null, null).revision();
+                java.util.List.of(), java.util.List.of(), context.authorUserId(), null, null, null).revision();
     }
 
     /**
@@ -158,13 +158,29 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             String expectedCurrentRevisionId,
             TimelineDocument document,
             RevisionWriteCommand command) {
+        return saveRevisionForCommand(context, targetRef, expectedCurrentRevisionId, document,
+                command, null);
+    }
+
+    /**
+     * Command-aware write plus atomic commit provenance. The provenance columns
+     * ({@code change_summary_json}, {@code message}) join the SAME physical
+     * transaction as the revision, snapshot, parent edge and ref CAS.
+     */
+    public RevisionWriteResult saveRevisionForCommand(
+            TimelineMutationContext context,
+            RevisionRef targetRef,
+            String expectedCurrentRevisionId,
+            TimelineDocument document,
+            RevisionWriteCommand command,
+            com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
         Objects.requireNonNull(targetRef, "targetRef");
         requireContextMatchesRef(context, targetRef);
         authorizeMutation(context, "operation-apply");
         SaveOutcome outcome = saveRevisionInternal(
                 targetRef.tenantId(), targetRef.projectId(), expectedCurrentRevisionId, document,
                 java.util.List.of(), java.util.List.of(), context.authorUserId(),
-                Objects.requireNonNull(command, "command"), targetRef);
+                Objects.requireNonNull(command, "command"), targetRef, provenance);
         if (outcome.replayed()) {
             return new RevisionWriteResult(outcome.revisionId(), expectedCurrentRevisionId,
                     outcome.timelineContentHash(), true);
@@ -238,7 +254,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                 expectedCurrentRevisionId, document,
                 effects == null ? java.util.List.of() : effects,
                 definitions == null ? java.util.List.of() : definitions,
-                context.authorUserId(), null, null).revision();
+                context.authorUserId(), null, null, null).revision();
     }
 
     private SaveOutcome saveRevisionInternal(
@@ -248,10 +264,11 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance.EffectDefinition> definitions,
             String createdBy,
             RevisionWriteCommand command,
-            RevisionRef commandTargetRef) {
+            RevisionRef commandTargetRef,
+            com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
         return saveRevisionInternal(tenantId, productId, expectedCurrentRevisionId,
                 document, effects, definitions, createdBy, command, commandTargetRef,
-                java.util.List.of(), "api", null);
+                java.util.List.of(), "api", null, provenance);
     }
 
     /** Sole-boundary two-parent merge persistence: target/main first, source second. */
@@ -266,7 +283,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         return saveRevisionInternal(context.tenantId(), context.projectId(),
                 expectedMainHead, document,
                 java.util.List.of(), java.util.List.of(), context.authorUserId(), null, null,
-                java.util.List.of(sourceRevisionId), "merge", mergeBaseRevisionId).revision();
+                java.util.List.of(sourceRevisionId), "merge", mergeBaseRevisionId, null).revision();
     }
 
     private SaveOutcome saveRevisionInternal(
@@ -279,7 +296,8 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             RevisionRef commandTargetRef,
             java.util.List<String> additionalParents,
             String revisionSource,
-            String mergeBaseRevisionId) {
+            String mergeBaseRevisionId,
+            com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
         requireOwnedProject(tenantId, productId);
         if (command != null && (commandTargetRef == null
                 || !productId.equals(commandTargetRef.projectId())
@@ -388,7 +406,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
 
             revisionPersistence.insertRevisionTx(
                     tx.dsl(), revision, productId, snapshotId, revision.timelineSchemaVersion(),
-                    timelineDigest, nextRevisionNumber, tenantId, revisionSource);
+                    timelineDigest, nextRevisionNumber, tenantId, revisionSource, provenance);
 
             if (!additionalParents.isEmpty()) {
                 tx.dsl().update(TIMELINE_REVISION)

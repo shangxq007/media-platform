@@ -17,4 +17,18 @@ public interface TimelineRevisionPersistencePort {
                           String productId, String snapshotId, String schemaVersion,
                           String timelineContentDigest, int revisionNumber,
                           String tenantId, String source);
+
+    /**
+     * Adds atomic commit provenance to the same physical insert. The default keeps
+     * historical implementations source-compatible; the production persistence
+     * overrides it and writes {@code message} + {@code change_summary_json}.
+     */
+    default void insertRevisionTx(org.jooq.DSLContext tx, TimelineRevision revision,
+                                  String productId, String snapshotId, String schemaVersion,
+                                  String timelineContentDigest, int revisionNumber,
+                                  String tenantId, String source,
+                                  com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
+        insertRevisionTx(tx, revision, productId, snapshotId, schemaVersion,
+                timelineContentDigest, revisionNumber, tenantId, source);
+    }
 }

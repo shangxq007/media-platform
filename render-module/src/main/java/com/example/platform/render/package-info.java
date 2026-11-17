@@ -27,6 +27,8 @@
             "media", "media :: assets", "media :: identity", "media :: model",
             "audio",
             "operation :: invocation",
+            "operation :: batch",
+            "operation :: operation",
             "sandbox :: API", "sandbox :: Execution"
         ,
             "fontpipeline"

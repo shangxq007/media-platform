@@ -196,20 +196,6 @@ class OperationModelTest {
         assertNotEquals(d1, d4);
     }
 
-    // ---- BATCH ----
-    @Test
-    void batchRequiresSingleBaseAndNonEmpty() {
-        OperationInstance inst = new OperationInstance(OperationDefinition.V1.DELETE.definitionId(),
-                OperationDefinitionVersion.of(1, 0), REV, HASH,
-                new OperationTarget.ResolvedClipScopeTarget(new com.example.platform.timeline.semantics.selection.ResolvedScope(
-                        REV, HASH, List.of(TimelineClipId.of("clip-a")), SelectionSpec.ExpansionPolicy.EXACT)),
-                new OperationParameters.NoParameters(), "digest", null);
-        assertThrows(IllegalArgumentException.class, () -> new OperationBatch(List.of(), REV, HASH));
-        OperationBatch batch = new OperationBatch(List.of(inst), REV, HASH);
-        assertEquals(1, batch.instances().size());
-        assertThrows(IllegalArgumentException.class, () -> new OperationBatch(List.of(inst), "R101", HASH));
-    }
-
     // ---- TIMELINE HASH NON-PARTICIPATION ----
     @Test
     void operationResolutionDoesNotChangeTimelineHash() throws Exception {

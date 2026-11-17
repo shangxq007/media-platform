@@ -1158,8 +1158,8 @@ else
     pass "no mutable-latest fallback"
 fi
 
-# OMG-18/19/20/21: batch flat single base, no nesting/planning
-if grep -q 'instances.isEmpty()' operation-module/src/main/java/com/example/platform/operation/operation/OperationBatch.java && grep -q 'mixed baseRevisionId rejected' operation-module/src/main/java/com/example/platform/operation/operation/OperationBatch.java; then
+# OMG-18/19/20/21: one ordered batch contract, non-empty, one exact base per batch
+if grep -q 'EMPTY_BATCH' operation-module/src/main/java/com/example/platform/operation/batch/OperationBatchRequest.java && grep -q 'MIXED_BASE' operation-module/src/main/java/com/example/platform/operation/batch/OperationBatchRequest.java; then
     pass "flat single-base non-empty batch"
 else
     fail "batch constraints missing"

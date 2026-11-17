@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.revision.RevisionProvenance;
 import com.example.platform.timeline.version.TimelineRevision;
 import java.time.LocalDateTime;
 import org.jooq.DSLContext;
@@ -18,7 +19,16 @@ public final class DefaultTimelineRevisionPersistence implements TimelineRevisio
                                  String productId, String snapshotId, String schemaVersion,
                                  String timelineContentDigest, int revisionNumber,
                                  String tenantId, String source) {
-        tx.insertInto(TIMELINE_REVISION)
+        insertRevisionTx(tx, revision, productId, snapshotId, schemaVersion,
+                timelineContentDigest, revisionNumber, tenantId, source, null);
+    }
+
+    @Override
+    public void insertRevisionTx(DSLContext tx, TimelineRevision revision,
+                                 String productId, String snapshotId, String schemaVersion,
+                                 String timelineContentDigest, int revisionNumber,
+                                 String tenantId, String source, RevisionProvenance provenance) {
+        var insert = tx.insertInto(TIMELINE_REVISION)
                 .set(TIMELINE_REVISION.ID, revision.revisionId())
                 .set(TIMELINE_REVISION.PROJECT_ID, productId)
                 .set(TIMELINE_REVISION.PARENT_REVISION_ID, revision.parentRevisionId())
@@ -33,7 +43,14 @@ public final class DefaultTimelineRevisionPersistence implements TimelineRevisio
                 .set(TIMELINE_REVISION.SCHEMA_VERSION, schemaVersion)
                 .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
                 .set(TIMELINE_REVISION.AUTHOR_USER_ID, revision.createdBy())
-                .set(TIMELINE_REVISION.SOURCE, source)
-                .execute();
+                .set(TIMELINE_REVISION.SOURCE, source);
+        if (provenance != null) {
+            // OD7: provenance and message are written in the SAME transaction as
+            // the revision row; no later transaction backfills them.
+            insert = insert
+                    .set(TIMELINE_REVISION.MESSAGE, provenance.message())
+                    .set(TIMELINE_REVISION.CHANGE_SUMMARY_JSON, provenance.changeSummaryJson());
+        }
+        insert.execute();
     }
 }

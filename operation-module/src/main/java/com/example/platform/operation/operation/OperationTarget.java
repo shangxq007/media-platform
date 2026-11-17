@@ -10,6 +10,7 @@ import com.example.platform.timeline.semantics.selection.ResolvedScope;
  * targets are direct typed semantic identities. ResolvedScope is NOT a
  * universal target authority; no raw String / god object / index target.
  */
+@org.springframework.modulith.NamedInterface("operation")
 public sealed interface OperationTarget permits
         OperationTarget.TimelineTarget,
         OperationTarget.ResolvedClipScopeTarget,
@@ -17,6 +18,7 @@ public sealed interface OperationTarget permits
         OperationTarget.SyncTarget,
         OperationTarget.AudioTarget {
 
+    @org.springframework.modulith.NamedInterface("operation")
     record TimelineTarget(String timelineId) implements OperationTarget {
         public TimelineTarget {
             if (timelineId == null || timelineId.isBlank()) {
@@ -25,6 +27,7 @@ public sealed interface OperationTarget permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("operation")
     record ResolvedClipScopeTarget(ResolvedScope resolvedScope) implements OperationTarget {
         public ResolvedClipScopeTarget {
             if (resolvedScope == null) {
@@ -33,6 +36,7 @@ public sealed interface OperationTarget permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("operation")
     record GroupTarget(GroupId groupId) implements OperationTarget {
         public GroupTarget {
             if (groupId == null) {
@@ -41,6 +45,7 @@ public sealed interface OperationTarget permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("operation")
     record SyncTarget(String syncIdentityKey) implements OperationTarget {
         public SyncTarget {
             if (syncIdentityKey == null || syncIdentityKey.isBlank()) {
@@ -49,6 +54,7 @@ public sealed interface OperationTarget permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("operation")
     record AudioTarget(AudioMixInput audioMixInput) implements OperationTarget {
         public AudioTarget {
             if (audioMixInput == null) {

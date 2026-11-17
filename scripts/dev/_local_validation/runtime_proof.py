@@ -34,14 +34,31 @@ for label,path,token,expected in [('history',base+'/status-history','token',{200
 '''
 (app/'authorization-negatives.py').write_text(client);execute('authorization-negatives',sandbox_prefix(app/'binding.json')+['/usr/bin/python3','-B',str(app/'authorization-negatives.py'),str(app)])
 tools=R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl';env={'PATH':'/usr/bin:/bin','LD_LIBRARY_PATH':str(tools)};argv=[str(tools/'ffprobe'),'-v','error','-show_entries','stream=codec_name,width,height:format=duration','-of','json',str(app/'downloaded-final.mp4')];p=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=30);assert p.returncode==0;probe=json.loads(p.stdout);scenario=json.loads((R/'07-runtime/run.json').read_text()).get('scenario')
-if scenario=='multi-clip-no-audio':
+batch_e2e=(app/'batch-e2e.json')
+if batch_e2e.exists():
+    batch=json.loads(batch_e2e.read_text());expected_duration=float(batch['durationSeconds']);duration_tolerance=0.05
+elif scenario=='multi-clip-no-audio':
     expected_duration=3.0
     duration_tolerance=0.1
 else:
     expected_duration=2.0 if (app/'operation-http.stdout').exists() else 1.0
     duration_tolerance=1.0/30.0 + 1e-6
 assert probe['streams'][0]['codec_name']=='h264' and probe['streams'][0]['width']==320 and abs(float(probe['format']['duration'])-expected_duration) <= duration_tolerance;(app/'downloaded-ffprobe.json').write_text(json.dumps(dict(argv=argv,exit_code=p.returncode,probe=probe,sha256=hashlib.sha256((app/'downloaded-final.mp4').read_bytes()).hexdigest()),indent=2));print('REAL_HTTP_PRODUCT_FACTS_AND_FFPROBE_PASS',job)
-if (app/'operation-http.stdout').exists():
+if batch_e2e.exists():
+    frame_evidence = {}
+    for check in batch['sampleChecks']:
+        second = str(check['time']); dominant = 0 if check['dominant'] == 'red' else 2
+        frame_command = [str(tools/'ffmpeg'), '-hide_banner', '-loglevel', 'error', '-nostdin',
+            '-ss', second, '-i', str(app/'downloaded-final.mp4'), '-frames:v', '1',
+            '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']
+        frame = subprocess.run(frame_command, env=env, capture_output=True, timeout=30)
+        assert frame.returncode == 0 and len(frame.stdout) == 320*240*3, (check, frame.stderr[:300])
+        averages = [sum(frame.stdout[channel::3])/(320*240) for channel in range(3)]
+        assert averages[dominant] > 80 and averages[dominant] > 2*max(
+            averages[(dominant+1)%3], averages[(dominant+2)%3]), (check, averages)
+        frame_evidence[str(second)] = {'timestampSeconds': second, 'averageRgb': averages}
+    (app/'batch-frame-evidence.json').write_text(json.dumps(frame_evidence, indent=2))
+elif (app/'operation-http.stdout').exists():
     frame_evidence = {}
     for label, second, dominant in [('red', '0', 0), ('blue', '1', 2)]:
         frame_command = [str(tools/'ffmpeg'), '-hide_banner', '-loglevel', 'error', '-nostdin',

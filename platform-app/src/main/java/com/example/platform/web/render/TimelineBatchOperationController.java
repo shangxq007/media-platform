@@ -1,0 +1,124 @@
+package com.example.platform.web.render;
+
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
+import com.example.platform.operation.batch.BatchCommitResult;
+import com.example.platform.operation.batch.BatchErrorCode;
+import com.example.platform.operation.batch.BatchException;
+import com.example.platform.operation.batch.BatchInvocationPort;
+import com.example.platform.operation.batch.BatchPreview;
+import com.example.platform.operation.batch.OperationBatchContext;
+import com.example.platform.operation.batch.OperationBatchRequest;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.render.app.operation.TimelineBatchCommand;
+import com.example.platform.render.app.operation.TimelineBatchCommandMapper;
+import com.example.platform.shared.web.TenantContext;
+import java.net.URI;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+/**
+ * Authenticated Timeline-domain entry for ordered Operation batches.
+ *
+ * <p>Preview plans and validates the full ordered chain without writing; apply
+ * commits exactly one revision (or the semantic NO_OP) through the canonical
+ * batch port. Single-operation endpoints are untouched.
+ */
+@RestController
+@RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/timeline-operations/batch")
+public class TimelineBatchOperationController {
+
+    private final BatchInvocationPort invocations;
+    private final TimelineBatchCommandMapper mapper;
+    private final CanonicalActorResolver actors;
+
+    public TimelineBatchOperationController(BatchInvocationPort invocations,
+                                            TimelineBatchCommandMapper mapper,
+                                            CanonicalActorResolver actors) {
+        this.invocations = invocations;
+        this.mapper = mapper;
+        this.actors = actors;
+    }
+
+    @PostMapping("/preview")
+    public ResponseEntity<BatchPreview> preview(
+            @PathVariable String tenantId, @PathVariable String projectId,
+            @RequestBody TimelineBatchCommand body) {
+        CanonicalActor actor = requireActor(tenantId, projectId);
+        OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, body);
+        return ResponseEntity.ok(invocations.preview(batch,
+                OperationBatchContext.preview(actor, "timeline-batch-http")));
+    }
+
+    @PostMapping("/apply")
+    public ResponseEntity<BatchCommitResult> apply(
+            @PathVariable String tenantId, @PathVariable String projectId,
+            @RequestBody TimelineBatchCommand body) {
+        CanonicalActor actor = requireActor(tenantId, projectId);
+        OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, body);
+        BatchCommitResult result = invocations.commit(batch,
+                OperationBatchContext.apply(batch.batchId(), actor, null, "timeline-batch-http"));
+        HttpStatus status = BatchCommitResult.APPLIED.equals(result.status()) && !result.replayed()
+                ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(result);
+    }
+
+    private CanonicalActor requireActor(String tenantId, String projectId) {
+        requireId(tenantId, "tenantId");
+        requireId(projectId, "projectId");
+        CanonicalActor actor = actors.resolveCurrentActor()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "authenticated actor required"));
+        if (!tenantId.equals(TenantContext.get()) || !tenantId.equals(actor.tenantId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "tenant scope mismatch");
+        }
+        return actor;
+    }
+
+    private static void requireId(String value, String field) {
+        if (value == null || value.length() > 64 || !value.matches("[A-Za-z0-9._:-]+")) {
+            throw new IllegalArgumentException(field + " has invalid syntax");
+        }
+    }
+
+    @ExceptionHandler(BatchException.class)
+    ResponseEntity<ProblemDetail> batchFailure(BatchException failure) {
+        HttpStatus status = switch (failure.code()) {
+            case EMPTY_BATCH, MIXED_BASE -> HttpStatus.BAD_REQUEST;
+            case AUTHORIZATION_DENIED, AUTHORIZATION_CONTEXT_MISMATCH -> HttpStatus.FORBIDDEN;
+            case BASE_REVISION_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case STALE_BASE_REVISION, PLAN_CHANGED, COMMAND_ID_CONFLICT,
+                 CROSS_AGGREGATE_BATCH_UNSUPPORTED, REF_NOT_SUPPORTED -> HttpStatus.CONFLICT;
+            case STEP_RESOLUTION_FAILED, STEP_PLAN_FAILED, STEP_VALIDATION_FAILED,
+                 FINAL_VALIDATION_FAILED, UNSUPPORTED_BATCH_OPERATION ->
+                    HttpStatus.UNPROCESSABLE_ENTITY;
+            case PERSISTENCE_FAILURE -> HttpStatus.INTERNAL_SERVER_ERROR;
+        };
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, failure.code().name());
+        problem.setType(URI.create("urn:media-platform:operation-batch:"
+                + failure.code().name().toLowerCase()));
+        problem.setProperty("errorCode", failure.code().name());
+        if (failure.stepIndex() != null) {
+            problem.setProperty("stepIndex", failure.stepIndex());
+        }
+        if (failure.getMessage() != null) {
+            problem.setProperty("detail", failure.getMessage());
+        }
+        return ResponseEntity.status(status).body(problem);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ProblemDetail> invalidRequest(IllegalArgumentException failure) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                failure.getMessage());
+        problem.setProperty("errorCode", "INVALID_REQUEST");
+        return ResponseEntity.badRequest().body(problem);
+    }
+}
