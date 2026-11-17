@@ -21,17 +21,34 @@
 
 ## Real E2E
 
+### Final acceptance run (frozen candidate `60691703`)
+
 | Item | Value |
 |---|---|
 | Harness | `scripts/dev/first-render --timeline-operation-editing --nle-browser` |
-| Run dir | `evidence/l3-move-delete-20261117T1620Z` |
+| Run dir | `evidence/l3-move-delete-20261117T1650Z` |
+| Exercised source | `ClipEditor.tsx` sha256 `a8889564…` = candidate `60691703` (byte-identical) |
 | Result | `FIRST_RENDER_LOCAL_VALIDATION_PASS` |
 | Scenario | 3 clips (A 0–2 red, B 2–4 green, C 4–6 blue) → trim C to 4–5 → delete B → move C to 2–3 → refresh → render 0–3000 ms |
-| Revisions | initial `475732a9…`; trim `5b3620cf…`; delete `f678982e…`; move `7cd15b0b…` |
-| RenderJob / Artifact / Delivery | `rj_7ec066a4…` / `render-task-6249…` / `dlv_6b5b52…` |
+| Revisions | initial `31adc01b…`; trim `e4f6709e…`; delete `dd8ce24f…`; move `86a9e1d8…` |
+| RenderJob / Artifact / Delivery | `rj_c1d140ba…` / `render-task-0b499e…` / `dlv_1e8f0a1c…` |
 | Output | 3.0 s h264 320×240 24 fps, sha256 `29fba4bc…` |
 | Pixel proof | red @0.4/1.6 s, blue @2.2/2.8 s, probe @1.0 s red (deleted green absent) |
 | Negatives | invalid upload rejected; unauthenticated source/delivery `401`; stale edit on a deleted clip `404` |
+
+### Historical run (pre-fix candidate `29779ea2`, kept for traceability)
+
+| Item | Value |
+|---|---|
+| Run dir | `evidence/l3-move-delete-20261117T1620Z` |
+| Exercised source | `ClipEditor.tsx` sha256 `ddd97c99…` = candidate `29779ea2` (before the review-fix commit) |
+| Result | `FIRST_RENDER_LOCAL_VALIDATION_PASS` |
+| Revisions | initial `475732a9…`; trim `5b3620cf…`; delete `f678982e…`; move `7cd15b0b…` |
+| RenderJob / Artifact / Delivery | `rj_7ec066a4…` / `render-task-6249…` / `dlv_6b5b52…` |
+| Output | 3.0 s h264 320×240 24 fps, sha256 `29fba4bc…` (identical media to the final run) |
+
+The two runs are different executions (different revisions/jobs/deliveries) of the same product
+behavior; the final acceptance run is `1650Z`, executed on the frozen candidate's exact source.
 
 ## Baseline failures (unchanged, out of scope)
 
