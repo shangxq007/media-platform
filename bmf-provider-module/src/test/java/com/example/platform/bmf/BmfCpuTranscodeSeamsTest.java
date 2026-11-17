@@ -150,6 +150,16 @@ class BmfCpuTranscodeSeamsTest {
     }
 
     @Test
+    void single_timed_composite_input_keeps_the_single_input_graph() {
+        var task = compositeTask(new int[][]{{0, 2000}}, 0, 2000);
+        var plan = new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING));
+        assertThat(plan.compositeInputs()).isEmpty();
+        assertThat(plan.compositeDuration()).isEmpty();
+        assertThat(plan.inputId()).isEqualTo(new ExecutionInputId("in-0"));
+    }
+
+    @Test
     void composite_with_a_timeline_gap_is_rejected() {
         var task = compositeTask(new int[][]{{0, 2000}, {2500, 3000}}, 0, 3000);
         assertFailure(() -> new BmfCpuTranscodeLowerer().lower(task,

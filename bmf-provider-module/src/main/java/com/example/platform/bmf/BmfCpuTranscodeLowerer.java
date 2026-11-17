@@ -82,11 +82,9 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
 
     private static boolean isMultiInputComposite(
             com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit unit) {
-        if (unit.typedInputs().size() > 1) {
-            return true;
-        }
-        return unit.typedInputs().stream().anyMatch(input ->
-                input.dependencyVariant() instanceof RenderDependency.TimedCompositeInput);
+        // A single timed input keeps the established single-input graph; only a real multi-input
+        // plan takes the concatenating composite program (the single-input E2E parses that argv).
+        return unit.typedInputs().size() > 1;
     }
 
     /**
