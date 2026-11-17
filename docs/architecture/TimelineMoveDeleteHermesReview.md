@@ -21,7 +21,7 @@
 | TRIM_REGRESSION | PASS |
 | ARCHITECTURE_GUARDS | PASS |
 | DIFF_SCOPE | PASS |
-| **RESULT** | **APPROVE_WITH_CONDITIONS** (4 documentation/test conditions, all fixed) |
+| **RESULT** | **APPROVE** (initial APPROVE_WITH_CONDITIONS; all 4 conditions closed and confirmed by the reviewer delta) |
 
 ## Independently verified facts
 
@@ -37,9 +37,9 @@
 - Delete is apply-only (no preview) but CAS/HEAD-verified; Delete/Backspace has a form-focus guard and
   there is an explicit delete button; busy guards prevent duplicate submits.
 - Trim handles stop propagation; trim and move cannot both start.
-- The E2E evidence was independently re-probed: 3.000 s h264 320×240, frames 0–47 red, 48–71 blue, no
-  green; revisions trim `5b3620cf`, delete `f678982e`, move `7cd15b0b`; render job/artifact/delivery
-  identities match.
+- The final E2E evidence was independently re-probed: 3.000 s h264 320×240, frames 0–47 red,
+  48–71 blue, no green; revisions trim `e4f6709e`, delete `dd8ce24f`, move `86a9e1d8`; job
+  `rj_c1d140ba…`, artifact `render-task-0b499e…`, delivery `dlv_1e8f0a1c…`.
 - `git diff --name-status` shows docs + frontend tests/UI + the built static bundle only; no backend
   production change, no new endpoint, no provider change.
 - No authority bypass, no parallel editing model, no compatibility layer.
@@ -52,6 +52,13 @@
 | 2 | E2E report claimed a `#20→#21→#22 bound-graph identity` not present in the product evidence | The claim is removed; the report now states that the bound-graph identity is an internal #22 concern not exposed by the product API evidence. |
 | 3 | Design doc said same-track overlaps are legal, contradicting the fatal validator | Design doc now states that gaps are legal but positive same-track overlap is a fatal canonical error (422) surfaced by the editor. |
 | 4 | Command-id fingerprint omitted the trim edge; no overlap-rejection test | `commandIdFor` now includes the edge; a new component test asserts the 422 overlap rejection surfaces, never applies, and re-reads the server. |
+
+## Delta confirmation (final candidate `fbd27ae0`)
+
+The reviewer re-checked the four conditions on the final candidate and confirmed all closed, then
+re-probed the final E2E output (sha256 `29fba4bc…`, 3.000 s, red 0–2 s, blue 2–3 s, no green) and the
+delta diff scope (docs/frontend/static only). Final verdict: **APPROVE**, residuals documentation-only
+and closed in the following docs commit.
 
 ## Remaining items
 

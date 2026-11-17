@@ -7,9 +7,9 @@
 
 | # | Check | Command | Result |
 |---|---|---|---|
-| 1 | Frontend unit/component (all) | `cd frontend && npx vitest run` | 43 files, **410 tests, 0 failures** |
+| 1 | Frontend unit/component (all) | `cd frontend && npx vitest run` | 43 files, **411 tests, 0 failures** |
 | 2 | Move projection + drag math | `npx vitest run src/product/timeline/move.test.ts` | 6 tests PASS (duration/source preservation, origin clamp, negative rejection, signed snap) |
-| 3 | Clip editor move/delete | `npx vitest run src/product/timeline/ClipEditor.test.tsx` | 13 tests PASS (drag→preview→apply same command id, threshold, delete key, focus guard, delete button, rejection rollback; trim suite unchanged) |
+| 3 | Clip editor move/delete | `npx vitest run src/product/timeline/ClipEditor.test.tsx` | 14 tests PASS (drag→preview→apply same command id, threshold, delete key, focus guard, delete button, rejection rollback, same-track overlap 422 rejection; trim suite unchanged) |
 | 4 | TypeScript | `npx tsc --noEmit` | 0 errors |
 | 5 | ESLint (changed files) | `npx eslint src/product/timeline/move.ts …` | 0 errors |
 | 6 | Frontend architecture guard | `npm run architecture:guard` | PASS (new paths classified, 28 governed paths) |

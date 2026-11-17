@@ -86,7 +86,7 @@ redundant planner check was evaluated and reverted as unreachable dead code.
 
 ## Verification
 
-- Frontend: 43 files / 410 tests PASS; tsc clean; ESLint clean on changed files; frontend
+- Frontend: 43 files / 411 tests PASS; tsc clean; ESLint clean on changed files; frontend
   architecture guard PASS.
 - Backend: clip-edit planner/controller/service tests 29 PASS; `compileJava compileTestJava` PASS;
   `ModularityTest` PASS (0 unexpected, 0 cycles, 3 retained graph rules).

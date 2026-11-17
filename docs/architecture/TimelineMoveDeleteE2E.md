@@ -52,7 +52,7 @@ E2E_RESULT:                 PASS
 - `logs/browser-result-final.json` — stages, requests, revisions, digests, negatives, media probe.
 - `logs/move-delete-output-final.mp4` — downloaded product output (sha256 above).
 - `logs/move-delete-final.png` — final editor state.
-- `logs/first-render.log` — harness run (`FIRST_RENDER_LOCAL_VALIDATION_PASS`).
+- `logs/first-render-final.log` — harness run (`FIRST_RENDER_LOCAL_VALIDATION_PASS`).
 - `l3-move-delete-20261117T1650Z/` — full harness output (build, tests, runtime, product result).
 
 ## What this proves
