@@ -57,6 +57,7 @@ export const POST_H7_GOVERNED_PATHS = [
   'product/timeline/TimelineNavigation.tsx',
   'product/timeline/editor-state.ts',
   'product/timeline/gateways.ts',
+  'product/timeline/move.ts',
   'product/timeline/navigation.ts',
   'product/timeline/testing/mocks.ts',
   'product/timeline/types.ts',

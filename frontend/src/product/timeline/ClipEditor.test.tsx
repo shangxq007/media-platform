@@ -138,3 +138,104 @@ describe('ClipEditor trim interaction', () => {
     expect(onRevisionChanged).not.toHaveBeenCalled()
   })
 })
+
+
+const multiClipSnapshot = {
+  schemaVersion: 'timeline-1.0',
+  canonicalTimelineJson: JSON.stringify({
+    schemaVersion: 'timeline-1.0',
+    tracks: [{ trackId: 'track-1', name: 'Video', type: 'video', clips: [
+      { clipId: 'clip-a', startTime: '0', endTime: '2', trimStart: '0', trimEnd: '2',
+        temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' } },
+      { clipId: 'clip-b', startTime: '2', endTime: '4', trimStart: '0', trimEnd: '2',
+        temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' } },
+      { clipId: 'clip-c', startTime: '4', endTime: '6', trimStart: '0', trimEnd: '2',
+        temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' } },
+    ] }],
+  }),
+}
+
+describe('ClipEditor move and delete interaction', () => {
+  async function renderMulti() {
+    api.snapshot.mockResolvedValue(multiClipSnapshot)
+    const onRevisionChanged = vi.fn(async () => {})
+    render(<ClipEditor head={head} onRevisionChanged={onRevisionChanged} />)
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-a')).toBeTruthy())
+    return { onRevisionChanged }
+  }
+
+  it('moves a clip by dragging its body: server preview then apply with one command id', async () => {
+    const { onRevisionChanged } = await renderMulti()
+    const body = screen.getByLabelText('Timeline clip clip-c')
+    fireEvent.pointerDown(body, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(body, { clientX: 100 - 160, pointerId: 1 })
+    fireEvent.pointerUp(body, { clientX: 100 - 160, pointerId: 1 })
+    await waitFor(() => expect(api.previewOperation).toHaveBeenCalledTimes(1))
+    const preview = api.previewOperation.mock.calls[0][2]
+    expect(preview.type).toBe('MOVE_CLIP')
+    expect(preview.absolute).toBe(true)
+    expect(preview.clipId).toBe('clip-c')
+    expect(preview.delta).toBe('2/1')
+    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
+    const applied = api.applyOperation.mock.calls[0][2]
+    expect(applied.type).toBe('MOVE_CLIP')
+    expect(applied.commandId).toBe(preview.commandId)
+    await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/Clip moved to/)).toBeTruthy()
+  })
+
+  it('does not move a clip when the drag is below the threshold', async () => {
+    await renderMulti()
+    const body = screen.getByLabelText('Timeline clip clip-a')
+    fireEvent.pointerDown(body, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(body, { clientX: 102, pointerId: 1 })
+    fireEvent.pointerUp(body, { clientX: 102, pointerId: 1 })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.previewOperation).not.toHaveBeenCalled()
+  })
+
+  it('deletes the selected clip with the Delete key', async () => {
+    const { onRevisionChanged } = await renderMulti()
+    const section = screen.getByRole('region', { name: 'Edit existing clip' })
+    fireEvent.click(screen.getByLabelText('Timeline clip clip-b'))
+    fireEvent.keyDown(section, { key: 'Delete' })
+    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
+    const applied = api.applyOperation.mock.calls[0][2]
+    expect(applied.type).toBe('DELETE_CLIP')
+    expect(applied.clipId).toBe('clip-b')
+    expect(applied.delta).toBeUndefined()
+    await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/deleted at revision/)).toBeTruthy()
+  })
+
+  it('ignores Delete while a form control has focus', async () => {
+    await renderMulti()
+    const select = screen.getByLabelText('Clip') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'clip-a' } })
+    fireEvent.keyDown(select, { key: 'Delete' })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(api.applyOperation).not.toHaveBeenCalled()
+  })
+
+  it('deletes through the explicit button as well', async () => {
+    await renderMulti()
+    fireEvent.click(screen.getByLabelText('Timeline clip clip-a'))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete selected clip' }))
+    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
+    expect(api.applyOperation.mock.calls[0][2].type).toBe('DELETE_CLIP')
+  })
+
+  it('shows the failure and refreshes from the server when the move is rejected', async () => {
+    const { onRevisionChanged } = await renderMulti()
+    api.previewOperation.mockRejectedValue(new Error('move rejected by the canonical authority'))
+    const body = screen.getByLabelText('Timeline clip clip-a')
+    fireEvent.pointerDown(body, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(body, { clientX: 260, pointerId: 1 })
+    fireEvent.pointerUp(body, { clientX: 260, pointerId: 1 })
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(screen.getByRole('alert').textContent).toMatch(/move rejected/)
+    expect(onRevisionChanged).toHaveBeenCalled()
+    expect(api.applyOperation).not.toHaveBeenCalled()
+  })
+})
