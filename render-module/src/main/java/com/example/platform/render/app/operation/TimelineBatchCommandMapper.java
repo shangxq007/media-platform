@@ -76,7 +76,8 @@ public final class TimelineBatchCommandMapper {
         OperationDefinition definition = definition(definitionId, index);
         Map<String, Object> parameters = operation.parameters() == null
                 ? Map.of() : operation.parameters();
-        OperationTargetRequest target = target(definition, projectId, operation.target(), index);
+        OperationTargetRequest target = target(definition, projectId, operation.target(),
+                parameters, index);
         OperationParameters typed = parameters(definitionId, parameters, projectId,
                 baseRevisionId, baseContentHash, index);
         return new OperationRequest(definition.definitionId(), definition.version(), target,
@@ -94,13 +95,14 @@ public final class TimelineBatchCommandMapper {
     }
 
     private OperationTargetRequest target(OperationDefinition definition, String projectId,
-                                          TimelineBatchCommand.Target target, int index) {
+                                          TimelineBatchCommand.Target target,
+                                          Map<String, Object> parameters, int index) {
         return switch (definition.targetKind()) {
             case TIMELINE, TEXT, ALIGNMENT ->
                     new OperationTargetRequest.TimelineTargetRequest(projectId);
             case CLIP_SCOPE -> new OperationTargetRequest.ClipSelectionTargetRequest(projectId,
-                    new SelectionSpec.ExplicitObjectSelection(
-                            List.of(TimelineClipId.of(requireClipId(target, index)))),
+                    new SelectionSpec.ExplicitObjectSelection(clipSelection(
+                            definition.definitionId().value(), target, parameters, index)),
                     SelectionSpec.ExpansionPolicy.EXACT);
             case GROUP -> new OperationTargetRequest.GroupTargetRequest(
                     GroupId.of(requireGroupId(target, index)));
@@ -263,6 +265,33 @@ public final class TimelineBatchCommandMapper {
             values.add(String.valueOf(item));
         }
         return values;
+    }
+
+    private static List<TimelineClipId> clipSelection(String definitionId,
+                                                     TimelineBatchCommand.Target target,
+                                                     Map<String, Object> parameters, int index) {
+        List<String> selected;
+        if (target != null && target.clipIds() != null && !target.clipIds().isEmpty()) {
+            selected = target.clipIds();
+        } else if ("timeline.group.create".equals(definitionId)) {
+            // The group member set is the semantic clip scope of the create step.
+            selected = stringArray(parameters, "members");
+        } else {
+            selected = List.of(requireClipId(target, index));
+        }
+        List<TimelineClipId> clips = new ArrayList<>(selected.size());
+        for (String value : selected) {
+            if (value == null || value.isBlank()) {
+                throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, index,
+                        "operation " + index + " has a blank clip selection");
+            }
+            clips.add(TimelineClipId.of(value));
+        }
+        if (clips.isEmpty()) {
+            throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, index,
+                    "operation " + index + " has an empty clip selection");
+        }
+        return clips;
     }
 
     private static String requireClipId(TimelineBatchCommand.Target target, int index) {

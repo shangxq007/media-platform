@@ -45,8 +45,6 @@
             "fontpipeline :: manifest",
             "fontpipeline :: sanitize"
         ,
-            "operation :: operation"
-        ,
             "extension :: runtime",
             "typedschema :: jooq-tables"
         ,

@@ -101,15 +101,15 @@ public class TimelineBatchOperationController {
                     HttpStatus.UNPROCESSABLE_ENTITY;
             case PERSISTENCE_FAILURE -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, failure.code().name());
+        String detail = failure.getMessage() == null || failure.getMessage().isBlank()
+                ? failure.code().name()
+                : failure.code().name() + ": " + failure.getMessage();
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setType(URI.create("urn:media-platform:operation-batch:"
                 + failure.code().name().toLowerCase()));
         problem.setProperty("errorCode", failure.code().name());
         if (failure.stepIndex() != null) {
             problem.setProperty("stepIndex", failure.stepIndex());
-        }
-        if (failure.getMessage() != null) {
-            problem.setProperty("detail", failure.getMessage());
         }
         return ResponseEntity.status(status).body(problem);
     }

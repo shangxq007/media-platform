@@ -1176,7 +1176,7 @@ if grep -rq 'proOnly\|enterpriseOnly\|planName' operation-module/src/main/java/c
 else
     pass "no entitlement/tier semantics"
 fi
-if grep -rq 'retry\|timeout\|callback' operation-module/src/main/java/com/example/platform/operation/operation/OperationBatch.java 2>/dev/null; then
+if grep -rq 'retry\|timeout\|callback' operation-module/src/main/java/com/example/platform/operation/batch/ 2>/dev/null; then
     fail "workflow semantics in batch"
 else
     pass "no workflow semantics in batch"

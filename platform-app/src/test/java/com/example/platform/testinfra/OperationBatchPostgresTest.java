@@ -1,6 +1,11 @@
 package com.example.platform.testinfra;
 
 import com.example.platform.artifact.infrastructure.ArtifactPinRepository;
+import com.example.platform.audio.domain.mix.AudioGain;
+import com.example.platform.audio.domain.mix.AudioMasterBus;
+import com.example.platform.audio.domain.mix.AudioMix;
+import com.example.platform.audio.domain.mix.AudioMixInput;
+import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.artifact.app.ArtifactRelationRepository;
 import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.artifact.infrastructure.JooqArtifactQueryService;
@@ -45,6 +50,8 @@ import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.relationship.SyncRelationship;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
@@ -374,6 +381,99 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void groupCreateAndRemoveInOneBatchIsSemanticNoOp() {
+        TimelineRevision base = saveRevision(twoClipDocument());
+        OperationRequest create = new OperationRequest(
+                OperationDefinition.V1.CREATE_GROUP.definitionId(),
+                OperationDefinition.V1.CREATE_GROUP.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                        new SelectionSpec.ExplicitObjectSelection(List.of(
+                                TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b"))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.CreateGroupParameters(GroupId.of("group-1"),
+                        List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b"))),
+                base.revisionId(), hash(base), null);
+        OperationRequest remove = new OperationRequest(
+                OperationDefinition.V1.REMOVE_GROUP.definitionId(),
+                OperationDefinition.V1.REMOVE_GROUP.version(),
+                new OperationTargetRequest.GroupTargetRequest(GroupId.of("group-1")),
+                new OperationParameters.NoParameters(),
+                base.revisionId(), hash(base), null);
+
+        BatchCommitResult result = commit("batch-group", base, create, remove, null);
+
+        assertEquals(BatchCommitResult.NO_OP, result.status());
+        assertEquals(1, count("timeline_revision"));
+        assertEquals(1, count("apply_command"));
+        assertEquals(base.revisionId(), head());
+    }
+
+    @Test
+    void syncCreateAndRemoveInOneBatchIsSemanticNoOp() {
+        TimelineRevision base = saveRevision(twoClipDocument());
+        TimelineClipId endpointA = TimelineClipId.of("clip-a");
+        TimelineClipId endpointB = TimelineClipId.of("clip-b");
+        String identityKey = SyncRelationship.of(endpointA, MediaTime.ZERO,
+                endpointB, MediaTime.ZERO).identityKey();
+        OperationRequest create = new OperationRequest(
+                OperationDefinition.V1.CREATE_SYNC.definitionId(),
+                OperationDefinition.V1.CREATE_SYNC.version(),
+                new OperationTargetRequest.SyncTargetRequest(identityKey),
+                new OperationParameters.CreateSyncParameters(endpointA, MediaTime.ZERO,
+                        endpointB, MediaTime.ZERO),
+                base.revisionId(), hash(base), null);
+        OperationRequest remove = new OperationRequest(
+                OperationDefinition.V1.REMOVE_SYNC.definitionId(),
+                OperationDefinition.V1.REMOVE_SYNC.version(),
+                new OperationTargetRequest.SyncTargetRequest(identityKey),
+                new OperationParameters.NoParameters(),
+                base.revisionId(), hash(base), null);
+
+        BatchCommitResult result = commit("batch-sync", base, create, remove, null);
+
+        assertEquals(BatchCommitResult.NO_OP, result.status());
+        assertEquals(1, count("timeline_revision"));
+        assertEquals(1, count("apply_command"));
+    }
+
+    @Test
+    void audioGainBatchCommitsOneRevision() {
+        TimelineRevision base = saveRevision(twoClipDocumentWithAudio());
+        OperationRequest gain = new OperationRequest(
+                OperationDefinition.V1.SET_AUDIO_GAIN.definitionId(),
+                OperationDefinition.V1.SET_AUDIO_GAIN.version(),
+                new OperationTargetRequest.AudioTargetRequest(
+                        AudioMixInput.of("video-main", "clip-a")),
+                new OperationParameters.AudioGainParameters(new AudioGain(0.5)),
+                base.revisionId(), hash(base), null);
+
+        BatchCommitResult result = commit("batch-audio", base, gain, null);
+
+        assertEquals(BatchCommitResult.APPLIED, result.status());
+        assertEquals(2, count("timeline_revision"));
+        TimelineDocument committed = saveService.findPayloadDocument(TENANT, result.newRevisionId())
+                .orElseThrow();
+        assertEquals(0.5, committed.getAudioMix().routes().get(0).gain().linear());
+    }
+
+    @Test
+    void semanticNoOpReplayReturnsTheCompletedNoOpCommand() {
+        TimelineRevision base = saveRevision(twoClipDocument());
+        String batchId = "batch-noop-replay";
+        BatchCommitResult first = commit(batchId, base,
+                moveAbsolute(base, "clip-a", 2), moveAbsolute(base, "clip-a", 0), null);
+        BatchCommitResult second = commit(batchId, base,
+                moveAbsolute(base, "clip-a", 2), moveAbsolute(base, "clip-a", 0), null);
+
+        assertEquals(BatchCommitResult.NO_OP, first.status());
+        assertEquals(BatchCommitResult.NO_OP, second.status());
+        assertTrue(second.replayed());
+        assertNull(second.newRevisionId());
+        assertEquals(1, count("timeline_revision"));
+        assertEquals(1, count("apply_command"));
+    }
+
+    @Test
     void crossAggregateTargetIsRejectedBeforeAnyWrite() {
         TimelineRevision base = saveRevision(twoClipDocument());
         OperationRequest foreign = new OperationRequest(
@@ -460,6 +560,15 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
     private static MediaTime time(String value) {
         return MediaTime.parse(value);
+    }
+
+    private static TimelineDocument twoClipDocumentWithAudio() {
+        TimelineDocument video = twoClipDocument();
+        AudioMix mix = new AudioMix(AudioMasterBus.master(),
+                List.of(AudioRoute.of(AudioMixInput.of("video-main", "clip-a"))));
+        return new TimelineDocument(video.getSchemaVersion(), video.getTracks(),
+                video.getMetadata(), mix, video.getSemanticRelationships(),
+                video.getTextElements(), video.getTransitions(), video.getAutomations());
     }
 
     private static TimelineDocument twoClipDocument() {

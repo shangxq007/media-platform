@@ -47,7 +47,7 @@ H8_AUTHORIZED_CHANGED_PATHS = frozenset({
 })
 
 REQUIRED_LAW_COUNT = 54
-REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 114
+REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 115
 
 # Exact SHA-256 attestation of the committed e570cf93 H8/H7 runtime authority
 # universe. These repository-relative paths cover the exposed Operation intent
@@ -114,6 +114,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineMutationContext.java": "857dfaeb1cabe05700fddd04007a7d60b3b0c05dec3112de7ed13bf2dc60b4f2",
     "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommandConflictException.java": "154e50f8c772ae3fdb11851035b4d520710819e8b12d92974302c127ddb90ae5",
     "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommands.java": "ad64b03d135f152c599558cab6e3f74eba02d26d7163dba5da3f435d6f5b4b25",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/RevisionProvenance.java": "6fa96fefb96c8242f23e2d11e631106b3b25544b546b6c7a5f6c4e06c94b42c2",
     "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotQueries.java": "800a0e3a92d9b5d251616e26cae35bbb44683fda6e663164c1e618872dd4c953",
     "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotView.java": "befa0d4fb1ff0d98ac64bfa1fa65d9de73f11be4d41784fb420a26670b0289f7",
     "timeline-module/src/main/java/com/example/platform/timeline/app/HeadUpdatePort.java": "97a4ef46cb8c7aaf87d421ee40f1bf638d53573f40e2ea3a7e1873c49641f911",
@@ -124,7 +125,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinValidator.java": "e250c3bd8e2476f8d8b5794c386d4dde6431d613081e6f69df6fe83863668059",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentCandidateMapper.java": "a009728f8f71087cb6f2e8a6a44f991ccba8d45619d292cd3ea167750764773a",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentJsonSerializer.java": "85044834384aa18dd155ed0da7f7bab3d618690c8b4dfbc08e86697730bb963f",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java": "aff36d49d69ec752f7fc523c79964a011e5049ce9827b43c4f0f289a7aaef6fb",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java": "c59c4ba1bd607903ca8b8328789e3fc11f460f11c6638a3cc7e148bca78bc8f9",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefHeadUpdateAdapter.java": "6aaac36d7e5dbc73100d04c1ab6c6b8adceeb9c1c801cedcd1f440f6db54ea9b",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefMutation.java": "9cde6e2dc5d8f90e6903fd5a755c6a55406659cd85ab58ea08f61ee78d00389c",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java": "262811649ff6fb482936760025bea277db95bb4b0120264edde650d66d790558",

@@ -13,22 +13,21 @@ import com.example.platform.timeline.version.TimelineRevision;
 public interface TimelineRevisionPersistencePort {
 
     /** Inserts the revision row inside the caller's physical transaction. */
-    void insertRevisionTx(org.jooq.DSLContext tx, TimelineRevision revision,
-                          String productId, String snapshotId, String schemaVersion,
-                          String timelineContentDigest, int revisionNumber,
-                          String tenantId, String source);
-
-    /**
-     * Adds atomic commit provenance to the same physical insert. The default keeps
-     * historical implementations source-compatible; the production persistence
-     * overrides it and writes {@code message} + {@code change_summary_json}.
-     */
     default void insertRevisionTx(org.jooq.DSLContext tx, TimelineRevision revision,
                                   String productId, String snapshotId, String schemaVersion,
                                   String timelineContentDigest, int revisionNumber,
-                                  String tenantId, String source,
-                                  com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
+                                  String tenantId, String source) {
         insertRevisionTx(tx, revision, productId, snapshotId, schemaVersion,
-                timelineContentDigest, revisionNumber, tenantId, source);
+                timelineContentDigest, revisionNumber, tenantId, source, null);
     }
+
+    /**
+     * Adds atomic commit provenance to the same physical insert. Implementations
+     * must persist or explicitly reject provenance; it cannot be silently dropped.
+     */
+    void insertRevisionTx(org.jooq.DSLContext tx, TimelineRevision revision,
+                          String productId, String snapshotId, String schemaVersion,
+                          String timelineContentDigest, int revisionNumber,
+                          String tenantId, String source,
+                          com.example.platform.timeline.api.revision.RevisionProvenance provenance);
 }

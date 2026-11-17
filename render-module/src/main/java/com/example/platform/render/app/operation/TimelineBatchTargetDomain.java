@@ -255,14 +255,30 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
     }
 
     private static void requireSameAggregate(OperationRequest operation, String projectId) {
-        String timelineId = switch (operation.target()) {
-            case OperationTargetRequest.TimelineTargetRequest target -> target.timelineId();
-            case OperationTargetRequest.ClipSelectionTargetRequest target -> target.timelineId();
-            default -> null;
-        };
-        if (timelineId == null || !timelineId.equals(projectId)) {
-            throw new BatchException(BatchErrorCode.CROSS_AGGREGATE_BATCH_UNSUPPORTED, null,
-                    "operation target is outside the batch aggregate");
+        switch (operation.target()) {
+            case OperationTargetRequest.TimelineTargetRequest target -> {
+                if (!projectId.equals(target.timelineId())) {
+                    throw new BatchException(BatchErrorCode.CROSS_AGGREGATE_BATCH_UNSUPPORTED, null,
+                            "operation target is outside the batch aggregate");
+                }
+            }
+            case OperationTargetRequest.ClipSelectionTargetRequest target -> {
+                if (target.timelineId() != null && !projectId.equals(target.timelineId())) {
+                    throw new BatchException(BatchErrorCode.CROSS_AGGREGATE_BATCH_UNSUPPORTED, null,
+                            "operation target is outside the batch aggregate");
+                }
+            }
+            // Group/Sync/Audio identities live inside the batch aggregate; only the batch
+            // target selects the aggregate, so there is no second aggregate to compare.
+            case OperationTargetRequest.GroupTargetRequest ignored -> {
+            }
+            case OperationTargetRequest.SyncTargetRequest ignored -> {
+            }
+            case OperationTargetRequest.AudioTargetRequest ignored -> {
+            }
+            // Text is rejected before resolution; keep the switch exhaustive.
+            case OperationTargetRequest.TextElementTargetRequest ignored -> {
+            }
         }
     }
 

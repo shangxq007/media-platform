@@ -169,10 +169,11 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                                  com.example.platform.timeline.version.TimelineRevision revision,
                                                  String productId, String snapshotId, String schemaVersion,
                                                  String timelineContentDigest, int revisionNumber,
-                                                 String tenantId, String source) {
+                                                 String tenantId, String source,
+                                                 com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
                         order.add("revision");
                         delegate.insertRevisionTx(tx, revision, productId, snapshotId, schemaVersion,
-                                timelineContentDigest, revisionNumber, tenantId, source);
+                                timelineContentDigest, revisionNumber, tenantId, source, provenance);
                     }
                 },
                 new com.example.platform.timeline.app.HeadUpdatePort() {

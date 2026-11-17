@@ -22,7 +22,7 @@ public record TimelineBatchCommand(
      * Definition-specific target coordinates. {@code clipId} also identifies the
      * audio input for {@code audio.*} operations (paired with {@code audioTrackId}).
      */
-    public record Target(String clipId, String groupId, String syncIdentityKey,
-                         String audioTrackId) {
+    public record Target(String clipId, List<String> clipIds, String groupId,
+                         String syncIdentityKey, String audioTrackId) {
     }
 }
