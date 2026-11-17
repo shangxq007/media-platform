@@ -21,13 +21,13 @@
 
 ## Real E2E
 
-### Final acceptance run (frozen candidate `60691703`)
+### Final acceptance run (frozen product code)
 
 | Item | Value |
 |---|---|
 | Harness | `scripts/dev/first-render --timeline-operation-editing --nle-browser` |
 | Run dir | `evidence/l3-move-delete-20261117T1650Z` |
-| Exercised source | `ClipEditor.tsx` sha256 `a8889564…` = candidate `60691703` (byte-identical) |
+| Exercised source | `ClipEditor.tsx` sha256 `a8889564…` (candidate `60691703`); the only later source delta is a trailing-whitespace commit whose rebuilt static bundle is byte-identical (`NleWorkspace-3rafg2HB.js` 0c5731c4…) |
 | Result | `FIRST_RENDER_LOCAL_VALIDATION_PASS` |
 | Scenario | 3 clips (A 0–2 red, B 2–4 green, C 4–6 blue) → trim C to 4–5 → delete B → move C to 2–3 → refresh → render 0–3000 ms |
 | Revisions | initial `31adc01b…`; trim `e4f6709e…`; delete `dd8ce24f…`; move `86a9e1d8…` |
