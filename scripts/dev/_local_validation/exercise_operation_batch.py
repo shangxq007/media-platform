@@ -92,7 +92,7 @@ token = unsigned + '.' + encode(signature)
 (app / 'token').chmod(0o600)
 
 client = app / 'batch-client.py'
-client.write_text(r'''import json, pathlib, sys, urllib.request, urllib.error, uuid
+client.write_text(r'''import json, pathlib, sys, time, urllib.request, urllib.error, uuid
 root=pathlib.Path(sys.argv[1]);token=(root/'token').read_text();base='http://127.0.0.1:18080'
 project='/api/tenants/tenant-fr-e2e/projects/project-fr-e2e'
 results={}
@@ -114,7 +114,13 @@ def upload(filename,key):
     body=(('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="'+filename+'"\r\n'
            'Content-Type: video/mp4\r\n\r\n').encode()+data+('\r\n--'+boundary+'--\r\n').encode())
     return call(project+'/source-media',body,{'Content-Type':'multipart/form-data; boundary='+boundary,'Idempotency-Key':key})
-readiness=call('/actuator/health/readiness',auth=False);required('readiness',readiness,{200})
+deadline=time.monotonic()+180
+while True:
+    readiness=call('/actuator/health/readiness',auth=False)
+    if readiness['status']==200:break
+    if time.monotonic()>deadline:raise AssertionError(('readiness timeout',readiness))
+    time.sleep(1)
+required('readiness',readiness,{200})
 red=required('upload_red',upload('batch-source-red.mp4','batch-red-1'),{201})
 blue=required('upload_blue',upload('batch-source-blue.mp4','batch-blue-1'),{201})
 init=required('initialize',call(project+'/timeline-operations/initialize',{'trackId':'track-1','commandId':'batch-init-1'}),{201})
