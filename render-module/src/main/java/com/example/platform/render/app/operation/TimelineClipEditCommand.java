@@ -15,6 +15,9 @@ import java.util.List;
  * <p>MOVE_CLIP changes time on the existing track (cross-track moves are not accepted here).
  * SPLIT_CLIP requires an exact split time and the caller-supplied right clip identity so the
  * canonical plan (and its idempotent replay) is deterministic.
+ *
+ * <p>The record's canonical constructor is the single construction entry; REST/Jackson binding
+ * and any in-process construction use the same ten-component shape.
  */
 public record TimelineClipEditCommand(
         String type,
@@ -30,14 +33,6 @@ public record TimelineClipEditCommand(
 
     private static final List<String> TYPES =
             List.of("MOVE_CLIP", "TRIM_CLIP", "DELETE_CLIP", "SPLIT_CLIP");
-
-    /** Backward-compatible transport constructor for the pre-split command shapes. */
-    public TimelineClipEditCommand(String type, String baseRevisionId, String baseContentHash,
-                                   String clipId, String delta, Boolean absolute, String edge,
-                                   String commandId) {
-        this(type, baseRevisionId, baseContentHash, clipId, delta, absolute, edge, commandId,
-                null, null);
-    }
 
     public TimelineClipEditCommand {
         requireId(baseRevisionId, "baseRevisionId");
