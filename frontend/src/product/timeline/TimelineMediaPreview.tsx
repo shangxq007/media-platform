@@ -88,7 +88,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
         if (owned !== generation.current) return
         if (sources.current.has(artifactId)) continue
         const response = await versionlessApi.get(
-          `/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/artifacts/${encodeURIComponent(artifactId)}/content`,
+          `/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/source-artifacts/${encodeURIComponent(artifactId)}/content`,
           { responseType: 'blob' })
         if (owned !== generation.current) return
         const url = URL.createObjectURL(response.data as Blob)

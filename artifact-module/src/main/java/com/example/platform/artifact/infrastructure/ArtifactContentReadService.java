@@ -25,6 +25,24 @@ public class ArtifactContentReadService implements ArtifactContentRead {
                 .orElseThrow(()->failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_FOUND));
         return readVerified(scope.tenantId(), id, artifact);
     }
+    public Content readProjectSourceArtifact(ArtifactProjectScope scope, ArtifactId id) {
+        TenantGuard.assertSameTenant(scope.tenantId());
+        var artifact=scoped.findProjectArtifact(scope,id)
+                .orElseThrow(()->failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_FOUND));
+        if(artifact.state()!=ArtifactState.AVAILABLE)throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
+        if(artifact.byteLength()>64L*1024*1024)throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
+        for(var replica:artifacts.listReplicas(scope.tenantId(),id)) {
+            try {
+                byte[] bytes=storage.read(replica.providerId(),replica.storageObjectId(),artifact.contentDigest(),artifact.byteLength(),64L*1024*1024);
+                var actual=com.example.platform.shared.digest.ContentDigest.sha256(
+                        java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes)));
+                if(bytes.length!=artifact.byteLength()||!actual.matches(artifact.contentDigest()))continue;
+                String type=artifact.mediaType().name().contains("AUDIO")?"audio/mpeg":"video/mp4";
+                return new Content(bytes,type,"source-media",artifact.contentDigest());
+            }catch(RuntimeException|java.security.NoSuchAlgorithmException unavailable){ }
+        }
+        throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
+    }
     private Content readVerified(String tenantId, ArtifactId id, Artifact artifact) {
         if(artifact.state()!=ArtifactState.AVAILABLE)throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);
         if(artifact.byteLength()>64L*1024*1024)throw failure(ArtifactApplicationService.ArtifactAccessFailure.NOT_AVAILABLE);

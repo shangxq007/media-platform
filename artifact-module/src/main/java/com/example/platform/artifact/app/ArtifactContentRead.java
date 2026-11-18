@@ -10,5 +10,6 @@ public interface ArtifactContentRead {
         @Override public byte[] bytes(){return bytes.clone();}
     }
     Content readProjectArtifact(ArtifactProjectScope scope, ArtifactId artifactId);
+    Content readProjectSourceArtifact(ArtifactProjectScope scope, ArtifactId artifactId);
     Content read(ArtifactScope scope,ArtifactId artifactId);
 }
