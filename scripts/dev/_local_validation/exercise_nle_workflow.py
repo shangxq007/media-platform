@@ -57,7 +57,9 @@ sig = subprocess.run(['openssl', 'dgst', '-sha256', '-sign', str(R / '07-runtime
 for name, colour, seconds in (('workflow-red.mp4', 'red', 2), ('workflow-green.mp4', 'green', 2)):
     p = subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
                         '-f', 'lavfi', '-i', f'color=c={colour}:s=320x240:r=24:d={seconds}',
-                        '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', str(app / name)],
+                        '-f', 'lavfi', '-i', f'sine=frequency=440:sample_rate=48000:duration={seconds}',
+                        '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
+                        str(app / name)],
                        env=env, capture_output=True, text=True, timeout=120)
     assert p.returncode == 0, p.stderr
 

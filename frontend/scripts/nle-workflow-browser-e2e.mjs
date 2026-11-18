@@ -102,6 +102,26 @@ const dragEdge = async (clipId, edge, pixels) => {
   await page.mouse.move(x, y); await page.mouse.down()
   await page.mouse.move(x + pixels, y, { steps: 8 }); await page.mouse.up()
 }
+const waitPreview = async revision => page.waitForFunction(rev => {
+  const host = document.querySelector('[aria-label="Timeline media preview"]')
+  return host?.getAttribute('data-preview-status') === 'READY'
+    && host.getAttribute('data-preview-revision') === rev
+}, revision, { timeout: 120000 })
+const previewPixel = async at => {
+  await page.getByLabel('Timeline preview seek').evaluate((element, value) => {
+    element.value = String(value)
+    element.dispatchEvent(new Event('input', { bubbles: true }))
+    element.dispatchEvent(new Event('change', { bubbles: true }))
+  }, at)
+  await page.waitForTimeout(400)
+  return page.evaluate(() => {
+    const canvas = document.querySelector('canvas[aria-label="Timeline preview canvas"]')
+    const data = canvas.getContext('2d').getImageData(160, 120, 1, 1).data
+    return [data[0], data[1], data[2]]
+  })
+}
+const colourOf = ([r, g, b]) => (r < 30 && g < 30 && b < 30) ? 'black'
+  : r > 2 * Math.max(g, b) ? 'red' : g > 2 * Math.max(r, b) ? 'green' : b > 2 * Math.max(r, g) ? 'blue' : 'mixed'
 try {
   await page.goto(`${base}/w/workspace-fr-e2e/projects/${project}/edit`, { waitUntil: 'domcontentloaded' })
   await page.getByRole('heading', { name: 'Timeline editor' }).waitFor({ timeout: 30000 })
@@ -123,6 +143,22 @@ try {
   assertClip(clipB, 'startTime', 2); assertClip(clipB, 'endTime', 4)
   result.edits.push({ step: 'ADD_B', clipId: clipB.clipId })
   stage('ADD_B_UPDATED')
+
+  // Real Timeline preview: canvas frames + audio from the canonical source artifacts.
+  const previewHead = await currentHead()
+  await waitPreview(previewHead.revisionId)
+  const previewBefore = { 0.5: colourOf(await previewPixel(0.5)), 2.5: colourOf(await previewPixel(2.5)) }
+  if (previewBefore[0.5] !== 'red' || previewBefore[2.5] !== 'green')
+    throw new Error(`preview frames do not match the Timeline: ${JSON.stringify(previewBefore)}`)
+  await page.getByRole('button', { name: 'Play Timeline' }).click()
+  await page.waitForTimeout(1300)
+  const audioRms = Number(await page.getByLabel('Timeline media preview').getAttribute('data-audio-rms'))
+  const playedTime = Number(await page.getByLabel('Timeline media preview').getAttribute('data-preview-time'))
+  await page.getByRole('button', { name: 'Pause Timeline' }).click()
+  if (!(audioRms > 0.001)) throw new Error(`preview audio RMS too low: ${audioRms}`)
+  if (!(playedTime > 0.4)) throw new Error(`preview did not advance: ${playedTime}`)
+  result.preview = { revision: previewHead.revisionId, samples: previewBefore, audioRms, playedTime }
+  stage('TIMELINE_PREVIEW_PLAYED_WITH_AUDIO')
 
   // Move B to 4.
   let previous = await currentHead()
@@ -147,6 +183,15 @@ try {
   assertClip(clipsOf(document).find(clip => clip.clipId === clipA.clipId), 'endTime', 1)
   result.edits.push({ step: 'TRIM_A', clipId: clipA.clipId, revisionId: trimmedHead.revisionId })
   stage('TRIM_A_UPDATED')
+
+  // The preview must rebind to the new revision without a page reload.
+  const afterTrimHead = await currentHead()
+  await waitPreview(afterTrimHead.revisionId)
+  const previewAfter = { 0.5: colourOf(await previewPixel(0.5)), 2.5: colourOf(await previewPixel(2.5)) }
+  if (previewAfter[0.5] !== 'red' || previewAfter[2.5] !== 'black')
+    throw new Error(`preview did not refresh after trim: ${JSON.stringify(previewAfter)}`)
+  result.previewAfterEdit = { revision: afterTrimHead.revisionId, samples: previewAfter }
+  stage('PREVIEW_REFRESHED_AFTER_EDIT')
 
   // Split B at timeline 5.
   previous = await currentHead()
@@ -194,6 +239,14 @@ try {
   if (clipsOf(document).length !== 2) throw new Error('reload did not restore exactly two clips')
   result.edits.push({ step: 'RELOAD', clips: clipsOf(document).map(clip => clip.clipId) })
   stage('RELOAD_RESTORED')
+
+  const reloadPreviewHead = await currentHead()
+  await waitPreview(reloadPreviewHead.revisionId)
+  const previewReload = { 0.5: colourOf(await previewPixel(0.5)), 6.5: colourOf(await previewPixel(6.5)) }
+  if (previewReload[0.5] !== 'red' || previewReload[6.5] !== 'green')
+    throw new Error(`reloaded preview does not match the Timeline: ${JSON.stringify(previewReload)}`)
+  result.previewAfterReload = { revision: reloadPreviewHead.revisionId, samples: previewReload }
+  stage('PREVIEW_RESTORED_AFTER_RELOAD')
 
   // Conflict: a concurrent canonical API edit advances HEAD; this page's loaded draft becomes stale.
   const beforeConflict = await currentHead()

@@ -26,6 +26,7 @@ import { FormalRenderAPI } from '../../api/formal-render'
 import { firstVideoTrack, projectSnapshotJson, timelineEnd } from './timeline-projection'
 import { add, formatRational, parseRational } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
+import { TimelineMediaPreview } from './TimelineMediaPreview'
 import { useTranslation } from '../../localization'
 import {
   ADD_MEDIA_CLIP_DEFINITION,
@@ -489,6 +490,9 @@ export function NleWorkspace({
           {state.server.revisions.length ? <ol className="ff-revision-list">{state.server.revisions.map(revision => <li key={revision.id}><button type="button" aria-pressed={state.server.selected?.revision.id === revision.id} disabled={revisionSelectionLocked} onClick={() => void selectRevision(revision.id)}><span>r{revision.revisionNumber}</span><code>{revision.id}</code><small>{revision.message ?? 'No message'}</small></button></li>)}</ol> : <p>No accepted history projection.</p>}
           {queryMessage ? <p role="status">{queryMessage}</p> : null}
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
+        </Panel>
+        <Panel title="Timeline media preview" className="ff-operation-panel">
+          <TimelineMediaPreview head={state.server.head} tenantId={project.tenantId} projectId={project.projectId} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           <TimelinePresentation

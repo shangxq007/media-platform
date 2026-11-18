@@ -10,6 +10,9 @@ import { add, compare, parseRational, type Rational } from './trim'
 export interface ProjectedClip {
   readonly clipId: string
   readonly trackId: string
+  readonly artifactId: string
+  readonly contentDigest: string
+  readonly mediaStreamId: string
   readonly start: Rational
   readonly end: Rational
   readonly sourceStart: Rational
@@ -67,6 +70,9 @@ export function projectTimeline(document: unknown): TimelineProjection {
         : IDENTITY
       clips.push({
         clipId, trackId, start, end, sourceStart, sourceEnd, rate,
+        artifactId: typeof clip.artifactId === 'string' ? clip.artifactId : '',
+        contentDigest: typeof clip.contentDigest === 'string' ? clip.contentDigest : '',
+        mediaStreamId: typeof clip.mediaStreamId === 'string' ? clip.mediaStreamId : '',
         direction: mapping?.direction === 'REVERSE' ? 'REVERSE' : 'FORWARD',
       })
     }
