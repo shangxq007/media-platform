@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
+import { projectSnapshotJson } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { useProjectContext } from '../../foundation/projectContext'
 import {
@@ -8,7 +9,7 @@ import {
 } from './trim'
 import { describeMove, draggedStart, projectMove } from './move'
 
-interface Props { head: CanonicalHeadReference | null; onRevisionChanged: () => Promise<void> }
+interface Props { head: CanonicalHeadReference | null; onRevisionChanged: () => Promise<void>; focusClipId?: string | null }
 
 /** Horizontal scale of the trim strip: one second of timeline occupies this many pixels. */
 export const TRIM_PIXELS_PER_SECOND = 80
@@ -19,30 +20,14 @@ interface PreviewedTrim extends PendingTrim { clipId: string; revisionId: string
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
 
-function geometryOf(document: unknown): ClipGeometry[] {
-  const tracks = (document as { tracks?: { trackId?: string; clips?: unknown[] }[] }).tracks ?? []
-  const rows: ClipGeometry[] = []
-  for (const track of tracks) {
-    for (const raw of track.clips ?? []) {
-      const clip = raw as Record<string, unknown>
-      const clipId = typeof clip.clipId === 'string' ? clip.clipId : ''
-      if (!clipId) continue
-      const start = parseRational(clip.startTime as string)
-      const end = parseRational(clip.endTime as string)
-      const sourceStart = parseRational(clip.trimStart as string)
-      const sourceEnd = parseRational(clip.trimEnd as string)
-      if (!start || !end || !sourceStart || !sourceEnd) continue
-      const mapping = clip.temporalMapping as { rate?: { numerator?: number; denominator?: number } } | undefined
-      const rate = mapping?.rate?.numerator && mapping?.rate?.denominator
-        ? { numerator: BigInt(mapping.rate.numerator), denominator: BigInt(mapping.rate.denominator) }
-        : DEFAULT_RATE
-      rows.push({ clipId, trackId: track.trackId ?? '', start, end, sourceStart, sourceEnd, rate })
-    }
-  }
-  return rows
+function geometryOf(canonicalTimelineJson: string): ClipGeometry[] {
+  return projectSnapshotJson(canonicalTimelineJson).clips.map(clip => ({
+    clipId: clip.clipId, trackId: clip.trackId, start: clip.start, end: clip.end,
+    sourceStart: clip.sourceStart, sourceEnd: clip.sourceEnd, rate: clip.rate,
+  }))
 }
 
-export function ClipEditor({ head, onRevisionChanged }: Props) {
+export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Props) {
   const project = useProjectContext()
   const [clips, setClips] = useState<ClipGeometry[]>([])
   const [selected, setSelected] = useState('')
@@ -56,6 +41,7 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [actionFailed, setActionFailed] = useState(false)
+  const [retryCommand, setRetryCommand] = useState<{ command: ClipEdit; label: string } | null>(null)
   const keys = useRef<Record<string, string>>({})
   const generation = useRef(0)
   const dragOrigin = useRef<number | null>(null)
@@ -67,7 +53,7 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     const owned = ++generation.current
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
-      const rows = geometryOf(JSON.parse(snapshot.canonicalTimelineJson))
+      const rows = geometryOf(snapshot.canonicalTimelineJson)
       if (owned !== generation.current) return
       setClips(rows)
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
@@ -80,6 +66,10 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
   }
 
   useEffect(() => { void refresh(); return () => { generation.current += 1 } }, [head?.revisionId, project.projectId])
+  useEffect(() => { setPending(null); setPreviewed(null); setMoving(null); setRetryCommand(null) }, [head?.revisionId])
+  useEffect(() => {
+    if (focusClipId && clips.some(clip => clip.clipId === focusClipId)) setSelected(focusClipId)
+  }, [focusClipId, clips])
   useEffect(() => { setMessage(''); setActionFailed(false); keys.current = {} }, [project.projectId])
 
   const active = clips.find(clip => clip.clipId === selected) ?? null
@@ -124,25 +114,21 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     if (compare(deltaValue, { numerator: 0n, denominator: 1n }) <= 0) { setPending(null); return }
     setBusy(true); setMessage(''); setActionFailed(false)
     const commandId = commandIdFor(active.clipId, 'TRIM_CLIP', deltaValue, trimEdge)
+    const command: ClipEdit = {
+      type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: active.clipId, delta: formatRational(deltaValue), edge: trimEdge, commandId,
+    }
     try {
-      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, {
-        type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: active.clipId, delta: formatRational(deltaValue), edge: trimEdge, commandId,
-      })
+      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
       setPreviewed({ edge: trimEdge, delta: deltaValue, clipId: active.clipId,
         revisionId: head.revisionId, contentHash: head.contentHash, commandId })
       setPending({ edge: trimEdge, delta: deltaValue })
+      setRetryCommand({ command, label: 'Trim' })
       const projected = projectTrim(active, trimEdge, deltaValue)
       setMessage(`Preview valid: source ${formatRational(projected.sourceStart)}s → ${formatRational(projected.sourceEnd)}s, `
         + `${toSeconds(projected.duration).toFixed(2)}s visible. Nothing was saved yet.`)
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      setPreviewed(null)
-      setActionFailed(true)
-      setMessage(status === 409 || status === 412
-        ? 'Revision conflict. Reload HEAD before previewing this trim.'
-        : error instanceof Error ? error.message : 'Trim preview was rejected.')
-    } finally { setBusy(false) }
+    } catch (error) { handleFailure(error, 'Trim preview', null, false) }
+    finally { setBusy(false) }
   }
 
   async function applyTrim() {
@@ -153,27 +139,23 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
       setMessage('The timeline changed after the preview. Preview the trim again.')
       return
     }
+    const command: ClipEdit = {
+      type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: active.clipId, delta: formatRational(previewed.delta), edge: previewed.edge,
+      commandId: previewed.commandId,
+    }
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, {
-        type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: active.clipId, delta: formatRational(previewed.delta), edge: previewed.edge,
-        commandId: previewed.commandId,
-      })
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw new Error('Operation accepted, but authoritative HEAD has changed. Reload before editing again.')
+        throw headMismatch()
       }
-      setPending(null); setPreviewed(null)
+      setPending(null); setPreviewed(null); setRetryCommand(null)
       await onRevisionChanged()
       setMessage(`Trim applied at revision ${authoritative.revisionId}.`)
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      setMessage(status === 409 || status === 412
-        ? 'Revision conflict. Reload HEAD and retry with a new operation.'
-        : error instanceof Error ? error.message : 'Trim failed.')
-      setActionFailed(true)
-    } finally { setBusy(false) }
+    } catch (error) { handleFailure(error, 'Trim', command, true) }
+    finally { setBusy(false) }
   }
 
   async function applySimple() {
@@ -182,22 +164,20 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
       ...(type === 'DELETE_CLIP' ? {} : { delta }), ...(type === 'MOVE_CLIP' ? { absolute } : {}) }
     const fingerprint = JSON.stringify([project.projectId, intent])
     keys.current[fingerprint] ??= crypto.randomUUID()
+    const command: ClipEdit = { ...intent, commandId: keys.current[fingerprint] } as ClipEdit
+    setRetryCommand({ command, label: type.replace('_CLIP', '').toLowerCase() })
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId,
-        { ...intent, commandId: keys.current[fingerprint] })
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw new Error('Operation accepted, but authoritative HEAD has changed. Reload before editing again.')
+        throw headMismatch()
       }
+      setRetryCommand(null)
       await onRevisionChanged()
       setMessage(`Operation accepted at revision ${authoritative.revisionId}.`)
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      setMessage(status === 409 || status === 412 ? 'Revision conflict. Reload HEAD and retry with a new operation.'
-        : error instanceof Error ? error.message : 'Clip operation failed.')
-      setActionFailed(true)
-    } finally { setBusy(false) }
+    } catch (error) { handleFailure(error, type.replace('_CLIP', ''), command, true) }
+    finally { setBusy(false) }
   }
 
 
@@ -236,30 +216,32 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     if (!head || !project.tenantId || busy) return
     setBusy(true); setMessage(''); setActionFailed(false)
     const commandId = commandIdFor(clip.clipId, 'MOVE_CLIP', targetStart)
+    const command: ClipEdit = {
+      type: 'MOVE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: clip.clipId, delta: formatRational(targetStart), absolute: true, commandId,
+    }
     try {
-      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, {
-        type: 'MOVE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: clip.clipId, delta: formatRational(targetStart), absolute: true, commandId,
-      })
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, {
-        type: 'MOVE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: clip.clipId, delta: formatRational(targetStart), absolute: true, commandId,
-      })
+      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+    } catch (error) {
+      setActionFailed(true)
+      setMessage(error instanceof Error ? error.message : 'Move preview was rejected.')
+      void onRevisionChanged()
+      setBusy(false)
+      return
+    }
+    try {
+      setRetryCommand({ command, label: 'Move' })
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw new Error('Operation accepted, but authoritative HEAD has changed. Reload before editing again.')
+        throw headMismatch()
       }
+      setRetryCommand(null)
       await onRevisionChanged()
       const projection = projectMove(clip, targetStart)
       setMessage(`Clip moved to ${describeMove(projection)} at revision ${authoritative.revisionId}.`)
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      setMessage(status === 409 || status === 412
-        ? 'Revision conflict. The clip stays at its authoritative position; reload and retry.'
-        : error instanceof Error ? error.message : 'Clip move failed.')
-      setActionFailed(true)
-      await onRevisionChanged()
-    } finally { setBusy(false) }
+    } catch (error) { handleFailure(error, 'Move', command, true) }
+    finally { setBusy(false) }
   }
 
   async function deleteSelected() {
@@ -267,26 +249,65 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     setBusy(true); setMessage(''); setActionFailed(false)
     const commandId = commandIdFor(selected, 'DELETE_CLIP', { numerator: 0n, denominator: 1n })
     const removed = clips.find(clip => clip.clipId === selected)
+    const command: ClipEdit = {
+      type: 'DELETE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: selected, commandId,
+    }
+    setRetryCommand({ command, label: 'Delete' })
     try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, {
-        type: 'DELETE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: selected, commandId,
-      })
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw new Error('Operation accepted, but authoritative HEAD has changed. Reload before editing again.')
+        throw headMismatch()
       }
+      setRetryCommand(null)
       await onRevisionChanged()
       setMessage(`Clip ${removed?.clipId ?? selected} deleted at revision ${authoritative.revisionId}. `
         + 'The source media is retained.')
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      setMessage(status === 409 || status === 412
-        ? 'Revision conflict. Reload HEAD and retry the delete.'
-        : error instanceof Error ? error.message : 'Clip delete failed.')
-      setActionFailed(true)
+    } catch (error) { handleFailure(error, 'Delete', command, true) }
+    finally { setBusy(false) }
+  }
+
+  function headMismatch(): Error {
+    return Object.assign(new Error('Operation accepted, but the authoritative HEAD has changed. Reload before editing again.'),
+      { response: { status: 409 } })
+  }
+
+  function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    const conflict = status === 409 || status === 412
+    setPreviewed(null); setPending(null); setMoving(null)
+    setActionFailed(true)
+    if (conflict) {
+      setRetryCommand(null)
+      setMessage(`${label} rejected: the authoritative HEAD has changed since this draft was loaded. Reloading the authoritative revision; re-preview before editing again.`)
+      void onRevisionChanged()
+      return
+    }
+    const retryable = keepForRetry && command !== null && (status === undefined || status >= 500)
+    if (retryable) {
+      setRetryCommand({ command, label })
+      setMessage(`${label} could not be confirmed (${status ?? 'network error'}). The draft is still shown; retry reuses the same command ID.`)
+      return
+    }
+    setRetryCommand(null)
+    setMessage(error instanceof Error ? error.message : `${label} failed.`)
+  }
+
+  async function retryApply() {
+    if (!head || !project.tenantId || !retryCommand || busy) return
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      setRetryCommand(null)
       await onRevisionChanged()
-    } finally { setBusy(false) }
+      setMessage(`${retryCommand.label} applied at revision ${authoritative.revisionId}.`)
+    } catch (error) { handleFailure(error, retryCommand.label, retryCommand.command, true) }
+    finally { setBusy(false) }
   }
 
   async function splitSelected() {
@@ -302,32 +323,26 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
       formatRational(parsed), head.revisionId, rightClipId])
     keys.current[fingerprint] ??= crypto.randomUUID()
     const commandId = keys.current[fingerprint]
+    const command: ClipEdit = {
+      type: 'SPLIT_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: active.clipId, splitTime: formatRational(parsed), rightClipId, commandId,
+    }
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, {
-        type: 'SPLIT_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: active.clipId, splitTime: formatRational(parsed), rightClipId, commandId,
-      })
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, {
-        type: 'SPLIT_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        clipId: active.clipId, splitTime: formatRational(parsed), rightClipId, commandId,
-      })
+      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+      setRetryCommand({ command, label: 'Split' })
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw new Error('Split accepted, but authoritative HEAD has changed. Reload before editing again.')
+        throw headMismatch()
       }
+      setRetryCommand(null)
       setSelected(rightClipId)
       await onRevisionChanged()
       setMessage(`Clip split at ${formatRational(parsed)}s; left ${active.clipId} and right ${rightClipId} `
         + `are independent clips at revision ${authoritative.revisionId}.`)
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      setMessage(status === 409 || status === 412
-        ? 'Revision conflict. Reload HEAD and retry the split.'
-        : error instanceof Error ? error.message : 'Split failed.')
-      setActionFailed(true)
-      await onRevisionChanged()
-    } finally { setBusy(false) }
+    } catch (error) { handleFailure(error, 'Split', command, true) }
+    finally { setBusy(false) }
   }
 
   function onSectionKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
@@ -344,11 +359,15 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
   const previewValid = previewed !== null && pending !== null
     && previewed.clipId === active?.clipId && previewed.edge === pending.edge
     && compare(previewed.delta, pending.delta) === 0
+  const splitCandidate = type === 'SPLIT_CLIP' && active ? parseRational(splitTime) : null
+  const splitMarker = splitCandidate && active
+    && compare(splitCandidate, active.start) > 0 && compare(splitCandidate, active.end) < 0
+    ? { clipId: active.clipId, at: splitCandidate } : null
 
   return <section aria-label="Edit existing clip" tabIndex={0} onKeyDown={onSectionKeyDown}>
     <h3>Edit existing clip</h3>
     <button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</button>
-    <label>Clip <select aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null) }}>
+    <label>Clip <select aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} {clip.trackId && `(${clip.trackId})`}</option>)}
     </select></label>
 
@@ -380,6 +399,9 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
                                border: isActive ? '1px solid #60a5fa' : '1px solid #4b5563', borderRadius: 3,
                                display: 'flex', alignItems: 'center', justifyContent: 'center',
                                fontSize: 11, color: '#e5e7eb', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+            {splitMarker?.clipId === clip.clipId && <span data-split-marker aria-hidden="true"
+              style={{ position: 'absolute', left: (toSeconds(splitMarker.at) - left) * TRIM_PIXELS_PER_SECOND - 1,
+                       top: -4, width: 2, height: 48, background: '#facc15', zIndex: 2, pointerEvents: 'none' }} />}
             <span aria-hidden="true">{clip.clipId} · {toSeconds(projected ? projected.duration : subtract(clip.end, clip.start)).toFixed(2)}s
               · src {toSeconds(projected ? projected.sourceStart : clip.sourceStart).toFixed(2)}–{toSeconds(projected ? projected.sourceEnd : clip.sourceEnd).toFixed(2)}</span>
             <span role="slider" tabIndex={0} aria-label={`Trim start edge ${clip.clipId}`} aria-valuetext="trim start"
@@ -411,7 +433,7 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     {pending && <button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</button>}
     <button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</button>
 
-    <label>Operation <select aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null) }}>
+    <label>Operation <select aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option><option value="SPLIT_CLIP">Split</option>
     </select></label>
     {type !== 'DELETE_CLIP' && type !== 'SPLIT_CLIP' && <label>Exact time <input aria-label="Exact time" value={delta} onChange={event => setDelta(event.target.value)} /></label>}
@@ -430,5 +452,6 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
         : <button type="button" disabled={!head || !selected || !project.tenantId || busy} onClick={() => void applySimple()}>Apply operation</button>}
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
+    {retryCommand && <button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</button>}
   </section>
 }

@@ -22,6 +22,9 @@ import type {
 import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { ClipEditor } from './ClipEditor'
+import { FormalRenderAPI } from '../../api/formal-render'
+import { firstVideoTrack, projectSnapshotJson, timelineEnd } from './timeline-projection'
+import { add, formatRational, parseRational } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { useTranslation } from '../../localization'
 import {
@@ -217,6 +220,9 @@ export function NleWorkspace({
   const [confirmed, setConfirmed] = useState(false)
   const [readbackRetrying, setReadbackRetrying] = useState(false)
   const [applyOwnershipRelease, setApplyOwnershipRelease] = useState(0)
+  const [tracks, setTracks] = useState<readonly { trackId: string; name: string; type: string }[]>([])
+  const [appendStart, setAppendStart] = useState('0/1')
+  const [focusClipId, setFocusClipId] = useState<string | null>(null)
   const [stableCommandId, setStableCommandId] = useState<ReturnType<typeof applyCommandId> | null>(null)
   const [assetBoundary, setAssetBoundary] = useState('No safe media browser projection supplies a complete canonical source pin.')
   const [capabilityBoundary, setCapabilityBoundary] = useState('Operation capability is UNKNOWN until the focused gateway responds.')
@@ -281,6 +287,23 @@ export function NleWorkspace({
     deferredNavigationHeadLoad.current = false
     void loadHead()
   }, [state.phase, project.projectId, queryGateway, applyOwnershipRelease])
+
+  useEffect(() => {
+    let active = true
+    if (!state.server.head) { setTracks([]); setAppendStart('0/1'); return }
+    void (async () => {
+      try {
+        const snapshot = await FormalRenderAPI.snapshot(project.projectId, state.server.head!.revisionId)
+        if (!active) return
+        const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
+        setTracks(projection.tracks.map(track => ({ trackId: track.trackId, name: track.name, type: track.type })))
+        setAppendStart(formatRational(timelineEnd(projection)))
+      } catch {
+        if (active) { setTracks([]); setAppendStart('0/1') }
+      }
+    })()
+    return () => { active = false }
+  }, [state.server.head?.revisionId, project.projectId])
 
   useEffect(() => {
     let active = true
@@ -424,6 +447,7 @@ export function NleWorkspace({
       return
     }
     dispatch({ type: 'APPLY_ACCEPTED', commandId: submittedCommandId, accepted: result.value })
+    setFocusClipId(submittedDraft.clipId)
     setConfirmed(false)
     try {
       await verifyAuthoritativeApplyReadback(generation, priorHead.projectId)
@@ -475,13 +499,17 @@ export function NleWorkspace({
             onSelectTrack={value => dispatch({ type: 'TRACK_SELECTED', trackId: value })}
           />
         </Panel>
-        <Panel title="Add Media Clip · advanced / provisional" className="ff-operation-panel">
+        <Panel title="Add media clip" className="ff-operation-panel">
           <SourceBrowser tenantId={project.tenantId} project={project.projectId} onSelect={source => {
             const stream = source.streams.find(item => item.kind === 'VIDEO') ?? source.streams[0]
-            setFields({ trackId: state.presentation.selectedTrackId ?? 'V1', clipId: `clip-${crypto.randomUUID()}`,
+            const duration = parseRational(stream.duration) ?? { numerator: 0n, denominator: 1n }
+            const start = parseRational(appendStart) ?? { numerator: 0n, denominator: 1n }
+            const preferred = tracks.find(track => track.type === 'VIDEO') ?? tracks[0]
+            setFields({ trackId: preferred?.trackId ?? 'track-1', clipId: `clip-${crypto.randomUUID()}`,
               mediaAssetId: source.mediaAssetId, mediaStreamId: stream.streamId, artifactId: source.artifactId,
-              contentDigest: source.contentDigest, sourceStart: '0', sourceEnd: stream.duration,
-              timelineStart: '0', timelineEnd: stream.duration, rateNumerator: '1', rateDenominator: '1', direction: 'FORWARD' })
+              contentDigest: source.contentDigest, sourceStart: '0', sourceEnd: formatRational(duration),
+              timelineStart: formatRational(start), timelineEnd: formatRational(add(start, duration)),
+              rateNumerator: '1', rateDenominator: '1', direction: 'FORWARD' })
             setStableCommandId(null); setConfirmed(false); dispatch({ type: 'ROLLBACK_DRAFT' })
           }} />
           <div className="ff-state ff-state--unavailable" role="note"><span className="ff-state__code">ASSET GATEWAY · UNAVAILABLE</span><p>{assetBoundary} Enter only canonical logical IDs below. Physical locations and provider coordinates are not accepted.</p><p>{capabilityBoundary}</p></div>
@@ -518,7 +546,7 @@ export function NleWorkspace({
           {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
         </Panel>
         <Panel title="Clip operations" className="ff-operation-panel">
-          <ClipEditor head={state.server.head} onRevisionChanged={() => loadHead()} />
+          <ClipEditor head={state.server.head} focusClipId={focusClipId} onRevisionChanged={() => loadHead()} />
         </Panel>
         <Panel title="Render and delivery" className="ff-operation-panel">
           <NleRenderPanel head={state.server.head} />

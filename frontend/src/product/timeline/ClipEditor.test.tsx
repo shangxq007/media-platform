@@ -135,7 +135,7 @@ describe('ClipEditor trim interaction', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply trim' }))
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
     expect(screen.getByRole('alert').textContent).toMatch(/HEAD has changed/)
-    expect(onRevisionChanged).not.toHaveBeenCalled()
+    await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledTimes(1))
   })
 })
 
@@ -292,5 +292,41 @@ describe('ClipEditor split interaction', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/strictly inside/)
     expect(api.previewOperation).not.toHaveBeenCalled()
     expect(api.applyOperation).not.toHaveBeenCalled()
+  })
+})
+
+describe('ClipEditor conflict and retry', () => {
+  it('retries a transient apply failure with the same command id', async () => {
+    const { onRevisionChanged } = renderEditor()
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
+    api.applyOperation.mockRejectedValueOnce(new Error('network down'))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete selected clip' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /Retry delete/i })).toBeTruthy())
+    const first = api.applyOperation.mock.calls[0][2]
+    fireEvent.click(screen.getByRole('button', { name: /Retry delete/i }))
+    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(2))
+    expect(api.applyOperation.mock.calls[1][2].commandId).toBe(first.commandId)
+    await waitFor(() => expect(onRevisionChanged).toHaveBeenCalled())
+  })
+
+  it('treats a 409 apply result as a conflict and reloads without retrying', async () => {
+    const { onRevisionChanged } = renderEditor()
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
+    api.applyOperation.mockRejectedValueOnce(Object.assign(new Error('stale'), { response: { status: 409 } }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete selected clip' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(screen.getByRole('alert').textContent).toMatch(/HEAD has changed/)
+    expect(screen.queryByRole('button', { name: /Retry delete/i })).toBeNull()
+    await waitFor(() => expect(onRevisionChanged).toHaveBeenCalled())
+  })
+
+  it('shows a split marker strictly inside the selected clip', async () => {
+    renderEditor()
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Clip operation'), { target: { value: 'SPLIT_CLIP' } })
+    fireEvent.change(screen.getByLabelText('Split time'), { target: { value: '3/1' } })
+    await waitFor(() => expect(document.querySelector('[data-split-marker]')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Split time'), { target: { value: '0' } })
+    await waitFor(() => expect(document.querySelector('[data-split-marker]')).toBeNull())
   })
 })

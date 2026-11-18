@@ -17,6 +17,7 @@ frontend/scripts/frontend-architecture-guard.mjs	REUSE	VIABLE_BUILD_TEST_GOVERNA
 frontend/scripts/frontend-architecture-guard.test.mjs	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/scripts/nle-browser-e2e.mjs	REUSE	REAL_CHROME_NLE_PRODUCT_ACCEPTANCE
 frontend/scripts/nle-split-browser-e2e.mjs	REUSE	REAL_CHROME_NLE_PRODUCT_ACCEPTANCE
+frontend/scripts/nle-workflow-browser-e2e.mjs	REUSE	REAL_CHROME_NLE_PRODUCT_ACCEPTANCE
 frontend/scripts/react-first-guard.sh	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/scripts/require-oidc-build-env.mjs	REUSE	OIDC_BUILD_CONFIGURATION_GUARD
 frontend/scripts/validate-h4-disposition-ledger.mjs	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
@@ -203,6 +204,8 @@ frontend/src/product/timeline/TimelineNavigation.tsx	REUSE	BOUNDED_NLE_NAVIGATIO
 frontend/src/product/timeline/editor-state.test.ts	REUSE	PURE_TIMELINE_OPERATION_STATE_TRANSITION_EVIDENCE
 frontend/src/product/timeline/editor-state.ts	REUSE	PURE_CANONICAL_REVISION_AND_OPERATION_STATE_MACHINE
 frontend/src/product/timeline/gateways.ts	REUSE	SEPARATED_TIMELINE_QUERY_COMMAND_AND_CAPABILITY_CONTRACTS
+frontend/src/product/timeline/timeline-projection.test.ts	REUSE	CANONICAL_TIMELINE_PROJECTION_EVIDENCE
+frontend/src/product/timeline/timeline-projection.ts	REUSE	READ_ONLY_CANONICAL_TIMELINE_PROJECTION
 frontend/src/product/timeline/move.test.ts	REUSE	NON_RIPPLE_MOVE_PROJECTION_EVIDENCE
 frontend/src/product/timeline/move.ts	REUSE	EXACT_RATIONAL_NON_RIPPLE_MOVE_PROJECTION
 frontend/src/product/timeline/navigation.ts	REUSE	FRONTEND_LOCAL_EXACT_TIME_AND_IDENTITY_SCOPED_NAVIGATION_PROJECTION_NOT_SERVER_DTO
