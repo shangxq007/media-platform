@@ -287,7 +287,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
     const retryable = keepForRetry && command !== null && (status === undefined || status >= 500)
     if (retryable) {
       setRetryCommand({ command, label })
-      setMessage(`${label} could not be confirmed (${status ?? 'network error'}). The draft is still shown; retry reuses the same command ID.`)
+      setMessage(`${label} could not be confirmed (${status ?? 'network error'}). The command is retained for a safe retry with the same command ID; no success is claimed.`)
       return
     }
     setRetryCommand(null)
