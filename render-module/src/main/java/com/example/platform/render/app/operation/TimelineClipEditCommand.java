@@ -9,18 +9,56 @@ import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import java.util.List;
 
-/** Shared typed transport command; invokes the canonical Operation authority. */
-/** MOVE_CLIP changes time on the existing track. Cross-track moves are not accepted here. */
-    public record TimelineClipEditCommand(String type, String baseRevisionId, String baseContentHash,
-                                  String clipId, String delta, Boolean absolute, String edge,
-                                  String commandId) {
-        public TimelineClipEditCommand {
-            requireId(baseRevisionId, "baseRevisionId");
-            requireHash(baseContentHash, "baseContentHash");
-            requireId(clipId, "clipId");
-            requireId(commandId, "commandId");
-            if (type == null || !List.of("MOVE_CLIP", "TRIM_CLIP", "DELETE_CLIP").contains(type)) {
-                throw new IllegalArgumentException("unsupported clip edit type");
+/**
+ * Shared typed transport command; invokes the canonical Operation authority.
+ *
+ * <p>MOVE_CLIP changes time on the existing track (cross-track moves are not accepted here).
+ * SPLIT_CLIP requires an exact split time and the caller-supplied right clip identity so the
+ * canonical plan (and its idempotent replay) is deterministic.
+ */
+public record TimelineClipEditCommand(
+        String type,
+        String baseRevisionId,
+        String baseContentHash,
+        String clipId,
+        String delta,
+        Boolean absolute,
+        String edge,
+        String commandId,
+        String splitTime,
+        String rightClipId) {
+
+    private static final List<String> TYPES =
+            List.of("MOVE_CLIP", "TRIM_CLIP", "DELETE_CLIP", "SPLIT_CLIP");
+
+    /** Backward-compatible transport constructor for the pre-split command shapes. */
+    public TimelineClipEditCommand(String type, String baseRevisionId, String baseContentHash,
+                                   String clipId, String delta, Boolean absolute, String edge,
+                                   String commandId) {
+        this(type, baseRevisionId, baseContentHash, clipId, delta, absolute, edge, commandId,
+                null, null);
+    }
+
+    public TimelineClipEditCommand {
+        requireId(baseRevisionId, "baseRevisionId");
+        requireHash(baseContentHash, "baseContentHash");
+        requireId(clipId, "clipId");
+        requireId(commandId, "commandId");
+        if (type == null || !TYPES.contains(type)) {
+            throw new IllegalArgumentException("unsupported clip edit type");
+        }
+        if ("SPLIT_CLIP".equals(type)) {
+            if (splitTime == null || splitTime.length() > 64
+                    || !splitTime.matches("[+]?[0-9]+(?:/[1-9][0-9]*)?")) {
+                throw new IllegalArgumentException("exact rational splitTime required");
+            }
+            requireId(rightClipId, "rightClipId");
+            if (delta != null || absolute != null || edge != null) {
+                throw new IllegalArgumentException("SPLIT_CLIP does not accept move/trim parameters");
+            }
+        } else {
+            if (splitTime != null || rightClipId != null) {
+                throw new IllegalArgumentException("split fields are only valid for SPLIT_CLIP");
             }
             if (!"DELETE_CLIP".equals(type)) {
                 if (delta == null || delta.length() > 64
@@ -34,7 +72,8 @@ import java.util.List;
             if ("MOVE_CLIP".equals(type) && edge != null) {
                 throw new IllegalArgumentException("MOVE_CLIP does not accept trim edge");
             }
-            if ("TRIM_CLIP".equals(type) && (edge == null || !List.of("START", "END").contains(edge))) {
+            if ("TRIM_CLIP".equals(type)
+                    && (edge == null || !List.of("START", "END").contains(edge))) {
                 throw new IllegalArgumentException("trim edge must be START or END");
             }
             if ("TRIM_CLIP".equals(type) && absolute != null) {
@@ -45,28 +84,33 @@ import java.util.List;
                 throw new IllegalArgumentException("DELETE_CLIP does not accept time parameters");
             }
         }
+    }
 
-        public OperationRequest toOperationRequest(String projectId) {
-            var definition = switch (type) {
-                case "MOVE_CLIP" -> OperationDefinition.V1.MOVE;
-                case "TRIM_CLIP" -> OperationDefinition.V1.TRIM;
-                case "DELETE_CLIP" -> OperationDefinition.V1.DELETE;
-                default -> throw new IllegalArgumentException("unsupported clip edit type");
-            };
-            OperationParameters parameters = switch (type) {
-                case "MOVE_CLIP" -> new OperationParameters.MoveParameters(parseTime(delta), absolute);
-                case "TRIM_CLIP" -> new OperationParameters.TrimParameters(
-                        OperationParameters.TrimParameters.TrimEdge.valueOf(edge), parseTime(delta));
-                case "DELETE_CLIP" -> new OperationParameters.NoParameters();
-                default -> throw new IllegalArgumentException("unsupported clip edit type");
-            };
-            return new OperationRequest(definition.definitionId(), definition.version(),
-                    new OperationTargetRequest.ClipSelectionTargetRequest(projectId,
-                            new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of(clipId))),
-                            SelectionSpec.ExpansionPolicy.EXACT),
-                    parameters, baseRevisionId, baseContentHash, null);
-        }
-        private static void requireId(String value, String field) {
+    public OperationRequest toOperationRequest(String projectId) {
+        var definition = switch (type) {
+            case "MOVE_CLIP" -> OperationDefinition.V1.MOVE;
+            case "TRIM_CLIP" -> OperationDefinition.V1.TRIM;
+            case "DELETE_CLIP" -> OperationDefinition.V1.DELETE;
+            case "SPLIT_CLIP" -> OperationDefinition.V3.SPLIT_CLIP;
+            default -> throw new IllegalArgumentException("unsupported clip edit type");
+        };
+        OperationParameters parameters = switch (type) {
+            case "MOVE_CLIP" -> new OperationParameters.MoveParameters(parseTime(delta), absolute);
+            case "TRIM_CLIP" -> new OperationParameters.TrimParameters(
+                    OperationParameters.TrimParameters.TrimEdge.valueOf(edge), parseTime(delta));
+            case "DELETE_CLIP" -> new OperationParameters.NoParameters();
+            case "SPLIT_CLIP" -> new OperationParameters.SplitParameters(
+                    TimelineClipId.of(rightClipId), parseTime(splitTime));
+            default -> throw new IllegalArgumentException("unsupported clip edit type");
+        };
+        return new OperationRequest(definition.definitionId(), definition.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(projectId,
+                        new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of(clipId))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                parameters, baseRevisionId, baseContentHash, null);
+    }
+
+    private static void requireId(String value, String field) {
         if (value == null || value.length() > 64 || !value.matches("[A-Za-z0-9._:-]+")) {
             throw new IllegalArgumentException(field + " has invalid syntax");
         }

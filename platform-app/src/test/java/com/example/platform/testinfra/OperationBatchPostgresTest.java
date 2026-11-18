@@ -381,6 +381,82 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void splitThenMoveAndTrimRightClipInOneBatch() {
+        TimelineRevision base = saveRevision(twoClipDocument());
+        OperationRequest split = new OperationRequest(
+                OperationDefinition.V3.SPLIT_CLIP.definitionId(),
+                OperationDefinition.V3.SPLIT_CLIP.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                        new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.SplitParameters(TimelineClipId.of("clip-a-right"),
+                        MediaTime.ofRational(2, 1)),
+                base.revisionId(), hash(base), null);
+        OperationRequest moveRight = new OperationRequest(
+                OperationDefinition.V1.MOVE.definitionId(),
+                OperationDefinition.V1.MOVE.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                        new SelectionSpec.ExplicitObjectSelection(
+                                List.of(TimelineClipId.of("clip-a-right"))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.MoveParameters(MediaTime.ofRational(3, 1), true),
+                base.revisionId(), hash(base), null);
+        OperationRequest trimRight = new OperationRequest(
+                OperationDefinition.V1.TRIM.definitionId(),
+                OperationDefinition.V1.TRIM.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                        new SelectionSpec.ExplicitObjectSelection(
+                                List.of(TimelineClipId.of("clip-a-right"))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.TrimParameters(
+                        OperationParameters.TrimParameters.TrimEdge.END, MediaTime.ofRational(1, 1)),
+                base.revisionId(), hash(base), null);
+
+        BatchCommitResult result = commitThree("batch-split-move-trim", base, split, moveRight, trimRight);
+
+        assertEquals(BatchCommitResult.APPLIED, result.status());
+        assertEquals(2, count("timeline_revision"));
+        assertEquals(result.newRevisionId(), head());
+        TimelineDocument committed = saveService.findPayloadDocument(TENANT, result.newRevisionId())
+                .orElseThrow();
+        List<TimelineClip> clips = committed.getTracks().get(0).clips();
+        assertEquals(List.of("clip-a", "clip-a-right", "clip-b"),
+                clips.stream().map(clip -> clip.getClipId().value()).toList());
+        TimelineClip left = clips.get(0);
+        TimelineClip right = clips.get(1);
+        assertEquals(MediaTime.ofRational(0, 1), left.getStartTime());
+        assertEquals(MediaTime.ofRational(2, 1), left.getEndTime());
+        assertEquals(MediaTime.ofRational(2, 1), left.getTrimEnd());
+        assertEquals(MediaTime.ofRational(3, 1), right.getStartTime());
+        assertEquals(MediaTime.ofRational(4, 1), right.getEndTime());
+        assertEquals(MediaTime.ofRational(2, 1), right.getTrimStart());
+        assertEquals(MediaTime.ofRational(3, 1), right.getTrimEnd());
+        assertEquals(left.getMediaAssetId(), right.getMediaAssetId());
+    }
+
+    @Test
+    void splitAtClipBoundaryFailsWithoutWriting() {
+        TimelineRevision base = saveRevision(twoClipDocument());
+        OperationRequest split = new OperationRequest(
+                OperationDefinition.V3.SPLIT_CLIP.definitionId(),
+                OperationDefinition.V3.SPLIT_CLIP.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                        new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.SplitParameters(TimelineClipId.of("clip-a-right"),
+                        MediaTime.ofRational(0, 1)),
+                base.revisionId(), hash(base), null);
+
+        BatchException failure = assertThrows(BatchException.class,
+                () -> commit("batch-split-boundary", base, split, null));
+
+        assertEquals(BatchErrorCode.STEP_PLAN_FAILED, failure.code());
+        assertEquals(0, failure.stepIndex());
+        assertEquals(1, count("timeline_revision"));
+        assertEquals(0, count("apply_command"));
+    }
+
+    @Test
     void groupCreateAndRemoveInOneBatchIsSemanticNoOp() {
         TimelineRevision base = saveRevision(twoClipDocument());
         OperationRequest create = new OperationRequest(
@@ -504,6 +580,17 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                                      String message) {
         List<OperationRequest> operations = second == null
                 ? List.of(first) : List.of(first, second);
+        return commitMany(batchId, base, operations, message);
+    }
+
+    private BatchCommitResult commitThree(String batchId, TimelineRevision base,
+                                          OperationRequest first, OperationRequest second,
+                                          OperationRequest third) {
+        return commitMany(batchId, base, List.of(first, second, third), null);
+    }
+
+    private BatchCommitResult commitMany(String batchId, TimelineRevision base,
+                                         List<OperationRequest> operations, String message) {
         VersionedAggregateRef target = new VersionedAggregateRef(
                 "TIMELINE", TENANT, PROJECT, PROJECT, "main");
         OperationBatchRequest request = new OperationBatchRequest(

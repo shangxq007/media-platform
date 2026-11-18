@@ -83,12 +83,13 @@ public class TimelineClipEditOperationController {
         invocations.validate(request,
                 new OperationInvocationContext(actor, body.commandId(), null, "timeline-http"), projectId);
         return ResponseEntity.ok(new ClipEditPreview("VALID",
-                request.definitionId().value(), body.clipId(), body.type(), body.edge(), body.delta()));
+                request.definitionId().value(), body.clipId(), body.type(), body.edge(), body.delta(),
+                body.splitTime(), body.rightClipId()));
     }
 
     /** Preview acknowledgement: the exact command shape is accepted; nothing was persisted. */
     public record ClipEditPreview(String status, String definitionId, String clipId, String type,
-                                  String edge, String delta) {}
+                                  String edge, String delta, String splitTime, String rightClipId) {}
 
     @ExceptionHandler(OperationInvocationException.class)
     ResponseEntity<ProblemDetail> operationFailure(OperationInvocationException failure) {

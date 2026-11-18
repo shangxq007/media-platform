@@ -158,4 +158,24 @@ public class TimelineDocument {
     public List<TextElement> getTextElements() { return textElements; }
     public List<CanonicalTransition> getTransitions() { return transitions; }
     public List<CanonicalAutomationCurve> getAutomations() { return automations; }
+
+    /**
+     * Whether an authored transition or automation still targets the clip identity.
+     * Kept on the canonical aggregate so other modules do not depend on the
+     * canonicalmodel package directly.
+     */
+    public boolean referencesClip(TimelineClipId clipId) {
+        String id = clipId.value();
+        for (CanonicalTransition transition : transitions) {
+            if (id.equals(transition.outgoingClipId()) || id.equals(transition.incomingClipId())) {
+                return true;
+            }
+        }
+        for (CanonicalAutomationCurve automation : automations) {
+            if (id.equals(automation.targetEntityId())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

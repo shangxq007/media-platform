@@ -50,6 +50,7 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
   const [delta, setDelta] = useState('1/4')
   const [absolute, setAbsolute] = useState(false)
   const [edge, setEdge] = useState<TrimEdge>('END')
+  const [splitTime, setSplitTime] = useState('')
   const [pending, setPending] = useState<PendingTrim | null>(null)
   const [previewed, setPreviewed] = useState<PreviewedTrim | null>(null)
   const [busy, setBusy] = useState(false)
@@ -288,6 +289,47 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     } finally { setBusy(false) }
   }
 
+  async function splitSelected() {
+    if (!head || !project.tenantId || !active || busy) return
+    const parsed = parseRational(splitTime)
+    if (!parsed || compare(parsed, active.start) <= 0 || compare(parsed, active.end) >= 0) {
+      setActionFailed(true)
+      setMessage('Split time must be strictly inside the selected clip (exclusive start and end).')
+      return
+    }
+    const rightClipId = crypto.randomUUID()
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'SPLIT_CLIP',
+      formatRational(parsed), head.revisionId, rightClipId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    const commandId = keys.current[fingerprint]
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, {
+        type: 'SPLIT_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        clipId: active.clipId, splitTime: formatRational(parsed), rightClipId, commandId,
+      })
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, {
+        type: 'SPLIT_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        clipId: active.clipId, splitTime: formatRational(parsed), rightClipId, commandId,
+      })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw new Error('Split accepted, but authoritative HEAD has changed. Reload before editing again.')
+      }
+      setSelected(rightClipId)
+      await onRevisionChanged()
+      setMessage(`Clip split at ${formatRational(parsed)}s; left ${active.clipId} and right ${rightClipId} `
+        + `are independent clips at revision ${authoritative.revisionId}.`)
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status
+      setMessage(status === 409 || status === 412
+        ? 'Revision conflict. Reload HEAD and retry the split.'
+        : error instanceof Error ? error.message : 'Split failed.')
+      setActionFailed(true)
+      await onRevisionChanged()
+    } finally { setBusy(false) }
+  }
+
   function onSectionKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
     const target = event.target as HTMLElement | null
@@ -370,9 +412,10 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
     <button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</button>
 
     <label>Operation <select aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null) }}>
-      <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option>
+      <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option><option value="SPLIT_CLIP">Split</option>
     </select></label>
-    {type !== 'DELETE_CLIP' && <label>Exact time <input aria-label="Exact time" value={delta} onChange={event => setDelta(event.target.value)} /></label>}
+    {type !== 'DELETE_CLIP' && type !== 'SPLIT_CLIP' && <label>Exact time <input aria-label="Exact time" value={delta} onChange={event => setDelta(event.target.value)} /></label>}
+    {type === 'SPLIT_CLIP' && <label>Split time <input aria-label="Split time" value={splitTime} onChange={event => setSplitTime(event.target.value)} /></label>}
     {type === 'MOVE_CLIP' && <label><input type="checkbox" checked={absolute} onChange={event => setAbsolute(event.target.checked)} /> Absolute position</label>}
     {type === 'TRIM_CLIP' && <label>Edge <select aria-label="Trim edge" value={edge} onChange={event => setEdge(event.target.value as TrimEdge)}><option value="START">START</option><option value="END">END</option></select></label>}
     {type === 'TRIM_CLIP'
@@ -381,7 +424,10 @@ export function ClipEditor({ head, onRevisionChanged }: Props) {
                   onClick={() => { const parsed = parseRational(delta); if (parsed) void previewTrim(edge, parsed) }}>Preview trim</button>
           <span> (drag a clip edge above, then apply) </span>
         </>
-      : <button type="button" disabled={!head || !selected || !project.tenantId || busy} onClick={() => void applySimple()}>Apply operation</button>}
+      : type === 'SPLIT_CLIP'
+        ? <button type="button" aria-label="Split selected clip" disabled={!head || !selected || !project.tenantId || busy}
+                  onClick={() => void splitSelected()}>Split clip</button>
+        : <button type="button" disabled={!head || !selected || !project.tenantId || busy} onClick={() => void applySimple()}>Apply operation</button>}
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
   </section>

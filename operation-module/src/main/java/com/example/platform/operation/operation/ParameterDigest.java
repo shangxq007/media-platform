@@ -81,6 +81,9 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.TrimParameters t) {
             return "trim(" + t.edge() + "," + t.delta() + ")";
         }
+        if (p instanceof OperationParameters.SplitParameters split) {
+            return "split(" + split.rightClipId().value() + "," + split.splitTimelineTime() + ")";
+        }
         if (p instanceof OperationParameters.SetTemporalRateParameters r) {
             long n = r.rate().numerator();
             long d = r.rate().denominator();

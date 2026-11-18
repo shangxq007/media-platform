@@ -72,6 +72,39 @@ class TimelineClipEditOperationControllerTest {
     }
 
     @Test
+    void splitPreviewValidatesRightIdentityAndSplitTimeWithoutPersisting() throws Exception {
+        TenantContext.set("tenant-a");
+        var actors = mock(CanonicalActorResolver.class);
+        var invocations = mock(OperationInvocationPort.class);
+        when(actors.resolveCurrentActor()).thenReturn(Optional.of(
+                CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
+        var mvc = MockMvcBuilders.standaloneSetup(
+                new TimelineClipEditOperationController(invocations, actors)).build();
+        String body = """
+                {"type":"SPLIT_CLIP","baseRevisionId":"rev-1","baseContentHash":"%s",
+                 "clipId":"clip-1","splitTime":"2/1","rightClipId":"clip-right",
+                 "commandId":"split-preview-1"}
+                """.formatted(HASH);
+
+        mvc.perform(post(PREVIEW_PATH).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.status").value("VALID"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.splitTime").value("2/1"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.rightClipId").value("clip-right"));
+
+        var requests = ArgumentCaptor.forClass(OperationRequest.class);
+        verify(invocations).validate(requests.capture(), any(), org.mockito.ArgumentMatchers.eq("project-a"));
+        verify(invocations, org.mockito.Mockito.never()).invoke(any(), any());
+        assertEquals(OperationDefinition.V3.SPLIT_CLIP.definitionId(), requests.getValue().definitionId());
+        var split = assertInstanceOf(OperationParameters.SplitParameters.class, requests.getValue().parameters());
+        assertEquals("clip-right", split.rightClipId().value());
+        assertEquals("2/1", split.splitTimelineTime().toString());
+    }
+
+    @Test
     void trimPreviewSurfacesTheCanonicalRejection() throws Exception {
         TenantContext.set("tenant-a");
         var actors = mock(CanonicalActorResolver.class);

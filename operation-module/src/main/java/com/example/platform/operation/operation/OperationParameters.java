@@ -26,6 +26,7 @@ public sealed interface OperationParameters permits
         OperationParameters.NoParameters,
         OperationParameters.MoveParameters,
         OperationParameters.TrimParameters,
+        OperationParameters.SplitParameters,
         OperationParameters.SetTemporalRateParameters,
         OperationParameters.SetTemporalDirectionParameters,
         OperationParameters.FreezeParameters,
@@ -97,6 +98,22 @@ public sealed interface OperationParameters permits
 
     @org.springframework.modulith.NamedInterface("invocation")
     record NoParameters() implements OperationParameters {
+    }
+
+    /**
+     * SPLIT: split one clip at an exact timeline time. The left clip keeps the
+     * original identity; the caller supplies the right clip identity so the plan
+     * (and its replay) is deterministic.
+     */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record SplitParameters(
+            com.example.platform.timeline.canonical.TimelineClipId rightClipId,
+            MediaTime splitTimelineTime) implements OperationParameters {
+        public SplitParameters {
+            if (rightClipId == null || splitTimelineTime == null) {
+                throw new IllegalArgumentException("rightClipId and splitTimelineTime required");
+            }
+        }
     }
 
     /** MOVE (OE1): exact MediaTime delta OR absolute destination; non-ripple intent. */

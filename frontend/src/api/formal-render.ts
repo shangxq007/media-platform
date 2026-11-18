@@ -7,7 +7,7 @@ const id = z.string().min(1)
 const part = (value: string) => encodeURIComponent(id.parse(value))
 export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number }; outputFormat: 'MP4'; profile: string }
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
-export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; commandId: string }
+export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; commandId: string }
 const Submission = z.object({ renderJobId: id, requestId: id, executionPlanId: id, status: z.literal('PLANNED'), workflowId: id, workflowStarted: z.boolean() })
 const Result = z.object({ renderJobId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
 export type RenderResult = z.infer<typeof Result>
@@ -39,7 +39,9 @@ export const FormalRenderAPI = {
   },
   async previewOperation(tenant: string, project: string, command: ClipEdit, signal?: AbortSignal) {
     return z.object({ status: z.literal('VALID'), definitionId: z.string(), clipId: z.string(),
-      type: z.string(), edge: z.string().nullable(), delta: z.string().nullable() })
+      type: z.string(), edge: z.string().nullable(), delta: z.string().nullable(),
+      splitTime: z.string().nullable().optional(),
+      rightClipId: z.string().nullable().optional() })
       .parse(await request(c => versionlessApi.post(
         `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/preview`, command, c), signal))
   },

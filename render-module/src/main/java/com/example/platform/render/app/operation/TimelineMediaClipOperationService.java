@@ -317,7 +317,8 @@ public class TimelineMediaClipOperationService {
         var id = request.definitionId();
         return OperationDefinition.V1.MOVE.definitionId().equals(id)
                 || OperationDefinition.V1.TRIM.definitionId().equals(id)
-                || OperationDefinition.V1.DELETE.definitionId().equals(id);
+                || OperationDefinition.V1.DELETE.definitionId().equals(id)
+                || OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(id);
     }
 
     private PreparedOperation prepareForInvocation(String tenantId, String projectId,

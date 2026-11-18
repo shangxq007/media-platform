@@ -61,6 +61,7 @@ public final class OperationPlanner {
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
+            case "timeline.clip.split" -> planSplit(instance, base, changes);
             case "timeline.temporal.set-rate" -> planSetRate(instance, base, changes);
             case "timeline.temporal.set-direction" -> planSetDirection(instance, base, changes);
             case "timeline.temporal.freeze" -> planFreeze(instance, base, changes);
@@ -271,6 +272,121 @@ public final class OperationPlanner {
         return new TimelineDocument(base.getSchemaVersion(), tracks, base.getMetadata(),
                 base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
                 base.getTransitions(), base.getAutomations());
+    }
+
+    // ---- 17 non-text operations (split added) ----
+    private TimelineDocument planSplit(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
+        var params = (OperationParameters.SplitParameters) inst.parameters();
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "split requires exactly one target");
+        }
+        TimelineClipId leftId = scope.get(0);
+        TimelineClipId rightId = params.rightClipId();
+        if (rightId.equals(leftId)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "right clip id must differ from the left clip");
+        }
+        TimelineTrack targetTrack = null;
+        TimelineClip clip = null;
+        for (TimelineTrack track : base.getTracks()) {
+            for (TimelineClip candidate : track.clips()) {
+                if (candidate.getClipId().equals(rightId)) {
+                    throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT,
+                            "right clip identity already exists: " + rightId.value());
+                }
+                if (candidate.getClipId().equals(leftId)) {
+                    clip = candidate;
+                    targetTrack = track;
+                }
+            }
+        }
+        if (clip == null || targetTrack == null) {
+            throw new PlanException(PlanErrorCode.TARGET_MISSING, "clip " + leftId.value() + " missing in base");
+        }
+        if (!(clip.getTemporalMapping() instanceof ConstantRateTemporalMapping mapping)) {
+            throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                    "split requires a constant-rate temporal mapping");
+        }
+        if (!clip.getEffects().isEmpty()) {
+            throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                    "split of a clip with effects is not supported");
+        }
+        MediaTime split = params.splitTimelineTime();
+        if (!split.isGreaterThan(clip.getStartTime()) || !split.isLessThan(clip.getEndTime())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "split time must be strictly inside the clip");
+        }
+        if (referencesClip(base, leftId)) {
+            throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                    "split of a clip referenced by a relationship, transition, automation or audio route is not supported");
+        }
+        MediaTime offset = split.subtract(clip.getStartTime());
+        MediaTime sourceDelta = offset.multiplyRational(
+                mapping.rate().numerator(), mapping.rate().denominator());
+        MediaTime sourceSplit = mapping.direction() == PlaybackDirection.FORWARD
+                ? clip.getTrimStart().add(sourceDelta)
+                : clip.getTrimEnd().subtract(sourceDelta);
+        if (!sourceSplit.isGreaterThan(clip.getTrimStart()) || !sourceSplit.isLessThan(clip.getTrimEnd())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "split point maps outside the clip source range");
+        }
+        boolean forward = mapping.direction() == PlaybackDirection.FORWARD;
+        MediaTime leftTrimStart = forward ? clip.getTrimStart() : sourceSplit;
+        MediaTime leftTrimEnd = forward ? sourceSplit : clip.getTrimEnd();
+        MediaTime rightTrimStart = forward ? sourceSplit : clip.getTrimStart();
+        MediaTime rightTrimEnd = forward ? clip.getTrimEnd() : sourceSplit;
+        TimelineClip left = new TimelineClip(leftId.value(), clip.getMediaAssetId(),
+                clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                clip.getStartTime(), split, leftTrimStart, leftTrimEnd,
+                clip.getSourceKind(), mapping, clip.getEffects());
+        TimelineClip right = new TimelineClip(rightId.value(), clip.getMediaAssetId(),
+                clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                split, clip.getEndTime(), rightTrimStart, rightTrimEnd,
+                clip.getSourceKind(), mapping, List.of());
+        changes.add(new PlannedChange.ClipReplaced(leftId, left));
+        changes.add(new PlannedChange.ClipAdded(targetTrack.trackId(), right));
+        List<TimelineTrack> tracks = new ArrayList<>();
+        for (TimelineTrack track : base.getTracks()) {
+            if (!track.trackId().equals(targetTrack.trackId())) {
+                tracks.add(track);
+                continue;
+            }
+            List<TimelineClip> clips = new ArrayList<>();
+            for (TimelineClip existing : track.clips()) {
+                if (existing.getClipId().equals(leftId)) {
+                    clips.add(left);
+                    clips.add(right);
+                } else {
+                    clips.add(existing);
+                }
+            }
+            tracks.add(new TimelineTrack(track.trackId(), track.name(), track.type(), clips));
+        }
+        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
+    }
+
+    /** Split is fail-closed when another authored entity still references the clip identity. */
+    private static boolean referencesClip(TimelineDocument base, TimelineClipId clipId) {
+        String id = clipId.value();
+        for (SemanticRelationship relationship : base.getSemanticRelationships()) {
+            if (relationship instanceof GroupRelationship group
+                    && group.members().stream().anyMatch(member -> member.equals(clipId))) {
+                return true;
+            }
+            if (relationship instanceof SyncRelationship sync
+                    && (sync.endpointA().equals(clipId) || sync.endpointB().equals(clipId))) {
+                return true;
+            }
+        }
+        if (base.referencesClip(clipId)) {
+            return true;
+        }
+        for (AudioRoute route : base.getAudioMix().routes()) {
+            if (id.equals(route.input().clipId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ---- 16 non-text operations ----

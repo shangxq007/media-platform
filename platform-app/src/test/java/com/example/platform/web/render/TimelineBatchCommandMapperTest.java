@@ -2,6 +2,7 @@ package com.example.platform.web.render;
 
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.operation.batch.OperationBatchRequest;
+import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
 import com.example.platform.render.app.operation.TimelineBatchCommand;
@@ -21,6 +22,19 @@ class TimelineBatchCommandMapperTest {
     private static final String BASE = "revision-1";
     private static final String HASH = "a".repeat(64);
     private final TimelineBatchCommandMapper mapper = new TimelineBatchCommandMapper();
+
+    @Test
+    void splitMapsItsRightIdentityAndExactTime() {
+        OperationRequest request = map(new TimelineBatchCommand.Operation(
+                "timeline.clip.split",
+                new TimelineBatchCommand.Target("clip-a", null, null, null, null),
+                Map.of("rightClipId", "clip-b", "splitTimelineTime", "2/1")));
+
+        OperationParameters.SplitParameters split =
+                assertInstanceOf(OperationParameters.SplitParameters.class, request.parameters());
+        assertEquals("clip-b", split.rightClipId().value());
+        assertEquals("2/1", split.splitTimelineTime().toString());
+    }
 
     @Test
     void groupCreateMapsItsMembersAsTheClipScope() {

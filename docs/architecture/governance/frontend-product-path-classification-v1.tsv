@@ -16,6 +16,7 @@ frontend/postcss.config.js	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/scripts/frontend-architecture-guard.mjs	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/scripts/frontend-architecture-guard.test.mjs	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/scripts/nle-browser-e2e.mjs	REUSE	REAL_CHROME_NLE_PRODUCT_ACCEPTANCE
+frontend/scripts/nle-split-browser-e2e.mjs	REUSE	REAL_CHROME_NLE_PRODUCT_ACCEPTANCE
 frontend/scripts/react-first-guard.sh	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION
 frontend/scripts/require-oidc-build-env.mjs	REUSE	OIDC_BUILD_CONFIGURATION_GUARD
 frontend/scripts/validate-h4-disposition-ledger.mjs	REUSE	VIABLE_BUILD_TEST_GOVERNANCE_FOUNDATION

@@ -259,3 +259,38 @@ describe('ClipEditor overlap rejection', () => {
     expect(onRevisionChanged).toHaveBeenCalled()
   })
 })
+
+describe('ClipEditor split interaction', () => {
+  it('previews and applies one canonical SPLIT_CLIP with a stable right identity', async () => {
+    const { onRevisionChanged } = renderEditor()
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Clip operation'), { target: { value: 'SPLIT_CLIP' } })
+    fireEvent.change(screen.getByLabelText('Split time'), { target: { value: '3/1' } })
+    fireEvent.click(screen.getByLabelText('Split selected clip'))
+    await waitFor(() => expect(api.previewOperation).toHaveBeenCalledTimes(1))
+    const preview = api.previewOperation.mock.calls[0][2]
+    expect(preview.type).toBe('SPLIT_CLIP')
+    expect(preview.clipId).toBe('clip-0')
+    expect(preview.splitTime).toBe('3/1')
+    expect(preview.rightClipId).toMatch(/^[0-9a-f-]{36}$/)
+    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
+    const applied = api.applyOperation.mock.calls[0][2]
+    expect(applied.commandId).toBe(preview.commandId)
+    expect(applied.rightClipId).toBe(preview.rightClipId)
+    expect(applied.splitTime).toBe('3/1')
+    await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/Clip split at 3/)).toBeTruthy()
+  })
+
+  it('rejects a split at the clip boundary without calling the canonical API', async () => {
+    renderEditor()
+    await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Clip operation'), { target: { value: 'SPLIT_CLIP' } })
+    fireEvent.change(screen.getByLabelText('Split time'), { target: { value: '0' } })
+    fireEvent.click(screen.getByLabelText('Split selected clip'))
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(screen.getByRole('alert').textContent).toMatch(/strictly inside/)
+    expect(api.previewOperation).not.toHaveBeenCalled()
+    expect(api.applyOperation).not.toHaveBeenCalled()
+  })
+})

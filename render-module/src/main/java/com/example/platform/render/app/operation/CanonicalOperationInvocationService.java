@@ -222,7 +222,8 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         var id = request.definitionId();
         return OperationDefinition.V1.MOVE.definitionId().equals(id)
                 || OperationDefinition.V1.TRIM.definitionId().equals(id)
-                || OperationDefinition.V1.DELETE.definitionId().equals(id);
+                || OperationDefinition.V1.DELETE.definitionId().equals(id)
+                || OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(id);
     }
 
     private static boolean validClipEditParameters(OperationRequest request) {
@@ -231,6 +232,8 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
             return request.parameters() instanceof OperationParameters.MoveParameters;
         if (OperationDefinition.V1.TRIM.definitionId().equals(request.definitionId()))
             return request.parameters() instanceof OperationParameters.TrimParameters;
+        if (OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(request.definitionId()))
+            return request.parameters() instanceof OperationParameters.SplitParameters;
         return request.parameters() instanceof OperationParameters.NoParameters;
     }
 

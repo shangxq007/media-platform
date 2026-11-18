@@ -85,7 +85,7 @@ public final class TimelineBatchCommandMapper {
     }
 
     private OperationDefinition definition(String definitionId, int index) {
-        for (OperationDefinition candidate : OperationDefinition.V2.ALL) {
+        for (OperationDefinition candidate : OperationDefinition.V3.ALL) {
             if (candidate.definitionId().value().equals(definitionId)) {
                 return candidate;
             }
@@ -125,6 +125,9 @@ public final class TimelineBatchCommandMapper {
                     OperationParameters.TrimParameters.TrimEdge.valueOf(
                             requiredText(parameters, "edge")),
                     time(parameters, "delta"));
+            case "timeline.clip.split" -> new OperationParameters.SplitParameters(
+                    TimelineClipId.of(requiredText(parameters, "rightClipId")),
+                    time(parameters, "splitTimelineTime"));
             case "timeline.delete", "timeline.group.remove", "timeline.sync.remove" ->
                     new OperationParameters.NoParameters();
             case "timeline.temporal.set-rate" -> new OperationParameters.SetTemporalRateParameters(
