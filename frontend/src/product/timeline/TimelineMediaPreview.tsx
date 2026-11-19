@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI } from '../../api/formal-render'
-import { versionlessApi } from '../../api/app/versionless-api'
+import { assetGateway } from '../../api/app/asset.gateway'
 import { formatRational, toSeconds, type Rational } from './trim'
 import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration } from './timeline-preview'
 import type { ProjectedClip, TimelineProjection } from './timeline-projection'
@@ -20,25 +20,29 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
 }) {
   const canvas = useRef<HTMLCanvasElement | null>(null)
   const host = useRef<HTMLElement | null>(null)
-  const sources = useRef(new Map<string, SourceMedia>())
+  const sources = useRef<Record<string, SourceMedia>>({})
   const audio = useRef<{ context: AudioContext; analyser: AnalyserNode } | null>(null)
   const connected = useRef(new WeakSet<HTMLVideoElement>())
   const generation = useRef(0)
   const raf = useRef<number | null>(null)
   const startedAt = useRef(0)
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
-  const [projection, setProjection] = useState<TimelineProjection | null>(null)
+  const projectionRef = useRef<TimelineProjection | null>(null)
+  const headRef = useRef(head)
+  const revisionId = head?.revisionId ?? ''
   const [duration, setDuration] = useState<number>(0)
   const [time, setTime] = useState(0)
   const [message, setMessage] = useState('')
   const playingRef = useRef(false)
   const playing = status === 'PLAYING'
 
-  const stopVideos = useCallback(() => { for (const source of sources.current.values()) source.video.pause() }, [])
+  const stopVideos = useCallback(() => { for (const source of Object.values(sources.current)) source.video.pause() }, [])
+
+  useEffect(() => { headRef.current = head }, [head])
 
   const draw = useCallback((seconds: number) => {
     const target = canvas.current
-    const current = projection
+    const current = projectionRef.current
     if (!target || !current) return
     const context = target.getContext('2d')
     if (!context) return
@@ -48,7 +52,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
     const clip = activeClipAt(current, timelineTime)
     if (host.current) host.current.dataset.activeClip = clip?.clipId ?? ''
     if (!clip) return
-    const media = sources.current.get(clip.artifactId)
+    const media = sources.current[clip.artifactId]
     if (!media || media.video.readyState < 2) return
     const sourceSeconds = toSeconds(sourceTimeAt(clip, timelineTime))
     if (Math.abs(media.video.currentTime - sourceSeconds) > 0.08) {
@@ -66,11 +70,11 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
         connected.current.add(media.video)
       } catch { /* element already connected or audio unavailable */ }
     }
-  }, [projection])
+  }, [])
 
   const loadRevision = useCallback(async () => {
-    const current = head
-    if (!current || !tenantId) { setStatus('IDLE'); setProjection(null); return }
+    const current = headRef.current
+    if (!current || !tenantId) { projectionRef.current = null; setStatus('IDLE'); return }
     const owned = ++generation.current
     if (raf.current !== null) cancelAnimationFrame(raf.current)
     raf.current = null
@@ -80,18 +84,17 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
       const snapshot = await FormalRenderAPI.snapshot(projectId, current.revisionId)
       if (owned !== generation.current) return
       const nextProjection = projectSnapshotJson(snapshot.canonicalTimelineJson)
-      setProjection(nextProjection)
+      projectionRef.current = nextProjection
       const seconds = toSeconds(timelineDuration(nextProjection))
       setDuration(seconds)
       const artifacts = [...new Set(nextProjection.clips.map(clip => clip.artifactId).filter(Boolean))]
       for (const artifactId of artifacts) {
         if (owned !== generation.current) return
-        if (sources.current.has(artifactId)) continue
-        const response = await versionlessApi.get(
-          `/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/source-artifacts/${encodeURIComponent(artifactId)}/content`,
-          { responseType: 'blob' })
+        if (sources.current[artifactId]) continue
+        const response = await assetGateway.readSourceContent(tenantId, projectId, artifactId)
         if (owned !== generation.current) return
-        const url = URL.createObjectURL(response.data as Blob)
+        if (!response.ok) throw new Error(response.message)
+        const url = URL.createObjectURL(response.value)
         const video = document.createElement('video')
         video.preload = 'auto'; video.playsInline = true; video.muted = false
         video.src = url
@@ -100,7 +103,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
           video.onerror = () => reject(new Error(`Source media ${artifactId} could not be decoded.`))
         })
         if (owned !== generation.current) { URL.revokeObjectURL(url); return }
-        sources.current.set(artifactId, { video, url })
+        sources.current[artifactId] = { video, url }
       }
       if (owned !== generation.current) return
       setStatus('READY')
@@ -110,7 +113,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
       setStatus('FAILED')
       setMessage(error instanceof Error ? error.message : 'Timeline preview could not be prepared.')
     }
-  }, [draw, head, projectId, stopVideos, tenantId])
+  }, [draw, projectId, revisionId, stopVideos, tenantId])
 
   useEffect(() => {
     void loadRevision()
@@ -118,8 +121,8 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
   }, [loadRevision])
 
   useEffect(() => () => {
-    for (const source of sources.current.values()) { source.video.pause(); URL.revokeObjectURL(source.url) }
-    sources.current.clear()
+    for (const source of Object.values(sources.current)) { source.video.pause(); URL.revokeObjectURL(source.url) }
+    sources.current = {}
     if (audio.current) void audio.current.context.close()
   }, [])
 
@@ -177,14 +180,13 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
   }, [draw, duration, playing])
 
   const toggle = () => { if (playing) pause(); else void play() }
-  const revision = head?.revisionId ?? ''
 
   return <section ref={host} aria-label="Timeline media preview" data-preview-status={status}
-    data-preview-revision={revision} data-preview-time={time.toFixed(3)} data-audio-rms="0">
+    data-preview-revision={revisionId} data-preview-time={time.toFixed(3)} data-audio-rms="0">
     <h3>Timeline media preview</h3>
     <p role="status">{
       status === 'PREPARING' ? 'Preparing Timeline media preview…'
-        : status === 'READY' ? `Preview ready for revision ${revision}.`
+        : status === 'READY' ? `Preview ready for revision ${revisionId}.`
           : status === 'PLAYING' ? 'Playing the current Timeline revision.'
             : status === 'PAUSED' ? 'Paused.' : status === 'FAILED' ? message
               : 'Preview has not been prepared.'
@@ -200,7 +202,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId }: {
     </div>
     {status === 'FAILED' ? <button type="button" onClick={() => void loadRevision()}>Retry preview</button> : null}
     <p style={{ fontSize: 12, color: '#9ca3af' }}>
-      Preview is derived from revision {revision || '—'} using the canonical snapshot and the
+      Preview is derived from revision {revisionId || '—'} using the canonical snapshot and the
       project's source artifacts. It does not write the Timeline.
     </p>
   </section>

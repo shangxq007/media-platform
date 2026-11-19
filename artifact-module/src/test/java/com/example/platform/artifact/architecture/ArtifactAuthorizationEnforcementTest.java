@@ -45,7 +45,8 @@ class ArtifactAuthorizationEnforcementTest {
             "ArtifactContentController.java",
             "ArtifactController.java",
             "ArtifactLifecycleController.java",
-            "ProjectArtifactController.java");
+            "ProjectArtifactController.java",
+            "SourceArtifactContentController.java");
 
     // ── helpers ─────────────────────────────────────────────────────────────
 

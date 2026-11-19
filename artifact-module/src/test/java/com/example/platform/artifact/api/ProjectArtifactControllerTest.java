@@ -6,6 +6,7 @@ import com.example.platform.artifact.infrastructure.ArtifactContentReadService;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.storage.api.StoragePlacementQuery;
 import com.example.platform.storage.api.VerifiedStorageRead;
 import com.example.platform.storage.contract.*;
 import java.time.Instant;
@@ -25,8 +26,9 @@ class ProjectArtifactControllerTest {
     final ArtifactApplicationQuery scoped = mock(ArtifactApplicationQuery.class);
     final ArtifactQueryService queries = mock(ArtifactQueryService.class);
     final VerifiedStorageRead storage = mock(VerifiedStorageRead.class);
+    final StoragePlacementQuery placements = mock(StoragePlacementQuery.class);
     final ArtifactProjectAuthorizationPort authorization = mock(ArtifactProjectAuthorizationPort.class);
-    final ArtifactContentRead contents = new ArtifactContentReadService(scoped, queries, storage);
+    final ArtifactContentRead contents = new ArtifactContentReadService(scoped, queries, storage, placements);
     final ArtifactApplicationService application = new ArtifactApplicationService(scoped, queries);
     final ProjectArtifactController controller = new ProjectArtifactController(application, contents, authorization);
     final ContentDigest digest = digest(image);

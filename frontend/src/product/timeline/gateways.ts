@@ -166,6 +166,7 @@ export interface AssetGateway {
   listSourcePins(tenantId: string, projectId: ProjectId): Promise<GatewayResult<readonly AssetSourcePin[]>>
   uploadSource(tenantId: string, projectId: ProjectId, file: File, idempotencyKey: string,
     onProgress?: (percentage: number) => void): Promise<GatewayResult<AssetSourcePin>>
+  readSourceContent(tenantId: string, projectId: string, artifactId: string): Promise<GatewayResult<Blob>>
 }
 
 export type CapabilityState = 'AVAILABLE' | 'UNKNOWN' | 'UNAVAILABLE'

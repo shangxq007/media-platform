@@ -31,7 +31,7 @@ const page = await context.newPage()
 page.on('response', response => {
   const url = new URL(response.url())
   if (url.pathname.startsWith('/api/') && !url.pathname.includes('/auth/'))
-    result.requests.push({ method: response.request().method(), path: url.pathname, status: response.status() })
+    result.requests.push({ method: response.request().method(), path: url.pathname, status: response.status(), at: Date.now() })
 })
 const currentHead = async () => {
   const response = await page.request.get(`${base}${productRoot}/revisions/current`, { headers: authorized })
@@ -109,7 +109,8 @@ const waitPreview = async revision => page.waitForFunction(rev => {
 }, revision, { timeout: 120000 })
 const previewPixel = async at => {
   await page.getByLabel('Timeline preview seek').evaluate((element, value) => {
-    element.value = String(value)
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    setter.call(element, String(value))
     element.dispatchEvent(new Event('input', { bubbles: true }))
     element.dispatchEvent(new Event('change', { bubbles: true }))
   }, at)
@@ -292,6 +293,13 @@ try {
   assertClip(finalClips.find(clip => clip.clipId === clipA.clipId), 'startTime', 1)
   assertClip(finalClips.find(clip => clip.clipId === right.clipId), 'startTime', 6)
   result.edits.push({ step: 'FINAL', revisionId: finalHead.revisionId })
+  await waitPreview(finalHead.revisionId)
+  const finalPreview = {}
+  for (const at of [0.5, 1.5, 3.5, 5.5, 6.5]) finalPreview[at] = colourOf(await previewPixel(at))
+  const expectedFinal = { 0.5: 'black', 1.5: 'red', 3.5: 'black', 5.5: 'black', 6.5: 'green' }
+  for (const [at, expected] of Object.entries(expectedFinal))
+    if (finalPreview[at] !== expected) throw new Error(`final preview ${at}: expected ${expected}, got ${JSON.stringify(finalPreview[at])}`)
+  result.previewFinal = finalPreview
   await page.getByLabel('Output start (ms)').fill('0')
   await page.getByLabel('Output end (ms)').fill('7000')
   await page.getByRole('button', { name: 'Submit RenderJob' }).click()
@@ -327,6 +335,36 @@ try {
     sha256: createHash('sha256').update(readFileSync(output)).digest('hex'), samples: observed }
   if (Math.abs(result.media.durationSeconds - 7) > 0.01 || result.media.frames !== 168)
     throw new Error(`unexpected media output ${JSON.stringify(result.media)}`)
+  const parity = {}
+  for (const at of Object.keys(samples)) {
+    const expected = observed[at].colour
+    if (result.previewFinal[at] !== expected)
+      throw new Error(`preview/render parity ${at}: preview ${result.previewFinal[at]} vs render ${expected}`)
+    parity[at] = { preview: result.previewFinal[at], render: expected }
+  }
+  result.previewRenderParity = parity
+  const sourceContentRequests = result.requests.filter(request =>
+    request.path.includes('/source-artifacts/') && request.path.endsWith('/content'))
+  const snapshotRequests = result.requests.filter(request =>
+    request.path.includes('/timeline/revisions/') && request.path.endsWith('/snapshot'))
+  const snapshotsByRevision = {}
+  for (const request of snapshotRequests) snapshotsByRevision[request.path] = (snapshotsByRevision[request.path] ?? 0) + 1
+  const maxSnapshotsPerRevision = Math.max(0, ...Object.values(snapshotsByRevision))
+  const requestsBySecond = {}
+  for (const request of result.requests) {
+    const second = Math.floor((request.at ?? 0) / 1000)
+    requestsBySecond[second] = (requestsBySecond[second] ?? 0) + 1
+  }
+  const maxRequestsPerSecond = Math.max(0, ...Object.values(requestsBySecond))
+  result.requestBounds = { sourceContentRequests: sourceContentRequests.length,
+    snapshotRequests: snapshotRequests.length, maxSnapshotsPerRevision, maxRequestsPerSecond,
+    totalRequests: result.requests.length }
+  if (sourceContentRequests.length > 8)
+    throw new Error(`source content request storm: ${JSON.stringify(result.requestBounds)}`)
+  if (maxSnapshotsPerRevision > 12)
+    throw new Error(`snapshot request storm for one revision: ${JSON.stringify(result.requestBounds)}`)
+  if (maxRequestsPerSecond > 50)
+    throw new Error(`request rate too high: ${JSON.stringify(result.requestBounds)}`)
   stage('RENDER_AND_DELIVERY_VERIFIED')
   result.status = 'PASS'
 } catch (error) {

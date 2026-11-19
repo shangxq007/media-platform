@@ -201,9 +201,12 @@ frontend/src/product/timeline/SemanticDiff.test.tsx	REUSE	SERVER_SEMANTIC_DIFF_P
 frontend/src/product/timeline/SemanticDiff.tsx	REUSE	READ_ONLY_SERVER_SEMANTIC_DIFF_PRESENTATION
 frontend/src/product/timeline/SourceBrowser.tsx	REUSE	SOURCE_ARTIFACT_BROWSER_AND_UPLOAD_UI
 frontend/src/product/timeline/TimelineNavigation.tsx	REUSE	BOUNDED_NLE_NAVIGATION_AND_METADATA_WITH_EXPLICIT_VERIFICATION_SOURCE
+frontend/src/product/timeline/TimelineMediaPreview.tsx	REUSE	READ_ONLY_TIMELINE_MEDIA_PREVIEW_SEQUENCER
 frontend/src/product/timeline/editor-state.test.ts	REUSE	PURE_TIMELINE_OPERATION_STATE_TRANSITION_EVIDENCE
 frontend/src/product/timeline/editor-state.ts	REUSE	PURE_CANONICAL_REVISION_AND_OPERATION_STATE_MACHINE
 frontend/src/product/timeline/gateways.ts	REUSE	SEPARATED_TIMELINE_QUERY_COMMAND_AND_CAPABILITY_CONTRACTS
+frontend/src/product/timeline/timeline-preview.test.ts	REUSE	TIMELINE_MEDIA_PREVIEW_TIME_MAPPING_EVIDENCE
+frontend/src/product/timeline/timeline-preview.ts	REUSE	CANONICAL_TIMELINE_MEDIA_TIME_MAPPING
 frontend/src/product/timeline/timeline-projection.test.ts	REUSE	CANONICAL_TIMELINE_PROJECTION_EVIDENCE
 frontend/src/product/timeline/timeline-projection.ts	REUSE	READ_ONLY_CANONICAL_TIMELINE_PROJECTION
 frontend/src/product/timeline/move.test.ts	REUSE	NON_RIPPLE_MOVE_PROJECTION_EVIDENCE

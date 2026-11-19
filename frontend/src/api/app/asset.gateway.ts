@@ -31,6 +31,10 @@ function path(tenantId: string, projectId: string) {
   return `/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/source-media`
 }
 
+function contentPath(tenantId: string, projectId: string, artifactId: string) {
+  return `/tenants/${encodeURIComponent(tenantId)}/projects/${encodeURIComponent(projectId)}/source-artifacts/${encodeURIComponent(artifactId)}/content`
+}
+
 export const assetGateway: AssetGateway = {
   async listSourcePins(tenantId, projectId) {
     try {
@@ -54,6 +58,22 @@ export const assetGateway: AssetGateway = {
       const parsed = Source.safeParse(response.data)
       if (!parsed.success) return responseValidationFailure('Source upload response did not contain a valid logical Artifact pin.')
       return { ok: true, value: pin(parsed.data) }
+    } catch (error) { return gatewayFailure(error) }
+  },
+  async readSourceContent(tenantId, projectId, artifactId) {
+    if (!tenantId || !projectId || !artifactId) {
+      return responseValidationFailure('Project and source Artifact identity are required.')
+    }
+    try {
+      const response = await versionlessApi.get(contentPath(tenantId, projectId, artifactId), { responseType: 'blob' })
+      const data = response.data
+      if (!(data instanceof Blob) || data.size === 0) {
+        return responseValidationFailure('Source media response did not contain bytes.')
+      }
+      if (!/^(video|audio)\//.test(data.type)) {
+        return responseValidationFailure('Source media response was not an audio or video representation.')
+      }
+      return { ok: true, value: data }
     } catch (error) { return gatewayFailure(error) }
   },
 }
