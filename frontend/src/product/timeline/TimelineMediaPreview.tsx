@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { toSeconds } from './trim'
@@ -305,12 +306,12 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
     <canvas ref={canvas} width={320} height={240} aria-label="Timeline preview canvas"
       style={{ display: 'block', width: '100%', maxWidth: 480, background: '#000', borderRadius: 4 }} />
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-      <button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
-        onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</button>
+      <Button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
+        onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</Button>
       <input aria-label="Timeline preview seek" type="range" min={0} max={Math.max(0.01, duration)}
-        step={0.01} value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1 }} />
+        step={0.01} value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1, minWidth: 0 }} />
       <output aria-label="Timeline preview time">{time.toFixed(2)}s / {duration.toFixed(2)}s</output>
     </div>
-    {status === 'FAILED' && <button type="button" onClick={() => setRetry(value => value + 1)}>Retry preview</button>}
+    {status === 'FAILED' && <Button type="button" onClick={() => setRetry(value => value + 1)}>Retry preview</Button>}
   </section>
 }

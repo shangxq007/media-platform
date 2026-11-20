@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, 
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
 import { projectSnapshotJson, type ProjectedTrack } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
+import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import {
   clampTrimDelta, compare, formatRational, parseRational, pixelsToDelta, projectTrim, subtract, toSeconds,
@@ -407,11 +408,12 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     ? { clipId: active.clipId, at: splitCandidate } : null
 
   return <section aria-label="Edit existing clip" tabIndex={0} onKeyDown={onSectionKeyDown}>
-    <h3>Edit existing clip</h3>
-    <button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</button>
-    <button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</button>
-    <button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</button>
-    <label>Clip <select aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
+    <div className="ff-nle-buttons">
+    <Button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</Button>
+    <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</Button>
+    <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</Button>
+    </div>
+    <label className="ff-nle-clip-picker">Clip <select className="ff-input" aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} {clip.trackId && `(${clip.trackId})`}</option>)}
     </select></label>
 
@@ -431,11 +433,11 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
             {ordered.map(track => {
               const label = `${type === 'VIDEO' ? 'V' : 'A'}${group.indexOf(track) + 1}`
               return <div key={track.trackId} style={{ display: 'flex', minHeight: 46, borderTop: '1px solid #374151' }}>
-                <button type="button" aria-label={`${label} ${track.name} ${type.toLowerCase()} track`}
-                  aria-pressed={selectedTrackId === track.trackId} onClick={() => onSelectTrack?.(track.trackId)}
+                <Button type="button" aria-label={`${label} ${track.name} ${type.toLowerCase()} track`}
+                  className="ff-nle-track-label" aria-pressed={selectedTrackId === track.trackId} onClick={() => onSelectTrack?.(track.trackId)}
                   style={{ flex: '0 0 100px', textAlign: 'left' }}>
                   {label}{track.name !== label && ` · ${track.name}`}
-                </button>
+                </Button>
                 <div style={{ position: 'relative', width: stripWidth }}>
         {clips.filter(clip => clip.trackId === track.trackId).map(clip => {
           const isActive = clip.clipId === selected
@@ -489,42 +491,44 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     {projection && !projection.valid && <p role="alert">{projection.reason}</p>}
     {moving && (() => { const clip = clips.find(row => row.clipId === moving.clipId); const projection = clip ? projectMove(clip, moving.start) : null; return projection
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
-    <button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
-            onClick={() => void deleteSelected()}>Delete selected clip</button>
+    <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
+            onClick={() => void deleteSelected()}>Delete selected clip</Button>
     {pending && active && <p role="status">
       Pending {pending.edge === 'START' ? 'left' : 'right'} trim by {formatRational(pending.delta)}s
       {' '}(source {formatRational(projectTrim(active, pending.edge, pending.delta).sourceStart)}s →
       {formatRational(projectTrim(active, pending.edge, pending.delta).sourceEnd)}s).
     </p>}
-    {pending && <button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</button>}
-    <button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</button>
+    {pending && <Button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</Button>}
+    <Button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</Button>
 
-    <label>Operation <select aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
+    <div className="ff-nle-clip-controls">
+    <label>Operation <select className="ff-input" aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option><option value="SPLIT_CLIP">Split</option>
     </select></label>
-    {type !== 'DELETE_CLIP' && type !== 'SPLIT_CLIP' && <label>Exact time <input aria-label="Exact time" value={delta} onChange={event => setDelta(event.target.value)} /></label>}
-    {type === 'SPLIT_CLIP' && <label>Split time <input aria-label="Split time" value={splitTime} onChange={event => setSplitTime(event.target.value)} /></label>}
+    {type !== 'DELETE_CLIP' && type !== 'SPLIT_CLIP' && <label>Exact time <Input aria-label="Exact time" value={delta} onChange={event => setDelta(event.target.value)} /></label>}
+    {type === 'SPLIT_CLIP' && <label>Split time <Input aria-label="Split time" value={splitTime} onChange={event => setSplitTime(event.target.value)} /></label>}
     {type === 'MOVE_CLIP' && <>
       <label><input type="checkbox" checked={absolute} onChange={event => setAbsolute(event.target.checked)} /> Absolute position</label>
-      <label>Destination track <select value={destinationTrackId} onChange={event => setDestinationTrackId(event.target.value)}>
+      <label>Destination track <select className="ff-input" aria-label="Destination track" value={destinationTrackId} onChange={event => setDestinationTrackId(event.target.value)}>
         <option value="">Current track</option>
         {tracks.filter(track => track.type === activeTrack?.type && track.trackId !== activeTrack?.trackId).map(track =>
           <option key={track.trackId} value={track.trackId}>{track.name}</option>)}
       </select></label>
     </>}
-    {type === 'TRIM_CLIP' && <label>Edge <select aria-label="Trim edge" value={edge} onChange={event => setEdge(event.target.value as TrimEdge)}><option value="START">START</option><option value="END">END</option></select></label>}
+    {type === 'TRIM_CLIP' && <label>Edge <select className="ff-input" aria-label="Trim edge" value={edge} onChange={event => setEdge(event.target.value as TrimEdge)}><option value="START">START</option><option value="END">END</option></select></label>}
     {type === 'TRIM_CLIP'
       ? <>
-          <button type="button" disabled={!head || !selected || !project.tenantId || busy}
-                  onClick={() => { const parsed = parseRational(delta); if (parsed) void previewTrim(edge, parsed) }}>Preview trim</button>
+          <Button type="button" disabled={!head || !selected || !project.tenantId || busy}
+                  onClick={() => { const parsed = parseRational(delta); if (parsed) void previewTrim(edge, parsed) }}>Preview trim</Button>
           <span> (drag a clip edge above, then apply) </span>
         </>
       : type === 'SPLIT_CLIP'
-        ? <button type="button" aria-label="Split selected clip" disabled={!head || !selected || !project.tenantId || busy}
-                  onClick={() => void splitSelected()}>Split clip</button>
-        : <button type="button" disabled={!head || !selected || !project.tenantId || busy} onClick={() => void applySimple()}>Apply operation</button>}
+        ? <Button type="button" aria-label="Split selected clip" disabled={!head || !selected || !project.tenantId || busy}
+                  onClick={() => void splitSelected()}>Split clip</Button>
+        : <Button type="button" disabled={!head || !selected || !project.tenantId || busy} onClick={() => void applySimple()}>Apply operation</Button>}
+    </div>
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
-    {retryCommand && <button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</button>}
+    {retryCommand && <Button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}
   </section>
 }

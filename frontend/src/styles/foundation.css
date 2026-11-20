@@ -143,9 +143,16 @@
 .ff-table-toolbar { flex-wrap: wrap; margin-bottom: var(--space-4); }
 
 /* Post-H7 bounded product surfaces */
-.ff-nle-layout { display: grid; grid-template-columns: minmax(250px, .75fr) minmax(460px, 1.5fr) minmax(320px, 1fr); gap: var(--space-4); align-items: start; }
-.ff-nle-workspace-panel { min-height: 610px; }
-.ff-nle-diff-panel { grid-column: 1 / -1; }
+.ff-nle-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ff-nle-layout > * { min-width: 0; }
+.ff-nle-workspace-panel, .ff-nle-diff-panel { grid-column: 1 / -1; }
+.ff-nle-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-block: var(--space-2); }
+.ff-nle-clip-controls, .ff-nle-render-controls { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); margin-block: var(--space-3); }
+.ff-nle-clip-controls label, .ff-nle-render-controls label { display: grid; gap: var(--space-1); min-width: 0; }
+.ff-nle-clip-controls .ff-input, .ff-nle-render-controls .ff-input { max-width: 100%; }
+.ff-nle-clip-picker { display: flex; align-items: center; gap: var(--space-2); }
+.ff-nle-clip-picker select { min-width: 0; }
+.ff-nle-track-label[aria-pressed='true'] { background: var(--info-muted); color: var(--text-primary); }
 .ff-head-identity code, .ff-operation-preview code { word-break: break-all; }
 .ff-revision-list { max-height: 330px; overflow: auto; list-style: none; margin: var(--space-2) 0 var(--space-4); padding: 0; }
 .ff-revision-list li + li { margin-top: var(--space-1); }

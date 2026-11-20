@@ -1,17 +1,13 @@
 import { useEffect, useReducer, useRef, useState, type ChangeEvent } from 'react'
 import { operationGateway as defaultOperationGateway } from '../../api/app/operation.gateway'
 import { timelineQueryGateway as defaultTimelineQueryGateway } from '../../api/app/timeline-query.gateway'
-import { assetGateway as defaultAssetGateway } from '../../api/app/asset.gateway'
-import { capabilityGateway as defaultCapabilityGateway } from '../../api/app/capability.gateway'
 import { Button, EmptyState, Input, Panel, PropertyRow, Skeleton, Status } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import { PageHeading, ProjectFrame } from '../../surfaces/FoundationPages'
 import { initialTimelineEditorState, timelineEditorReducer } from './editor-state'
 import type {
   AddMediaClipCommandDraft,
-  AssetGateway,
   CanonicalHeadReference,
-  CapabilityGateway,
   GatewayFailure,
   GatewayResult,
   OperationGateway,
@@ -170,13 +166,9 @@ export function NlePage() {
 export function NleWorkspace({
   queryGateway = defaultTimelineQueryGateway,
   commandGateway = defaultOperationGateway,
-  sourceGateway = defaultAssetGateway,
-  capabilityGateway = defaultCapabilityGateway,
 }: {
   queryGateway?: TimelineQueryGateway
   commandGateway?: OperationGateway
-  sourceGateway?: AssetGateway
-  capabilityGateway?: CapabilityGateway
 }) {
   const { t } = useTranslation()
   const project = useProjectContext()
@@ -196,8 +188,6 @@ export function NleWorkspace({
   const [appendStart, setAppendStart] = useState('0/1')
   const [focusClipId, setFocusClipId] = useState<string | null>(null)
   const [stableCommandId, setStableCommandId] = useState<ReturnType<typeof applyCommandId> | null>(null)
-  const [assetBoundary, setAssetBoundary] = useState('No safe media browser projection supplies a complete canonical source pin.')
-  const [capabilityBoundary, setCapabilityBoundary] = useState('Operation capability is UNKNOWN until the focused gateway responds.')
   const mounted = useRef(true)
   const requestGeneration = useRef({ head: 0, selection: 0, preview: 0, apply: 0 })
   const applyInFlight = useRef(false)
@@ -276,26 +266,6 @@ export function NleWorkspace({
     })()
     return () => { active = false }
   }, [state.server.head?.revisionId, project.projectId])
-
-  useEffect(() => {
-    let active = true
-    const loadBoundaries = async () => {
-      try {
-        const requestedProject = projectId(project.projectId)
-        const [assets, capability] = await Promise.all([
-          sourceGateway.listSourcePins(project.tenantId ?? '', requestedProject),
-          capabilityGateway.getOperationCapability(requestedProject),
-        ])
-        if (!active) return
-        setAssetBoundary(assets.ok ? `${assets.value.length} canonical source pins projected.` : `${assets.code}: ${assets.message}`)
-        setCapabilityBoundary(capability.ok ? `${capability.value.state}: ${capability.value.reason}` : `${capability.code}: ${capability.message}`)
-      } catch (error) {
-        if (active) setCapabilityBoundary(error instanceof Error ? error.message : 'Capability boundary unavailable.')
-      }
-    }
-    void loadBoundaries()
-    return () => { active = false }
-  }, [project.projectId, project.tenantId, sourceGateway, capabilityGateway])
 
   const selectRevision = async (selectedId: string) => {
     const selectionLocked = applyInFlight.current
@@ -507,7 +477,6 @@ export function NleWorkspace({
               rateNumerator: '1', rateDenominator: '1', direction: 'FORWARD' })
             setStableCommandId(null); setConfirmed(false); dispatch({ type: 'ROLLBACK_DRAFT' })
           }} />
-          <div role="note"><p>{assetBoundary}</p><p>{capabilityBoundary}</p></div>
           {!project.tenantId ? <div className="ff-operation-notice ff-operation-notice--danger" role="alert"><strong>TENANT CONTEXT UNAVAILABLE</strong><p>The authenticated Workspace projection did not supply a tenant. Preview and apply remain disabled.</p></div> : null}
           <form onSubmit={event => { event.preventDefault(); void preview() }}>
             <fieldset disabled={!state.server.head || !project.tenantId || state.phase.kind === 'PendingPreview' || state.phase.kind === 'PendingApply'}>

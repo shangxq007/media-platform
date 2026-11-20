@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Button, Input } from '../../components/design-system'
 import { FormalRenderAPI, type RenderResult } from '../../api/formal-render'
 import { DeliveryAPI, type Delivery } from '../../api/delivery'
 import { renderReadSource } from '../../api/render-jobs'
@@ -80,33 +81,35 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000 }: {
   return <section aria-label="Render and delivery">
     <h3>Render current revision</h3>
     <p>{head ? 'Current authoritative revision is ready to render.' : 'Authoritative revision unavailable.'}</p>
-    <label>Output start (ms) <input type="number" min={0} value={startMillis} onChange={event => setStartMillis(Number(event.target.value))} /></label>
-    <label>Output end (ms) <input type="number" min={1} value={endMillis} onChange={event => setEndMillis(Number(event.target.value))} /></label>
-    <label>Frame rate <input type="number" min={1} value={fps} onChange={event => setFps(Number(event.target.value))} /></label>
-    <button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || endMillis <= startMillis || startMillis < 0 || fps <= 0} onClick={submit}>Submit RenderJob</button>
-    <button type="button" disabled={busy} onClick={() => void refresh()}>Refresh jobs</button>
+    <div className="ff-nle-render-controls">
+    <label>Output start (ms) <Input type="number" min={0} value={startMillis} onChange={event => setStartMillis(Number(event.target.value))} /></label>
+    <label>Output end (ms) <Input type="number" min={1} value={endMillis} onChange={event => setEndMillis(Number(event.target.value))} /></label>
+    <label>Frame rate <Input type="number" min={1} value={fps} onChange={event => setFps(Number(event.target.value))} /></label>
+    <Button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || endMillis <= startMillis || startMillis < 0 || fps <= 0} onClick={submit}>Submit RenderJob</Button>
+    </div>
+    <Button type="button" disabled={busy} onClick={() => void refresh()}>Refresh jobs</Button>
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
     <h4>Render jobs</h4>
     {jobs.length === 0 ? <p>No RenderJobs yet.</p> : <ul>{jobs.map(item => <li key={item.id}>
-      <button type="button" onClick={() => void selectJob(item.id)}>{item.id}: {item.status}</button>
+      <Button type="button" onClick={() => void selectJob(item.id)}>{item.id}: {item.status}</Button>
     </li>)}</ul>}
     {job && <div aria-label="Current RenderJob"><p>Job <code>{job.renderJobId}</code> · <span role="status">{job.status}</span></p>
       {job.failureCode && <p role="alert">{job.failureCode}</p>}
-      {!terminal.has(job.status) && project.tenantId && <button type="button" disabled={busy} onClick={() => void run(async () => {
+      {!terminal.has(job.status) && project.tenantId && <Button type="button" disabled={busy} onClick={() => void run(async () => {
         await FormalRenderAPI.cancel(project.tenantId!, project.projectId, job.renderJobId)
         setJob(await FormalRenderAPI.result(project.tenantId!, project.projectId, job.renderJobId))
-      })}>Cancel render</button>}
-      {job.status === 'COMPLETED' && job.finalArtifactId && <button type="button" disabled={busy} onClick={() => void run(async () => {
+      })}>Cancel render</Button>}
+      {job.status === 'COMPLETED' && job.finalArtifactId && <Button type="button" disabled={busy} onClick={() => void run(async () => {
         const created = await DeliveryAPI.create(project.projectId, { sourceRenderJobId: job.renderJobId, artifactId: job.finalArtifactId! },
           key([project.projectId, job.renderJobId, 'delivery']))
         setDelivery(created); await refresh()
-      })}>Create delivery</button>}
+      })}>Create delivery</Button>}
     </div>}
     <h4>Deliveries</h4>
-    {deliveries.map(item => <button type="button" key={item.deliveryId} onClick={() => setDelivery(item)}>{item.deliveryId}: {item.status}</button>)}
+    {deliveries.map(item => <Button type="button" key={item.deliveryId} onClick={() => setDelivery(item)}>{item.deliveryId}: {item.status}</Button>)}
     {delivery && <div><p>Delivery <code>{delivery.deliveryId}</code> · {delivery.status}</p>
-      <button type="button" disabled={busy || delivery.status !== 'READY'} onClick={() => void run(async () => {
+      <Button type="button" disabled={busy || delivery.status !== 'READY'} onClick={() => void run(async () => {
         save(await DeliveryAPI.download(project.projectId, delivery.deliveryId))
-      })}>Download output video</button></div>}
+      })}>Download output video</Button></div>}
   </section>
 }

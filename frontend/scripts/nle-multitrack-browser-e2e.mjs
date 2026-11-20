@@ -138,6 +138,7 @@ try {
   await add('audio-c.wav', 'A1', '0', '3')
   await add('audio-d.wav', 'A2', '1', '4')
   const moved = await add('video-a.mp4', 'V1', '4', '5', '2', '3')
+  record('FOUR_TRACKS_POPULATED')
 
   await field('Clip').selectOption(moved)
   await field('Clip operation').selectOption('MOVE_CLIP')
@@ -158,6 +159,7 @@ try {
   })
   assert.equal(stale.status(), 409, await stale.text())
   assert.equal((await head()).revisionId, current.revisionId)
+  record('CROSS_TRACK_MOVE_REPLAY_AND_CAS')
 
   await field('Clip').selectOption(videoB)
   await field('Clip operation').selectOption('TRIM_CLIP')
@@ -189,6 +191,7 @@ try {
     const region = document.querySelector('[data-preview-revision]')
     return region?.dataset.previewRevision === revision && region?.dataset.previewStatus === 'READY'
   }, current.revisionId, { timeout: 90000 })
+  await edit.getByRole('group', { name: 'Timeline trim' }).screenshot({ path: join(outputRoot, 'edited-tracks.png') })
   record('MOVE_TRIM_SPLIT_DELETE_REPLAY_CAS_AND_RELOAD')
 
   const artifactId = report.snapshot.tracks[0].clips[0].artifactId
@@ -258,7 +261,9 @@ try {
   const jobId = await jobCard.locator('code').first().textContent()
   report.render = { jobId }
   record('FORMAL_RENDER_SUBMITTED')
-  await jobCard.getByText('COMPLETED', { exact: true }).waitFor({ timeout: 240000 })
+  const terminal = jobCard.getByText(/^(COMPLETED|FAILED|CANCELLED)$/)
+  await terminal.waitFor({ timeout: 240000 })
+  assert.equal(await terminal.textContent(), 'COMPLETED', `RenderJob ${jobId}`)
   const job = await get(scope + `/render-jobs/${jobId}/result`)
   assert(job.finalArtifactId)
   report.render.artifactId = job.finalArtifactId
