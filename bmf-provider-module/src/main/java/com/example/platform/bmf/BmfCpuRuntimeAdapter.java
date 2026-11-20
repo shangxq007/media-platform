@@ -111,7 +111,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             def video_at_rate(video):
                 return ff.fps(ff.scale(video, '320x240'), rate)
 
-            video_inputs = [(path, start, end) for path, (kind, start, end)
+            video_inputs = [(path, start, end) for path, (kind, start, end, gain, mute, pan)
                             in zip(paths, placements) if kind == 'V']
             if video_inputs:
                 base = graph.decode({'input_path': video_inputs[0][0]})['video']
@@ -147,18 +147,19 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 audio = ff.ff_filter(audio, 'volume', str(level))
                 left = (1.0 - float(pan)) / 2.0
                 right = (1.0 + float(pan)) / 2.0
-                audio = ff.ff_filter(audio, 'pan', 'stereo|c0=c0*' + str(left) + '|c1=c1*' + str(right))
+                audio = ff.ff_filter(audio, 'pan', 'stereo|c0=' + str(left) + '*c0|c1=' + str(right) + '*c1')
                 # The bundled libavfilter normalizes amix by its live input count. Padding all
                 # inputs with silence fixes that count for the whole timeline.
                 audio_inputs.append(ff.atrim(ff.ff_filter(audio, 'apad'), duration=duration))
 
             mixed = None
             if audio_inputs:
-                mixed = (ff.ff_filter(audio_inputs, 'amix', inputs=str(len(audio_inputs)),
-                                      duration='first', dropout_transition='0', normalize='0')
+                # The bundled FFmpeg 4.3.7 amix normalizes by the live input count.
+                # Multiplying that normalized mix by n/2 yields the documented
+                # master-headroom rule: sum of routed inputs / 2, for any n.
+                mixed = (ff.amix(audio_inputs, inputs=len(audio_inputs), duration='first', dropout_transition=0)
                          if len(audio_inputs) > 1 else audio_inputs[0])
-                # Fixed, documented master headroom: sum of routed inputs / 2.
-                mixed = ff.ff_filter(mixed, 'volume', '0.5')
+                mixed = ff.ff_filter(mixed, 'volume', str(len(audio_inputs) / 2))
                 mixed = ff.ff_filter(mixed, 'aformat', sample_fmts='s16')
             canvas.encode(mixed, {'output_path': output, 'format': 'mp4',
                                   'video_params': {'codec': 'libx264', 'pix_fmt': 'yuv420p'},

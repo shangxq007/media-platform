@@ -58,7 +58,12 @@ try {
   assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
   const scope = `/api/tenants/${tenant}/projects/${project}`
-  const head = async () => (await page.request.get(base + `/api/timeline-git/products/${project}/revisions/current`, { headers })).json()
+  const head = async () => {
+    const raw = await (await page.request.get(base + `/api/timeline-git/products/${project}/revisions/current`, { headers })).json()
+    const contentHash = raw.contentHash ?? raw.revision?.semanticContext?.timelineContentDigest
+    assert(raw.revisionId && contentHash, 'canonical HEAD content hash is present')
+    return { revisionId: raw.revisionId, contentHash }
+  }
   const snapshot = async revision => JSON.parse((await (await page.request.get(
     base + `/api/render/projects/${project}/timeline/revisions/${revision}/snapshot`, { headers })).json()).canonicalTimelineJson)
   page.on('response', response => {
@@ -94,17 +99,17 @@ try {
   }
   const sources = {}
   for (const file of ['video-a.mp4', 'video-b.mp4', 'video-c.mp4', 'video-d.mp4',
-    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav']) sources[file] = await upload(file)
+    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav', 'video-embed.mp4']) sources[file] = await upload(file)
   record('EIGHT_SOURCES_UPLOADED_IN_WORKBENCH')
 
-  const addClip = async (file, trackId, start, end) => {
+  const addClip = async (file, trackId, start, end, sourceEnd = null) => {
     const source = sources[file]
     const stream = source.streams.find(item => item.kind === (file.endsWith('.wav') ? 'AUDIO' : 'VIDEO'))
     const clipId = `clip-${file.replace('.', '-')}-${Math.random().toString(16).slice(2, 8)}`
     const command = { baseRevisionId: current.revisionId, baseContentHash: current.contentHash,
       trackId, clipId, mediaAssetId: source.mediaAssetId, mediaStreamId: stream.streamId,
       artifactId: source.artifactId, contentDigest: source.contentDigest,
-      sourceStart: '0', sourceEnd: stream.duration, timelineStart: start, timelineEnd: end,
+      sourceStart: '0', sourceEnd: sourceEnd ?? stream.duration, timelineStart: start, timelineEnd: end,
       rateNumerator: 1, rateDenominator: 1, direction: 'FORWARD' }
     const previewResponse = await page.request.post(base + scope + '/timeline-operations/add-media-clip/preview', { headers, data: command })
     assert.equal(previewResponse.status(), 200, await previewResponse.text())
@@ -117,14 +122,14 @@ try {
     current = { revisionId: body.newRevisionId, contentHash: body.newTimelineContentHash }
     return clipId
   }
-  const videoA = await addClip('video-a.mp4', 'track-1', '0', '4')
+  const videoA = await addClip('video-a.mp4', 'track-1', '0', '3')
   const videoB = await addClip('video-b.mp4', 'track-v2', '1', '4')
   const videoC = await addClip('video-c.mp4', 'track-v3', '2', '5')
-  const videoD = await addClip('video-d.mp4', 'track-v4', '1', '3')
+  const videoD = await addClip('video-d.mp4', 'track-v4', '1', '3', '2')
   const audioA = await addClip('audio-a.wav', 'track-a1', '0', '5')
   const audioB = await addClip('audio-b.wav', 'track-a2', '1', '6')
-  const audioC = await addClip('audio-c.wav', 'track-a3', '2', '6')
-  const audioD = await addClip('audio-d.wav', 'track-a4', '3', '5')
+  const audioC = await addClip('audio-c.wav', 'track-a3', '2', '7')
+  const audioD = await addClip('audio-d.wav', 'track-a4', '3', '5', '2')
   record('FOUR_VIDEO_AND_FOUR_AUDIO_CLIPS_POPULATED')
 
   await page.goto(`${base}/w/${workspace}/projects/${project}/edit`)
@@ -154,11 +159,13 @@ try {
     await field('Audio gain').fill(String(gain))
     const box = field('Mute clip')
     if ((await box.isChecked()) !== mute) await box.setChecked(mute)
+    await page.waitForTimeout(40)
     await field('Audio pan').evaluate((element, value) => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, String(value))
       element.dispatchEvent(new Event('input', { bubbles: true }))
       element.dispatchEvent(new Event('change', { bubbles: true }))
     }, pan)
+    await page.waitForTimeout(40)
     await edit.getByRole('button', { name: 'Apply audio mix' }).click()
     current = await waitRevision(current.revisionId)
     const route = (await snapshot(current.revisionId)).audioMix.routes.find(item => item.input.clipId === clipId)
@@ -196,18 +203,35 @@ try {
   record('CROSS_VIDEO_AND_AUDIO_TRACK_MOVES')
 
   const seek = async seconds => {
-    await field('Timeline preview seek').evaluate((element, value) => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, String(value))
-      element.dispatchEvent(new Event('input', { bubbles: true }))
-      element.dispatchEvent(new Event('change', { bubbles: true }))
-    }, seconds)
-    await page.waitForFunction(value => Number(document.querySelector('[data-preview-time]')?.dataset.previewTime) === value, seconds)
+    const slider = field('Timeline preview seek')
+    const info = await slider.evaluate(element => ({ tag: element.tagName, type: element.type,
+      label: element.getAttribute('aria-label'), value: element.value, max: element.max,
+      disabled: element.disabled, readOnly: element.readOnly }))
+    console.log('SEEK_INFO ' + JSON.stringify(info) + ' target=' + seconds)
+    assert.equal(info.type, 'range', 'seek control is a range input')
+    assert.equal(info.disabled, false, 'seek control is enabled')
+    await slider.fill(String(seconds)).catch(() => undefined)
+    await page.waitForTimeout(80)
+    let observed = await slider.inputValue()
+    if (Math.abs(Number(observed) - seconds) > 0.04) {
+      await slider.evaluate((element, value) => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, String(value))
+        element.dispatchEvent(new Event('input', { bubbles: true }))
+        element.dispatchEvent(new Event('change', { bubbles: true }))
+      }, seconds)
+      await page.waitForTimeout(80)
+      observed = await slider.inputValue()
+    }
+    const published = await page.locator('[data-preview-time]').getAttribute('data-preview-time')
+    console.log('SEEK_OBSERVED ' + observed + ' published=' + published + ' target=' + seconds)
+    await page.waitForFunction(value => Math.abs(Number(document.querySelector('[data-preview-time]')?.dataset.previewTime) - value) < 0.04, seconds)
   }
   const dominant = ([r, g, b]) => Math.max(r, g, b) < 30 ? 'black'
     : r > 2 * Math.max(g, b) ? 'red' : g > 2 * Math.max(r, b) ? 'green' : b > 2 * Math.max(r, g) ? 'blue'
-      : r > 100 && g > 100 && b < 100 ? 'yellow' : 'unknown'
+      : r > 100 && g > 100 && b < 100 ? 'yellow'
+        : r > 100 && g < 100 && b > 100 ? 'magenta' : 'unknown'
   const canvas = page.getByLabel('Timeline preview canvas')
-  for (const [at, expected] of [[0.5, 'red'], [1.5, 'yellow'], [2.5, 'yellow'], [3.5, 'blue'], [4.5, 'blue'], [5.5, 'yellow'], [6.5, 'black']]) {
+  for (const [at, expected] of [[0.5, 'red'], [1.5, 'green'], [2.5, 'blue'], [3.5, 'blue'], [4.5, 'blue'], [5.5, 'yellow'], [6.5, 'black']]) {
     await seek(at)
     const pixel = () => canvas.evaluate(element => [...element.getContext('2d').getImageData(160, 120, 1, 1).data].slice(0, 3))
     let rgb = await pixel()
@@ -323,8 +347,61 @@ try {
   for (const frequency of FREQUENCIES) assert(Math.max(leftPeaks[frequency], rightPeaks[frequency]) > 0.008, `rendered ${frequency}Hz`)
   assert(leftPeaks[440] > rightPeaks[440] * 1.5, 'A1 pan left')
   assert(rightPeaks[880] > leftPeaks[880] * 1.5, 'A3 pan right')
-  report.status = 'PASS'
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY')
+
+  // Embedded video audio: remove all independent audio clips, then explicitly route
+  // the top video clip's embedded audio. The route is canonical; no count heuristic.
+  const deleteClip = async clipId => {
+    const response = await page.request.post(base + scope + '/timeline-operations/clips/apply', {
+      headers, data: { type: 'DELETE_CLIP', baseRevisionId: current.revisionId,
+        baseContentHash: current.contentHash, clipId, commandId: `embed-delete-${clipId}` },
+    })
+    assert([200, 201].includes(response.status()), await response.text())
+    const body = await response.json()
+    current = { revisionId: body.newRevisionId ?? current.revisionId,
+      contentHash: body.newContentHash ?? body.unchangedContentHash ?? current.contentHash }
+  }
+  for (const clipId of [audioA, audioB, audioC, audioD]) await deleteClip(clipId)
+  const embeddedClip = await addClip('video-embed.mp4', 'track-v4', '4', '7')
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  await field('Clip').selectOption(embeddedClip)
+  await applyAudio(embeddedClip, 1, false, 0)
+  const embeddedAudio = await sampleAudio(5.5)
+  assert(embeddedAudio[440] > 0.02, `embedded 440Hz=${embeddedAudio[440]}`)
+  assert(embeddedAudio[660] < 0.01 && embeddedAudio[880] < 0.01, 'embedded route does not add other clips')
+  await seek(5.5)
+  const embeddedPixel = await canvas.evaluate(element => [...element.getContext('2d').getImageData(160, 120, 1, 1).data].slice(0, 3))
+  assert(dominant(embeddedPixel) === 'magenta', `embedded video pixel ${embeddedPixel}`)
+  report.embedded = { clipId: embeddedClip, revisionId: current.revisionId,
+    audio: embeddedAudio, videoRgb: embeddedPixel }
+  record('EMBEDDED_VIDEO_AUDIO_ROUTE_PREVIEW')
+
+  const embeddedRender = page.waitForResponse(r => r.url().endsWith('/render-jobs') && r.request().method() === 'POST')
+  await page.getByRole('button', { name: 'Submit RenderJob' }).click()
+  const embeddedJobResponse = await embeddedRender
+  assert.equal(embeddedJobResponse.status(), 201, await embeddedJobResponse.text())
+  const embeddedJob = await embeddedJobResponse.json()
+  const embeddedTerminal = page.getByLabel('Current RenderJob').getByText(/^(COMPLETED|FAILED|CANCELLED)$/)
+  await embeddedTerminal.waitFor({ timeout: 300000 })
+  assert.equal(await embeddedTerminal.textContent(), 'COMPLETED')
+  const embeddedResult = await (await page.request.get(base + scope + `/render-jobs/${embeddedJob.renderJobId}/result`, { headers })).json()
+  assert(embeddedResult.finalArtifactId)
+  await page.getByRole('button', { name: 'Create delivery' }).click()
+  const embeddedDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download output video' }).click()
+  const embeddedOutput = join(outputRoot, 'embedded-output.mp4')
+  await (await embeddedDownload).saveAs(embeddedOutput)
+  const embeddedRaw = execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', '5.5', '-i', embeddedOutput,
+    '-t', '0.085333333', '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'])
+  const embeddedSamples = Array.from({ length: embeddedRaw.length / 4 }, (_, index) => embeddedRaw.readFloatLE(index * 4))
+  const embeddedRenderAudio = tonePeaks(embeddedSamples, 48000)
+  assert(embeddedRenderAudio[440] > 0.02, `rendered embedded 440Hz=${embeddedRenderAudio[440]}`)
+  report.embedded.render = { jobId: embeddedJob.renderJobId, artifactId: embeddedResult.finalArtifactId,
+    audio: embeddedRenderAudio }
+  record('EMBEDDED_VIDEO_AUDIO_FORMAL_RENDER')
+  report.status = 'PASS'
+  record('DELIVERY_VIDEO_AND_AUDIO_PARITY_WITH_EMBEDDED_AUDIO')
 } catch (error) {
   report.status = 'FAIL'
   report.error = String(error)
