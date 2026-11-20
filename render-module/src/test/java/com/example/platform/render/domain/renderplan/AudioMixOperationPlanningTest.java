@@ -15,6 +15,10 @@ import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationTarget;
 import com.example.platform.operation.plan.OperationPlan;
 import com.example.platform.operation.plan.OperationPlanner;
+import com.example.platform.media.domain.identity.MediaAssetId;
+import com.example.platform.media.domain.stream.MediaStreamId;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
@@ -26,6 +30,8 @@ import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.selection.ResolvedScope;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -33,6 +39,30 @@ import org.junit.jupiter.api.Test;
 class AudioMixOperationPlanningTest {
     private static final String REV = "rev-audio";
     private static final TimelineContentDigester DIGESTER = new TimelineContentDigester();
+
+    @Test
+    void addingAnAudioClipCreatesANeutralCanonicalRoute() {
+        TimelineDocument base = document(AudioMix.empty(), "a1", "a2");
+        var source = new MediaStreamSourceBinding(
+                MediaAssetId.of("asset-added"), MediaStreamId.of("stream-added"),
+                new ArtifactId("artifact-added"), ContentDigest.sha256("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+                new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(2, 1)));
+        var parameters = new OperationParameters.AddMediaClipParameters("a2",
+                TimelineClipId.of("added-audio"), source,
+                new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(2, 1)),
+                ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD));
+        String hash = DIGESTER.digest(base);
+        OperationPlan plan = new OperationPlanner().plan(new OperationInstance(
+                OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(), OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
+                REV, hash, new OperationTarget.TimelineTarget("project-audio"), parameters,
+                "parameter-digest", "invocation"), REV, base);
+        var route = plan.candidateTimeline().getAudioMix().routes().stream()
+                .filter(item -> item.input().clipId().equals("added-audio")).findFirst().orElseThrow();
+        assertThat(route.input().trackId()).isEqualTo("a2");
+        assertThat(route.gain().linear()).isEqualTo(1.0);
+        assertThat(route.mute().muted()).isFalse();
+        assertThat(route.balance().value()).isEqualTo(0.0);
+    }
 
     @Test
     void audioOperationsCreateAndUpdateCanonicalRoute() {
