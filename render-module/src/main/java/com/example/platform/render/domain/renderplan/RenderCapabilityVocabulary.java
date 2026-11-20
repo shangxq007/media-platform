@@ -109,6 +109,14 @@ public final class RenderCapabilityVocabulary {
         };
     }
 
+    public static CapabilityRequirement audioDecode() {
+        return requirement(CapabilityId.of("audio.decode"));
+    }
+
+    public static CapabilityRequirement multitrackComposite() {
+        return requirement(CapabilityId.of("render.multitrack-composite"));
+    }
+
     /** AUDIO_PROCESS node: audio processing capability. */
     public static CapabilityRequirement audioProcess() {
         return requirement(CapabilityId.of("audio.process"));

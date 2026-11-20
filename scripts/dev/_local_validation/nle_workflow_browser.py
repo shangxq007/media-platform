@@ -8,7 +8,9 @@ app = Path((R / '07-runtime/current-apps.txt').read_text().strip())
 sys.path.insert(0, str(W / 'scripts/testinfra'))
 from local_runtime import sandbox_prefix
 
-out = R / '04-tests/nle-workflow-browser'
+multitrack = os.environ.get('MEDIA_PLATFORM_SCENARIO') == 'nle-multitrack'
+name = 'nle-multitrack-browser' if multitrack else 'nle-workflow-browser'
+out = R / '04-tests' / name
 out.mkdir(parents=True, exist_ok=True)
 prefix = sandbox_prefix(app / 'binding.json')
 index = len(prefix) - 1
@@ -23,13 +25,18 @@ target.mkdir()
 prefix[index:index] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
                        '--ro-bind', str(dependencies), str(target), '--bind', str(out), str(out),
                        '--setenv', 'TMPDIR', '/tmp']
-cmd = prefix + ['/usr/bin/node', str(W / 'frontend/scripts/nle-workflow-browser-e2e.mjs'), str(app), str(out)]
+cmd = prefix + ['/usr/bin/node', str(W / 'frontend/scripts' / (name + '-e2e.mjs')), str(app), str(out)]
 env = {'PATH': '/usr/bin:/bin', 'HOME': str(out), 'LANG': 'C.UTF-8'}
 p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=1400)
 (out / 'stdout.log').write_text(p.stdout)
 (out / 'stderr.log').write_text(p.stderr)
 if p.returncode:
     raise RuntimeError('NLE workflow browser E2E failed; inspect owned browser evidence')
+if multitrack:
+    result = json.loads((out / 'multitrack-result.json').read_text())
+    assert result['status'] == 'PASS', result
+    print(json.dumps(result['render']))
+    raise SystemExit(0)
 result = json.loads((out / 'workflow-browser-result.json').read_text())
 assert result['status'] == 'PASS', result
 print(json.dumps({'status': result['status'], 'browser': result['browser'],

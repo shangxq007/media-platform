@@ -1,209 +1,316 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
-import { formatRational, toSeconds, type Rational } from './trim'
-import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration } from './timeline-preview'
-import type { ProjectedClip, TimelineProjection } from './timeline-projection'
-import { projectSnapshotJson } from './timeline-projection'
+import { toSeconds } from './trim'
+import { activeClipAt, sourceTimeAt, timelineDuration } from './timeline-preview'
+import { projectSnapshotJson, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
-interface SourceMedia { readonly video: HTMLVideoElement; readonly url: string }
+interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer }
+interface PreviewSession {
+  controller: AbortController
+  urls: string[]
+  videos: Map<string, HTMLVideoElement>
+  audioClips: AudioClip[]
+  scheduled: AudioBufferSourceNode[]
+  audio?: AudioContext
+  mixer?: GainNode
+  analyser?: AnalyserNode
+  projection?: TimelineProjection
+  duration: number
+  cursor: number
+  origin: number
+  playing: boolean
+  starting: boolean
+  frame?: number
+}
 
-const ZERO: Rational = { numerator: 0n, denominator: 1n }
+const clock = (session: PreviewSession) => session.audio?.currentTime ?? performance.now() / 1000
+const rationalTime = (seconds: number) => ({ numerator: BigInt(Math.floor(seconds * 1_000_000)), denominator: 1_000_000n })
 
-/** Real Timeline media preview: source artifacts are sequenced on a canvas by canonical Timeline time. */
-export function TimelineMediaPreview({ head, tenantId, projectId }: {
+function stopPlayback(session: PreviewSession) {
+  session.playing = false
+  if (session.frame !== undefined) cancelAnimationFrame(session.frame)
+  for (const media of session.videos.values()) media.pause()
+  for (const source of session.scheduled) {
+    source.stop()
+    source.disconnect()
+  }
+  session.scheduled = []
+}
+
+function loadVideo(media: HTMLVideoElement, url: string, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    media.addEventListener('loadeddata', () => resolve(), { once: true, signal })
+    media.addEventListener('error', () => reject(new Error('A video source could not be decoded.')), { once: true, signal })
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+    media.src = url
+    media.load()
+  })
+}
+
+/** Playback derived from the exact canonical revision. */
+export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
   head: CanonicalHeadReference | null
   tenantId: string | null
   projectId: string
+  onTime?: (time: number) => void
 }) {
-  const canvas = useRef<HTMLCanvasElement | null>(null)
-  const host = useRef<HTMLElement | null>(null)
-  const sources = useRef<Record<string, SourceMedia>>({})
-  const audio = useRef<{ context: AudioContext; analyser: AnalyserNode } | null>(null)
-  const connected = useRef(new WeakSet<HTMLVideoElement>())
-  const generation = useRef(0)
-  const raf = useRef<number | null>(null)
-  const startedAt = useRef(0)
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const host = useRef<HTMLElement>(null)
+  const current = useRef<PreviewSession | null>(null)
+  const timeCallback = useRef(onTime)
+  timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
-  const projectionRef = useRef<TimelineProjection | null>(null)
-  const headRef = useRef(head)
-  const revisionId = head?.revisionId ?? ''
-  const [duration, setDuration] = useState<number>(0)
+  const [duration, setDuration] = useState(0)
   const [time, setTime] = useState(0)
   const [message, setMessage] = useState('')
-  const playingRef = useRef(false)
-  const playing = status === 'PLAYING'
+  const [retry, setRetry] = useState(0)
+  const revisionId = head?.revisionId
 
-  const stopVideos = useCallback(() => { for (const source of Object.values(sources.current)) source.video.pause() }, [])
+  function publishTime(seconds: number) {
+    setTime(seconds)
+    timeCallback.current?.(seconds)
+  }
 
-  useEffect(() => { headRef.current = head }, [head])
+  function fail(session: PreviewSession, error: unknown) {
+    if (current.current !== session) return
+    stopPlayback(session)
+    setStatus('FAILED')
+    setMessage(error instanceof Error ? error.message : 'Timeline media could not be played.')
+  }
 
-  const draw = useCallback((seconds: number) => {
+  function draw(session: PreviewSession, forceSeek = false) {
     const target = canvas.current
-    const current = projectionRef.current
-    if (!target || !current) return
-    const context = target.getContext('2d')
-    if (!context) return
+    const context = target?.getContext('2d')
+    if (!target || !context) return
+    const time = rationalTime(session.cursor)
+    const clip = session.projection ? activeClipAt(session.projection, time) : null
+    const active = clip ? session.videos['get'](clip.clipId) : null
+    if (host.current) host.current.dataset.activeClip = clip?.clipId ?? ''
+    for (const media of session.videos.values()) {
+      if (media !== active && !media.paused) media.pause()
+    }
+    if (clip && active) {
+      const offset = Math.max(0, toSeconds(sourceTimeAt(clip, time)))
+      const rate = toSeconds(clip.rate)
+      if (Math.abs(active.currentTime - offset) > (forceSeek || !session.playing ? 0.001 : 0.12)) {
+        active.currentTime = offset
+      }
+      if (session.playing && clip.direction === 'FORWARD' && active.paused && !active.seeking) {
+        active.playbackRate = rate
+        void active.play().catch(error => {
+          if (session.playing && error.name !== 'AbortError') fail(session, error)
+        })
+      }
+      if (active.seeking && !forceSeek) return
+    }
     context.fillStyle = '#000'
     context.fillRect(0, 0, target.width, target.height)
-    const timelineTime = { numerator: BigInt(Math.round(seconds * 1000)), denominator: 1000n }
-    const clip = activeClipAt(current, timelineTime)
-    if (host.current) host.current.dataset.activeClip = clip?.clipId ?? ''
-    if (!clip) return
-    const media = sources.current[clip.artifactId]
-    if (!media || media.video.readyState < 2) return
-    const sourceSeconds = toSeconds(sourceTimeAt(clip, timelineTime))
-    if (Math.abs(media.video.currentTime - sourceSeconds) > 0.08) {
-      try { media.video.currentTime = Math.max(0, sourceSeconds) } catch { /* seeking is retried next frame */ }
+    if (active && !active.seeking && active.readyState >= 2) {
+      context.drawImage(active, 0, 0, target.width, target.height)
     }
-    context.drawImage(media.video, 0, 0, target.width, target.height)
-    if (playingRef.current) {
-      const promise = media.video.play()
-      if (promise) void promise.catch(() => undefined)
-    }
-    if (audio.current && !connected.current.has(media.video)) {
-      try {
-        const node = audio.current.context.createMediaElementSource(media.video)
-        node.connect(audio.current.analyser)
-        connected.current.add(media.video)
-      } catch { /* element already connected or audio unavailable */ }
-    }
-  }, [])
-
-  const loadRevision = useCallback(async () => {
-    const current = headRef.current
-    if (!current || !tenantId) { projectionRef.current = null; setStatus('IDLE'); return }
-    const owned = ++generation.current
-    if (raf.current !== null) cancelAnimationFrame(raf.current)
-    raf.current = null
-    stopVideos()
-    setStatus('PREPARING'); setMessage(''); setTime(0)
-    try {
-      const snapshot = await FormalRenderAPI.snapshot(projectId, current.revisionId)
-      if (owned !== generation.current) return
-      const nextProjection = projectSnapshotJson(snapshot.canonicalTimelineJson)
-      projectionRef.current = nextProjection
-      const seconds = toSeconds(timelineDuration(nextProjection))
-      setDuration(seconds)
-      const artifacts = [...new Set(nextProjection.clips.map(clip => clip.artifactId).filter(Boolean))]
-      for (const artifactId of artifacts) {
-        if (owned !== generation.current) return
-        if (sources.current[artifactId]) continue
-        const response = await assetGateway.readSourceContent(tenantId, projectId, artifactId)
-        if (owned !== generation.current) return
-        if (!response.ok) throw new Error(response.message)
-        const url = URL.createObjectURL(response.value)
-        const video = document.createElement('video')
-        video.preload = 'auto'; video.playsInline = true; video.muted = false
-        video.src = url
-        await new Promise<void>((resolve, reject) => {
-          video.onloadedmetadata = () => resolve()
-          video.onerror = () => reject(new Error(`Source media ${artifactId} could not be decoded.`))
-        })
-        if (owned !== generation.current) { URL.revokeObjectURL(url); return }
-        sources.current[artifactId] = { video, url }
-      }
-      if (owned !== generation.current) return
-      setStatus('READY')
-      draw(0)
-    } catch (error) {
-      if (owned !== generation.current) return
-      setStatus('FAILED')
-      setMessage(error instanceof Error ? error.message : 'Timeline preview could not be prepared.')
-    }
-  }, [draw, projectId, revisionId, stopVideos, tenantId])
+  }
 
   useEffect(() => {
-    void loadRevision()
-    return () => { generation.current += 1; if (raf.current !== null) cancelAnimationFrame(raf.current) }
-  }, [loadRevision])
-
-  useEffect(() => () => {
-    for (const source of Object.values(sources.current)) { source.video.pause(); URL.revokeObjectURL(source.url) }
-    sources.current = {}
-    if (audio.current) void audio.current.context.close()
-  }, [])
-
-  const pause = useCallback(() => {
-    if (raf.current !== null) cancelAnimationFrame(raf.current)
-    raf.current = null
-    stopVideos()
-    playingRef.current = false
-    setStatus(current => current === 'PLAYING' ? 'PAUSED' : current)
-  }, [stopVideos])
-
-  const loop = useCallback(() => {
-    const t = Math.min(duration, (performance.now() - startedAt.current) / 1000)
-    setTime(t)
-    draw(t)
-    if (host.current && audio.current) {
-      const buffer = new Uint8Array(audio.current.analyser.fftSize)
-      audio.current.analyser.getByteTimeDomainData(buffer)
-      let sum = 0
-      for (const value of buffer) { const sample = (value - 128) / 128; sum += sample * sample }
-      host.current.dataset.audioRms = Math.sqrt(sum / buffer.length).toFixed(4)
+    const session: PreviewSession = {
+      controller: new AbortController(), urls: [], videos: new Map(), audioClips: [], scheduled: [],
+      duration: 0, cursor: 0, origin: 0, playing: false, starting: false,
     }
-    if (t >= duration) { pause(); setTime(duration); return }
-    raf.current = requestAnimationFrame(loop)
-  }, [draw, duration, pause])
+    current.current = session
+    const signal = session.controller.signal
+    publishTime(0)
+    setDuration(0)
+    setMessage('')
+    draw(session)
+    if (host.current) host.current.dataset.audioRms = '0'
 
-  const play = useCallback(async () => {
-    if (status !== 'READY' && status !== 'PAUSED') return
-    if (!audio.current) {
+    async function prepare(revision: string, tenant: string) {
+      setStatus('PREPARING')
       try {
-        const context = new AudioContext()
-        const analyser = context.createAnalyser()
-        analyser.fftSize = 256
-        analyser.connect(context.destination)
-        audio.current = { context, analyser }
-        await context.resume()
-      } catch { audio.current = null }
-    } else if (audio.current.context.state === 'suspended') {
-      await audio.current.context.resume()
+        const snapshot = await FormalRenderAPI.snapshot(projectId, revision, signal)
+        if (signal.aborted) return
+        const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
+        const audioTracks = projection.tracks.filter(track => track.type === 'AUDIO')
+        const videoTracks = projection.tracks.filter(track => track.type === 'VIDEO')
+        const videoClips = videoTracks.flatMap(track => track.clips)
+        const embeddedAudio = audioTracks.length === 0 && videoTracks.length === 1
+        const audioClips = audioTracks.flatMap(track => track.clips)
+        const artifacts = new Set([...videoClips, ...audioClips].map(clip => clip.artifactId))
+        const blobs = new Map<string, Blob>()
+        for (const id of artifacts) {
+          if (!id) throw new Error('A Timeline clip has no source Artifact.')
+          const result = await assetGateway.readSourceContent(tenant, projectId, id, signal)
+          if (signal.aborted) return
+          if (!result.ok) throw new Error(result.message)
+          blobs.set(id, result.value)
+        }
+        const videoUrls = new Map<string, string>()
+        const videosReady = videoClips.map(clip => {
+          let url = videoUrls['get'](clip.artifactId)
+          if (!url) {
+            url = URL.createObjectURL(blobs['get'](clip.artifactId)!)
+            session.urls.push(url)
+            videoUrls.set(clip.artifactId, url)
+          }
+          const media = document.createElement('video')
+          media.preload = 'auto'
+          media.playsInline = true
+          media.muted = !embeddedAudio
+          media.addEventListener('seeked', () => { if (!session.playing) draw(session) }, { signal })
+          media.addEventListener('error', () => fail(session, new Error('A video source became unavailable.')), { signal })
+          session.videos.set(clip.clipId, media)
+          return loadVideo(media, url, signal)
+        })
+        await Promise.all(videosReady)
+        if (signal.aborted) return
+        if (audioClips.length || (embeddedAudio && videoClips.length)) {
+          const context = new AudioContext({ sampleRate: 48_000 })
+          session.audio = context
+          const mixer = context.createGain()
+          mixer.gain.value = embeddedAudio ? 1 : 0.5
+          mixer.channelCount = 2
+          mixer.channelCountMode = 'explicit'
+          const limiter = context.createWaveShaper()
+          limiter.curve = new Float32Array([-1, 1])
+          const analyser = context.createAnalyser()
+          analyser.fftSize = 4096
+          mixer.connect(limiter).connect(analyser).connect(context.destination)
+          session.mixer = mixer
+          session.analyser = analyser
+          if (embeddedAudio) {
+            for (const media of session.videos.values()) context.createMediaElementSource(media).connect(mixer)
+          }
+          const buffers = new Map<string, AudioBuffer>()
+          for (const clip of audioClips) {
+            if (clip.direction !== 'FORWARD' || toSeconds(clip.rate) !== 1) {
+              throw new Error('Audio track preview requires forward playback at normal speed.')
+            }
+            let buffer = buffers['get'](clip.artifactId)
+            if (!buffer) {
+              buffer = await context.decodeAudioData(await blobs['get'](clip.artifactId)!.arrayBuffer())
+              if (signal.aborted) return
+              buffers.set(clip.artifactId, buffer)
+            }
+            session.audioClips.push({ clip, buffer })
+          }
+        }
+        session.projection = projection
+        session.duration = toSeconds(timelineDuration(projection))
+        setDuration(session.duration)
+        setStatus('READY')
+        draw(session, true)
+      } catch (error) {
+        if (!signal.aborted) fail(session, error)
+      }
     }
-    const start = time >= duration ? 0 : time
-    if (start === 0) setTime(0)
-    startedAt.current = performance.now() - start * 1000
-    playingRef.current = true
+
+    if (revisionId && tenantId) void prepare(revisionId, tenantId)
+    else setStatus('IDLE')
+    return () => {
+      session.controller.abort()
+      stopPlayback(session)
+      for (const media of session.videos.values()) {
+        media.removeAttribute('src')
+        media.load()
+      }
+      for (const url of session.urls) URL.revokeObjectURL(url)
+      if (session.audio) void session.audio.close()
+      current.current = null
+    }
+  }, [projectId, retry, revisionId, tenantId])
+
+  function start(session: PreviewSession) {
+    const now = clock(session)
+    session.origin = now - session.cursor
+    session.playing = true
+    const audio = session.audio
+    if (audio && session.mixer) {
+      for (const { clip, buffer } of session.audioClips) {
+        const clipStart = toSeconds(clip.start)
+        const start = Math.max(session.cursor, clipStart)
+        const duration = toSeconds(clip.end) - start
+        if (duration <= 0) continue
+        const source = audio.createBufferSource()
+        source.buffer = buffer
+        source.connect(session.mixer)
+        source.start(session.origin + start, toSeconds(clip.sourceStart) + start - clipStart, duration)
+        session.scheduled.push(source)
+      }
+    }
+    const samples = session.analyser ? new Float32Array(session.analyser.fftSize) : null
+    const advance = () => {
+      if (!session.playing) return
+      session.cursor = Math.min(session.duration, Math.max(0, clock(session) - session.origin))
+      publishTime(session.cursor)
+      draw(session)
+      if (samples && host.current && session.analyser) {
+        session.analyser.getFloatTimeDomainData(samples)
+        let energy = 0
+        for (const sample of samples) energy += sample * sample
+        host.current.dataset.audioRms = Math.sqrt(energy / samples.length).toFixed(4)
+      }
+      if (session.cursor >= session.duration) {
+        stopPlayback(session)
+        setStatus('PAUSED')
+      } else {
+        session.frame = requestAnimationFrame(advance)
+      }
+    }
     setStatus('PLAYING')
-    draw(start)
-    raf.current = requestAnimationFrame(loop)
-  }, [draw, duration, loop, status, time])
+    advance()
+  }
 
-  const seek = useCallback((seconds: number) => {
-    const clamped = Math.min(duration, Math.max(0, seconds))
-    setTime(clamped)
-    if (playing) startedAt.current = performance.now() - clamped * 1000
-    draw(clamped)
-  }, [draw, duration, playing])
+  async function toggle() {
+    const session = current.current
+    if (!session?.duration || session.starting) return
+    if (session.playing) {
+      stopPlayback(session)
+      setStatus('PAUSED')
+      return
+    }
+    session.starting = true
+    try {
+      if (session.audio) await session.audio.resume()
+      if (current.current !== session) return
+      if (session.cursor >= session.duration) session.cursor = 0
+      start(session)
+    } catch (error) {
+      fail(session, error)
+    } finally {
+      session.starting = false
+    }
+  }
 
-  const toggle = () => { if (playing) pause(); else void play() }
+  function seek(seconds: number) {
+    const session = current.current
+    if (!session?.projection) return
+    const resume = session.playing
+    stopPlayback(session)
+    session.cursor = Math.min(session.duration, Math.max(0, seconds))
+    publishTime(session.cursor)
+    draw(session, true)
+    if (resume) start(session)
+  }
 
   return <section ref={host} aria-label="Timeline media preview" data-preview-status={status}
     data-preview-revision={revisionId} data-preview-time={time.toFixed(3)} data-audio-rms="0">
-    <h3>Timeline media preview</h3>
     <p role="status">{
       status === 'PREPARING' ? 'Preparing Timeline media preview…'
-        : status === 'READY' ? `Preview ready for revision ${revisionId}.`
+        : status === 'READY' ? 'Preview ready.'
           : status === 'PLAYING' ? 'Playing the current Timeline revision.'
-            : status === 'PAUSED' ? 'Paused.' : status === 'FAILED' ? message
-              : 'Preview has not been prepared.'
+            : status === 'PAUSED' ? 'Paused.' : status === 'FAILED' ? message : 'No preview is available.'
     }</p>
     <canvas ref={canvas} width={320} height={240} aria-label="Timeline preview canvas"
       style={{ display: 'block', width: '100%', maxWidth: 480, background: '#000', borderRadius: 4 }} />
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-      <button type="button" disabled={status !== 'READY' && status !== 'PAUSED' && status !== 'PLAYING'}
-        onClick={toggle}>{playing ? 'Pause Timeline' : 'Play Timeline'}</button>
+      <button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
+        onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</button>
       <input aria-label="Timeline preview seek" type="range" min={0} max={Math.max(0.01, duration)}
         step={0.01} value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1 }} />
       <output aria-label="Timeline preview time">{time.toFixed(2)}s / {duration.toFixed(2)}s</output>
     </div>
-    {status === 'FAILED' ? <button type="button" onClick={() => void loadRevision()}>Retry preview</button> : null}
-    <p style={{ fontSize: 12, color: '#9ca3af' }}>
-      Preview is derived from revision {revisionId || '—'} using the canonical snapshot and the
-      project's source artifacts. It does not write the Timeline.
-    </p>
+    {status === 'FAILED' && <button type="button" onClick={() => setRetry(value => value + 1)}>Retry preview</button>}
   </section>
 }

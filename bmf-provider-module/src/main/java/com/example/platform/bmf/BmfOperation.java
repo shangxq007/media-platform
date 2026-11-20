@@ -10,6 +10,9 @@ package com.example.platform.bmf;
  */
 public enum BmfOperation {
     DECODE("decode", "video.decode"),
+    AUDIO_DECODE("audio-decode", "audio.decode"),
+    MULTITRACK_COMPOSITE("multitrack-composite", "render.multitrack-composite"),
+    MULTITRACK_ENCODE("encode-multitrack", "render.output"),
     COMPOSITE("composite", "render.composite"),
     ENCODE("encode", "render.output"),
     TRANSCODE("transcode", "media.transcode");
@@ -51,6 +54,6 @@ public enum BmfOperation {
     }
 
     public static java.util.List<String> capabilityIds() {
-        return java.util.Arrays.stream(values()).map(BmfOperation::capabilityId).toList();
+        return java.util.Arrays.stream(values()).map(BmfOperation::capabilityId).distinct().toList();
     }
 }

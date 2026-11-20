@@ -318,21 +318,26 @@ public class TimelineMediaClipOperationService {
         return OperationDefinition.V1.MOVE.definitionId().equals(id)
                 || OperationDefinition.V1.TRIM.definitionId().equals(id)
                 || OperationDefinition.V1.DELETE.definitionId().equals(id)
-                || OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(id);
+                || OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(id)
+                || OperationDefinition.V3.RELOCATE_CLIP.definitionId().equals(id);
     }
 
     private PreparedOperation prepareForInvocation(String tenantId, String projectId,
             OperationRequest request, CanonicalActor actor) {
-        return isClipEdit(request)
+        return isClipEdit(request) || OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId())
                 ? prepareClipEdit(tenantId, projectId, request, actor)
                 : prepareInternal(tenantId, projectId, request, actor);
     }
 
     private PreparedOperation prepareClipEdit(String tenantId, String projectId,
             OperationRequest request, CanonicalActor actor) {
-        if (!isClipEdit(request)
-                || !(request.target() instanceof OperationTargetRequest.ClipSelectionTargetRequest target)
-                || !projectId.equals(target.timelineId())) {
+        boolean trackAddition = OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId())
+                && request.target() instanceof OperationTargetRequest.TimelineTargetRequest target
+                && projectId.equals(target.timelineId());
+        boolean clipEdit = isClipEdit(request)
+                && request.target() instanceof OperationTargetRequest.ClipSelectionTargetRequest target
+                && projectId.equals(target.timelineId());
+        if (!trackAddition && !clipEdit) {
             throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
                     List.of("exact clip selection and Timeline target required"));
         }

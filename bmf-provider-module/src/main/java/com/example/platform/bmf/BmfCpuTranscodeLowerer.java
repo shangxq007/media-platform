@@ -13,14 +13,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Admits the bounded BMF render units: one materialized video input or a contiguous multi-input
- * composite, one authoritative output.
+ * Lowers single-input video and audio units and validates the exact timed inputs of composition.
  *
- * <p>Supported operation keys are {@code decode}, {@code composite}, {@code encode} and
- * {@code transcode} ({@link BmfOperation}). A COMPOSITE unit with several timed base inputs is
- * lowered only when the inputs are contiguous and cover the whole propagated extent; a gap, an
- * overlap or a timed-text input is rejected so BMF never silently compresses the timeline. Audio and
- * authored execution intents remain unsupported.
+ * <p>The existing concatenation operation requires continuous video. Multitrack composition accepts
+ * gaps and overlaps between distinct tracks. Both forms reject unsupported media dependencies and
+ * authored execution intents before runtime.
  */
 public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscodePlan> {
     @Override
@@ -53,6 +50,9 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
             throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                     "BMF does not accept authored execution intents or artifact capability parameters");
         }
+        if (operation == BmfOperation.MULTITRACK_COMPOSITE) {
+            return multitrackPlan(task, unit);
+        }
         if (operation == BmfOperation.COMPOSITE && isMultiInputComposite(unit)) {
             return compositePlan(task, unit);
         }
@@ -68,16 +68,55 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                 }
             }
         }
-        if (operation != BmfOperation.DECODE && unit.temporalWindow() != null) {
+        boolean decode = operation == BmfOperation.DECODE || operation == BmfOperation.AUDIO_DECODE;
+        if (!decode && unit.temporalWindow() != null) {
             throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                     "only a BMF decode unit may carry an authored source window");
         }
-        Optional<BmfCpuTranscodePlan.SourceWindow> window = operation == BmfOperation.DECODE
+        Optional<BmfCpuTranscodePlan.SourceWindow> window = decode
                 ? sourceWindow(unit.temporalWindow())
                 : Optional.empty();
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), operation,
                 task.requiredRuntimeInputs().getFirst().inputId(),
                 task.authoritativeOutputIds().getFirst(), window);
+    }
+
+    private static BmfCpuTranscodePlan multitrackPlan(ExecutableTask task,
+            com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit unit) {
+        var extent = unit.propagatedExtent();
+        var runtimeIds = task.requiredRuntimeInputs().stream().map(input -> input.inputId())
+                .collect(java.util.stream.Collectors.toSet());
+        if (extent == null || unit.typedInputs().isEmpty()
+                || task.requiredRuntimeInputs().size() != unit.typedInputs().size()
+                || runtimeIds.size() != unit.typedInputs().size()) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "multitrack composition requires every timed input and an exact extent");
+        }
+        var inputs = new java.util.ArrayList<BmfCpuTranscodePlan.TimedInput>();
+        for (var input : unit.typedInputs()) {
+            if (!(input.dependencyVariant() instanceof RenderDependency.TimedTrackInput timed)
+                    || !runtimeIds.contains(input.inputId()) || timed.start().isLessThan(extent.start())
+                    || timed.end().isGreaterThan(extent.end())) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "BMF multitrack composition requires exact audio or video placement");
+            }
+            inputs.add(new BmfCpuTranscodePlan.TimedInput(input.inputId(), timed.start().subtract(extent.start()),
+                    timed.end().subtract(extent.start()), timed.layer(), timed.audio()));
+        }
+        inputs.sort(java.util.Comparator.comparingInt(BmfCpuTranscodePlan.TimedInput::layer)
+                .thenComparing(BmfCpuTranscodePlan.TimedInput::start));
+        for (int index = 1; index < inputs.size(); index++) {
+            var previous = inputs.get(index - 1);
+            var next = inputs.get(index);
+            if (previous.layer() == next.layer()
+                    && (previous.audio() != next.audio() || previous.end().isGreaterThan(next.start()))) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "BMF rejects overlapping clips or different stream types on one track");
+            }
+        }
+        return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), BmfOperation.MULTITRACK_COMPOSITE,
+                inputs.getFirst().inputId(), task.authoritativeOutputIds().getFirst(), Optional.empty(),
+                List.copyOf(inputs), Optional.of(extent.end().subtract(extent.start())), Optional.of(extent.frameRate()));
     }
 
     private static boolean isMultiInputComposite(

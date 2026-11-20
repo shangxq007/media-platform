@@ -207,6 +207,39 @@ class BmfCpuTranscodeSeamsTest {
                 "platform-provider-output.bin", "3", "24/1");
     }
 
+    @Test
+    void multitrack_lowers_overlapping_video_and_audio_with_extent_relative_placement() {
+        var task = compositeTask(new int[][]{{1500, 3500}, {1000, 3000}, {1000, 2500}, {2000, 3000}},
+                1000, 4000);
+        var unit = task.memberships().getFirst().physicalPlanUnit();
+        when(unit.operationKey()).thenReturn("multitrack-composite");
+        when(unit.capabilityRequirementRefs()).thenReturn(List.of(new CapabilityRequirementRef(
+                CapabilityRequirement.of(CapabilityId.of("render.multitrack-composite"), RANGE))));
+        var tracks = unit.typedInputs();
+        var timeline = List.of(
+                new RenderDependency.TimedTrackInput(MediaTime.ofMillis(1500), MediaTime.ofMillis(3500), 1, false),
+                new RenderDependency.TimedTrackInput(MediaTime.ofMillis(1000), MediaTime.ofMillis(3000), 0, false),
+                new RenderDependency.TimedTrackInput(MediaTime.ofMillis(1000), MediaTime.ofMillis(2500), 2, true),
+                new RenderDependency.TimedTrackInput(MediaTime.ofMillis(2000), MediaTime.ofMillis(3000), 3, true));
+        for (int index = 0; index < tracks.size(); index++) {
+            when(tracks.get(index).dependencyVariant()).thenReturn(timeline.get(index));
+        }
+        var plan = new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING));
+        var adapter = new BmfCpuRuntimeAdapter(Path.of("/usr/bin/python3.9"));
+        var invocation = (ProcessInvocationSpec) adapter.adapt(plan, runtimeContext(TASK_ID))
+                .commands().getFirst().invocationSpec();
+        assertThat(invocation.arguments()).containsExactly("-s", "-c", BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM,
+                "4", "@platform-materialized-input:in-1", "@platform-materialized-input:in-0",
+                "@platform-materialized-input:in-2", "@platform-materialized-input:in-3",
+                "platform-provider-output.bin", "3", "24/1", "V,0,2", "V,0.5,2.5", "A,0,1.5", "A,1,2");
+        when(tracks.get(0).dependencyVariant()).thenReturn(new RenderDependency.TimedTrackInput(
+                MediaTime.ofMillis(1500), MediaTime.ofMillis(3500), 0, false));
+        assertFailure(() -> new BmfCpuTranscodeLowerer().lower(task,
+                StaticProviderExecutionContext.fromBinding(BmfCpuProvider.BINDING)),
+                ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS);
+    }
+
     private static ExecutableTask compositeTask(int[][] intervals, int extentStartMillis,
             int extentEndMillis) {
         var task = mock(ExecutableTask.class);

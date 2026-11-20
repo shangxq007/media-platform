@@ -60,12 +60,12 @@ export const assetGateway: AssetGateway = {
       return { ok: true, value: pin(parsed.data) }
     } catch (error) { return gatewayFailure(error) }
   },
-  async readSourceContent(tenantId, projectId, artifactId) {
+  async readSourceContent(tenantId, projectId, artifactId, signal) {
     if (!tenantId || !projectId || !artifactId) {
       return responseValidationFailure('Project and source Artifact identity are required.')
     }
     try {
-      const response = await versionlessApi.get(contentPath(tenantId, projectId, artifactId), { responseType: 'blob' })
+      const response = await versionlessApi.get(contentPath(tenantId, projectId, artifactId), { responseType: 'blob', signal })
       const data = response.data
       if (!(data instanceof Blob) || data.size === 0) {
         return responseValidationFailure('Source media response did not contain bytes.')

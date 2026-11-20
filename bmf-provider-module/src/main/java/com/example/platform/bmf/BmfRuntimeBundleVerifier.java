@@ -30,17 +30,19 @@ public final class BmfRuntimeBundleVerifier {
             try (InputStream data = Files.newInputStream(manifest)) {
                 metadata.load(data);
             }
+            String recordedDigest = metadata.getProperty("bundle.sha256", "");
             if (!"0.2.0".equals(metadata.getProperty("bmf.version"))
                     || !"4.3.7".equals(metadata.getProperty("ffmpeg.version"))
                     || !"3.9.2".equals(metadata.getProperty("python.version"))
                     || !"1.19.5".equals(metadata.getProperty("numpy.version"))
                     || !BmfCpuProvider.SOURCE_ARCHIVE_SHA256.equals(metadata.getProperty("source.sha256"))
-                    || !BmfCpuProvider.RUNTIME_BUNDLE_SHA256.equals(metadata.getProperty("bundle.sha256"))
+                    || !List.of(BmfCpuProvider.RUNTIME_BUNDLE_SHA256,
+                            BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256).contains(recordedDigest)
                     || !Files.isExecutable(root.resolve("host-bundle/usr/bin/python3.9"))
                     || !insideBundle(root, root.resolve("output/bmf/lib/libbuiltin_modules.so"))) {
                 return false;
             }
-            return BmfCpuProvider.RUNTIME_BUNDLE_SHA256.equals(bundleDigest(root));
+            return recordedDigest.equals(bundleDigest(root));
         } catch (IOException | RuntimeException failure) {
             return false;
         }

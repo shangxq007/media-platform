@@ -7,7 +7,7 @@ No personal Gradle/container credentials are inherited. All generated state is o
 from pathlib import Path
 import argparse,json,os,subprocess,sys,time,secrets,shutil,hashlib
 W=Path(__file__).resolve().parents[2];HELP=W/'scripts/dev/_local_validation'
-p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--gradle',type=Path,help='Optional existing Gradle9.1 executable; default uses committed wrapper');p.add_argument('--cache',type=Path,help='Explicit modules-2 cache seed, copied without user configuration');p.add_argument('--offline',action='store_true');p.add_argument('--postgres-archive',type=Path,help='Local OCI archive containing postgres:18 for offline validation');p.add_argument('--temporal-archive',type=Path,help='Local OCI archive containing temporal:latest for offline validation');p.add_argument('--source-ffmpeg',type=Path,default=Path('/usr/bin/ffmpeg'),help='FFmpeg with libopenh264 for synthetic source media');p.add_argument('--provider',choices=['ffmpeg','bmf'],default='ffmpeg',help='Internal media provider selected for formal render binding (default stays ffmpeg)');p.add_argument('--scenario',choices=['default','single-video-no-audio','multi-clip-no-audio'],help='Product scenario; bmf requires single-video-no-audio or multi-clip-no-audio');p.add_argument('--bmf-runtime-root',type=Path,help='Verified BMF 0.2.0 runtime root; required by --provider bmf');p.add_argument('--build-only',action='store_true',help='Build and export the runtime without creating services or executing media');p.add_argument('--services-only',action='store_true',help='Verify API, Worker, database and Temporal without submitting media or render jobs');p.add_argument('--combined-smoke',action='store_true',help='Optional single-process COMBINED regression; default validates independent API and WORKER');p.add_argument('--timeline-operation-editing',action='store_true',help='Exercise authenticated source uploads and an Operation-produced revision');p.add_argument('--operation-batch',action='store_true',help='Exercise the ordered Timeline Operation batch (preview/apply -> one revision -> formal render)');p.add_argument('--timeline-split',action='store_true',help='Exercise Timeline Split (single Operation, Generic Batch and browser UI) plus a formal render');p.add_argument('--nle-workflow',action='store_true',help='Exercise the browser NLE workflow (Add/Move/Trim/Split/Delete, conflict, render)');p.add_argument('--nle-browser',action='store_true',help='Run real Chrome NLE flow in owned runtime');a=p.parse_args()
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--gradle',type=Path,help='Optional existing Gradle9.1 executable; default uses committed wrapper');p.add_argument('--cache',type=Path,help='Explicit modules-2 cache seed, copied without user configuration');p.add_argument('--offline',action='store_true');p.add_argument('--postgres-archive',type=Path,help='Local OCI archive containing postgres:18 for offline validation');p.add_argument('--temporal-archive',type=Path,help='Local OCI archive containing temporal:latest for offline validation');p.add_argument('--source-ffmpeg',type=Path,default=Path('/usr/bin/ffmpeg'),help='FFmpeg with libopenh264 for synthetic source media');p.add_argument('--provider',choices=['ffmpeg','bmf'],default='ffmpeg',help='Internal media provider selected for formal render binding (default stays ffmpeg)');p.add_argument('--scenario',choices=['default','single-video-no-audio','multi-clip-no-audio'],help='Product scenario; bmf requires single-video-no-audio or multi-clip-no-audio');p.add_argument('--bmf-runtime-root',type=Path,help='Verified BMF 0.2.0 runtime root; required by --provider bmf');p.add_argument('--build-only',action='store_true',help='Build and export the runtime without creating services or executing media');p.add_argument('--services-only',action='store_true',help='Verify API, Worker, database and Temporal without submitting media or render jobs');p.add_argument('--combined-smoke',action='store_true',help='Optional single-process COMBINED regression; default validates independent API and WORKER');p.add_argument('--timeline-operation-editing',action='store_true',help='Exercise authenticated source uploads and an Operation-produced revision');p.add_argument('--operation-batch',action='store_true',help='Exercise the ordered Timeline Operation batch (preview/apply -> one revision -> formal render)');p.add_argument('--timeline-split',action='store_true',help='Exercise Timeline Split (single Operation, Generic Batch and browser UI) plus a formal render');p.add_argument('--nle-workflow',action='store_true',help='Exercise the browser NLE workflow (Add/Move/Trim/Split/Delete, conflict, render)');p.add_argument('--nle-browser',action='store_true',help='Run real Chrome NLE flow in owned runtime');p.add_argument('--nle-multitrack',action='store_true',help='Exercise four canonical audio/video tracks and browser/worker output parity');a=p.parse_args()
 a.scenario=a.scenario or ('single-video-no-audio' if a.provider=='bmf' else 'default')
 if a.nle_browser:a.timeline_operation_editing=True
 if a.operation_batch and a.provider=='bmf':p.error('operation-batch requires the ffmpeg provider')
@@ -19,7 +19,11 @@ if a.timeline_split:a.scenario='timeline-split'
 if a.nle_workflow and a.provider=='bmf':p.error('nle-workflow requires the ffmpeg provider')
 if a.nle_workflow and (a.operation_batch or a.timeline_operation_editing or a.nle_browser or a.timeline_split):p.error('nle-workflow is exclusive of the other operation flows')
 if a.nle_workflow:a.scenario='nle-editing-workflow'
-if a.provider=='bmf' and a.scenario not in ('single-video-no-audio','multi-clip-no-audio'):p.error('provider bmf requires a bmf scenario')
+if a.nle_multitrack:
+ if a.provider!='bmf' or any([a.nle_workflow,a.nle_browser,a.timeline_split,a.timeline_operation_editing,a.operation_batch,a.combined_smoke,a.services_only,a.build_only]):p.error('multitrack requires independent API/Worker and its own BMF scenario')
+ a.scenario='nle-multitrack'
+
+if a.provider=='bmf' and a.scenario not in ('single-video-no-audio','multi-clip-no-audio','nle-multitrack'):p.error('provider bmf requires a bmf scenario')
 if a.provider=='bmf' and not a.bmf_runtime_root:p.error('provider bmf requires --bmf-runtime-root')
 if a.provider=='bmf' and (a.timeline_operation_editing or a.nle_browser):p.error('the bmf scenario does not exercise the operation-editing or browser NLE flow')
 if a.provider!='bmf' and a.bmf_runtime_root:p.error('--bmf-runtime-root requires --provider bmf')
@@ -38,6 +42,7 @@ for tool in ['podman','bwrap','nsenter','openssl','javac','ffmpeg','curl']:
 # to synthesize the source clip).
 BMF_SOURCE_ARCHIVE_SHA256='8fb3ec03b06ba56e5276a6844614879cdc0ae3886b42a4bf783782708130e327'
 BMF_RUNTIME_BUNDLE_SHA256='0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1'
+BMF_RUNTIME_BUNDLE_WITH_SNDIO_SHA256='7b6de78d235e77e14c3de47ed84268b17a071298465d72fb321af0565a0aff4c'
 def verified_bmf_runtime(value):
  candidate=value.absolute()
  if '..' in candidate.parts or candidate.is_symlink() or not candidate.is_dir():p.error('--bmf-runtime-root must be an existing real directory')
@@ -48,7 +53,7 @@ def verified_bmf_runtime(value):
  for line in manifest.read_text().splitlines():
   if '=' in line:key,_,text=line.partition('=');metadata[key.strip()]=text.strip()
  if (metadata.get('bmf.version'),metadata.get('ffmpeg.version'),metadata.get('python.version'),metadata.get('numpy.version'))!=('0.2.0','4.3.7','3.9.2','1.19.5'):p.error('BMF runtime manifest does not declare the pinned versions')
- if metadata.get('source.sha256')!=BMF_SOURCE_ARCHIVE_SHA256 or metadata.get('bundle.sha256')!=BMF_RUNTIME_BUNDLE_SHA256:p.error('BMF runtime manifest does not declare the pinned distribution')
+ if metadata.get('source.sha256')!=BMF_SOURCE_ARCHIVE_SHA256 or metadata.get('bundle.sha256') not in (BMF_RUNTIME_BUNDLE_SHA256,BMF_RUNTIME_BUNDLE_WITH_SNDIO_SHA256):p.error('BMF runtime manifest does not declare the pinned distribution')
  python=root/'host-bundle/usr/bin/python3.9'
  if python.is_symlink() or not python.is_file() or not os.access(python,os.X_OK):p.error('BMF runtime Python is unavailable')
  for required in ['output/bmf/lib/libbuiltin_modules.so','host-bundle/usr/lib/python3.9','host-bundle/usr/lib/python3/dist-packages/numpy']:
@@ -61,7 +66,7 @@ def verified_bmf_runtime(value):
     with path.open('rb') as data:value='file:'+hashlib.file_digest(data,'sha256').hexdigest()
    else:continue
    digest.update((path.relative_to(root).as_posix()+'\0'+value+'\n').encode())
- if digest.hexdigest()!=BMF_RUNTIME_BUNDLE_SHA256:p.error('BMF runtime bundle digest does not match the pinned distribution')
+ if digest.hexdigest()!=metadata['bundle.sha256']:p.error('BMF runtime bundle digest does not match the pinned distribution')
  return root
 bmf_root=verified_bmf_runtime(a.bmf_runtime_root) if a.provider=='bmf' else None
 R.mkdir(mode=0o700,parents=True)
@@ -166,7 +171,11 @@ try:
  if a.services_only:
   command('services-health',['python3','-B',str(HELP/'check_services.py')],timeout=240)
  else:
-  if a.nle_workflow:
+  if a.nle_multitrack:
+   command('exercise_nle_multitrack',['python3','-B',str(HELP/'exercise_nle_workflow.py')],timeout=300)
+   command('nle-multitrack-browser',['python3','-B',str(HELP/'nle_workflow_browser.py')],timeout=1500)
+   command('verify-multitrack-bmf',['python3','-B',str(HELP/'check_nle_multitrack.py')],timeout=120)
+  elif a.nle_workflow:
    command('exercise_nle_workflow',['python3','-B',str(HELP/'exercise_nle_workflow.py')],timeout=300)
    command('nle-workflow-browser',['python3','-B',str(HELP/'nle_workflow_browser.py')],timeout=1500)
    command('check_nle_workflow',['python3','-B',str(HELP/'check_nle_workflow.py')],timeout=300)
@@ -186,7 +195,11 @@ finally:
   if current.exists():(Path(current.read_text().strip())/'STOP').touch()
   clients.wait(timeout=60)
  # Fail closed on client uncertainty. On a failed run, retain owned resources and evidence.
- if cid and tid and ((R/'product-result.json').exists() or (R/'services-health.json').exists()):
+ if a.nle_multitrack and B is not None:
+  sys.path.insert(0,str(HELP))
+  from close_multitrack_runtime import close
+  close(B,E,R,run,volume,clients,command)
+ elif cid and tid and ((R/'product-result.json').exists() or (R/'services-health.json').exists()):
   proof=json.loads((Path((R/'07-runtime/current-apps.txt').read_text().strip())/'complete.json').read_text());dbproof=json.loads((R/'04-tests/pg18/result.json').read_text());assert proof['all_children_reaped'] and dbproof['executor_closed']
   active=json.loads(command('active-workflows',B+['exec',tid,'temporal','--address','127.0.0.1:7233','--namespace','f8-pg18-'+run,'workflow','list','--query',"ExecutionStatus = 'Running'",'--output','json'],environment=E));assert active==[] or active=={'executions':[]}
   inspect(cid);inspect(tid);sql="ALTER ROLE mp_test_canon_a2 NOLOGIN; ALTER DATABASE mp_f8_canon_a2 ALLOW_CONNECTIONS false; SELECT count(*) FROM pg_stat_activity WHERE datname='mp_f8_canon_a2';";command('fence-zero-sessions',admin,input=sql,environment=E)

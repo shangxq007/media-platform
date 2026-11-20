@@ -11,13 +11,15 @@ export function timelineDuration(projection: TimelineProjection): Rational {
   return end
 }
 
-/** The clip covering a Timeline time, or null for a gap. Clips are non-overlapping per track. */
+/** The topmost video clip covering a Timeline time, or null for a video gap. */
 export function activeClipAt(projection: TimelineProjection, timelineTime: Rational): ProjectedClip | null {
-  let active: ProjectedClip | null = null
-  for (const clip of projection.clips) {
-    if (compare(timelineTime, clip.start) >= 0 && compare(timelineTime, clip.end) < 0) active = clip
+  for (const track of [...projection.tracks].reverse()) {
+    if (track.type !== 'VIDEO') continue
+    const clip = track.clips.find(item =>
+      compare(timelineTime, item.start) >= 0 && compare(timelineTime, item.end) < 0)
+    if (clip) return clip
   }
-  return active
+  return null
 }
 
 /**

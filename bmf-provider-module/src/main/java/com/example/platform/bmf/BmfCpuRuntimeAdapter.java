@@ -34,11 +34,22 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             ff = importlib.import_module('bmf.builder.ff_filter')
             source, output, operation, start, duration = sys.argv[1:6]
             print('BMF_GRAPH_START ' + operation, flush=True)
-            video = bmf.graph().decode({'input_path': source})['video']
-            if float(duration) > 0:
-                video = ff.setpts(ff.trim(video, start=start, duration=duration), 'PTS-STARTPTS')
-            video.encode(None, {'output_path': output, 'format': 'mp4',
-                                'video_params': {'codec': 'libx264', 'pix_fmt': 'yuv420p'}}).run()
+            streams = bmf.graph().decode({'input_path': source})
+            audio_params = {'codec': 'aac', 'sample_rate': 48000, 'channels': 2}
+            options = {'output_path': output, 'format': 'mp4',
+                       'video_params': {'codec': 'libx264', 'pix_fmt': 'yuv420p'},
+                       'audio_params': audio_params}
+            if operation == 'audio-decode':
+                audio = ff.atrim(streams['audio'], start=start, duration=duration)
+                audio = ff.asetpts(audio, 'PTS-STARTPTS')
+                audio = ff.ff_filter(audio, 'aresample', '48000:ocl=stereo:clev=1')
+                ff.encode(None, audio, options).run()
+            else:
+                video = streams['video']
+                if float(duration) > 0:
+                    video = ff.setpts(ff.trim(video, start=start, duration=duration), 'PTS-STARTPTS')
+                audio = streams['audio'] if operation == 'encode-multitrack' else None
+                video.encode(audio, options).run()
             if not os.path.isfile(output) or os.path.getsize(output) == 0:
                 raise RuntimeError('BMF graph produced no media output')
             print('BMF_GRAPH_DONE ' + operation + ' size=' + str(os.path.getsize(output)), flush=True)
@@ -81,6 +92,72 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             print('BMF_GRAPH_DONE composite expected=' + duration + ' size=' + str(os.path.getsize(output)), flush=True)
             """;
 
+    /** Builds a native BMF graph from typed, extent-relative placements. */
+    static final String MULTITRACK_GRAPH_PROGRAM = """
+            from fractions import Fraction
+            import importlib
+            import os
+            import sys
+            import bmf
+
+            ff = importlib.import_module('bmf.builder.ff_filter')
+            count = int(sys.argv[1])
+            paths = sys.argv[2:2 + count]
+            output, duration, rate = sys.argv[2 + count:5 + count]
+            placements = [value.split(',') for value in sys.argv[5 + count:]]
+            graph = bmf.graph()
+            print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
+
+            def video_at_rate(video):
+                return ff.fps(ff.scale(video, '320x240'), rate)
+
+            video_inputs = [(path, start, end) for path, (kind, start, end)
+                            in zip(paths, placements) if kind == 'V']
+            if video_inputs:
+                base = graph.decode({'input_path': video_inputs[0][0]})['video']
+            else:
+                waveform = graph.decode({'input_path': paths[0]})['audio']
+                base = ff.ff_filter(waveform, 'showwaves', 's=320x240:r=' + rate)
+            canvas = video_at_rate(base)
+            canvas = ff.ff_filter(canvas, 'drawbox', color='black', t='fill')
+            canvas = ff.ff_filter(canvas, 'tpad', stop_duration=duration, stop_mode='clone')
+            canvas = ff.trim(canvas, duration=duration)
+            for path, start, end in video_inputs:
+                clip = video_at_rate(graph.decode({'input_path': path})['video'])
+                clip = ff.ff_filter(clip, 'tpad', stop='1', stop_mode='clone')
+                clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
+                # Avoid filter-grammar separators in the expression. The nanosecond tolerance
+                # keeps a frame at the end boundary outside the exact half-open interval.
+                visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
+                canvas = ff.overlay(canvas, clip, enable=visible)
+
+            audio_inputs = []
+            for path, (kind, start, end) in zip(paths, placements):
+                if kind != 'A':
+                    continue
+                audio = graph.decode({'input_path': path})['audio']
+                audio = ff.atrim(audio, duration=str(float(Fraction(end) - Fraction(start))))
+                audio = ff.asetpts(audio, 'PTS-STARTPTS')
+                delay = str(round(Fraction(start) * 48000)) + 'S'
+                audio = ff.adelay(audio, delays=delay, all=1)
+                # The bundled libavfilter normalizes amix by its live input count. Padding all
+                # inputs with silence fixes that count for the whole timeline.
+                audio_inputs.append(ff.atrim(ff.ff_filter(audio, 'apad'), duration=duration))
+
+            mixed = None
+            if audio_inputs:
+                mixed = (ff.amix(audio_inputs, inputs=len(audio_inputs), duration='first', dropout_transition=0)
+                         if len(audio_inputs) > 1 else audio_inputs[0])
+                mixed = ff.ff_filter(mixed, 'volume', str(len(audio_inputs) / 2))
+                mixed = ff.ff_filter(mixed, 'aformat', sample_fmts='s16')
+            canvas.encode(mixed, {'output_path': output, 'format': 'mp4',
+                                  'video_params': {'codec': 'libx264', 'pix_fmt': 'yuv420p'},
+                                  'audio_params': {'codec': 'aac', 'sample_rate': 48000, 'channels': 2}}).run()
+            if not os.path.isfile(output) or os.path.getsize(output) == 0:
+                raise RuntimeError('BMF multitrack graph produced no media output')
+            print('BMF_GRAPH_DONE multitrack-composite size=' + str(os.path.getsize(output)), flush=True)
+            """;
+
     private final Path python;
 
     public BmfCpuRuntimeAdapter(Path python) {
@@ -119,7 +196,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         var arguments = new java.util.ArrayList<String>();
         arguments.add("-s");
         arguments.add("-c");
-        arguments.add(COMPOSITE_GRAPH_PROGRAM);
+        boolean multitrack = plan.operation() == BmfOperation.MULTITRACK_COMPOSITE;
+        arguments.add(multitrack ? MULTITRACK_GRAPH_PROGRAM : COMPOSITE_GRAPH_PROGRAM);
         arguments.add(Integer.toString(plan.compositeInputs().size()));
         for (var input : plan.compositeInputs()) {
             arguments.add(materializedInputToken(input.inputId()));
@@ -128,6 +206,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         arguments.add(seconds(plan.compositeDuration().orElseThrow()));
         var rate = plan.compositeFrameRate().orElseThrow();
         arguments.add(rate.numerator() + "/" + rate.denominator());
+        if (multitrack) {
+            for (var input : plan.compositeInputs()) {
+                arguments.add((input.audio() ? "A" : "V") + "," + seconds(input.start()) + "," + seconds(input.end()));
+            }
+        }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
     }
 

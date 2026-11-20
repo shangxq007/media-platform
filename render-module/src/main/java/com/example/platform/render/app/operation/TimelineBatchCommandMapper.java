@@ -121,6 +121,9 @@ public final class TimelineBatchCommandMapper {
                     addMediaClip(parameters, baseRevisionId, baseContentHash, projectId).parameters();
             case "timeline.move" -> new OperationParameters.MoveParameters(
                     time(parameters, "delta"), requiredBoolean(parameters, "absolute"));
+            case "timeline.clip.relocate" -> new OperationParameters.RelocateClipParameters(
+                    time(parameters, "delta"), requiredBoolean(parameters, "absolute"),
+                    requiredText(parameters, "destinationTrackId"));
             case "timeline.trim" -> new OperationParameters.TrimParameters(
                     OperationParameters.TrimParameters.TrimEdge.valueOf(
                             requiredText(parameters, "edge")),

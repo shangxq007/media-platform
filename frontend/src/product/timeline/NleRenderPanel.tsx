@@ -13,10 +13,14 @@ function save(blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
-export function NleRenderPanel({ head }: { head: CanonicalHeadReference | null }) {
+export function NleRenderPanel({ head, timelineEndMillis = 3000 }: {
+  head: CanonicalHeadReference | null
+  timelineEndMillis?: number
+}) {
   const project = useProjectContext()
   const [startMillis, setStartMillis] = useState(0)
-  const [endMillis, setEndMillis] = useState(3000)
+  const [requestedEnd, setEndMillis] = useState<number | null>(null)
+  const endMillis = requestedEnd ?? timelineEndMillis
   const [fps, setFps] = useState(24)
   const [jobs, setJobs] = useState<RenderJobSummary[]>([])
   const [job, setJob] = useState<RenderResult | null>(null)
@@ -41,7 +45,7 @@ export function NleRenderPanel({ head }: { head: CanonicalHeadReference | null }
       setJobs(jobRows); setDeliveries(deliveryRows); setMessage('')
     } catch (error) { if (owned === generation.current) { setActionFailed(false); setMessage(error instanceof Error ? error.message : 'Render history unavailable.') } }
   }
-  useEffect(() => { setJob(null); setDelivery(null); setJobs([]); setDeliveries([]); keys.current = {}; void refresh()
+  useEffect(() => { setEndMillis(null); setJob(null); setDelivery(null); setJobs([]); setDeliveries([]); keys.current = {}; void refresh()
     return () => { generation.current += 1 }
   }, [project.tenantId, project.projectId])
   useEffect(() => {

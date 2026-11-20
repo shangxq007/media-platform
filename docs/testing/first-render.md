@@ -101,3 +101,23 @@ database's Flyway history.
 
 Schema policy: [Flyway development baseline](../database/flyway-migration-baseline.md). Development
 and regeneration: [canonical development baseline](../development/canonical-baseline.md).
+
+## Multitrack NLE with BMF
+
+Run the packaged NLE workbench against an isolated API, Worker, PostgreSQL and Temporal runtime:
+
+```sh
+python3 -B scripts/dev/first-render --provider bmf --nle-multitrack \
+  --bmf-runtime-root /path/to/verified/bmf-runtime --output /path/to/new/evidence
+```
+
+The Chrome scenario uploads two videos and two distinct audio signals, edits the Timeline through
+Operations, reloads the saved Revision and submits a formal RenderJob. The evidence correlates the
+persisted physical plan and graph digest, Temporal completion, native BMF Worker execution and the
+downloaded master Artifact. It checks video pixels and audio frequencies at representative times.
+
+For a configured API and Worker, enable `platform.bmf-provider.enabled` and supply the verified
+`platform.bmf-worker.runtime-root` on the Worker. Multitrack render plans select the existing BMF
+binding when the multitrack capability is required. The BMF Graph uses native decoder, filter and
+encoder nodes, backed by the BMF distribution's bundled libav libraries. When BMF is unavailable,
+the normal binding boundary reports the unsupported multitrack plan.

@@ -93,6 +93,10 @@ public class TimelineClipEditOperationController {
 
     @ExceptionHandler(OperationInvocationException.class)
     ResponseEntity<ProblemDetail> operationFailure(OperationInvocationException failure) {
+        return operationFailureResponse(failure);
+    }
+
+    static ResponseEntity<ProblemDetail> operationFailureResponse(OperationInvocationException failure) {
         HttpStatus status = switch (failure.code()) {
             case AUTHORIZATION_DENIED, AUTHORIZATION_CONTEXT_MISMATCH, INVALID_SCOPE -> HttpStatus.FORBIDDEN;
             case BASE_REVISION_NOT_FOUND, TARGET_MISSING -> HttpStatus.NOT_FOUND;

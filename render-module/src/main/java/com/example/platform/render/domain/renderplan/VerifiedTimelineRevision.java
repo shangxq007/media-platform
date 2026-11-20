@@ -3,6 +3,7 @@ package com.example.platform.render.domain.renderplan;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.timeline.canonical.TextElement;
+import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import java.util.List;
 import java.util.Objects;
@@ -35,17 +36,22 @@ public final class VerifiedTimelineRevision {
 
     private final TimelineRevisionReference revision;
     private final List<MediaClip> clips;
+    private final List<Track> tracks;
     private final AudioMix audioMix;
+
+    record Track(String id, TrackType type) {}
     private final List<TextElement> textElements;
 
     /** Restricted constructor — private on purpose; factory-only construction. */
     private VerifiedTimelineRevision(
             TimelineRevisionReference revision,
             List<MediaClip> clips,
+            List<Track> tracks,
             AudioMix audioMix,
             List<TextElement> textElements) {
         this.revision = Objects.requireNonNull(revision, "revision");
         this.clips = List.copyOf(clips);
+        this.tracks = List.copyOf(tracks);
         this.audioMix = Objects.requireNonNull(audioMix, "audioMix");
         this.textElements = List.copyOf(textElements);
     }
@@ -54,9 +60,10 @@ public final class VerifiedTimelineRevision {
     static VerifiedTimelineRevision create(
             TimelineRevisionReference revision,
             List<MediaClip> clips,
+            List<Track> tracks,
             AudioMix audioMix,
             List<TextElement> textElements) {
-        return new VerifiedTimelineRevision(revision, clips, audioMix, textElements);
+        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements);
     }
 
     public TimelineRevisionReference revision() {
@@ -65,6 +72,14 @@ public final class VerifiedTimelineRevision {
 
     public List<MediaClip> clips() {
         return clips;
+    }
+
+    Track track(String id) {
+        return tracks.stream().filter(track -> track.id().equals(id)).findFirst().orElseThrow();
+    }
+
+    int layer(String id) {
+        return tracks.indexOf(track(id));
     }
 
     public AudioMix audioMix() {
@@ -86,12 +101,12 @@ public final class VerifiedTimelineRevision {
             return false;
         }
         return revision.equals(v.revision) && clips.equals(v.clips)
-                && audioMix.equals(v.audioMix) && textElements.equals(v.textElements);
+                && tracks.equals(v.tracks) && audioMix.equals(v.audioMix) && textElements.equals(v.textElements);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(revision, clips, audioMix, textElements);
+        return Objects.hash(revision, clips, tracks, audioMix, textElements);
     }
 
     @Override

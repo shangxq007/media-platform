@@ -72,12 +72,15 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     public static final CapabilityId TRANSCODE_CAPABILITY = CapabilityId.of("media.transcode");
     public static final CapabilityId VIDEO_DECODE_CAPABILITY = CapabilityId.of("video.decode");
     public static final CapabilityId COMPOSITE_CAPABILITY = CapabilityId.of("render.composite");
+    public static final CapabilityId AUDIO_DECODE_CAPABILITY = CapabilityId.of("audio.decode");
+    public static final CapabilityId MULTITRACK_CAPABILITY = CapabilityId.of("render.multitrack-composite");
     public static final CapabilityId OUTPUT_CAPABILITY = CapabilityId.of("render.output");
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
             ContractVersionRange.exactly(ContractVersion.of(1, 0));
 
     private static final List<CapabilityId> CAPABILITIES = List.of(
-            TRANSCODE_CAPABILITY, VIDEO_DECODE_CAPABILITY, COMPOSITE_CAPABILITY, OUTPUT_CAPABILITY);
+            TRANSCODE_CAPABILITY, VIDEO_DECODE_CAPABILITY, COMPOSITE_CAPABILITY, OUTPUT_CAPABILITY,
+            AUDIO_DECODE_CAPABILITY, MULTITRACK_CAPABILITY);
 
     private final Path runtimeRoot;
 
@@ -136,6 +139,12 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
                             "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
                     new CapabilityDescriptor(
                             COMPOSITE_CAPABILITY.value(), "1.0", "composite", "ExecutableTask",
+                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor(
+                            AUDIO_DECODE_CAPABILITY.value(), "1.0", "audio-decode", "ExecutableTask",
+                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
+                    new CapabilityDescriptor(
+                            MULTITRACK_CAPABILITY.value(), "1.0", "multitrack-composite", "ExecutableTask",
                             "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
                     new CapabilityDescriptor(
                             OUTPUT_CAPABILITY.value(), "1.0", "encode", "ExecutableTask",

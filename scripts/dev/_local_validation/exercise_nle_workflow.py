@@ -9,6 +9,7 @@ from pathlib import Path
 R = Path(os.environ['MEDIA_PLATFORM_VALIDATION_OUTPUT'])
 app = Path((R / '07-runtime/current-apps.txt').read_text().strip())
 W = Path(__file__).resolve().parents[3]
+multitrack = os.environ.get('MEDIA_PLATFORM_SCENARIO') == 'nle-multitrack'
 sys.path.insert(0, str(W / 'scripts/testinfra'))
 from local_runtime import sandbox_prefix
 
@@ -41,6 +42,9 @@ insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,s
 insert into role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from permission where permission_key in ('READ','WRITE','render.submit','artifact.read','delivery.read','delivery.manage');
 insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
 commit;'''
+if multitrack:
+    seed = '\n'.join(line for line in seed.splitlines() if not line.startswith('insert into project('))
+    seed = seed.replace("('READ','WRITE',", "('READ','WRITE','CREATE',")
 (app / 'workflow-seed.sql').write_text(seed)
 psql(seed)
 
@@ -54,14 +58,15 @@ sig = subprocess.run(['openssl', 'dgst', '-sha256', '-sign', str(R / '07-runtime
 (app / 'token').write_text(unsigned + '.' + encode(sig))
 (app / 'token').chmod(0o600)
 
-for name, colour, seconds in (('workflow-red.mp4', 'red', 2), ('workflow-green.mp4', 'green', 2)):
-    p = subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
-                        '-f', 'lavfi', '-i', f'color=c={colour}:s=320x240:r=24:d={seconds}',
-                        '-f', 'lavfi', '-i', f'sine=frequency=440:sample_rate=48000:duration={seconds}',
-                        '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
-                        str(app / name)],
-                       env=env, capture_output=True, text=True, timeout=120)
-    assert p.returncode == 0, p.stderr
+if not multitrack:
+    for name, colour, seconds in (('workflow-red.mp4', 'red', 2), ('workflow-green.mp4', 'green', 2)):
+        p = subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
+                            '-f', 'lavfi', '-i', f'color=c={colour}:s=320x240:r=24:d={seconds}',
+                            '-f', 'lavfi', '-i', f'sine=frequency=440:sample_rate=48000:duration={seconds}',
+                            '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest',
+                            str(app / name)],
+                           env=env, capture_output=True, text=True, timeout=120)
+        assert p.returncode == 0, p.stderr
 
 probe = ("import urllib.request,time\n"
          "for _ in range(300):\n"
@@ -88,6 +93,26 @@ for _ in range(60):
     where role_id=(select id from role where role_key='EDITOR') on conflict (id) do nothing;""")
 else:
     raise AssertionError('owned role permissions did not become available')
+
+if multitrack:
+    import shutil
+    fixture_dir = R / '04-tests' / 'nle-multitrack-browser'
+    fixture_dir.mkdir(exist_ok=True)
+    video_args = ['-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-an']
+    fixtures = {
+        'video-a.mp4': ['-f', 'lavfi', '-i', 'color=red:s=320x240:r=24:d=2',
+                        '-f', 'lavfi', '-i', 'color=blue:s=320x240:r=24:d=2',
+                        '-filter_complex', '[0:v][1:v]concat=n=2:v=1:a=0', *video_args],
+        'video-b.mp4': ['-f', 'lavfi', '-i', 'color=green:s=320x240:r=24:d=3', *video_args],
+        'audio-c.wav': ['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=3'],
+        'audio-d.wav': ['-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000:duration=3'],
+    }
+    for name, args in fixtures.items():
+        subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',
+                                 *args, str(app / name)], env=env, check=True, timeout=60)
+        shutil.copyfile(app / name, fixture_dir / name)
+    print(json.dumps({'status': 'PASS', 'fixtures': list(fixtures), 'workspaceId': 'workspace-fr-e2e'}))
+    raise SystemExit(0)
 
 client = app / 'workflow-client.py'
 client.write_text(r'''import json, pathlib, sys, time, urllib.request, urllib.error, uuid

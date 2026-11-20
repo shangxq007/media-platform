@@ -12,12 +12,10 @@ import java.util.List;
 /**
  * Shared typed transport command; invokes the canonical Operation authority.
  *
- * <p>MOVE_CLIP changes time on the existing track (cross-track moves are not accepted here).
+ * <p>MOVE_CLIP can also select a same-type destination track.
  * SPLIT_CLIP requires an exact split time and the caller-supplied right clip identity so the
  * canonical plan (and its idempotent replay) is deterministic.
- *
- * <p>The record's canonical constructor is the single construction entry; REST/Jackson binding
- * and any in-process construction use the same ten-component shape.
+
  */
 public record TimelineClipEditCommand(
         String type,
@@ -29,7 +27,8 @@ public record TimelineClipEditCommand(
         String edge,
         String commandId,
         String splitTime,
-        String rightClipId) {
+        String rightClipId,
+        String destinationTrackId) {
 
     private static final List<String> TYPES =
             List.of("MOVE_CLIP", "TRIM_CLIP", "DELETE_CLIP", "SPLIT_CLIP");
@@ -41,6 +40,12 @@ public record TimelineClipEditCommand(
         requireId(commandId, "commandId");
         if (type == null || !TYPES.contains(type)) {
             throw new IllegalArgumentException("unsupported clip edit type");
+        }
+        if (destinationTrackId != null) {
+            if (!"MOVE_CLIP".equals(type)) {
+                throw new IllegalArgumentException("destination track is only valid for MOVE_CLIP");
+            }
+            requireId(destinationTrackId, "destinationTrackId");
         }
         if ("SPLIT_CLIP".equals(type)) {
             if (splitTime == null || splitTime.length() > 64
@@ -83,14 +88,16 @@ public record TimelineClipEditCommand(
 
     public OperationRequest toOperationRequest(String projectId) {
         var definition = switch (type) {
-            case "MOVE_CLIP" -> OperationDefinition.V1.MOVE;
+            case "MOVE_CLIP" -> destinationTrackId == null ? OperationDefinition.V1.MOVE : OperationDefinition.V3.RELOCATE_CLIP;
             case "TRIM_CLIP" -> OperationDefinition.V1.TRIM;
             case "DELETE_CLIP" -> OperationDefinition.V1.DELETE;
             case "SPLIT_CLIP" -> OperationDefinition.V3.SPLIT_CLIP;
             default -> throw new IllegalArgumentException("unsupported clip edit type");
         };
         OperationParameters parameters = switch (type) {
-            case "MOVE_CLIP" -> new OperationParameters.MoveParameters(parseTime(delta), absolute);
+            case "MOVE_CLIP" -> destinationTrackId == null
+                    ? new OperationParameters.MoveParameters(parseTime(delta), absolute)
+                    : new OperationParameters.RelocateClipParameters(parseTime(delta), absolute, destinationTrackId);
             case "TRIM_CLIP" -> new OperationParameters.TrimParameters(
                     OperationParameters.TrimParameters.TrimEdge.valueOf(edge), parseTime(delta));
             case "DELETE_CLIP" -> new OperationParameters.NoParameters();

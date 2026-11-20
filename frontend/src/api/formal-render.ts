@@ -7,7 +7,7 @@ const id = z.string().min(1)
 const part = (value: string) => encodeURIComponent(id.parse(value))
 export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number }; outputFormat: 'MP4'; profile: string }
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
-export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; commandId: string }
+export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
 const Submission = z.object({ renderJobId: id, requestId: id, executionPlanId: id, status: z.literal('PLANNED'), workflowId: id, workflowStarted: z.boolean() })
 const Result = z.object({ renderJobId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
 export type RenderResult = z.infer<typeof Result>
@@ -17,6 +17,17 @@ const Lifecycle = z.object({ renderJobId: id, timelineRevisionId: id, projectId:
 
 const jobPath = (tenant: string, project: string, job: string) => `/tenants/${part(tenant)}/projects/${part(project)}/render-jobs/${part(job)}`
 export const FormalRenderAPI = {
+  async initializeTimeline(tenant: string, project: string, commandId: string) {
+    return request(c => versionlessApi.post(
+      `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/initialize`,
+      { trackId: 'track-1', commandId }, c))
+  },
+  async addTrack(tenant: string, project: string, command: {
+    baseRevisionId: string; baseContentHash: string; trackType: 'VIDEO' | 'AUDIO'; trackId: string; commandId: string
+  }) {
+    return request(c => versionlessApi.post(
+      `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/tracks`, command, c))
+  },
   async head(project: string, signal?: AbortSignal) {
     const result = Head.parse(await request(c => versionlessApi.get(`/timeline-git/products/${part(project)}/revisions/current`, c), signal))
     if (result.revision.productId !== project || result.revisionId !== result.revision.revisionId) throw new Error('REVISION_SCOPE_MISMATCH')

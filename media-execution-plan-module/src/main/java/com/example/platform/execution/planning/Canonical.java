@@ -250,6 +250,10 @@ public final class Canonical {
             return "TIMED_COMPOSITE_INPUT|" + framed(timed.start().toString())
                     + "|" + framed(timed.end().toString());
         }
+        if (d instanceof RenderDependency.TimedTrackInput timed) {
+            return "TIMED_TRACK_INPUT|" + framed(timed.start().toString())
+                    + "|" + framed(timed.end().toString()) + "|" + timed.layer() + "|" + timed.audio();
+        }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
     }
 

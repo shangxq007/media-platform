@@ -11,6 +11,7 @@ import com.example.platform.providerplugin.ProviderCandidateProjection;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.render.app.renderplan.RenderPlanningEntryService;
 import com.example.platform.render.domain.renderplan.RenderPlanningResult;
+import com.example.platform.render.domain.renderplan.RenderCapabilityVocabulary;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
@@ -143,8 +144,12 @@ public class RevisionRenderPlanningAndBindingService {
         stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BINDING;
         lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
         // Declared provider candidates from the catalog projection.
+        var multitrackCapability = RenderCapabilityVocabulary.multitrackComposite().capabilityId();
+        boolean multitrack = physicalPlan.units().stream()
+                .flatMap(unit -> unit.capabilityRequirementRefs().stream())
+                .anyMatch(requirement -> multitrackCapability.equals(requirement.declaration().capabilityId()));
         List<ProviderCandidate> candidates = selectedMediaCandidates(
-                ProviderCandidateProjection.project(providerPluginCatalog), mediaProvider);
+                ProviderCandidateProjection.project(providerPluginCatalog), multitrack ? "bmf" : mediaProvider);
 
         // #22 provider binding (pure): the digest comes only from the real binding result.
         ProviderBindingEntryService.ProviderBindingOutcome outcome = providerBindingEntryService.bind(

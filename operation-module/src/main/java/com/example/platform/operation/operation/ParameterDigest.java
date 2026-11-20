@@ -55,6 +55,9 @@ public final class ParameterDigest {
 
     /** Deterministic canonical semantic serialization of typed parameters. */
     static String serialize(OperationParameters p) {
+        if (p instanceof OperationParameters.AddTrackParameters track) {
+            return "add-track(" + track.trackId() + "," + track.trackType() + ")";
+        }
         if (p instanceof OperationParameters.InitializeTimelineParameters init) {
             return "initialize-timeline(video-track=" + init.trackId() + ")";
         }
@@ -77,6 +80,10 @@ public final class ParameterDigest {
         }
         if (p instanceof OperationParameters.MoveParameters m) {
             return "move(" + m.delta() + ",absolute=" + m.absolute() + ")";
+        }
+        if (p instanceof OperationParameters.RelocateClipParameters relocate) {
+            return "relocate(" + relocate.delta() + ",absolute=" + relocate.absolute()
+                    + ",track=" + relocate.destinationTrackId() + ")";
         }
         if (p instanceof OperationParameters.TrimParameters t) {
             return "trim(" + t.edge() + "," + t.delta() + ")";

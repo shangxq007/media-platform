@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
-import { projectSnapshotJson } from './timeline-projection'
+import { projectSnapshotJson, type ProjectedTrack } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { useProjectContext } from '../../foundation/projectContext'
 import {
@@ -9,7 +9,14 @@ import {
 } from './trim'
 import { describeMove, draggedStart, projectMove } from './move'
 
-interface Props { head: CanonicalHeadReference | null; onRevisionChanged: () => Promise<void>; focusClipId?: string | null }
+interface Props {
+  head: CanonicalHeadReference | null
+  onRevisionChanged: () => Promise<void>
+  focusClipId?: string | null
+  playhead?: number
+  selectedTrackId?: string | null
+  onSelectTrack?: (trackId: string) => void
+}
 
 /** Horizontal scale of the trim strip: one second of timeline occupies this many pixels. */
 export const TRIM_PIXELS_PER_SECOND = 80
@@ -20,15 +27,19 @@ interface PreviewedTrim extends PendingTrim { clipId: string; revisionId: string
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
 
-function geometryOf(canonicalTimelineJson: string): ClipGeometry[] {
-  return projectSnapshotJson(canonicalTimelineJson).clips.map(clip => ({
+function geometryOf(clips: ReturnType<typeof projectSnapshotJson>['clips']): ClipGeometry[] {
+  return clips.map(clip => ({
     clipId: clip.clipId, trackId: clip.trackId, start: clip.start, end: clip.end,
     sourceStart: clip.sourceStart, sourceEnd: clip.sourceEnd, rate: clip.rate,
   }))
 }
 
-export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Props) {
+export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhead = 0,
+  selectedTrackId, onSelectTrack }: Props) {
   const project = useProjectContext()
+  const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
+  const [destinationTrackId, setDestinationTrackId] = useState('')
+  const trackCommands = useRef<Partial<Record<'VIDEO' | 'AUDIO', { revision: string; id: string }>>>({})
   const [clips, setClips] = useState<ClipGeometry[]>([])
   const [selected, setSelected] = useState('')
   const [type, setType] = useState<ClipEdit['type']>('MOVE_CLIP')
@@ -49,17 +60,19 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
-    if (!head) { setClips([]); setSelected(''); return }
+    if (!head) { setTracks([]); setClips([]); setSelected(''); return }
     const owned = ++generation.current
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
-      const rows = geometryOf(snapshot.canonicalTimelineJson)
+      const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
+      const rows = geometryOf(projection.clips)
       if (owned !== generation.current) return
+      setTracks(projection.tracks)
       setClips(rows)
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
       if (owned === generation.current) {
-        setClips([]); setActionFailed(false)
+        setTracks([]); setClips([]); setActionFailed(false)
         setMessage(error instanceof Error ? error.message : 'Clip readback failed.')
       }
     }
@@ -73,6 +86,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
   useEffect(() => { setMessage(''); setActionFailed(false); keys.current = {} }, [project.projectId])
 
   const active = clips.find(clip => clip.clipId === selected) ?? null
+  const activeTrack = tracks.find(track => track.trackId === active?.trackId)
+  useEffect(() => { setDestinationTrackId('') }, [selected, head?.revisionId])
   const projection = active && pending ? projectTrim(active, pending.edge, pending.delta) : null
 
   function commandIdFor(clipId: string, kind: string, deltaValue: Rational, edgeValue?: TrimEdge): string {
@@ -161,7 +176,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
   async function applySimple() {
     if (!head || !project.tenantId || !selected || busy) return
     const intent = { type, baseRevisionId: head.revisionId, baseContentHash: head.contentHash, clipId: selected,
-      ...(type === 'DELETE_CLIP' ? {} : { delta }), ...(type === 'MOVE_CLIP' ? { absolute } : {}) }
+      ...(type === 'DELETE_CLIP' ? {} : { delta }), ...(type === 'MOVE_CLIP' ? { absolute, ...(destinationTrackId ? { destinationTrackId } : {}) } : {}) }
     const fingerprint = JSON.stringify([project.projectId, intent])
     keys.current[fingerprint] ??= crypto.randomUUID()
     const command: ClipEdit = { ...intent, commandId: keys.current[fingerprint] } as ClipEdit
@@ -355,7 +370,34 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
     void deleteSelected()
   }
 
+  async function addTrack(trackType: 'VIDEO' | 'AUDIO') {
+    if (!head || !project.tenantId || busy) return
+    let command = trackCommands.current[trackType]
+    if (command?.revision !== head.revisionId) {
+      command = { revision: head.revisionId, id: crypto.randomUUID() }
+      trackCommands.current[trackType] = command
+    }
+    setBusy(true)
+    setMessage('')
+    setActionFailed(false)
+    try {
+      await FormalRenderAPI.addTrack(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        trackId: `track-${command.id}`, trackType, commandId: command.id,
+      })
+      await onRevisionChanged()
+      setMessage(`${trackType === 'VIDEO' ? 'Video' : 'Audio'} track added.`)
+    } catch (error) {
+      handleFailure(error, 'Add track', null, true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const stripWidth = Math.max(240, ...clips.map(clip => toSeconds(clip.end) * TRIM_PIXELS_PER_SECOND + 40))
+  const tickStep = Math.max(1, Math.ceil(stripWidth / (TRIM_PIXELS_PER_SECOND * 12)))
+  const ticks = Array.from({ length: Math.floor(stripWidth / (TRIM_PIXELS_PER_SECOND * tickStep)) + 1 },
+    (_, index) => index * tickStep)
   const previewValid = previewed !== null && pending !== null
     && previewed.clipId === active?.clipId && previewed.edge === pending.edge
     && compare(previewed.delta, pending.delta) === 0
@@ -367,15 +409,35 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
   return <section aria-label="Edit existing clip" tabIndex={0} onKeyDown={onSectionKeyDown}>
     <h3>Edit existing clip</h3>
     <button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</button>
+    <button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</button>
+    <button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</button>
     <label>Clip <select aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} {clip.trackId && `(${clip.trackId})`}</option>)}
     </select></label>
 
     <div role="group" aria-label="Timeline trim" data-pixels-per-second={TRIM_PIXELS_PER_SECOND}
-         style={{ position: 'relative', height: 64, marginTop: 8, marginBottom: 8, overflowX: 'auto',
+         style={{ position: 'relative', marginTop: 8, marginBottom: 8, overflowX: 'auto',
                   background: '#111827', border: '1px solid #1f2937', borderRadius: 4 }}>
-      <div style={{ position: 'relative', width: stripWidth, height: 48, margin: 8 }}>
-        {clips.map(clip => {
+      <div style={{ position: 'relative', width: stripWidth + 100, margin: 8 }}>
+        <div aria-label="Timeline ruler" style={{ position: 'relative', height: 24, marginLeft: 100 }}>
+          {ticks.map(tick => <span key={tick} style={{ position: 'absolute', left: tick * TRIM_PIXELS_PER_SECOND }}>{tick}s</span>)}
+        </div>
+        <i aria-label={`Playhead at ${playhead.toFixed(2)} seconds`} style={{ position: 'absolute', top: 20, bottom: 0,
+          left: 100 + playhead * TRIM_PIXELS_PER_SECOND, borderLeft: '2px solid #facc15', zIndex: 3, pointerEvents: 'none' }} />
+        {(['VIDEO', 'AUDIO'] as const).map(type => {
+          const group = tracks.filter(track => track.type === type)
+          const ordered = type === 'VIDEO' ? [...group].reverse() : group
+          return <div key={type} role="group" aria-label={type === 'VIDEO' ? 'Video tracks' : 'Audio tracks'}>
+            {ordered.map(track => {
+              const label = `${type === 'VIDEO' ? 'V' : 'A'}${group.indexOf(track) + 1}`
+              return <div key={track.trackId} style={{ display: 'flex', minHeight: 46, borderTop: '1px solid #374151' }}>
+                <button type="button" aria-label={`${label} ${track.name} ${type.toLowerCase()} track`}
+                  aria-pressed={selectedTrackId === track.trackId} onClick={() => onSelectTrack?.(track.trackId)}
+                  style={{ flex: '0 0 100px', textAlign: 'left' }}>
+                  {label}{track.name !== label && ` · ${track.name}`}
+                </button>
+                <div style={{ position: 'relative', width: stripWidth }}>
+        {clips.filter(clip => clip.trackId === track.trackId).map(clip => {
           const isActive = clip.clipId === selected
           const projected = isActive && projection?.valid ? projection : null
           const start = projected ? toSeconds(projected.timelineStart) : toSeconds(clip.start)
@@ -416,7 +478,11 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
                            background: '#f59e0b', borderRadius: 2 }} />
           </div>
         })}
-        {clips.length === 0 && <p style={{ color: '#9ca3af', fontSize: 12 }}>No clips in this revision.</p>}
+                </div>
+              </div>
+            })}
+          </div>
+        })}
       </div>
     </div>
 
@@ -438,7 +504,14 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null }: Prop
     </select></label>
     {type !== 'DELETE_CLIP' && type !== 'SPLIT_CLIP' && <label>Exact time <input aria-label="Exact time" value={delta} onChange={event => setDelta(event.target.value)} /></label>}
     {type === 'SPLIT_CLIP' && <label>Split time <input aria-label="Split time" value={splitTime} onChange={event => setSplitTime(event.target.value)} /></label>}
-    {type === 'MOVE_CLIP' && <label><input type="checkbox" checked={absolute} onChange={event => setAbsolute(event.target.checked)} /> Absolute position</label>}
+    {type === 'MOVE_CLIP' && <>
+      <label><input type="checkbox" checked={absolute} onChange={event => setAbsolute(event.target.checked)} /> Absolute position</label>
+      <label>Destination track <select value={destinationTrackId} onChange={event => setDestinationTrackId(event.target.value)}>
+        <option value="">Current track</option>
+        {tracks.filter(track => track.type === activeTrack?.type && track.trackId !== activeTrack?.trackId).map(track =>
+          <option key={track.trackId} value={track.trackId}>{track.name}</option>)}
+      </select></label>
+    </>}
     {type === 'TRIM_CLIP' && <label>Edge <select aria-label="Trim edge" value={edge} onChange={event => setEdge(event.target.value as TrimEdge)}><option value="START">START</option><option value="END">END</option></select></label>}
     {type === 'TRIM_CLIP'
       ? <>

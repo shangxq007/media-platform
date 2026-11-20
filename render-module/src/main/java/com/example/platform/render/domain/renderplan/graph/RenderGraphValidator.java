@@ -148,6 +148,14 @@ public final class RenderGraphValidator {
             ok = (producer.kind() instanceof RenderNodeKind.Decode || producer.kind() instanceof RenderNodeKind.Effect)
                     && consumer.kind() instanceof RenderNodeKind.Composite && coverage != null
                     && !timed.start().isLessThan(coverage.start()) && !timed.end().isGreaterThan(coverage.end());
+        } else if (dep instanceof RenderDependency.TimedTrackInput timed) {
+            var coverage = producer.executionCoverage();
+            boolean audioDecode = "audio-decode".equals(producer.operationKey());
+            ok = consumer.kind() instanceof RenderNodeKind.Composite && coverage != null
+                    && audioDecode == timed.audio()
+                    && (producer.kind() instanceof RenderNodeKind.Decode
+                        || (!timed.audio() && producer.kind() instanceof RenderNodeKind.Effect))
+                    && !timed.start().isLessThan(coverage.start()) && !timed.end().isGreaterThan(coverage.end());
         }
         if (!ok) {
             diagnostics.add(RenderPlanningDiagnostic.forNode(

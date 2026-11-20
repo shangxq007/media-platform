@@ -101,7 +101,9 @@ public final class VerifiedTimelineRevisionFactory {
         TimelineRevisionReference reference = new TimelineRevisionReference(
                 timelineRevision.revisionId(),
                 ContentDigest.sha256(base64ToHex(recordedTimelineDigest)));
-        return VerifiedTimelineRevision.create(reference, clips, audioMix, textElements);
+        var tracks = document.getTracks().stream()
+                .map(track -> new VerifiedTimelineRevision.Track(track.trackId(), track.type())).toList();
+        return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements);
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

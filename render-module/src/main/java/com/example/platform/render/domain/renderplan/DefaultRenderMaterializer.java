@@ -79,7 +79,11 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             return new RenderMaterializationResult(nodes, edges, diagnostics);
         }
 
-        boolean multiClip = clips.size() > 1;
+        var revision = input.verifiedRevision();
+        boolean hasAudioTracks = clips.stream().anyMatch(clip ->
+                revision.track(clip.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO);
+        boolean timedTracks = hasAudioTracks || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
+        boolean multiClip = clips.size() > 1 || timedTracks;
         if (multiClip) {
             boolean unsupported = false;
             for (MediaClip clip : clips) {
@@ -91,7 +95,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 diagnostics.add(RenderPlanningDiagnostic.diagnostic(
                         RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED,
                         RenderDiagnosticSeverity.ERROR,
-                        "Multiple video clips currently require forward unit rate"));
+                        "Composed media clips require forward unit rate"));
                 return new RenderMaterializationResult(nodes, edges, diagnostics);
             }
         }
@@ -127,18 +131,21 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             if (multiClip) decodeArtifacts.add(new RenderArtifactReference.IntermediateArtifactExpectation(
                     new LogicalArtifactId("clip:" + clip.trackId() + ":" + clip.clipId()),
                     RenderOutputRole.DERIVED_MEDIA));
-            List<CapabilityRequirement> decodeCaps = List.of(
-                    RenderCapabilityVocabulary.videoDecode());
+            boolean audio = revision.track(clip.trackId()).type()
+                    == com.example.platform.timeline.canonical.TrackType.AUDIO;
+            String decodeOperation = audio ? "audio-decode" : OP_DECODE;
+            List<CapabilityRequirement> decodeCaps = List.of(audio
+                    ? RenderCapabilityVocabulary.audioDecode() : RenderCapabilityVocabulary.videoDecode());
             String decodeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                     decodeArtifacts, decodeCaps, List.of(), List.of()));
             RenderNodeId decodeId = RenderNodeId.of(
-                    new RenderNodeKind.Decode(), decodePath, OP_DECODE, decodeReqFp);
+                    new RenderNodeKind.Decode(), decodePath, decodeOperation, decodeReqFp);
             RenderSampleWindow decodeWindow = computeDecodeWindow(clip, request, diagnostics);
             RenderExecutionCoverage decodeCoverage = new RenderExecutionCoverage(
                     clip.timelineRange().start(), clip.timelineRange().end(),
                     request.extent() != null ? request.extent().frameRate() : null);
             RenderNode decodeNode = new RenderNode(
-                    decodeId, new RenderNodeKind.Decode(), decodePath, OP_DECODE,
+                    decodeId, new RenderNodeKind.Decode(), decodePath, decodeOperation,
                     decodeArtifacts, decodeCaps, List.of(), List.of(), List.of(),
                     Optional.of(decodeWindow), decodeCoverage);
             nodes.add(decodeNode);
@@ -365,18 +372,20 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         if (!timedTextNodes.isEmpty() || !clips.isEmpty()) {
             RenderComponentPath compositePath = RenderComponentPath.of(
                     RenderComponentKind.COMPOSITE, "video");
-            List<CapabilityRequirement> compositeCaps = List.of(
-                    RenderCapabilityVocabulary.composite());
+            List<CapabilityRequirement> compositeCaps = timedTracks
+                    ? List.of(RenderCapabilityVocabulary.composite(), RenderCapabilityVocabulary.multitrackComposite())
+                    : List.of(RenderCapabilityVocabulary.composite());
             List<RenderArtifactReference> compositeArtifacts = multiClip
                     ? List.of(new RenderArtifactReference.IntermediateArtifactExpectation(
                             new LogicalArtifactId("composite:video"), RenderOutputRole.DERIVED_MEDIA))
                     : List.of();
             String compositeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                     compositeArtifacts, compositeCaps, List.of(), List.of()));
+            String compositeOperation = timedTracks ? "multitrack-composite" : OP_COMPOSITE;
             compositeId = RenderNodeId.of(
-                    new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE, compositeReqFp);
+                    new RenderNodeKind.Composite(), compositePath, compositeOperation, compositeReqFp);
             RenderNode compositeNode = new RenderNode(
-                    compositeId, new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE,
+                    compositeId, new RenderNodeKind.Composite(), compositePath, compositeOperation,
                     compositeArtifacts, compositeCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
             nodes.add(compositeNode);
             if (multiClip) {
@@ -385,8 +394,12 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     var end = minMediaTime(clip.timelineRange().end(), request.extent().end());
                     RenderNodeId producer = getEntry(producerKeys, producerValues, clip.clipId());
                     if (producer != null && start.isLessThan(end)) {
-                        edges.add(new RenderDependencyEdge(producer, compositeId,
-                                new RenderDependency.TimedCompositeInput(start, end)));
+                        boolean audio = revision.track(clip.trackId()).type()
+                                == com.example.platform.timeline.canonical.TrackType.AUDIO;
+                        var dependency = timedTracks
+                                ? new RenderDependency.TimedTrackInput(start, end, revision.layer(clip.trackId()), audio)
+                                : new RenderDependency.TimedCompositeInput(start, end);
+                        edges.add(new RenderDependencyEdge(producer, compositeId, dependency));
                     }
                 }
             } else {
@@ -408,8 +421,10 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         // ── OUTPUT node ──
         RenderComponentPath outputPath = RenderComponentPath.of(RenderComponentKind.OUTPUT, "master");
-        List<CapabilityRequirement> outputCaps = List.of(
-                RenderCapabilityVocabulary.outputEncode());
+        String encodeOperation = hasAudioTracks ? "encode-multitrack" : OP_ENCODE;
+        List<CapabilityRequirement> outputCaps = hasAudioTracks
+                ? List.of(RenderCapabilityVocabulary.outputEncode(), RenderCapabilityVocabulary.multitrackComposite())
+                : List.of(RenderCapabilityVocabulary.outputEncode());
         List<RenderArtifactReference> outputArtifacts = new ArrayList<>();
         for (RenderOutputRequirement output : request.outputs()) {
             outputArtifacts.add(new RenderArtifactReference.FinalArtifactExpectation(output.role()));
@@ -417,9 +432,9 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         String outputReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                 outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of()));
         RenderNodeId outputId = RenderNodeId.of(
-                new RenderNodeKind.Output(), outputPath, OP_ENCODE, outputReqFp);
+                new RenderNodeKind.Output(), outputPath, encodeOperation, outputReqFp);
         RenderNode outputNode = new RenderNode(
-                outputId, new RenderNodeKind.Output(), outputPath, OP_ENCODE,
+                outputId, new RenderNodeKind.Output(), outputPath, encodeOperation,
                 outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of(),
                 List.of(), Optional.empty(), null); // full-extent sink: never pruned by coverage
         nodes.add(outputNode);

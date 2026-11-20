@@ -18,6 +18,21 @@ describe('timeline media preview time mapping', () => {
     expect(activeClipAt(projection, t('7/2'))?.clipId).toBe('b')
   })
 
+  it('uses canonical layer order and falls back at the upper clip end, ignoring audio for pixels', () => {
+    const clip = (clipId: string, startTime: string, endTime: string) => ({
+      clipId, startTime, endTime, trimStart: '0', trimEnd: '2',
+    })
+    const tracks = projectTimeline({ tracks: [
+      { trackId: 'lower', type: 'VIDEO', clips: [clip('under', '0', '3')] },
+      { trackId: 'upper', type: 'VIDEO', clips: [clip('over', '1', '2')] },
+      { trackId: 'music', type: 'AUDIO', clips: [clip('sound', '0', '4')] },
+    ] })
+    expect(activeClipAt(tracks, t('0'))?.clipId).toBe('under')
+    expect(activeClipAt(tracks, t('1'))?.clipId).toBe('over')
+    expect(activeClipAt(tracks, t('2'))?.clipId).toBe('under')
+    expect(activeClipAt(tracks, t('3'))).toBeNull()
+  })
+
   it('maps forward source time with rate and trim', () => {
     expect(formatRational(sourceTimeAt(projection.clips[0], t('1/2')))).toBe('9/2')
     expect(formatRational(sourceTimeAt(projection.clips[1], t('7/2')))).toBe('1/1')

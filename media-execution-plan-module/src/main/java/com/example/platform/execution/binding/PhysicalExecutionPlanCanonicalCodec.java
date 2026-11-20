@@ -547,6 +547,11 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             return writer.field("variant", "TIMED_COMPOSITE_INPUT")
                     .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
         }
+        if (dependency instanceof RenderDependency.TimedTrackInput timed) {
+            return writer.field("variant", "TIMED_TRACK_INPUT")
+                    .field("start", timed.start().toString()).field("end", timed.end().toString())
+                    .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio())).build();
+        }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
     }
@@ -563,6 +568,9 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
             case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
+            case "TIMED_TRACK_INPUT" -> new RenderDependency.TimedTrackInput(
+                    MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")),
+                    Integer.parseInt(reader.field("layer")), Boolean.parseBoolean(reader.field("audio")));
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }

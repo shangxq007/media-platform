@@ -21,10 +21,12 @@ import java.util.TreeSet;
 @org.springframework.modulith.NamedInterface("invocation")
 public sealed interface OperationParameters permits
         OperationParameters.InitializeTimelineParameters,
+        OperationParameters.AddTrackParameters,
         OperationParameters.ImportTimelineParameters,
         OperationParameters.AddMediaClipParameters,
         OperationParameters.NoParameters,
         OperationParameters.MoveParameters,
+        OperationParameters.RelocateClipParameters,
         OperationParameters.TrimParameters,
         OperationParameters.SplitParameters,
         OperationParameters.SetTemporalRateParameters,
@@ -49,6 +51,18 @@ public sealed interface OperationParameters permits
         OperationParameters.CreateAlignmentParameters {
 
     /** Creates the first empty, versioned Timeline with one stable video track. */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record AddTrackParameters(String trackId, com.example.platform.timeline.canonical.TrackType trackType)
+            implements OperationParameters {
+        public AddTrackParameters {
+            if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}")
+                    || (trackType != com.example.platform.timeline.canonical.TrackType.VIDEO
+                            && trackType != com.example.platform.timeline.canonical.TrackType.AUDIO)) {
+                throw new IllegalArgumentException("bounded track identity and video or audio type required");
+            }
+        }
+    }
+
     @org.springframework.modulith.NamedInterface("invocation")
     record InitializeTimelineParameters(String trackId) implements OperationParameters {
         public InitializeTimelineParameters {
@@ -122,6 +136,17 @@ public sealed interface OperationParameters permits
         public MoveParameters {
             if (delta == null) {
                 throw new IllegalArgumentException("delta required");
+            }
+        }
+    }
+
+    /** Repositions one clip on another track of the same media type. */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record RelocateClipParameters(MediaTime delta, boolean absolute, String destinationTrackId)
+            implements OperationParameters {
+        public RelocateClipParameters {
+            if (delta == null || destinationTrackId == null || !destinationTrackId.matches("[A-Za-z0-9._:-]{1,64}")) {
+                throw new IllegalArgumentException("move time and bounded destination track ID required");
             }
         }
     }

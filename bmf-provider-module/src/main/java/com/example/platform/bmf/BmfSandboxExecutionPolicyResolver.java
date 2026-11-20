@@ -65,7 +65,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
         var arguments = invocation.arguments();
         String program = arguments.get(2);
-        boolean multiInput = BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM.equals(program);
+        boolean multitrack = BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM.equals(program);
+        boolean multiInput = multitrack || BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM.equals(program);
+        List<String> placements = List.of();
         List<String> inputTokens;
         String operation;
         String start;
@@ -78,10 +80,14 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             } catch (NumberFormatException malformed) {
                 return rejected("BMF composite input count is invalid");
             }
-            if (count < 1 || arguments.size() != count + 7
+            if (count < 1 || count > arguments.size() - 7) {
+                return rejected("BMF composite input count is out of range");
+            }
+            int expected = 7 + count + (multitrack ? count : 0);
+            if (arguments.size() != expected
                     || !arguments.get(4 + count).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
                     || !isNonNegativeSeconds(arguments.get(5 + count))
-                    || !arguments.get(6 + count).matches("[0-9]+/[0-9]+")) {
+                    || !arguments.get(6 + count).matches("[1-9][0-9]*/[1-9][0-9]*")) {
                 return rejected("BMF composite requires the exact program, inputs and timing");
             }
             inputTokens = List.copyOf(arguments.subList(4, 4 + count));
@@ -89,6 +95,12 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             start = "0";
             duration = arguments.get(5 + count);
             rate = arguments.get(6 + count);
+            if (multitrack) {
+                placements = List.copyOf(arguments.subList(7 + count, expected));
+                if (placements.stream().anyMatch(placement -> !validPlacement(placement, duration))) {
+                    return rejected("BMF multitrack placement is invalid");
+                }
+            }
         } else if (BmfCpuRuntimeAdapter.GRAPH_PROGRAM.equals(program)) {
             if (arguments.size() != 8
                     || !arguments.get(4).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
@@ -144,6 +156,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.add(ProviderNativeOutputFiles.RENDER_OUTPUT);
                 args.add(duration);
                 args.add(rate);
+                args.addAll(placements);
             } else {
                 Path inputPath = byToken.get(inputTokens.getFirst())
                         .materializedArtifact().path().toAbsolutePath().normalize();
@@ -187,10 +200,21 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     private static boolean isKnownOperation(String operation) {
         try {
             BmfOperation.ofOperationKey(operation);
-            return true;
+            return !operation.equals(BmfOperation.MULTITRACK_COMPOSITE.operationKey());
         } catch (IllegalArgumentException unsupported) {
             return false;
         }
+    }
+
+    private static boolean validPlacement(String placement, String duration) {
+        String[] parts = placement.split(",", -1);
+        if (parts.length != 3 || !List.of("V", "A").contains(parts[0])
+                || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
+            return false;
+        }
+        var start = new java.math.BigDecimal(parts[1]);
+        var end = new java.math.BigDecimal(parts[2]);
+        return start.compareTo(end) < 0 && end.compareTo(new java.math.BigDecimal(duration)) <= 0;
     }
 
     private static boolean isNonNegativeSeconds(String value) {

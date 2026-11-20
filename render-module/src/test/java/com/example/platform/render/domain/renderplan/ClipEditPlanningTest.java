@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.renderplan;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationInstance;
@@ -72,6 +73,30 @@ class ClipEditPlanningTest {
         assertThat(deleted.getTracks().getFirst().clips())
                 .extracting(clip -> clip.getClipId().value())
                 .containsExactly("red");
+    }
+
+    @Test
+    void crossTrackMovePreservesSourceWindowAndRejectsWrongTrackTypeAndUnknownTrack() {
+        var original = timeline();
+        var base = new TimelineDocument(original.getSchemaVersion(),
+                List.of(original.getTracks().getFirst(),
+                        new TimelineTrack("upper", "V2", TrackType.VIDEO, List.of()),
+                        new TimelineTrack("music", "A1", TrackType.AUDIO, List.of())),
+                original.getMetadata());
+        var blue = base.getTracks().getFirst().clips().get(1);
+        var moved = operation(base, OperationDefinition.V3.RELOCATE_CLIP,
+                new OperationParameters.RelocateClipParameters(MediaTime.ZERO, true, "upper"), "blue");
+        assertThat(moved.getTracks().getFirst().clips()).doesNotContain(blue);
+        var upper = moved.getTracks().get(1).clips().getFirst();
+        assertThat(upper.getClipId()).isEqualTo(blue.getClipId());
+        assertThat(upper.getStartTime()).isEqualTo(MediaTime.ZERO);
+        assertThat(upper.getTrimStart()).isEqualTo(blue.getTrimStart());
+        assertThat(upper.getTrimEnd()).isEqualTo(blue.getTrimEnd());
+        for (String invalid : List.of("music", "missing")) {
+            assertThatThrownBy(() -> operation(base, OperationDefinition.V3.RELOCATE_CLIP,
+                    new OperationParameters.RelocateClipParameters(MediaTime.ZERO, true, invalid), "blue"))
+                    .isInstanceOf(com.example.platform.operation.plan.PlanException.class);
+        }
     }
 
     private static RenderPlanningResult plan(TimelineDocument document, VerifiedEffectSemanticSnapshot effects,

@@ -73,7 +73,8 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         boolean importTimeline = OperationDefinition.V3.IMPORT_TIMELINE.definitionId()
                 .equals(request.definitionId());
         boolean clipEdit = isClipEdit(request);
-        boolean mediaClip = addMediaClip || clipEdit;
+        boolean addTrack = request != null && OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId());
+        boolean mediaClip = addMediaClip || clipEdit || addTrack;
         boolean textOperation = request.definitionId().value() != null
                 && request.definitionId().value().startsWith("timeline.text.");
         boolean alignment = OperationDefinition.V2.CREATE_ALIGNMENT.definitionId().equals(request.definitionId());
@@ -104,6 +105,10 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         if (importTimeline && (!OperationDefinition.V3.IMPORT_TIMELINE.version().equals(request.version())
                 || !(request.parameters() instanceof OperationParameters.ImportTimelineParameters))) {
             throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-parameter");
+        }
+        if (addTrack && (!OperationDefinition.V3.ADD_TRACK.version().equals(request.version())
+                || !(request.parameters() instanceof OperationParameters.AddTrackParameters))) {
+            throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-track-parameters");
         }
         if (clipEdit && !validClipEditParameters(request)) {
             throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-parameter");
@@ -173,7 +178,8 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         boolean importTimeline = request != null && request.definitionId() != null
                 && OperationDefinition.V3.IMPORT_TIMELINE.definitionId().equals(request.definitionId());
         boolean clipEdit = isClipEdit(request);
-        boolean mediaClip = addMediaClip || clipEdit;
+        boolean addTrack = request != null && OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId());
+        boolean mediaClip = addMediaClip || clipEdit || addTrack;
         boolean textOperation = request != null && request.definitionId() != null
                 && request.definitionId().value() != null
                 && request.definitionId().value().startsWith("timeline.text.");
@@ -188,6 +194,10 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
                 && (!OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())
                     || !(request.parameters() instanceof OperationParameters.AddMediaClipParameters))) {
             throw failure(OperationInvocationFailureCode.UNSUPPORTED_OPERATION, "unsupported-operation-or-scope");
+        }
+        if (addTrack && (!OperationDefinition.V3.ADD_TRACK.version().equals(request.version())
+                || !(request.parameters() instanceof OperationParameters.AddTrackParameters))) {
+            throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-track-parameters");
         }
         if (clipEdit && !validClipEditParameters(request)) {
             throw failure(OperationInvocationFailureCode.UNSUPPORTED_OPERATION, "unsupported-operation-or-scope");
@@ -223,7 +233,8 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         return OperationDefinition.V1.MOVE.definitionId().equals(id)
                 || OperationDefinition.V1.TRIM.definitionId().equals(id)
                 || OperationDefinition.V1.DELETE.definitionId().equals(id)
-                || OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(id);
+                || OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(id)
+                || OperationDefinition.V3.RELOCATE_CLIP.definitionId().equals(id);
     }
 
     private static boolean validClipEditParameters(OperationRequest request) {
@@ -234,6 +245,8 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
             return request.parameters() instanceof OperationParameters.TrimParameters;
         if (OperationDefinition.V3.SPLIT_CLIP.definitionId().equals(request.definitionId()))
             return request.parameters() instanceof OperationParameters.SplitParameters;
+        if (OperationDefinition.V3.RELOCATE_CLIP.definitionId().equals(request.definitionId()))
+            return request.parameters() instanceof OperationParameters.RelocateClipParameters;
         return request.parameters() instanceof OperationParameters.NoParameters;
     }
 

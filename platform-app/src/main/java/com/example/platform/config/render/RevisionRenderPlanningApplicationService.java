@@ -120,6 +120,8 @@ public class RevisionRenderPlanningApplicationService {
         CapabilityContext capabilityContext = new CapabilityContext(Set.of(
                 RenderCapabilityVocabulary.videoDecode().capabilityId(),
                 RenderCapabilityVocabulary.composite().capabilityId(),
+                RenderCapabilityVocabulary.audioDecode().capabilityId(),
+                RenderCapabilityVocabulary.multitrackComposite().capabilityId(),
                 RenderCapabilityVocabulary.outputEncode().capabilityId(),
                 RenderCapabilityVocabulary.timedTextRasterize().capabilityId()));
 

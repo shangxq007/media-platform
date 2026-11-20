@@ -32,6 +32,10 @@ public final class BmfCpuProvider {
     public static final String RUNTIME_BUNDLE_SHA256 =
             "0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1";
 
+    /** The same BMF release with its sndio ABI dependency included in the verified closure. */
+    public static final String RUNTIME_BUNDLE_WITH_SNDIO_SHA256 =
+            "7b6de78d235e77e14c3de47ed84268b17a071298465d72fb321af0565a0aff4c";
+
     public static final ProviderId PROVIDER_ID = ProviderId.of("bmf");
     public static final ProviderImplementationId IMPLEMENTATION_ID =
             ProviderImplementationId.of("bmf.cpu.v1");

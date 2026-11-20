@@ -3,6 +3,7 @@ import { WorkspaceSessionProvider } from '../../foundation/workspaceSession'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { FormalRenderAPI } from '../../api/formal-render'
 import { platformClient } from '../../foundation/platformClient'
 import { ProjectContextProvider as ProjectProvider } from '../../foundation/projectContext'
 import { loadExplicitRevisionSelection, NleWorkspace } from './NleWorkspace'
@@ -84,25 +85,24 @@ describe('runtime NLE operation workspace', () => {
     expect(queries.detailCalls).toEqual([])
   })
 
-  it('supports keyboard and button timeline controls with accessible semantics', async () => {
+  it('shows canonical track groups and uses their selection for the editor', async () => {
+    vi.spyOn(FormalRenderAPI, 'snapshot').mockResolvedValue({
+      schemaVersion: 'timeline-1.0',
+      canonicalTimelineJson: JSON.stringify({ tracks: [
+        { trackId: 'base', type: 'VIDEO', name: 'Camera', clips: [] },
+        { trackId: 'top', type: 'VIDEO', name: 'Overlay', clips: [] },
+        { trackId: 'audio', type: 'AUDIO', name: 'Voice', clips: [] },
+      ] }),
+    })
     renderWorkspace(new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied }))
-    const timeline = await screen.findByRole('application', { name: /Timeline presentation/i })
-    fireEvent.keyDown(timeline, { key: 'ArrowRight' })
-    expect(screen.getByText('Playhead 1')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Next step' }))
-    expect(screen.getByText('Playhead 2')).toBeTruthy()
-    fireEvent.keyDown(timeline, { key: ' ' })
-    expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy()
-  })
-
-  it('leaves Space on a focused track button to native activation without toggling playback', async () => {
-    renderWorkspace(new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied }))
-    await screen.findByRole('application', { name: /Timeline presentation/i })
-    const track = screen.getByText('V1').closest('button')
-    expect(track).toBeTruthy()
-    expect(fireEvent.keyDown(track as HTMLButtonElement, { key: ' ' })).toBe(true)
-    expect(screen.getByRole('button', { name: 'Play' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
+    const video = await screen.findByRole('group', { name: 'Video tracks' })
+    const upper = await within(video).findByRole('button', { name: 'V2 Overlay video track' })
+    const lower = within(video).getByRole('button', { name: 'V1 Camera video track' })
+    expect(upper.compareDocumentPosition(lower) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(upper)
+    expect(upper.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'A1 Voice audio track' })).toBeTruthy()
+    expect(screen.getByLabelText('Timeline preview seek')).toBeTruthy()
   })
 
   it('discards a slower HEAD response after Project scope changes', async () => {

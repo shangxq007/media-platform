@@ -12,7 +12,8 @@ public sealed interface RenderDependency permits
         RenderDependency.AudioInput,
         RenderDependency.SubtitleRaster,
         RenderDependency.CompositeInput,
-        RenderDependency.TimedCompositeInput {
+        RenderDependency.TimedCompositeInput,
+        RenderDependency.TimedTrackInput {
 
     /**
      * Canonical variant key for deterministic edge ordering.
@@ -82,6 +83,22 @@ public sealed interface RenderDependency permits
         }
         @Override public String variantKey() {
             return "TIMED_COMPOSITE_INPUT:" + start + ":" + end;
+        }
+    }
+    /** Exact placement of a decoded media clip and its order in the verified Timeline. */
+    record TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                           com.example.platform.shared.time.MediaTime end, int layer, boolean audio)
+            implements RenderDependency {
+        public TimedTrackInput {
+            java.util.Objects.requireNonNull(start, "start");
+            java.util.Objects.requireNonNull(end, "end");
+            if (!start.isLessThan(end) || layer < 0) {
+                throw new IllegalArgumentException("positive track interval and nonnegative layer required");
+            }
+        }
+
+        @Override public String variantKey() {
+            return "TIMED_TRACK_INPUT:" + start + ":" + end + ":" + layer + ":" + audio;
         }
     }
 }

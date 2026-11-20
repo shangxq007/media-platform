@@ -12,11 +12,10 @@ import java.util.Optional;
 /**
  * One provider-bound BMF render unit.
  *
- * <p>Single-input units consume one materialized video input and produce one authoritative output;
- * DECODE may carry the authored source window. A COMPOSITE unit with more than one timed base input
- * carries {@link #compositeInputs()} and the exact output duration/frame rate; the inputs must be
- * contiguous and cover the whole propagated extent, because BMF V1 concatenates them and must never
- * compress a timeline gap. The output is always a re-encoded H.264 MP4 produced by the BMF graph.
+ * <p>Decode consumes one materialized video or audio input and may carry an authored source
+ * window. Composition consumes extent-relative timed inputs. The legacy video composition
+ * requires contiguous clips; multitrack composition carries media type and layer and can fill
+ * timeline gaps. Each unit produces one materialized MP4 output.
  */
 public record BmfCpuTranscodePlan(
         ExecutableTaskId executableTaskId,
@@ -31,12 +30,16 @@ public record BmfCpuTranscodePlan(
         implements ProviderNativeExecutionPlan {
 
     /** One base video input positioned on the output timeline (offsets relative to the extent). */
-    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
+    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio) {
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
+            this(inputId, start, end, 0, false);
+        }
+
         public TimedInput {
             Objects.requireNonNull(inputId, "inputId");
             Objects.requireNonNull(start, "start");
             Objects.requireNonNull(end, "end");
-            if (!start.isLessThan(end)) {
+            if (!start.isLessThan(end) || start.isLessThan(MediaTime.ZERO) || layer < 0) {
                 throw new IllegalArgumentException("positive composite input interval required");
             }
         }
@@ -83,10 +86,10 @@ public record BmfCpuTranscodePlan(
         if (!BmfCpuProvider.BINDING.equals(providerBindingPin)) {
             throw new IllegalArgumentException("BMF render unit requires the exact provider binding");
         }
-        if (sourceWindow.isPresent() && operation != BmfOperation.DECODE) {
+        if (sourceWindow.isPresent() && operation != BmfOperation.DECODE && operation != BmfOperation.AUDIO_DECODE) {
             throw new IllegalArgumentException("only a decode unit may carry a source window");
         }
-        Objects.requireNonNull(compositeInputs, "compositeInputs");
+        compositeInputs = java.util.List.copyOf(compositeInputs);
         Objects.requireNonNull(compositeDuration, "compositeDuration");
         Objects.requireNonNull(compositeFrameRate, "compositeFrameRate");
         if (compositeInputs.isEmpty()) {
@@ -94,10 +97,20 @@ public record BmfCpuTranscodePlan(
                 throw new IllegalArgumentException("composite timing requires composite inputs");
             }
         } else {
-            if (operation != BmfOperation.COMPOSITE) {
+            if (!inputId.equals(compositeInputs.getFirst().inputId())
+                    || compositeInputs.stream().map(TimedInput::inputId).distinct().count() != compositeInputs.size()) {
+                throw new IllegalArgumentException("composition input identities must be unique");
+            }
+            if (operation == BmfOperation.MULTITRACK_COMPOSITE) {
+                if (compositeDuration.isEmpty() || compositeFrameRate.isEmpty()
+                        || compositeInputs.stream().anyMatch(input -> input.end().isGreaterThan(compositeDuration.orElseThrow()))) {
+                    throw new IllegalArgumentException("multitrack inputs require an exact composition extent");
+                }
+            } else if (operation == BmfOperation.COMPOSITE) {
+                validateComposite(compositeInputs, compositeDuration, compositeFrameRate);
+            } else {
                 throw new IllegalArgumentException("only a composite unit may carry multiple inputs");
             }
-            validateComposite(compositeInputs, compositeDuration, compositeFrameRate);
         }
     }
 

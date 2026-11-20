@@ -136,6 +136,12 @@ public record OperationDefinition(
                 OperationDefinitionId.of("timeline.import"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1,
                 OperationParameters.ImportTimelineParameters.class);
+        public static final OperationDefinition ADD_TRACK = new OperationDefinition(
+                OperationDefinitionId.of("timeline.track.add"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.AddTrackParameters.class);
+        public static final OperationDefinition RELOCATE_CLIP = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.relocate"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.RelocateClipParameters.class);
         /** SPLIT: one clip -> two adjacent clips, no ripple/gap/overlap. */
         public static final OperationDefinition SPLIT_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.split"), OperationDefinitionVersion.of(1, 0),
@@ -144,7 +150,7 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE,
-                                SPLIT_CLIP)).toList();
+                                SPLIT_CLIP, ADD_TRACK, RELOCATE_CLIP)).toList();
         private V3() {}
     }
 }

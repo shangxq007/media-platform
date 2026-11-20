@@ -14,6 +14,7 @@ import java.util.Set;
  * JsonNode, no Map<String,Object>.
  */
 public sealed interface PlannedChange permits
+        PlannedChange.TrackAdded,
         PlannedChange.ClipAdded,
         PlannedChange.ClipRemoved,
         PlannedChange.ClipReplaced,
@@ -26,6 +27,10 @@ public sealed interface PlannedChange permits
         PlannedChange.TextElementReplaced {
 
     boolean primary();
+
+    record TrackAdded(String trackId) implements PlannedChange {
+        @Override public boolean primary() { return true; }
+    }
 
     /** ADD_MEDIA_CLIP_V1: add one fully typed canonical clip. */
     record ClipAdded(String trackId, TimelineClip newClip) implements PlannedChange {

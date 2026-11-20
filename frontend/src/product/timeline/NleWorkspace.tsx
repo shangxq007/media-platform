@@ -1,9 +1,9 @@
-import { useEffect, useReducer, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { useEffect, useReducer, useRef, useState, type ChangeEvent } from 'react'
 import { operationGateway as defaultOperationGateway } from '../../api/app/operation.gateway'
 import { timelineQueryGateway as defaultTimelineQueryGateway } from '../../api/app/timeline-query.gateway'
 import { assetGateway as defaultAssetGateway } from '../../api/app/asset.gateway'
 import { capabilityGateway as defaultCapabilityGateway } from '../../api/app/capability.gateway'
-import { Badge, Button, EmptyState, Input, Panel, PropertyRow, Skeleton, Status } from '../../components/design-system'
+import { Button, EmptyState, Input, Panel, PropertyRow, Skeleton, Status } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import { PageHeading, ProjectFrame } from '../../surfaces/FoundationPages'
 import { initialTimelineEditorState, timelineEditorReducer } from './editor-state'
@@ -23,8 +23,8 @@ import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
-import { firstVideoTrack, projectSnapshotJson, timelineEnd } from './timeline-projection'
-import { add, formatRational, parseRational } from './trim'
+import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timeline-projection'
+import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
 import { useTranslation } from '../../localization'
@@ -163,39 +163,6 @@ function EditorPhaseNotice({ phase, readbackRetrying, onRetryReadback }: {
   return <Status label={phase.kind} tone={phase.kind.startsWith('Pending') ? 'warning' : 'info'} />
 }
 
-function TimelinePresentation({ playhead, playing, selectedTrackId, ghost, onPlayhead, onPlaying, onSelectTrack }: {
-  playhead: number
-  playing: boolean
-  selectedTrackId: string | null
-  ghost: ManualFields | null
-  onPlayhead: (value: number) => void
-  onPlaying: (value: boolean) => void
-  onSelectTrack: (value: string | null) => void
-}) {
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return
-    if (event.key === 'ArrowLeft') { event.preventDefault(); onPlayhead(Math.max(0, playhead - 1)) }
-    if (event.key === 'ArrowRight') { event.preventDefault(); onPlayhead(playhead + 1) }
-    if (event.key === ' ') { event.preventDefault(); onPlaying(!playing) }
-    if (event.key === 'Escape') onSelectTrack(null)
-  }
-  return (
-    <div className="ff-nle-stage">
-      <div className="ff-preview-host"><Badge>Presentation only</Badge><strong>{playing ? 'Playing preview shell' : 'Preview paused'}</strong><p>No media is decoded without a safe projected access surface.</p></div>
-      <div className="ff-playback-controls" aria-label="Timeline playback controls">
-        <Button onClick={() => onPlayhead(Math.max(0, playhead - 1))}>Previous step</Button>
-        <Button aria-pressed={playing} onClick={() => onPlaying(!playing)}>{playing ? 'Pause' : 'Play'}</Button>
-        <Button onClick={() => onPlayhead(playhead + 1)}>Next step</Button>
-        <output aria-live="polite">Playhead {playhead}</output>
-      </div>
-      <div className="ff-canonical-timeline" role="application" aria-label="Timeline presentation; use left and right arrows to move, space to play or pause, and escape to clear selection" tabIndex={0} onKeyDown={onKeyDown}>
-        <div className="ff-timeline-ruler" aria-hidden="true"><span>0</span><span>5</span><span>10</span><span>15</span><i style={{ left: `${Math.min(100, playhead * 5)}%` }} /></div>
-        {['V1', 'A1'].map(id => <button key={id} type="button" className="ff-canonical-track" aria-pressed={selectedTrackId === id} onClick={() => onSelectTrack(id)}><span>{id}</span><span>Server entities are shown only when projected.</span>{id === 'V1' && ghost?.timelineStart && ghost.timelineEnd ? <i className="ff-draft-ghost">Draft ghost {ghost.timelineStart} → {ghost.timelineEnd}</i> : null}</button>)}
-      </div>
-    </div>
-  )
-}
-
 export function NlePage() {
   return <ProjectFrame surfaceId="nle"><NleWorkspace /></ProjectFrame>
 }
@@ -221,7 +188,11 @@ export function NleWorkspace({
   const [confirmed, setConfirmed] = useState(false)
   const [readbackRetrying, setReadbackRetrying] = useState(false)
   const [applyOwnershipRelease, setApplyOwnershipRelease] = useState(0)
-  const [tracks, setTracks] = useState<readonly { trackId: string; name: string; type: string }[]>([])
+  const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
+  const [previewTime, setPreviewTime] = useState(0)
+  const [initializing, setInitializing] = useState(false)
+  const [initializeError, setInitializeError] = useState('')
+  const initializeCommand = useRef<{ projectId: string; id: string } | null>(null)
   const [appendStart, setAppendStart] = useState('0/1')
   const [focusClipId, setFocusClipId] = useState<string | null>(null)
   const [stableCommandId, setStableCommandId] = useState<ReturnType<typeof applyCommandId> | null>(null)
@@ -297,7 +268,7 @@ export function NleWorkspace({
         const snapshot = await FormalRenderAPI.snapshot(project.projectId, state.server.head!.revisionId)
         if (!active) return
         const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
-        setTracks(projection.tracks.map(track => ({ trackId: track.trackId, name: track.name, type: track.type })))
+        setTracks(projection.tracks)
         setAppendStart(formatRational(timelineEnd(projection)))
       } catch {
         if (active) { setTracks([]); setAppendStart('0/1') }
@@ -475,6 +446,23 @@ export function NleWorkspace({
     }
   }
 
+  async function initialize() {
+    if (!project.tenantId || initializing) return
+    setInitializing(true)
+    setInitializeError('')
+    if (initializeCommand.current?.projectId !== project.projectId) {
+      initializeCommand.current = { projectId: project.projectId, id: crypto.randomUUID() }
+    }
+    try {
+      await FormalRenderAPI.initializeTimeline(project.tenantId, project.projectId, initializeCommand.current.id)
+      await loadHead()
+    } catch (error) {
+      setInitializeError(error instanceof Error ? error.message : 'Timeline initialization failed.')
+    } finally {
+      setInitializing(false)
+    }
+  }
+
   const previewReady = state.draft.preview && !state.draft.previewRequired && state.draft.preview.failures.length === 0
   const revisionSelectionLocked = state.phase.kind === 'PendingApply'
     || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
@@ -485,43 +473,49 @@ export function NleWorkspace({
       <EditorPhaseNotice phase={state.phase} readbackRetrying={readbackRetrying} onRetryReadback={() => void retryAuthoritativeReadback()} />
       <div className="ff-nle-layout">
         <Panel title="Canonical revision authority" actions={<Button onClick={() => void loadHead()} disabled={loading || revisionSelectionLocked}>Reload HEAD</Button>}>
-          {state.server.head ? <div className="ff-head-identity"><Status label="HEAD · main" tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <EmptyState title="HEAD unavailable" description="The editor does not infer HEAD from history or local state." />}
+          {state.server.head ? <div className="ff-head-identity"><Status label="HEAD · main" tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
+            <EmptyState title="HEAD unavailable" description="Create a Timeline to start editing this project." />
+            <Button disabled={!project.tenantId || initializing || loading} onClick={() => void initialize()}>Initialize Timeline</Button>
+            {initializeError && <p role="alert">{initializeError}</p>}
+          </>}
           <h3>Revision history</h3>
           {state.server.revisions.length ? <ol className="ff-revision-list">{state.server.revisions.map(revision => <li key={revision.id}><button type="button" aria-pressed={state.server.selected?.revision.id === revision.id} disabled={revisionSelectionLocked} onClick={() => void selectRevision(revision.id)}><span>r{revision.revisionNumber}</span><code>{revision.id}</code><small>{revision.message ?? 'No message'}</small></button></li>)}</ol> : <p>No accepted history projection.</p>}
           {queryMessage ? <p role="status">{queryMessage}</p> : null}
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
         </Panel>
         <Panel title="Timeline media preview" className="ff-operation-panel">
-          <TimelineMediaPreview head={state.server.head} tenantId={project.tenantId} projectId={project.projectId} />
+          <TimelineMediaPreview key={JSON.stringify([project.projectId, state.server.head?.revisionId])} head={state.server.head} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
-          <TimelinePresentation
-            playhead={state.presentation.playheadStep} playing={state.presentation.playing}
-            selectedTrackId={state.presentation.selectedTrackId} ghost={fields.timelineStart && fields.timelineEnd ? fields : null}
-            onPlayhead={step => dispatch({ type: 'PLAYHEAD_CHANGED', step })}
-            onPlaying={playing => dispatch({ type: 'PLAYBACK_CHANGED', playing })}
-            onSelectTrack={value => dispatch({ type: 'TRACK_SELECTED', trackId: value })}
-          />
+          <ClipEditor head={state.server.head} focusClipId={focusClipId} playhead={previewTime}
+            selectedTrackId={state.presentation.selectedTrackId}
+            onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
+            onRevisionChanged={() => loadHead()} />
         </Panel>
         <Panel title="Add media clip" className="ff-operation-panel">
           <SourceBrowser tenantId={project.tenantId} project={project.projectId} onSelect={source => {
-            const stream = source.streams.find(item => item.kind === 'VIDEO') ?? source.streams[0]
+            const selectedTrack = tracks.find(track => track.trackId === state.presentation.selectedTrackId)
+            const selectedStream = source.streams.find(item => item.kind === selectedTrack?.type)
+            const stream = selectedStream ?? source.streams.find(item => item.kind === 'VIDEO') ?? source.streams[0]
             const duration = parseRational(stream.duration) ?? { numerator: 0n, denominator: 1n }
             const start = parseRational(appendStart) ?? { numerator: 0n, denominator: 1n }
-            const preferred = tracks.find(track => track.type === 'VIDEO') ?? tracks[0]
-            setFields({ trackId: preferred?.trackId ?? 'track-1', clipId: `clip-${crypto.randomUUID()}`,
+            const preferred = selectedStream ? selectedTrack : tracks.find(track => track.type === stream.kind)
+            setFields({ trackId: preferred?.trackId ?? '', clipId: `clip-${crypto.randomUUID()}`,
               mediaAssetId: source.mediaAssetId, mediaStreamId: stream.streamId, artifactId: source.artifactId,
               contentDigest: source.contentDigest, sourceStart: '0', sourceEnd: formatRational(duration),
               timelineStart: formatRational(start), timelineEnd: formatRational(add(start, duration)),
               rateNumerator: '1', rateDenominator: '1', direction: 'FORWARD' })
             setStableCommandId(null); setConfirmed(false); dispatch({ type: 'ROLLBACK_DRAFT' })
           }} />
-          <div className="ff-state ff-state--unavailable" role="note"><span className="ff-state__code">ASSET GATEWAY · UNAVAILABLE</span><p>{assetBoundary} Enter only canonical logical IDs below. Physical locations and provider coordinates are not accepted.</p><p>{capabilityBoundary}</p></div>
+          <div role="note"><p>{assetBoundary}</p><p>{capabilityBoundary}</p></div>
           {!project.tenantId ? <div className="ff-operation-notice ff-operation-notice--danger" role="alert"><strong>TENANT CONTEXT UNAVAILABLE</strong><p>The authenticated Workspace projection did not supply a tenant. Preview and apply remain disabled.</p></div> : null}
           <form onSubmit={event => { event.preventDefault(); void preview() }}>
             <fieldset disabled={!state.server.head || !project.tenantId || state.phase.kind === 'PendingPreview' || state.phase.kind === 'PendingApply'}>
               <legend>Canonical source and placement pins</legend>
-              <div className="ff-operation-fields">{fieldLabels.map(([key, label]) => <label key={key}><span>{label}</span><Input value={fields[key]} onChange={changeField(key)} autoComplete="off" /></label>)}<label><span>Direction</span><select value={fields.direction} onChange={changeField('direction')}><option value="">Select direction</option><option value="FORWARD">Forward</option><option value="REVERSE">Reverse</option></select></label></div>
+              <div className="ff-operation-fields">{fieldLabels.map(([key, label]) => <label key={key}><span>{label}</span><Input value={fields[key]} onChange={changeField(key)} autoComplete="off"
+                list={key === 'trackId' ? 'nle-track-options' : undefined} /></label>)}<label><span>Direction</span><select value={fields.direction} onChange={changeField('direction')}><option value="">Select direction</option><option value="FORWARD">Forward</option><option value="REVERSE">Reverse</option></select></label></div>
+              <datalist id="nle-track-options">{tracks.map(track =>
+                <option key={track.trackId} value={track.trackId}>{track.name} · {track.type}</option>)}</datalist>
               {formError ? <p className="ff-form-error" role="alert">{formError}</p> : null}
               <div className="ff-operation-actions"><Button type="submit" variant="primary">Preview operation</Button><Button type="button" onClick={() => { setFields(emptyFields); setStableCommandId(null); setConfirmed(false); dispatch({ type: 'ROLLBACK_DRAFT' }) }}>Discard draft</Button></div>
             </fieldset>
@@ -549,11 +543,10 @@ export function NleWorkspace({
           </section> : null}
           {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
         </Panel>
-        <Panel title="Clip operations" className="ff-operation-panel">
-          <ClipEditor head={state.server.head} focusClipId={focusClipId} onRevisionChanged={() => loadHead()} />
-        </Panel>
         <Panel title="Render and delivery" className="ff-operation-panel">
-          <NleRenderPanel head={state.server.head} />
+          <NleRenderPanel head={state.server.head} timelineEndMillis={Math.ceil(
+            1000 * toSeconds(parseRational(appendStart) ?? { numerator: 0n, denominator: 1n })
+          )} />
         </Panel>
         <Panel title="Server semantic comparison" className="ff-nle-diff-panel"><SemanticDiff comparison={state.server.comparison} actionFilter={state.presentation.comparisonActionFilter} onActionFilterChange={action => dispatch({ type: 'COMPARISON_FILTER_CHANGED', action })} /></Panel>
       </div>

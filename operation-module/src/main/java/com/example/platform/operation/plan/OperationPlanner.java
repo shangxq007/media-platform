@@ -57,8 +57,10 @@ public final class OperationPlanner {
         }
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
+            case "timeline.track.add" -> planAddTrack(instance, base, changes);
             case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
+            case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
             case "timeline.clip.split" -> planSplit(instance, base, changes);
@@ -390,6 +392,21 @@ public final class OperationPlanner {
     }
 
     // ---- 16 non-text operations ----
+    private TimelineDocument planAddTrack(OperationInstance instance, TimelineDocument base,
+            List<PlannedChange> changes) {
+        var parameters = (OperationParameters.AddTrackParameters) instance.parameters();
+        if (base.getTracks().stream().anyMatch(track -> track.trackId().equals(parameters.trackId()))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "track identity already exists");
+        }
+        var tracks = new ArrayList<>(base.getTracks());
+        long number = tracks.stream().filter(track -> track.type() == parameters.trackType()).count() + 1;
+        String name = parameters.trackType() == com.example.platform.timeline.canonical.TrackType.VIDEO
+                ? "V" + number : "A" + number;
+        tracks.add(new TimelineTrack(parameters.trackId(), name, parameters.trackType(), List.of()));
+        changes.add(new PlannedChange.TrackAdded(parameters.trackId()));
+        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
+    }
+
     private TimelineDocument planMove(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
         var params = (OperationParameters.MoveParameters) inst.parameters();
         TimelineDocument cur = base;
@@ -403,6 +420,47 @@ public final class OperationPlanner {
             cur = replaceClip(cur, id, moved);
         }
         return cur;
+    }
+
+    private TimelineDocument planRelocate(OperationInstance instance, TimelineDocument base,
+            List<PlannedChange> changes) {
+        var params = (OperationParameters.RelocateClipParameters) instance.parameters();
+        var scope = scopeOf(instance);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "cross-track move requires one clip");
+        }
+        var id = scope.getFirst();
+        var clip = clipOf(base, id);
+        var source = base.getTracks().stream()
+                .filter(track -> track.clips().contains(clip)).findFirst().orElseThrow();
+        MediaTime start = params.absolute() ? params.delta() : clip.getStartTime().add(params.delta());
+        var moved = withPlacement(clip, start, start.add(clip.getEndTime().subtract(clip.getStartTime())));
+        if (source.trackId().equals(params.destinationTrackId())) {
+            changes.add(new PlannedChange.ClipReplaced(id, moved));
+            return replaceClip(base, id, moved);
+        }
+        return moveToTrack(base, source, params.destinationTrackId(), moved, changes);
+    }
+
+    private TimelineDocument moveToTrack(TimelineDocument base, TimelineTrack source,
+            String destinationId, TimelineClip moved, List<PlannedChange> changes) {
+        var destination = base.getTracks().stream().filter(track -> track.trackId().equals(destinationId))
+                .findFirst().orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING, "destination track missing"));
+        if (source.type() != destination.type()) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "destination track must have the same media type");
+        }
+        var id = moved.getClipId();
+        if (base.getAudioMix().routes().stream().anyMatch(route -> route.input().clipId().equals(id.value()))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "cannot move a clip with an explicit audio route between tracks");
+        }
+        var tracks = new ArrayList<>(removeClip(base, id).getTracks());
+        var destinationClips = new ArrayList<>(destination.clips());
+        destinationClips.add(moved);
+        tracks.set(base.getTracks().indexOf(destination),
+                new TimelineTrack(destinationId, destination.name(), destination.type(), destinationClips));
+        changes.add(new PlannedChange.ClipRemoved(id));
+        changes.add(new PlannedChange.ClipAdded(destinationId, moved));
+        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
     }
 
     private TimelineDocument planDelete(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {

@@ -51,12 +51,13 @@ class BmfProviderExtensionTest {
                 .extracting(ProviderCapabilitySupport::capabilityId)
                 .containsExactlyInAnyOrder(CapabilityId.of("media.transcode"),
                         CapabilityId.of("video.decode"), CapabilityId.of("render.composite"),
-                        CapabilityId.of("render.output"));
+                        CapabilityId.of("render.output"), CapabilityId.of("audio.decode"),
+                        CapabilityId.of("render.multitrack-composite"));
         assertThat(EXTENSION.providerCapabilityProfile().supportDeclarations())
                 .allSatisfy(support -> assertThat(support.contractVersionRange())
                         .isEqualTo(ContractVersionRange.exactly(ContractVersion.of(1, 0))));
         assertThat(EXTENSION.providerExecutionContract().capabilityContractReferences())
-                .hasSize(4);
+                .hasSize(6);
     }
 
     @Test
@@ -91,7 +92,7 @@ class BmfProviderExtensionTest {
         assertThat(EXTENSION.pluginDescriptor().capabilities())
                 .extracting(capability -> capability.capabilityId())
                 .containsExactlyInAnyOrder("media.transcode", "video.decode", "render.composite",
-                        "render.output");
+                        "render.output", "audio.decode", "render.multitrack-composite");
         assertThat(EXTENSION.pluginDescriptor().permissions())
                 .extracting(permission -> permission.permissionId())
                 .containsExactly("bmf.cpu", "bmf.ffmpeg", "bmf.python");
