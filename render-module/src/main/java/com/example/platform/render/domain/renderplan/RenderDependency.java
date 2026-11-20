@@ -95,7 +95,8 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
                            com.example.platform.audio.domain.mix.AudioGain gain,
                            com.example.platform.audio.domain.mix.AudioMute mute,
-                           com.example.platform.audio.domain.mix.StereoBalance balance)
+                           com.example.platform.audio.domain.mix.StereoBalance balance,
+                           VideoTransformSpec transform)
             implements RenderDependency {
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
@@ -103,9 +104,19 @@ public sealed interface RenderDependency permits
             if (gain == null) gain = com.example.platform.audio.domain.mix.AudioGain.defaultGain();
             if (mute == null) mute = com.example.platform.audio.domain.mix.AudioMute.defaultMute();
             if (balance == null) balance = com.example.platform.audio.domain.mix.StereoBalance.neutral();
+            if (transform == null) transform = VideoTransformSpec.IDENTITY;
             if (!start.isLessThan(end) || layer < 0) {
                 throw new IllegalArgumentException("positive track interval and nonnegative layer required");
             }
+        }
+
+        /** Compatibility constructor: neutral mix values and identity transform. */
+        public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                               com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
+                               com.example.platform.audio.domain.mix.AudioGain gain,
+                               com.example.platform.audio.domain.mix.AudioMute mute,
+                               com.example.platform.audio.domain.mix.StereoBalance balance) {
+            this(start, end, layer, audio, gain, mute, balance, VideoTransformSpec.IDENTITY);
         }
 
         /** Compatibility constructor: neutral mix values. */
@@ -114,7 +125,8 @@ public sealed interface RenderDependency permits
             this(start, end, layer, audio,
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
-                    com.example.platform.audio.domain.mix.StereoBalance.neutral());
+                    com.example.platform.audio.domain.mix.StereoBalance.neutral(),
+                    VideoTransformSpec.IDENTITY);
         }
 
         public double gainLinear() { return gain.linear(); }
@@ -122,8 +134,12 @@ public sealed interface RenderDependency permits
         public double balanceValue() { return balance.value(); }
 
         @Override public String variantKey() {
+            var t = transform;
             return "TIMED_TRACK_INPUT:" + start + ":" + end + ":" + layer + ":" + audio
-                    + ":" + gainLinear() + ":" + muted() + ":" + balanceValue();
+                    + ":" + gainLinear() + ":" + muted() + ":" + balanceValue()
+                    + ":" + t.positionX() + ":" + t.positionY() + ":" + t.scaleX() + ":" + t.scaleY()
+                    + ":" + t.rotationDegrees() + ":" + t.cropLeft() + ":" + t.cropRight()
+                    + ":" + t.cropTop() + ":" + t.cropBottom() + ":" + t.opacity();
         }
     }
 }

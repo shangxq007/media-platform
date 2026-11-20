@@ -379,7 +379,11 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                             } else {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         new RenderDependency.TimedTrackInput(start, end,
-                                                revision.layer(clip.trackId()), false)));
+                                                revision.layer(clip.trackId()), false,
+                                                com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
+                                                com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
+                                                com.example.platform.audio.domain.mix.StereoBalance.neutral(),
+                                                VideoTransformSpec.from(clip.transform()))));
                                 RenderNodeId embedded = getEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId());
                                 if (embedded != null) {
                                     edges.add(new RenderDependencyEdge(embedded, compositeId,

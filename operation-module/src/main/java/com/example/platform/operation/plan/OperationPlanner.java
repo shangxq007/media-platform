@@ -2,6 +2,7 @@ package com.example.platform.operation.plan;
 
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
+import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.operation.operation.OperationInstance;
 import com.example.platform.operation.operation.OperationDefinitionId;
@@ -62,6 +63,7 @@ public final class OperationPlanner {
             case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
+            case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
             case "timeline.clip.split" -> planSplit(instance, base, changes);
@@ -221,14 +223,14 @@ public final class OperationPlanner {
         return new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), newStart, newEnd,
                 clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), clip.getTemporalMapping(),
-                clip.getEffects());
+                clip.getEffects(), clip.getTransform());
     }
 
     private static TimelineClip withTemporal(TimelineClip clip, TemporalMapping mapping) {
         return new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(),
                 clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), mapping,
-                clip.getEffects());
+                clip.getEffects(), clip.getTransform());
     }
 
     private TimelineDocument planAddMediaClip(
@@ -352,11 +354,11 @@ public final class OperationPlanner {
         TimelineClip left = new TimelineClip(leftId.value(), clip.getMediaAssetId(),
                 clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                 clip.getStartTime(), split, leftTrimStart, leftTrimEnd,
-                clip.getSourceKind(), mapping, clip.getEffects());
+                clip.getSourceKind(), mapping, clip.getEffects(), clip.getTransform());
         TimelineClip right = new TimelineClip(rightId.value(), clip.getMediaAssetId(),
                 clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                 split, clip.getEndTime(), rightTrimStart, rightTrimEnd,
-                clip.getSourceKind(), mapping, List.of());
+                clip.getSourceKind(), mapping, List.of(), clip.getTransform());
         changes.add(new PlannedChange.ClipReplaced(leftId, left));
         changes.add(new PlannedChange.ClipAdded(targetTrack.trackId(), right));
         List<TimelineTrack> tracks = new ArrayList<>();
@@ -572,7 +574,8 @@ public final class OperationPlanner {
         TimelineClip trimmed = new TimelineClip(
                 clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), newStart, newEnd,
-                newSourceStart, newSourceEnd, clip.getSourceKind(), mapping, clip.getEffects());
+                newSourceStart, newSourceEnd, clip.getSourceKind(), mapping, clip.getEffects(),
+                clip.getTransform());
         // frozen policy: trim invalidating a Sync object-local anchor => REJECT
         for (SemanticRelationship rel : base.getSemanticRelationships()) {
             if (rel instanceof SyncRelationship s) {
@@ -687,6 +690,25 @@ public final class OperationPlanner {
         String summary = inst.definitionId().value() + "@" + audioTarget.audioMixInput();
         changes.add(new PlannedChange.AudioMixReplaced(summary));
         return rebuild(base, base.getTracks(), newMix, base.getSemanticRelationships());
+    }
+
+    private TimelineDocument planVideoTransform(OperationInstance inst, TimelineDocument base,
+            List<PlannedChange> changes) {
+        if (!(inst.parameters() instanceof OperationParameters.VideoTransformParameters params)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "video transform parameters required");
+        }
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "video transform requires exactly one target");
+        }
+        TimelineClip clip = clipOf(base, scope.get(0));
+        TimelineClip updated = new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
+                clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
+                clip.getSourceKind(), clip.getTemporalMapping(), clip.getEffects(), params.transform());
+        changes.add(new PlannedChange.ClipReplaced(scope.get(0), updated));
+        return replaceClip(base, scope.get(0), updated);
     }
 
     private TimelineDocument planGroupCreate(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {

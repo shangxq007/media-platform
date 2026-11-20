@@ -108,55 +108,72 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             graph = bmf.graph()
             print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
 
-            def video_at_rate(video):
-                return ff.fps(ff.scale(video, '320x240'), rate)
+            def transformed(video, placement):
+                # kind,start,end,gain,mute,pan,posx,posy,scalex,scaley,rot,cropl,cropr,cropt,cropb,opacity
+                px, py = float(placement[6]), float(placement[7])
+                sx, sy = float(placement[8]), float(placement[9])
+                rot = float(placement[10])
+                cl, cr = float(placement[11]), float(placement[12])
+                ct, cb = float(placement[13]), float(placement[14])
+                opacity = float(placement[15])
+                # Canonical order: crop -> scale -> rotate -> position -> opacity.
+                video = ff.ff_filter(video, 'crop', 'w=iw*' + str(cr - cl)
+                                     + ':h=ih*' + str(cb - ct) + ':x=iw*' + str(cl) + ':y=ih*' + str(ct))
+                width = max(2, int(round(320 * sx)))
+                height = max(2, int(round(240 * sy)))
+                video = ff.ff_filter(video, 'scale', str(width) + 'x' + str(height))
+                video = ff.ff_filter(video, 'format', 'rgba')
+                if abs(rot) > 0.000001:
+                    angle = str(rot) + '*PI/180'
+                    video = ff.ff_filter(video, 'rotate', 'angle=' + angle
+                                         + ':ow=rotw(' + angle + '):oh=roth(' + angle
+                                         + '):fillcolor=none')
+                if opacity < 0.999999:
+                    video = ff.ff_filter(video, 'colorchannelmixer', 'aa=' + str(opacity))
+                return video, px, py
 
-            video_inputs = [(path, start, end) for path, (kind, start, end, gain, mute, pan)
-                            in zip(paths, placements) if kind == 'V']
+            video_inputs = [(path, placement) for path, placement in zip(paths, placements)
+                            if placement[0] == 'V']
             if video_inputs:
                 base = graph.decode({'input_path': video_inputs[0][0]})['video']
+                canvas = ff.ff_filter(ff.scale(base, '320x240'), 'fps', rate)
             else:
                 waveform = graph.decode({'input_path': paths[0]})['audio']
-                base = ff.ff_filter(waveform, 'showwaves', 's=320x240:r=' + rate)
-            canvas = video_at_rate(base)
+                canvas = ff.ff_filter(waveform, 'showwaves', 's=320x240:r=' + rate)
             canvas = ff.ff_filter(canvas, 'drawbox', color='black', t='fill')
             canvas = ff.ff_filter(canvas, 'tpad', stop_duration=duration, stop_mode='clone')
             canvas = ff.trim(canvas, duration=duration)
-            for path, start, end in video_inputs:
-                clip = video_at_rate(graph.decode({'input_path': path})['video'])
+            for path, placement in video_inputs:
+                start, end = placement[1], placement[2]
+                clip = graph.decode({'input_path': path})['video']
+                clip = ff.ff_filter(clip, 'fps', rate)
                 clip = ff.ff_filter(clip, 'tpad', stop='1', stop_mode='clone')
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
-                # Avoid filter-grammar separators in the expression. The nanosecond tolerance
-                # keeps a frame at the end boundary outside the exact half-open interval.
+                clip, px, py = transformed(clip, placement)
                 visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
-                canvas = ff.overlay(canvas, clip, enable=visible)
+                canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible)
 
             audio_inputs = []
-            for path, (kind, start, end, gain, mute, pan) in zip(paths, placements):
-                if kind != 'A':
+            for path, placement in zip(paths, placements):
+                if placement[0] != 'A':
                     continue
+                start, end = placement[1], placement[2]
+                gain, mute, pan = placement[3], placement[4], placement[5]
                 audio = graph.decode({'input_path': path})['audio']
                 audio = ff.atrim(audio, duration=str(float(Fraction(end) - Fraction(start))))
                 audio = ff.asetpts(audio, 'PTS-STARTPTS')
                 delay = str(round(Fraction(start) * 48000)) + 'S'
                 audio = ff.adelay(audio, delays=delay, all=1)
-                # Explicit authored mix: per-route gain and linear stereo balance.
-                # Mute is compiled to zero gain at execution while retaining the stream.
                 level = 0.0 if mute == '1' else float(gain)
                 audio = ff.ff_filter(audio, 'aformat', channel_layouts='stereo')
                 audio = ff.ff_filter(audio, 'volume', str(level))
                 left = (1.0 - float(pan)) / 2.0
                 right = (1.0 + float(pan)) / 2.0
                 audio = ff.ff_filter(audio, 'pan', 'stereo|c0=' + str(left) + '*c0|c1=' + str(right) + '*c1')
-                # The bundled libavfilter normalizes amix by its live input count. Padding all
-                # inputs with silence fixes that count for the whole timeline.
                 audio_inputs.append(ff.atrim(ff.ff_filter(audio, 'apad'), duration=duration))
 
             mixed = None
             if audio_inputs:
-                # The bundled FFmpeg 4.3.7 amix normalizes by the live input count.
-                # Multiplying that normalized mix by n/2 yields the documented
-                # master-headroom rule: sum of routed inputs / 2, for any n.
                 mixed = (ff.amix(audio_inputs, inputs=len(audio_inputs), duration='first', dropout_transition=0)
                          if len(audio_inputs) > 1 else audio_inputs[0])
                 mixed = ff.ff_filter(mixed, 'volume', str(len(audio_inputs) / 2))
@@ -219,9 +236,14 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         arguments.add(rate.numerator() + "/" + rate.denominator());
         if (multitrack) {
             for (var input : plan.compositeInputs()) {
+                var t = input.transform();
                 arguments.add((input.audio() ? "A" : "V") + "," + seconds(input.start()) + ","
                         + seconds(input.end()) + "," + input.gain() + ","
-                        + (input.mute() ? "1" : "0") + "," + input.balance());
+                        + (input.mute() ? "1" : "0") + "," + input.balance() + ","
+                        + t.positionX() + "," + t.positionY() + "," + t.scaleX() + ","
+                        + t.scaleY() + "," + t.rotationDegrees() + "," + t.cropLeft() + ","
+                        + t.cropRight() + "," + t.cropTop() + "," + t.cropBottom() + ","
+                        + t.opacity());
             }
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));

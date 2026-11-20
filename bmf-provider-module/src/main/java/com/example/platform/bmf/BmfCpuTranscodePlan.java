@@ -35,14 +35,23 @@ public record BmfCpuTranscodePlan(
      * provider module does not depend on the audio domain module.
      */
     public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
-                             double gain, boolean mute, double balance) {
+                             double gain, boolean mute, double balance,
+                             com.example.platform.render.domain.renderplan.VideoTransformSpec transform) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
-            this(inputId, start, end, 0, false, 1.0, false, 0.0);
+            this(inputId, start, end, 0, false, 1.0, false, 0.0,
+                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY);
         }
 
         /** Compatibility shape for video-only timed inputs. */
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio) {
-            this(inputId, start, end, layer, audio, 1.0, false, 0.0);
+            this(inputId, start, end, layer, audio, 1.0, false, 0.0,
+                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY);
+        }
+
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
+                          double gain, boolean mute, double balance) {
+            this(inputId, start, end, layer, audio, gain, mute, balance,
+                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY);
         }
 
         public TimedInput {

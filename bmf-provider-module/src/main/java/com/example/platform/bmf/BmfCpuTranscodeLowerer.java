@@ -102,7 +102,7 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
             }
             inputs.add(new BmfCpuTranscodePlan.TimedInput(input.inputId(), timed.start().subtract(extent.start()),
                     timed.end().subtract(extent.start()), timed.layer(), timed.audio(),
-                    timed.gainLinear(), timed.muted(), timed.balanceValue()));
+                    timed.gainLinear(), timed.muted(), timed.balanceValue(), timed.transform()));
         }
         inputs.sort(java.util.Comparator.comparingInt(BmfCpuTranscodePlan.TimedInput::layer)
                 .thenComparing(BmfCpuTranscodePlan.TimedInput::start));

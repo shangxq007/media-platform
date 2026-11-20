@@ -1,6 +1,7 @@
 package com.example.platform.operation.operation;
 
 import com.example.platform.audio.domain.mix.AudioGain;
+import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.StereoBalance;
 import com.example.platform.timeline.canonical.TimelineClipId;
@@ -35,6 +36,7 @@ public sealed interface OperationParameters permits
         OperationParameters.AudioGainParameters,
         OperationParameters.AudioMuteParameters,
         OperationParameters.StereoBalanceParameters,
+        OperationParameters.VideoTransformParameters,
         OperationParameters.CreateGroupParameters,
         OperationParameters.UpdateGroupMembershipParameters,
         OperationParameters.CreateSyncParameters,
@@ -194,6 +196,15 @@ public sealed interface OperationParameters permits
         public FreezeParameters {
             if (sourcePosition == null) {
                 throw new IllegalArgumentException("sourcePosition required");
+            }
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record VideoTransformParameters(VideoTransform transform) implements OperationParameters {
+        public VideoTransformParameters {
+            if (transform == null) {
+                throw new IllegalArgumentException("video transform required");
             }
         }
     }

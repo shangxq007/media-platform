@@ -3,7 +3,7 @@
  * this module never mutates the Timeline or performs a write.
  */
 import { compare, multiply, subtract, type Rational } from './trim'
-import type { ProjectedClip, TimelineProjection } from './timeline-projection'
+import type { ProjectedClip, ProjectedVideoTransform, TimelineProjection } from './timeline-projection'
 
 export function timelineDuration(projection: TimelineProjection): Rational {
   let end: Rational = { numerator: 0n, denominator: 1n }
@@ -11,15 +11,21 @@ export function timelineDuration(projection: TimelineProjection): Rational {
   return end
 }
 
-/** The topmost video clip covering a Timeline time, or null for a video gap. */
-export function activeClipAt(projection: TimelineProjection, timelineTime: Rational): ProjectedClip | null {
-  for (const track of [...projection.tracks].reverse()) {
+/** All video clips covering a Timeline time, bottom-to-top in canonical layer order. */
+export function activeClipsAt(projection: TimelineProjection, timelineTime: Rational): ProjectedClip[] {
+  const active: ProjectedClip[] = []
+  for (const track of projection.tracks) {
     if (track.type !== 'VIDEO') continue
     const clip = track.clips.find(item =>
       compare(timelineTime, item.start) >= 0 && compare(timelineTime, item.end) < 0)
-    if (clip) return clip
+    if (clip) active.push(clip)
   }
-  return null
+  return active
+}
+
+/** The topmost video clip covering a Timeline time, or null for a video gap. */
+export function activeClipAt(projection: TimelineProjection, timelineTime: Rational): ProjectedClip | null {
+  return activeClipsAt(projection, timelineTime).length ? activeClipsAt(projection, timelineTime)[activeClipsAt(projection, timelineTime).length - 1] : null
 }
 
 /**

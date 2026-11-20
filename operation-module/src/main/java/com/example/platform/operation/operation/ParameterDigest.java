@@ -103,6 +103,13 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.FreezeParameters f) {
             return "freeze(" + f.sourcePosition() + ")";
         }
+        if (p instanceof OperationParameters.VideoTransformParameters vt) {
+            var t = vt.transform();
+            return "video-transform(" + t.positionX() + "," + t.positionY() + ","
+                    + t.scaleX() + "," + t.scaleY() + "," + t.rotationDegrees() + ","
+                    + t.cropLeft() + "," + t.cropRight() + "," + t.cropTop() + "," + t.cropBottom()
+                    + "," + t.opacity() + ")";
+        }
         if (p instanceof OperationParameters.AudioGainParameters g) {
             return "gain(" + g.gain().linear() + ")";
         }

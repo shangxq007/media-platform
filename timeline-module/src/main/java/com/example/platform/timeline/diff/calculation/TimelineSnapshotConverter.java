@@ -194,7 +194,7 @@ public final class TimelineSnapshotConverter {
                         clip.artifactId(), clip.contentDigest(), clip.start(),
                         clip.start().add(clip.duration()), clip.sourceStart(),
                         clip.sourceStart().add(clip.sourceDuration()), clip.sourceKind(),
-                        clip.temporalMapping(), clip.effects()));
+                        clip.temporalMapping(), clip.effects(), com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
             }
             tracks.add(new TimelineTrack(track.trackId(),
                     track.safeMetadata().getOrDefault("timelineDocument.name", track.trackId()),

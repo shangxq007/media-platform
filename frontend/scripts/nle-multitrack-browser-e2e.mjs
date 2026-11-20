@@ -179,6 +179,48 @@ try {
     assert.equal(route.mute.muted, mute)
     assert.equal(route.balance.value, pan)
   }
+  const applyTransform = async (clipId, t) => {
+    await field('Clip').selectOption(clipId)
+    const values = {
+      'Video position X': t.positionX, 'Video position Y': t.positionY,
+      'Video scale X': t.scaleX, 'Video scale Y': t.scaleY,
+      'Video rotation': t.rotationDegrees, 'Video opacity': t.opacity,
+      'Video crop left': t.cropLeft, 'Video crop right': t.cropRight,
+      'Video crop top': t.cropTop, 'Video crop bottom': t.cropBottom,
+    }
+    for (const [label, value] of Object.entries(values)) await field(label).fill(String(value))
+    await page.waitForTimeout(60)
+    await edit.getByRole('button', { name: 'Apply video transform' }).click()
+    current = await waitRevision(current.revisionId)
+    await page.waitForFunction(() => {
+      const status = document.querySelector('[data-preview-status]')?.dataset.previewStatus
+      const max = Number(document.querySelector('input[aria-label="Timeline preview seek"]')?.getAttribute('max'))
+      return ['READY', 'PAUSED', 'PLAYING'].includes(status) && max > 1
+    })
+    const transformed = (await snapshot(current.revisionId)).tracks
+      .flatMap(track => track.clips).find(clip => clip.clipId === clipId).transform
+    for (const [key, value] of Object.entries(values)) {
+      const property = { 'Video position X': 'positionX', 'Video position Y': 'positionY',
+        'Video scale X': 'scaleX', 'Video scale Y': 'scaleY', 'Video rotation': 'rotationDegrees',
+        'Video opacity': 'opacity', 'Video crop left': 'cropLeft', 'Video crop right': 'cropRight',
+        'Video crop top': 'cropTop', 'Video crop bottom': 'cropBottom' }[key]
+      assert(Math.abs(transformed[property] - value) < 1e-9, `${clipId} ${property}`)
+    }
+  }
+  await applyTransform(videoB, { positionX: 220, positionY: 160, scaleX: 0.3, scaleY: 0.3,
+    rotationDegrees: 0, cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 1 })
+  await applyTransform(videoC, { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1,
+    rotationDegrees: 0, cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 0.5 })
+  await applyTransform(videoD, { positionX: 20, positionY: 20, scaleX: 0.5, scaleY: 0.5,
+    rotationDegrees: 45, cropLeft: 0.2, cropRight: 0.8, cropTop: 0.2, cropBottom: 0.8, opacity: 1 })
+  // Reset is a local editor action; applying identity afterwards is not necessary here.
+  await field('Clip').selectOption(videoA)
+  await edit.getByRole('button', { name: 'Reset transform' }).click()
+  assert.equal(await field('Video position X').inputValue(), '0')
+  assert.equal(await field('Video scale X').inputValue(), '1')
+  assert.equal(await field('Video opacity').inputValue(), '1')
+  record('VIDEO_TRANSFORMS_PERSISTED_THROUGH_BROWSER_CONTROLS')
+
   // The first control also proves the browser UI writes through the canonical
   // gain/mute/pan batch; the remaining routes are applied through the same UI.
   await applyAudio(audioA, 1, false, -0.5)
@@ -193,6 +235,14 @@ try {
   await field('Absolute position').check()
   await field('Exact time').fill('4')
   await field('Destination track').selectOption({ label: 'V2' })
+  await edit.getByRole('button', { name: 'Apply operation' }).click()
+  current = await waitRevision(current.revisionId)
+  // Move the transformed overlay back to V4 for the final four-layer render.
+  await field('Clip').selectOption(videoD)
+  await field('Clip operation').selectOption('MOVE_CLIP')
+  await field('Absolute position').check()
+  await field('Exact time').fill('1')
+  await field('Destination track').selectOption({ label: 'V4' })
   await edit.getByRole('button', { name: 'Apply operation' }).click()
   current = await waitRevision(current.revisionId)
   // Cross-audio move away and back, proving route retargeting.
@@ -239,18 +289,33 @@ try {
   const dominant = ([r, g, b]) => Math.max(r, g, b) < 30 ? 'black'
     : r > 2 * Math.max(g, b) ? 'red' : g > 2 * Math.max(r, b) ? 'green' : b > 2 * Math.max(r, g) ? 'blue'
       : r > 100 && g > 100 && b < 100 ? 'yellow'
-        : r > 100 && g < 100 && b > 100 ? 'magenta' : 'unknown'
+        : r > 200 && g < 80 && b > 200 ? 'magenta'
+          : r > 60 && b > 60 && g < 50 && Math.abs(r - b) < 80 ? 'purple'
+            : r < 40 && g > 50 && b > 80 ? 'teal' : 'unknown'
   const canvas = page.getByLabel('Timeline preview canvas')
-  for (const [at, expected] of [[0.5, 'red'], [1.5, 'green'], [2.5, 'blue'], [3.5, 'blue'], [4.5, 'blue'], [5.5, 'yellow'], [6.5, 'black']]) {
-    await seek(at)
-    const pixel = () => canvas.evaluate(element => [...element.getContext('2d').getImageData(160, 120, 1, 1).data].slice(0, 3))
+  const videoSamples = [
+    { at: 0.5, x: 160, y: 120, expected: 'red' },
+    { at: 1.5, x: 270, y: 200, expected: 'green' },
+    { at: 1.5, x: 100, y: 80, expected: 'yellow' },
+    { at: 2.5, x: 250, y: 120, expected: 'purple' },
+    { at: 2.5, x: 270, y: 200, expected: 'blue' },
+    { at: 2.5, x: 100, y: 80, expected: 'yellow' },
+    { at: 2.5, x: 20, y: 20, expected: 'purple' },
+    { at: 6.5, x: 160, y: 120, expected: 'black' },
+  ]
+  report.videoSamples = []
+  for (const sample of videoSamples) {
+    await seek(sample.at)
+    const pixel = () => canvas.evaluate((element, point) =>
+      [...element.getContext('2d').getImageData(point.x, point.y, 1, 1).data].slice(0, 3), sample)
     let rgb = await pixel()
-    for (let attempt = 0; dominant(rgb) !== expected && attempt < 40; attempt++) {
+    for (let attempt = 0; dominant(rgb) !== sample.expected && attempt < 40; attempt++) {
       await page.waitForTimeout(50)
       rgb = await pixel()
     }
-    assert.equal(dominant(rgb), expected, `Preview frame at ${at}s`)
-    report.video[at] = { expected, previewRgb: rgb }
+    assert.equal(dominant(rgb), sample.expected,
+      `Preview ${sample.expected} at ${sample.at}s (${sample.x},${sample.y})`)
+    report.videoSamples.push({ ...sample, previewRgb: rgb })
   }
   const sampleAudio = async at => {
     await seek(at)
@@ -298,10 +363,21 @@ try {
     assert.equal(route.mute.muted, mute)
     assert.equal(route.balance.value, pan)
   }
+  const reloadedClips = reloaded.tracks.flatMap(track => track.clips)
+  for (const [clipId, expected] of [[videoB, [220, 160, 0.3, 0.3, 0, 0, 1, 0, 1, 1]],
+    [videoC, [0, 0, 1, 1, 0, 0, 1, 0, 1, 0.5]],
+    [videoD, [20, 20, 0.5, 0.5, 45, 0.2, 0.8, 0.2, 0.8, 1]]]) {
+    const clip = reloadedClips.find(item => item.clipId === clipId)
+    const t = clip.transform
+    const actual = [t.positionX, t.positionY, t.scaleX, t.scaleY, t.rotationDegrees,
+      t.cropLeft, t.cropRight, t.cropTop, t.cropBottom, t.opacity]
+    actual.forEach((value, index) => assert(Math.abs(value - expected[index]) < 1e-9,
+      `${clipId} transform[${index}]`))
+  }
   report.revisionId = current.revisionId
   report.projectId = project
   report.snapshot = reloaded
-  record('REVISION_RELOAD_RESTORES_AUDIO_MIX')
+  record('REVISION_RELOAD_RESTORES_AUDIO_MIX_AND_VIDEO_TRANSFORMS')
 
   const artifactId = reloaded.tracks[0].clips[0].artifactId
   const readPath = scope + `/source-artifacts/${artifactId}/content`
@@ -341,10 +417,11 @@ try {
   assert(Math.abs(Number(probe.format.duration) - 7) <= 0.1)
   assert.equal(Number(probe.streams.find(s => s.codec_type === 'video').nb_read_frames), 168)
   assert.equal(probe.streams.find(s => s.codec_type === 'audio').codec_name, 'aac')
-  for (const [at, sample] of Object.entries(report.video)) {
-    sample.renderRgb = [...execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', at, '-i', output,
-      '-frames:v', '1', '-vf', 'scale=1:1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
-    assert.equal(dominant(sample.renderRgb), sample.expected, `Rendered frame at ${at}s`)
+  for (const sample of report.videoSamples) {
+    sample.renderRgb = [...execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', String(sample.at), '-i', output,
+      '-frames:v', '1', '-vf', `crop=2:2:${sample.x}:${sample.y},scale=1:1:flags=neighbor`, '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
+    assert.equal(dominant(sample.renderRgb), sample.expected,
+      `Rendered ${sample.expected} at ${sample.at}s (${sample.x},${sample.y})`)
   }
   const raw = execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', '3.5', '-i', output,
     '-t', '0.085333333', '-ac', '2', '-ar', '48000', '-f', 'f32le', '-'])

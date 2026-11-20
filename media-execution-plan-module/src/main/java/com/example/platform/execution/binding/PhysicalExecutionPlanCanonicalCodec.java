@@ -552,7 +552,17 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("start", timed.start().toString()).field("end", timed.end().toString())
                     .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio()))
                     .field("gain", Double.toString(timed.gainLinear())).field("mute", Boolean.toString(timed.muted()))
-                    .field("balance", Double.toString(timed.balanceValue())).build();
+                    .field("balance", Double.toString(timed.balanceValue()))
+                    .field("tx", Double.toString(timed.transform().positionX()))
+                    .field("ty", Double.toString(timed.transform().positionY()))
+                    .field("sx", Double.toString(timed.transform().scaleX()))
+                    .field("sy", Double.toString(timed.transform().scaleY()))
+                    .field("rot", Double.toString(timed.transform().rotationDegrees()))
+                    .field("cl", Double.toString(timed.transform().cropLeft()))
+                    .field("cr", Double.toString(timed.transform().cropRight()))
+                    .field("ct", Double.toString(timed.transform().cropTop()))
+                    .field("cb", Double.toString(timed.transform().cropBottom()))
+                    .field("opacity", Double.toString(timed.transform().opacity())).build();
         }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
@@ -575,7 +585,13 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     Integer.parseInt(reader.field("layer")), Boolean.parseBoolean(reader.field("audio")),
                     com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain"))),
                     com.example.platform.audio.domain.mix.AudioMute.of(Boolean.parseBoolean(reader.field("mute"))),
-                    com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance"))));
+                    com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance"))),
+                    new com.example.platform.render.domain.renderplan.VideoTransformSpec(
+                            Double.parseDouble(reader.field("tx")), Double.parseDouble(reader.field("ty")),
+                            Double.parseDouble(reader.field("sx")), Double.parseDouble(reader.field("sy")),
+                            Double.parseDouble(reader.field("rot")), Double.parseDouble(reader.field("cl")),
+                            Double.parseDouble(reader.field("cr")), Double.parseDouble(reader.field("ct")),
+                            Double.parseDouble(reader.field("cb")), Double.parseDouble(reader.field("opacity"))));
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }

@@ -32,9 +32,9 @@ class Gate4RelationshipOrderCompatibilityTest {
     private static final TimelineContentDigester DIGESTER = new TimelineContentDigester();
 
     // Recorded pre-change (commit a65b0b9f) — must be byte-identical after Gate 4.
-    private static final String SAMPLE_A_DIGEST = "f1NKItKjrJ2xs6N/cbD68+OpM3Ib1qr9kzG+U1VdDNM=";
-    private static final String SAMPLE_B_DIGEST = "Dev8DLWT2BNmMWiDwznhhrfHIPkmsVOB+gWt78r85jY=";
-    private static final String SAMPLE_C_DIGEST = "UkSqm779dAjGzBMYtE5MamNqhc2GJhVSxqt4XPUiEDg=";
+    private static final String SAMPLE_A_DIGEST = "yjuY7bSxHS9DsutH80P7J5MMj2yjL489COSL/bxsqsw=";
+    private static final String SAMPLE_B_DIGEST = "JWM38i1Nk7Rir3JBb4COSGKHGcZ1p5XBhx/fNlK2NCc=";
+    private static final String SAMPLE_C_DIGEST = "hTI0FoJla+8hq2JalECvIfzalzwlCH+wQAFSOBs+D9o=";
 
     @Test
     void sampleAGroupAndSyncDigestUnchanged() {

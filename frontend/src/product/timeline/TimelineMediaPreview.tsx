@@ -3,7 +3,7 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { toSeconds } from './trim'
-import { activeClipAt, sourceTimeAt, timelineDuration } from './timeline-preview'
+import { activeClipsAt, sourceTimeAt, timelineDuration } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 
@@ -87,30 +87,49 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
     const context = target?.getContext('2d')
     if (!target || !context) return
     const time = rationalTime(session.cursor)
-    const clip = session.projection ? activeClipAt(session.projection, time) : null
-    const active = clip ? session.videos['get'](clip.clipId) : null
-    if (host.current) host.current.dataset.activeClip = clip?.clipId ?? ''
-    for (const media of session.videos.values()) {
-      if (media !== active && !media.paused) media.pause()
-    }
-    if (clip && active) {
-      const offset = Math.max(0, toSeconds(sourceTimeAt(clip, time)))
-      const rate = toSeconds(clip.rate)
-      if (Math.abs(active.currentTime - offset) > (forceSeek || !session.playing ? 0.001 : 0.12)) {
-        active.currentTime = offset
-      }
-      if (session.playing && clip.direction === 'FORWARD' && active.paused && !active.seeking) {
-        active.playbackRate = rate
-        void active.play().catch(error => {
-          if (session.playing && error.name !== 'AbortError') fail(session, error)
-        })
-      }
-      if (active.seeking && !forceSeek) return
+    const clips = session.projection ? activeClipsAt(session.projection, time) : []
+    const top = clips.length ? clips[clips.length - 1] : null
+    if (host.current) host.current.dataset.activeClip = top?.clipId ?? ''
+    const activeIds = new Set(clips.map(clip => clip.clipId))
+    for (const [clipId, media] of session.videos) {
+      if (!activeIds.has(clipId) && !media.paused) media.pause()
     }
     context.fillStyle = '#000'
     context.fillRect(0, 0, target.width, target.height)
-    if (active && !active.seeking && active.readyState >= 2) {
-      context.drawImage(active, 0, 0, target.width, target.height)
+    for (const clip of clips) {
+      const media = session.videos['get'](clip.clipId)
+      if (!media) continue
+      const offset = Math.max(0, toSeconds(sourceTimeAt(clip, time)))
+      const rate = toSeconds(clip.rate)
+      if (Math.abs(media.currentTime - offset) > (forceSeek || !session.playing ? 0.001 : 0.12)) {
+        media.currentTime = offset
+      }
+      if (session.playing && clip.direction === 'FORWARD' && media.paused && !media.seeking) {
+        media.playbackRate = rate
+        void media.play().catch(error => {
+          if (session.playing && error.name !== 'AbortError') fail(session, error)
+        })
+      }
+      if (media.seeking || media.readyState < 2) continue
+      const t = clip.transform
+      const sourceWidth = media.videoWidth || 320
+      const sourceHeight = media.videoHeight || 240
+      const sx = sourceWidth * t.cropLeft
+      const sy = sourceHeight * t.cropTop
+      const sw = Math.max(1, sourceWidth * (t.cropRight - t.cropLeft))
+      const sh = Math.max(1, sourceHeight * (t.cropBottom - t.cropTop))
+      const dw = target.width * t.scaleX
+      const dh = target.height * t.scaleY
+      const radians = t.rotationDegrees * Math.PI / 180
+      const rotatedWidth = Math.abs(dw * Math.cos(radians)) + Math.abs(dh * Math.sin(radians))
+      const rotatedHeight = Math.abs(dw * Math.sin(radians)) + Math.abs(dh * Math.cos(radians))
+      context.save()
+      context.globalAlpha = t.opacity
+      // Position is the top-left of the rotated output frame, matching BMF rotate+overlay.
+      context.translate(t.positionX + rotatedWidth / 2, t.positionY + rotatedHeight / 2)
+      context.rotate(radians)
+      context.drawImage(media, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh)
+      context.restore()
     }
   }
 

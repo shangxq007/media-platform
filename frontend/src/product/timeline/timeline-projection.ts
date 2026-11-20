@@ -7,6 +7,39 @@
  */
 import { add, compare, parseRational, type Rational } from './trim'
 
+export interface ProjectedVideoTransform {
+  readonly positionX: number
+  readonly positionY: number
+  readonly scaleX: number
+  readonly scaleY: number
+  readonly rotationDegrees: number
+  readonly cropLeft: number
+  readonly cropRight: number
+  readonly cropTop: number
+  readonly cropBottom: number
+  readonly opacity: number
+}
+
+export const IDENTITY_VIDEO_TRANSFORM: ProjectedVideoTransform = {
+  positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0,
+  cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 1,
+}
+
+function projectTransform(value: unknown): ProjectedVideoTransform {
+  if (!value || typeof value !== 'object') return IDENTITY_VIDEO_TRANSFORM
+  const t = value as Record<string, unknown>
+  const number = (key: string, fallback: number) =>
+    typeof t[key] === 'number' && Number.isFinite(t[key]) ? t[key] as number : fallback
+  return {
+    positionX: number('positionX', 0), positionY: number('positionY', 0),
+    scaleX: number('scaleX', 1), scaleY: number('scaleY', 1),
+    rotationDegrees: number('rotationDegrees', 0),
+    cropLeft: number('cropLeft', 0), cropRight: number('cropRight', 1),
+    cropTop: number('cropTop', 0), cropBottom: number('cropBottom', 1),
+    opacity: number('opacity', 1),
+  }
+}
+
 export interface ProjectedClip {
   readonly clipId: string
   readonly trackId: string
@@ -19,6 +52,7 @@ export interface ProjectedClip {
   readonly sourceEnd: Rational
   readonly rate: Rational
   readonly direction: 'FORWARD' | 'REVERSE'
+  readonly transform: ProjectedVideoTransform
 }
 
 export interface ProjectedTrack {
@@ -99,6 +133,7 @@ export function projectTimeline(document: unknown): TimelineProjection {
         contentDigest: typeof clip.contentDigest === 'string' ? clip.contentDigest : '',
         mediaStreamId: typeof clip.mediaStreamId === 'string' ? clip.mediaStreamId : '',
         direction: mapping?.direction === 'REVERSE' ? 'REVERSE' : 'FORWARD',
+        transform: projectTransform(clip.transform),
       })
     }
     tracks.push({

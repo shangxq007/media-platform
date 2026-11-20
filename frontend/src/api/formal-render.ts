@@ -8,6 +8,9 @@ const part = (value: string) => encodeURIComponent(id.parse(value))
 export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number }; outputFormat: 'MP4'; profile: string }
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
 export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
+export interface VideoTransformCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
+  positionX: number; positionY: number; scaleX: number; scaleY: number; rotationDegrees: number;
+  cropLeft: number; cropRight: number; cropTop: number; cropBottom: number; opacity: number; commandId: string }
 export interface AudioMixCommand { baseRevisionId: string; baseContentHash: string; trackId: string; clipId: string; gain: number; mute: boolean; pan: number; commandId: string }
 const Submission = z.object({ renderJobId: id, requestId: id, executionPlanId: id, status: z.literal('PLANNED'), workflowId: id, workflowStarted: z.boolean() })
 const Result = z.object({ renderJobId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
@@ -48,6 +51,22 @@ export const FormalRenderAPI = {
       .refine(v => (v.newRevisionId !== undefined && v.resultContentHash !== undefined && v.unchangedContentHash === undefined) || (v.newRevisionId === undefined && v.resultContentHash === undefined && v.unchangedContentHash !== undefined), 'Invalid Operation outcome')
       .parse(await request(c => versionlessApi.post(`/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/apply`, command, c), signal))
     return { revisionId: value.newRevisionId ?? value.baseRevisionId, contentHash: value.resultContentHash ?? value.unchangedContentHash ?? '' }
+  },
+  async applyVideoTransform(tenant: string, project: string, command: VideoTransformCommand, signal?: AbortSignal) {
+    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+      baseContentHash: command.baseContentHash, message: 'Video transform',
+      operations: [{ definitionId: 'timeline.clip.transform.set',
+        target: { clipId: command.clipId }, parameters: {
+          positionX: command.positionX, positionY: command.positionY,
+          scaleX: command.scaleX, scaleY: command.scaleY,
+          rotationDegrees: command.rotationDegrees,
+          cropLeft: command.cropLeft, cropRight: command.cropRight,
+          cropTop: command.cropTop, cropBottom: command.cropBottom,
+          opacity: command.opacity } }] }
+    const value = z.object({ status: z.enum(['APPLIED', 'NO_OP']), newRevisionId: id.nullable().optional(), newContentHash: id })
+      .parse(await request(c => versionlessApi.post(
+        `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/apply`, body, c), signal))
+    return { revisionId: value.newRevisionId ?? command.baseRevisionId, contentHash: value.newContentHash }
   },
   async applyAudioMix(tenant: string, project: string, command: AudioMixCommand, signal?: AbortSignal) {
     const body = {

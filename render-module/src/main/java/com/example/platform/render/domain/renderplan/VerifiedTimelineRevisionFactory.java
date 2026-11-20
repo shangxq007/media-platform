@@ -163,7 +163,8 @@ public final class VerifiedTimelineRevisionFactory {
                 timelineRange,
                 sourceRange,
                 clip.getTemporalMapping(),
-                mediaBinding);
+                mediaBinding,
+                clip.getTransform());
     }
 
     private static TimelineSourceBinding timelineSourceBinding(

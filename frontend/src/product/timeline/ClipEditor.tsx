@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
-import { audioRouteFor, projectSnapshotJson, type ProjectedAudioRoute, type ProjectedTrack } from './timeline-projection'
+import { audioRouteFor, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedVideoTransform } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
@@ -40,6 +40,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const project = useProjectContext()
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
+  const [transforms, setTransforms] = useState<Record<string, ProjectedVideoTransform>>({})
   const [destinationTrackId, setDestinationTrackId] = useState('')
   const trackCommands = useRef<Partial<Record<'VIDEO' | 'AUDIO', { revision: string; id: string }>>>({})
   const [clips, setClips] = useState<ClipGeometry[]>([])
@@ -47,6 +48,16 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const [audioGain, setAudioGain] = useState(1)
   const [audioMute, setAudioMute] = useState(false)
   const [audioPan, setAudioPan] = useState(0)
+  const [tx, setTx] = useState(0)
+  const [ty, setTy] = useState(0)
+  const [sx, setSx] = useState(1)
+  const [sy, setSy] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [cropLeft, setCropLeft] = useState(0)
+  const [cropRight, setCropRight] = useState(1)
+  const [cropTop, setCropTop] = useState(0)
+  const [cropBottom, setCropBottom] = useState(1)
+  const [opacity, setOpacity] = useState(1)
   const [type, setType] = useState<ClipEdit['type']>('MOVE_CLIP')
   const [delta, setDelta] = useState('1/4')
   const [absolute, setAbsolute] = useState(false)
@@ -65,7 +76,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
-    if (!head) { setTracks([]); setAudioRoutes([]); setClips([]); setSelected(''); return }
+    if (!head) { setTracks([]); setAudioRoutes([]); setTransforms({}); setClips([]); setSelected(''); return }
     const owned = ++generation.current
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
@@ -74,6 +85,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       if (owned !== generation.current) return
       setTracks(projection.tracks)
       setAudioRoutes(projection.audioRoutes)
+      setTransforms(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.transform])))
       setClips(rows)
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
@@ -99,6 +111,18 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     setAudioMute(activeAudioRoute?.mute ?? false)
     setAudioPan(activeAudioRoute?.pan ?? 0)
   }, [active?.clipId, activeAudioRoute?.gain, activeAudioRoute?.mute, activeAudioRoute?.pan, head?.revisionId])
+  const activeTransform = active ? transforms[active.clipId] ?? IDENTITY_VIDEO_TRANSFORM : IDENTITY_VIDEO_TRANSFORM
+  useEffect(() => {
+    setTx(activeTransform.positionX); setTy(activeTransform.positionY)
+    setSx(activeTransform.scaleX); setSy(activeTransform.scaleY)
+    setRotation(activeTransform.rotationDegrees)
+    setCropLeft(activeTransform.cropLeft); setCropRight(activeTransform.cropRight)
+    setCropTop(activeTransform.cropTop); setCropBottom(activeTransform.cropBottom)
+    setOpacity(activeTransform.opacity)
+  }, [active?.clipId, activeTransform.positionX, activeTransform.positionY, activeTransform.scaleX,
+    activeTransform.scaleY, activeTransform.rotationDegrees, activeTransform.cropLeft,
+    activeTransform.cropRight, activeTransform.cropTop, activeTransform.cropBottom,
+    activeTransform.opacity, head?.revisionId])
   useEffect(() => { setDestinationTrackId('') }, [selected, head?.revisionId])
   const projection = active && pending ? projectTrim(active, pending.edge, pending.delta) : null
 
@@ -234,6 +258,41 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       setMessage(`Audio mix applied at revision ${authoritative.revisionId}: gain ${audioGain.toFixed(2)}, mute ${audioMute ? 'on' : 'off'}, pan ${audioPan.toFixed(2)}.`)
     } catch (error) { handleFailure(error, 'Audio mix', null, true) }
     finally { setBusy(false) }
+  }
+
+  async function applyTransform() {
+    if (!head || !project.tenantId || !active || busy) return
+    if (![tx, ty, sx, sy, rotation, cropLeft, cropRight, cropTop, cropBottom, opacity].every(Number.isFinite)
+        || sx <= 0 || sy <= 0 || sx > 10 || sy > 10
+        || opacity < 0 || opacity > 1
+        || cropLeft < 0 || cropRight > 1 || cropTop < 0 || cropBottom > 1
+        || cropLeft >= cropRight || cropTop >= cropBottom) {
+      setActionFailed(true); setMessage('Invalid video transform: scale must be (0,10], opacity [0,1], crop must be a non-empty normalized rectangle.')
+      return
+    }
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'VIDEO_TRANSFORM',
+      tx, ty, sx, sy, rotation, cropLeft, cropRight, cropTop, cropBottom, opacity, head.revisionId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.applyVideoTransform(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash, clipId: active.clipId,
+        positionX: tx, positionY: ty, scaleX: sx, scaleY: sy, rotationDegrees: rotation,
+        cropLeft, cropRight, cropTop, cropBottom, opacity, commandId: keys.current[fingerprint] })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setMessage(`Video transform applied at revision ${authoritative.revisionId}.`)
+    } catch (error) { handleFailure(error, 'Video transform', null, true) }
+    finally { setBusy(false) }
+  }
+
+  function resetTransform() {
+    setTx(0); setTy(0); setSx(1); setSy(1); setRotation(0)
+    setCropLeft(0); setCropRight(1); setCropTop(0); setCropBottom(1); setOpacity(1)
+    setMessage('Transform reset in the editor; apply to save the default transform.')
   }
 
   function beginMove(clip: ClipGeometry, event: ReactPointerEvent<HTMLDivElement>) {
@@ -532,6 +591,24 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
+    {active && activeTrack?.type === 'VIDEO' && <fieldset className="ff-nle-transform-controls" aria-label="Video transform controls" disabled={!head || !project.tenantId || busy}>
+      <legend>Video transform · {active.clipId}</legend>
+      <div className="ff-nle-transform-grid">
+        <label>Position X <Input aria-label="Video position X" type="number" step={1} value={tx} onChange={event => setTx(Number(event.target.value))} /></label>
+        <label>Position Y <Input aria-label="Video position Y" type="number" step={1} value={ty} onChange={event => setTy(Number(event.target.value))} /></label>
+        <label>Scale X <Input aria-label="Video scale X" type="number" step={0.05} value={sx} onChange={event => setSx(Number(event.target.value))} /></label>
+        <label>Scale Y <Input aria-label="Video scale Y" type="number" step={0.05} value={sy} onChange={event => setSy(Number(event.target.value))} /></label>
+        <label>Rotation° <Input aria-label="Video rotation" type="number" step={1} value={rotation} onChange={event => setRotation(Number(event.target.value))} /></label>
+        <label>Opacity <Input aria-label="Video opacity" type="number" min={0} max={1} step={0.05} value={opacity} onChange={event => setOpacity(Number(event.target.value))} /></label>
+        <label>Crop L <Input aria-label="Video crop left" type="number" min={0} max={1} step={0.01} value={cropLeft} onChange={event => setCropLeft(Number(event.target.value))} /></label>
+        <label>Crop R <Input aria-label="Video crop right" type="number" min={0} max={1} step={0.01} value={cropRight} onChange={event => setCropRight(Number(event.target.value))} /></label>
+        <label>Crop T <Input aria-label="Video crop top" type="number" min={0} max={1} step={0.01} value={cropTop} onChange={event => setCropTop(Number(event.target.value))} /></label>
+        <label>Crop B <Input aria-label="Video crop bottom" type="number" min={0} max={1} step={0.01} value={cropBottom} onChange={event => setCropBottom(Number(event.target.value))} /></label>
+      </div>
+      <Button type="button" disabled={!head || !active || busy} onClick={() => void applyTransform()}>Apply video transform</Button>
+      <Button type="button" disabled={busy} onClick={resetTransform}>Reset transform</Button>
+      <p role="status">Canonical transform: position {activeTransform.positionX.toFixed(0)},{activeTransform.positionY.toFixed(0)} · scale {activeTransform.scaleX.toFixed(2)},{activeTransform.scaleY.toFixed(2)} · rotation {activeTransform.rotationDegrees.toFixed(0)}° · opacity {activeTransform.opacity.toFixed(2)}</p>
+    </fieldset>}
     {active && (activeTrack?.type === 'AUDIO' || activeTrack?.type === 'VIDEO') && <fieldset className="ff-nle-audio-controls" aria-label="Audio mix controls" disabled={!head || !project.tenantId || busy}>
       <legend>Audio mix · {active.clipId}</legend>
       <label>Gain <Input aria-label="Audio gain" type="number" min={0} max={2} step={0.05} value={audioGain}

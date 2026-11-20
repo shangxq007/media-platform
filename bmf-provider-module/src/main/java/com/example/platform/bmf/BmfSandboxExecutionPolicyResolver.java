@@ -208,7 +208,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     private static boolean validPlacement(String placement, String duration) {
         String[] parts = placement.split(",", -1);
-        if (parts.length != 6 || !List.of("V", "A").contains(parts[0])
+        if (parts.length != 16 || !List.of("V", "A").contains(parts[0])
                 || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
             return false;
         }
@@ -220,11 +220,31 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         try {
             var gain = new java.math.BigDecimal(parts[3]);
             var pan = new java.math.BigDecimal(parts[5]);
-            return gain.compareTo(java.math.BigDecimal.ZERO) >= 0
-                    && gain.compareTo(new java.math.BigDecimal("2")) <= 0
-                    && (parts[4].equals("0") || parts[4].equals("1"))
-                    && pan.compareTo(new java.math.BigDecimal("-1")) >= 0
-                    && pan.compareTo(java.math.BigDecimal.ONE) <= 0;
+            if (gain.compareTo(java.math.BigDecimal.ZERO) < 0
+                    || gain.compareTo(new java.math.BigDecimal("2")) > 0
+                    || !(parts[4].equals("0") || parts[4].equals("1"))
+                    || pan.compareTo(new java.math.BigDecimal("-1")) < 0
+                    || pan.compareTo(java.math.BigDecimal.ONE) > 0) {
+                return false;
+            }
+            var scaleX = new java.math.BigDecimal(parts[8]);
+            var scaleY = new java.math.BigDecimal(parts[9]);
+            var opacity = new java.math.BigDecimal(parts[15]);
+            var left = new java.math.BigDecimal(parts[11]);
+            var right = new java.math.BigDecimal(parts[12]);
+            var top = new java.math.BigDecimal(parts[13]);
+            var bottom = new java.math.BigDecimal(parts[14]);
+            return scaleX.compareTo(java.math.BigDecimal.ZERO) > 0
+                    && scaleX.compareTo(java.math.BigDecimal.TEN) <= 0
+                    && scaleY.compareTo(java.math.BigDecimal.ZERO) > 0
+                    && scaleY.compareTo(java.math.BigDecimal.TEN) <= 0
+                    && opacity.compareTo(java.math.BigDecimal.ZERO) >= 0
+                    && opacity.compareTo(java.math.BigDecimal.ONE) <= 0
+                    && left.compareTo(java.math.BigDecimal.ZERO) >= 0
+                    && right.compareTo(java.math.BigDecimal.ONE) <= 0
+                    && top.compareTo(java.math.BigDecimal.ZERO) >= 0
+                    && bottom.compareTo(java.math.BigDecimal.ONE) <= 0
+                    && left.compareTo(right) < 0 && top.compareTo(bottom) < 0;
         } catch (NumberFormatException invalid) {
             return false;
         }

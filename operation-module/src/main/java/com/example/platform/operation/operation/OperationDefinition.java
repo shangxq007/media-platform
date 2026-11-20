@@ -142,6 +142,9 @@ public record OperationDefinition(
         public static final OperationDefinition RELOCATE_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.relocate"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.RelocateClipParameters.class);
+        public static final OperationDefinition SET_VIDEO_TRANSFORM = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.transform.set"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.VideoTransformParameters.class);
         /** SPLIT: one clip -> two adjacent clips, no ripple/gap/overlap. */
         public static final OperationDefinition SPLIT_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.split"), OperationDefinitionVersion.of(1, 0),
@@ -150,7 +153,7 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE,
-                                SPLIT_CLIP, ADD_TRACK, RELOCATE_CLIP)).toList();
+                                SPLIT_CLIP, ADD_TRACK, RELOCATE_CLIP, SET_VIDEO_TRANSFORM)).toList();
         private V3() {}
     }
 }

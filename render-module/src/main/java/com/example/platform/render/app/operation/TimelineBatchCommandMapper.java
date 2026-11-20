@@ -1,6 +1,7 @@
 package com.example.platform.render.app.operation;
 
 import com.example.platform.audio.domain.mix.AudioGain;
+import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.StereoBalance;
@@ -128,6 +129,17 @@ public final class TimelineBatchCommandMapper {
                     OperationParameters.TrimParameters.TrimEdge.valueOf(
                             requiredText(parameters, "edge")),
                     time(parameters, "delta"));
+            case "timeline.clip.transform.set" -> new OperationParameters.VideoTransformParameters(
+                    new VideoTransform(requiredDouble(parameters, "positionX"),
+                            requiredDouble(parameters, "positionY"),
+                            requiredDouble(parameters, "scaleX"),
+                            requiredDouble(parameters, "scaleY"),
+                            requiredDouble(parameters, "rotationDegrees"),
+                            requiredDouble(parameters, "cropLeft"),
+                            requiredDouble(parameters, "cropRight"),
+                            requiredDouble(parameters, "cropTop"),
+                            requiredDouble(parameters, "cropBottom"),
+                            requiredDouble(parameters, "opacity")));
             case "timeline.clip.split" -> new OperationParameters.SplitParameters(
                     TimelineClipId.of(requiredText(parameters, "rightClipId")),
                     time(parameters, "splitTimelineTime"));
