@@ -148,11 +148,11 @@ try {
   const appliedMove = page.waitForResponse(r => r.url().endsWith('/timeline-operations/clips/apply'))
   await edit.getByRole('button', { name: 'Apply operation' }).click()
   const moveResponse = await appliedMove
-  assert.equal(moveResponse.status(), 200, await moveResponse.text())
+  assert.equal(moveResponse.status(), 201, await moveResponse.text())
   const moveRequest = moveResponse.request().postDataJSON()
   current = await waitRevision(current.revisionId)
   const replay = await page.request.post(base + scope + '/timeline-operations/clips/apply', { headers, data: moveRequest })
-  assert.equal(replay.status(), 200, await replay.text())
+  assert.equal(replay.status(), 201, await replay.text())
   assert.equal((await replay.json()).newRevisionId, current.revisionId)
   const stale = await page.request.post(base + scope + '/timeline-operations/clips/apply', {
     headers, data: { ...moveRequest, delta: '6', commandId: 'nle-r1-stale-attempt' },
