@@ -168,6 +168,11 @@ try {
     await page.waitForTimeout(40)
     await edit.getByRole('button', { name: 'Apply audio mix' }).click()
     current = await waitRevision(current.revisionId)
+    await page.waitForFunction(() => {
+      const status = document.querySelector('[data-preview-status]')?.dataset.previewStatus
+      const max = Number(document.querySelector('input[aria-label="Timeline preview seek"]')?.getAttribute('max'))
+      return ['READY', 'PAUSED', 'PLAYING'].includes(status) && max > 1
+    })
     const route = (await snapshot(current.revisionId)).audioMix.routes.find(item => item.input.clipId === clipId)
     assert(route, `route ${clipId}`)
     assert.equal(route.gain.linear, gain)
@@ -204,6 +209,11 @@ try {
 
   const seek = async seconds => {
     const slider = field('Timeline preview seek')
+    await page.waitForFunction(() => {
+      const status = document.querySelector('[data-preview-status]')?.dataset.previewStatus
+      const max = Number(document.querySelector('input[aria-label="Timeline preview seek"]')?.getAttribute('max'))
+      return ['READY', 'PAUSED', 'PLAYING'].includes(status) && max > 1
+    })
     const info = await slider.evaluate(element => ({ tag: element.tagName, type: element.type,
       label: element.getAttribute('aria-label'), value: element.value, max: element.max,
       disabled: element.disabled, readOnly: element.readOnly }))
@@ -358,8 +368,8 @@ try {
     })
     assert([200, 201].includes(response.status()), await response.text())
     const body = await response.json()
-    current = { revisionId: body.newRevisionId ?? current.revisionId,
-      contentHash: body.newContentHash ?? body.unchangedContentHash ?? current.contentHash }
+    current = { revisionId: body.newRevisionId ?? body.baseRevisionId ?? current.revisionId,
+      contentHash: body.resultContentHash ?? body.unchangedContentHash ?? current.contentHash }
   }
   for (const clipId of [audioA, audioB, audioC, audioD]) await deleteClip(clipId)
   const embeddedClip = await addClip('video-embed.mp4', 'track-v4', '4', '7')
