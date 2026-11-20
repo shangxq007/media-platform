@@ -100,12 +100,17 @@ if multitrack:
     fixture_dir.mkdir(exist_ok=True)
     video_args = ['-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-an']
     fixtures = {
-        'video-a.mp4': ['-f', 'lavfi', '-i', 'color=red:s=320x240:r=24:d=2',
-                        '-f', 'lavfi', '-i', 'color=blue:s=320x240:r=24:d=2',
-                        '-filter_complex', '[0:v][1:v]concat=n=2:v=1:a=0', *video_args],
+        'video-a.mp4': ['-f', 'lavfi', '-i', 'color=red:s=320x240:r=24:d=3', *video_args],
         'video-b.mp4': ['-f', 'lavfi', '-i', 'color=green:s=320x240:r=24:d=3', *video_args],
-        'audio-c.wav': ['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=3'],
-        'audio-d.wav': ['-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000:duration=3'],
+        'video-c.mp4': ['-f', 'lavfi', '-i', 'color=blue:s=320x240:r=24:d=3', *video_args],
+        'video-d.mp4': ['-f', 'lavfi', '-i', 'color=yellow:s=320x240:r=24:d=3', *video_args],
+        'audio-a.wav': ['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=5'],
+        'audio-b.wav': ['-f', 'lavfi', '-i', 'sine=frequency=660:sample_rate=48000:duration=5'],
+        'audio-c.wav': ['-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000:duration=5'],
+        'audio-d.wav': ['-f', 'lavfi', '-i', 'sine=frequency=1320:sample_rate=48000:duration=5'],
+        'video-embed.mp4': ['-f', 'lavfi', '-i', 'color=magenta:s=320x240:r=24:d=3',
+                            '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=3',
+                            '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest'],
     }
     for name, args in fixtures.items():
         subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',

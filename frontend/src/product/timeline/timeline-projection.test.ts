@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clipById, firstVideoTrack, projectTimeline, timelineEnd } from './timeline-projection'
+import { audioRouteFor, clipById, firstVideoTrack, projectTimeline, timelineEnd } from './timeline-projection'
 import { formatRational, parseRational } from './trim'
 
 const document = {
@@ -13,6 +13,10 @@ const document = {
     ] },
     { trackId: 'track-2', name: 'Audio', type: 'AUDIO', clips: [] },
   ],
+  audioMix: { routes: [
+    { input: { trackId: 'track-2', clipId: 'a' }, gain: { linear: 0.5 }, mute: { muted: true }, balance: { value: -0.25 } },
+    { input: { trackId: 'track-1', clipId: 'a' }, gain: { linear: 9 }, balance: { value: 2 } },
+  ] },
 }
 
 describe('canonical Timeline projection', () => {
@@ -40,6 +44,17 @@ describe('canonical Timeline projection', () => {
     const projection = projectTimeline(document)
     expect(firstVideoTrack(projection)?.trackId).toBe('track-1')
     expect(firstVideoTrack(projectTimeline({ tracks: [{ trackId: 'x', type: 'AUDIO', clips: [] }] }))?.trackId).toBe('x')
+  })
+
+  it('projects canonical audio route gain, mute and pan with safe defaults', () => {
+    const projection = projectTimeline(document)
+    expect(audioRouteFor(projection, 'track-2', 'a')).toEqual({
+      trackId: 'track-2', clipId: 'a', gain: 0.5, mute: true, pan: -0.25,
+    })
+    expect(audioRouteFor(projection, 'track-1', 'a')).toEqual({
+      trackId: 'track-1', clipId: 'a', gain: 1, mute: false, pan: 0,
+    })
+    expect(audioRouteFor(projection, 'track-2', 'missing')).toBeNull()
   })
 
   it('returns an empty projection for malformed documents', () => {

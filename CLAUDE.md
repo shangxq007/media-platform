@@ -5,6 +5,8 @@ This file is a Claude-specific adapter. The canonical repository instructions ar
 `AGENTS.md` governs architecture, API, security, domain, persistence, testing, deployment,
 delivery, authority and conflict resolution. This file must not redefine those rules.
 
+- Effective Owner decisions: [`docs/governance/OWNER_DECISIONS.md`](docs/governance/OWNER_DECISIONS.md). Read it before implementation; adapters do not redefine it.
+
 ## Claude workflow context
 
 - One task per branch and worktree; never develop on canonical `main`.

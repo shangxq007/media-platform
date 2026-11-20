@@ -331,12 +331,14 @@ class LogicalWhatClosureAcceptanceTest {
     void audioWhatIsTypedAndRecoverableFromPlan() {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningResult result = planner.plan(TestPlans.canonicalInput());
-        RenderNode audio = firstNodeOfKind(result.plan().nodes(), new RenderNodeKind.AudioProcess());
-        AudioProcessMaterializationRequirement req =
-                (AudioProcessMaterializationRequirement) audio.materializationRequirements().get(0);
-        assertEquals(0.8, req.gain().linear());
-        assertFalse(req.mute().muted());
-        assertEquals(0.0, req.balance().value());
+        var timed = result.plan().edges().stream()
+                .filter(edge -> edge.dependency() instanceof RenderDependency.TimedTrackInput)
+                .map(edge -> (RenderDependency.TimedTrackInput) edge.dependency())
+                .filter(RenderDependency.TimedTrackInput::audio)
+                .findFirst().orElseThrow();
+        assertEquals(0.8, timed.gainLinear());
+        assertFalse(timed.muted());
+        assertEquals(0.0, timed.balanceValue());
     }
 
     @Test

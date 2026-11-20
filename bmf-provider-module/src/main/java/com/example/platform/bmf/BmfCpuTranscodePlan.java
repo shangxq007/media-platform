@@ -29,16 +29,32 @@ public record BmfCpuTranscodePlan(
         Optional<com.example.platform.shared.time.FrameRate> compositeFrameRate)
         implements ProviderNativeExecutionPlan {
 
-    /** One base video input positioned on the output timeline (offsets relative to the extent). */
-    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio) {
+    /**
+     * One media input positioned on the output timeline (offsets relative to the extent).
+     * Audio inputs carry the canonical route gain/mute/balance values as primitives so the
+     * provider module does not depend on the audio domain module.
+     */
+    public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
+                             double gain, boolean mute, double balance) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
-            this(inputId, start, end, 0, false);
+            this(inputId, start, end, 0, false, 1.0, false, 0.0);
+        }
+
+        /** Compatibility shape for video-only timed inputs. */
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio) {
+            this(inputId, start, end, layer, audio, 1.0, false, 0.0);
         }
 
         public TimedInput {
             Objects.requireNonNull(inputId, "inputId");
             Objects.requireNonNull(start, "start");
             Objects.requireNonNull(end, "end");
+            if (Double.isNaN(gain) || Double.isInfinite(gain) || gain < 0.0 || gain > 2.0) {
+                throw new IllegalArgumentException("audio gain must be within [0, 2]");
+            }
+            if (Double.isNaN(balance) || Double.isInfinite(balance) || balance < -1.0 || balance > 1.0) {
+                throw new IllegalArgumentException("audio balance must be within [-1, 1]");
+            }
             if (!start.isLessThan(end) || start.isLessThan(MediaTime.ZERO) || layer < 0) {
                 throw new IllegalArgumentException("positive composite input interval required");
             }

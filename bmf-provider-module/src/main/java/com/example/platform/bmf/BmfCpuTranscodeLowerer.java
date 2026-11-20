@@ -101,17 +101,18 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                         "BMF multitrack composition requires exact audio or video placement");
             }
             inputs.add(new BmfCpuTranscodePlan.TimedInput(input.inputId(), timed.start().subtract(extent.start()),
-                    timed.end().subtract(extent.start()), timed.layer(), timed.audio()));
+                    timed.end().subtract(extent.start()), timed.layer(), timed.audio(),
+                    timed.gainLinear(), timed.muted(), timed.balanceValue()));
         }
         inputs.sort(java.util.Comparator.comparingInt(BmfCpuTranscodePlan.TimedInput::layer)
                 .thenComparing(BmfCpuTranscodePlan.TimedInput::start));
         for (int index = 1; index < inputs.size(); index++) {
             var previous = inputs.get(index - 1);
             var next = inputs.get(index);
-            if (previous.layer() == next.layer()
-                    && (previous.audio() != next.audio() || previous.end().isGreaterThan(next.start()))) {
+            if (previous.layer() == next.layer() && previous.audio() == next.audio()
+                    && previous.end().isGreaterThan(next.start())) {
                 throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
-                        "BMF rejects overlapping clips or different stream types on one track");
+                        "BMF rejects overlapping clips of the same stream type on one track");
             }
         }
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), BmfOperation.MULTITRACK_COMPOSITE,

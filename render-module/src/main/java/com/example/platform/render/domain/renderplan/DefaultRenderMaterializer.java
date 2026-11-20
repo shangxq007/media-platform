@@ -80,9 +80,13 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
 
         var revision = input.verifiedRevision();
+        AudioMix audioMix = revision.audioMix();
         boolean hasAudioTracks = clips.stream().anyMatch(clip ->
                 revision.track(clip.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO);
-        boolean timedTracks = hasAudioTracks || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
+        boolean hasAudioRoutes = audioMix != null && !audioMix.routes().isEmpty();
+        boolean hasAudio = hasAudioTracks || hasAudioRoutes;
+        boolean timedTracks = hasAudioTracks || hasAudioRoutes
+                || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
         boolean multiClip = clips.size() > 1 || timedTracks;
         if (multiClip) {
             boolean unsupported = false;
@@ -111,6 +115,9 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         // clipId -> last video producer node (last effect or decode), for OUTPUT wiring
         ArrayList<String> producerKeys = new ArrayList<>();
         ArrayList<RenderNodeId> producerValues = new ArrayList<>();
+        // clipId -> separate audio-decode producer for an explicitly routed embedded video audio
+        ArrayList<String> embeddedAudioKeys = new ArrayList<>();
+        ArrayList<RenderNodeId> embeddedAudioValues = new ArrayList<>();
 
         for (MediaClip clip : clips) {
             TimelineSourceBinding binding = clip.sourceBinding();
@@ -154,6 +161,35 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             coverageStartValues.add(clip.timelineRange().start());
             coverageEndValues.add(clip.timelineRange().end());
             putEntry(producerKeys, producerValues, clip.clipId(), decodeId);
+
+            // Explicit embedded-audio route on a video clip: decode the same source
+            // artifact through a distinct audio-decode unit so the composite has a
+            // unique audio input identity. No implicit per-video-track mixing exists.
+            if (!audio && routeFor(audioMix, clip.trackId(), clip.clipId()) != null) {
+                RenderComponentPath embeddedPath = new RenderComponentPath(
+                        RenderComponentKind.CLIP, List.of(clip.trackId(), clip.clipId(), "embedded-audio"));
+                List<RenderArtifactReference> embeddedArtifacts = new ArrayList<>();
+                embeddedArtifacts.add(new RenderArtifactReference.SourceArtifact(
+                        mediaBinding.artifactId(), mediaBinding.contentDigest()));
+                if (multiClip) embeddedArtifacts.add(new RenderArtifactReference.IntermediateArtifactExpectation(
+                        new LogicalArtifactId("clip:" + clip.trackId() + ":" + clip.clipId() + ":embedded-audio"),
+                        RenderOutputRole.DERIVED_MEDIA));
+                List<CapabilityRequirement> embeddedCaps = List.of(RenderCapabilityVocabulary.audioDecode());
+                String embeddedFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
+                        embeddedArtifacts, embeddedCaps, List.of(), List.of()));
+                RenderNodeId embeddedId = RenderNodeId.of(
+                        new RenderNodeKind.Decode(), embeddedPath, "audio-decode", embeddedFp);
+                RenderSampleWindow embeddedWindow = computeDecodeWindow(clip, request, diagnostics);
+                RenderExecutionCoverage embeddedCoverage = new RenderExecutionCoverage(
+                        clip.timelineRange().start(), clip.timelineRange().end(),
+                        request.extent() != null ? request.extent().frameRate() : null);
+                RenderNode embeddedNode = new RenderNode(
+                        embeddedId, new RenderNodeKind.Decode(), embeddedPath, "audio-decode",
+                        embeddedArtifacts, embeddedCaps, List.of(), List.of(), List.of(),
+                        Optional.of(embeddedWindow), embeddedCoverage);
+                nodes.add(embeddedNode);
+                putEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId(), embeddedId);
+            }
 
             // ── chained EFFECT nodes for enabled video effects on this clip ──
             RenderNodeId prevProducer = decodeId;
@@ -244,74 +280,9 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             }
         }
 
-        // ── Audio nodes (from AudioMix) ──
-        AudioMix audioMix = input.verifiedRevision().audioMix();
-        List<RenderNodeId> audioProcessNodes = new ArrayList<>();
-        if (audioMix != null && !audioMix.routes().isEmpty()) {
-            for (AudioRoute route : audioMix.routes()) {
-                AudioMixInput mixInput = route.input();
-                RenderComponentPath audioPath = new RenderComponentPath(
-                        RenderComponentKind.AUDIO_ROUTE, List.of(mixInput.trackId(), mixInput.clipId()));
-                List<CapabilityRequirement> audioCaps = List.of(
-                        RenderCapabilityVocabulary.audioProcess());
-                // F1: typed materialized WHAT — gain/mute/balance as typed immutable
-                // values (recoverable from the Logical RenderPlan, no re-read of AudioRoute).
-                AudioProcessMaterializationRequirement audioRequirement =
-                        AudioProcessMaterializationRequirement.of(
-                                route.gain(), route.mute(), route.balance());
-                List<String> audioParamEncodings = List.of(
-                        "gain=" + route.gain().linear(),
-                        "mute=" + route.mute().muted(),
-                        "balance=" + route.balance().value());
-                String audioReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                        List.of(), audioCaps, List.of(), audioParamEncodings));
-                RenderNodeId audioId = RenderNodeId.of(
-                        new RenderNodeKind.AudioProcess(), audioPath, OP_GAIN, audioReqFp);
-                RenderExecutionCoverage audioCoverage = null;
-                int coverageIdx = coverageKeys.indexOf(mixInput.clipId());
-                if (coverageIdx >= 0) {
-                    audioCoverage = new RenderExecutionCoverage(
-                            coverageStartValues.get(coverageIdx), coverageEndValues.get(coverageIdx),
-                            request.extent() != null ? request.extent().frameRate() : null);
-                }
-                RenderNode audioNode = new RenderNode(
-                        audioId, new RenderNodeKind.AudioProcess(), audioPath, OP_GAIN,
-                        List.of(), audioCaps, List.of(), List.of(),
-                        List.of(audioRequirement), Optional.empty(), audioCoverage);
-                nodes.add(audioNode);
-                audioProcessNodes.add(audioId);
-
-                // AUDIO_PROCESS --AudioInput--> DECODE node of the matching clip (by clipId)
-                RenderNodeId targetDecode = getEntry(decodeKeys, decodeValues, mixInput.clipId());
-                if (targetDecode != null) {
-                    edges.add(new RenderDependencyEdge(targetDecode, audioId,
-                            new RenderDependency.AudioInput(mixInput)));
-                } else {
-                    diagnostics.add(RenderPlanningDiagnostic.forNode(
-                            RenderPlanningDiagnosticCode.DEPENDENCY_MISSING,
-                            audioId, RenderDiagnosticSeverity.ERROR,
-                            "Audio route references unknown clip: " + mixInput.clipId()));
-                }
-            }
-
-            // AUDIO_MIX node
-            RenderComponentPath mixPath = RenderComponentPath.of(
-                    RenderComponentKind.AUDIO_MIX, "master");
-            List<CapabilityRequirement> mixCaps = List.of(
-                    RenderCapabilityVocabulary.audioMix());
-            String mixReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                    List.of(), mixCaps, List.of(), List.of()));
-            RenderNodeId mixId = RenderNodeId.of(
-                    new RenderNodeKind.AudioMix(), mixPath, OP_MIX, mixReqFp);
-            RenderNode mixNode = new RenderNode(
-                    mixId, new RenderNodeKind.AudioMix(), mixPath, OP_MIX,
-                    List.of(), mixCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
-            nodes.add(mixNode);
-            for (RenderNodeId audioProcessId : audioProcessNodes) {
-                edges.add(new RenderDependencyEdge(audioProcessId, mixId,
-                        new RenderDependency.AudioInput(SYNTHETIC_MIX_INPUT)));
-            }
-        }
+        // Audio gain/mute/balance is carried inline on TimedTrackInput for the
+        // BMF multitrack composite. No parallel AUDIO_PROCESS/AUDIO_MIX execution
+        // authority is materialized for a timed multitrack plan.
 
         // ── TIMED_TEXT nodes (F2: typed materialization, connected to COMPOSITE) ──
         List<RenderNodeId> timedTextNodes = new ArrayList<>();
@@ -396,10 +367,33 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     if (producer != null && start.isLessThan(end)) {
                         boolean audio = revision.track(clip.trackId()).type()
                                 == com.example.platform.timeline.canonical.TrackType.AUDIO;
-                        var dependency = timedTracks
-                                ? new RenderDependency.TimedTrackInput(start, end, revision.layer(clip.trackId()), audio)
-                                : new RenderDependency.TimedCompositeInput(start, end);
-                        edges.add(new RenderDependencyEdge(producer, compositeId, dependency));
+                        AudioRoute route = routeFor(audioMix, clip.trackId(), clip.clipId());
+                        if (timedTracks) {
+                            if (audio) {
+                                edges.add(new RenderDependencyEdge(producer, compositeId,
+                                        new RenderDependency.TimedTrackInput(start, end,
+                                                revision.layer(clip.trackId()), true,
+                                                route != null ? route.gain() : null,
+                                                route != null ? route.mute() : null,
+                                                route != null ? route.balance() : null)));
+                            } else {
+                                edges.add(new RenderDependencyEdge(producer, compositeId,
+                                        new RenderDependency.TimedTrackInput(start, end,
+                                                revision.layer(clip.trackId()), false)));
+                                RenderNodeId embedded = getEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId());
+                                if (embedded != null) {
+                                    edges.add(new RenderDependencyEdge(embedded, compositeId,
+                                            new RenderDependency.TimedTrackInput(start, end,
+                                                    revision.layer(clip.trackId()) + 1000, true,
+                                                    route != null ? route.gain() : null,
+                                                    route != null ? route.mute() : null,
+                                                    route != null ? route.balance() : null)));
+                                }
+                            }
+                        } else {
+                            edges.add(new RenderDependencyEdge(producer, compositeId,
+                                    new RenderDependency.TimedCompositeInput(start, end)));
+                        }
                     }
                 }
             } else {
@@ -421,8 +415,8 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         // ── OUTPUT node ──
         RenderComponentPath outputPath = RenderComponentPath.of(RenderComponentKind.OUTPUT, "master");
-        String encodeOperation = hasAudioTracks ? "encode-multitrack" : OP_ENCODE;
-        List<CapabilityRequirement> outputCaps = hasAudioTracks
+        String encodeOperation = hasAudio ? "encode-multitrack" : OP_ENCODE;
+        List<CapabilityRequirement> outputCaps = hasAudio
                 ? List.of(RenderCapabilityVocabulary.outputEncode(), RenderCapabilityVocabulary.multitrackComposite())
                 : List.of(RenderCapabilityVocabulary.outputEncode());
         List<RenderArtifactReference> outputArtifacts = new ArrayList<>();
@@ -452,14 +446,9 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         new RenderDependency.EffectInput()));
             }
         }
-        // OUTPUT --AudioInput--> AUDIO_MIX (if audio nodes exist)
-        if (audioMix != null && !audioMix.routes().isEmpty()) {
-            RenderNodeId mixNodeId = findAudioMixNode(nodes);
-            if (mixNodeId != null) {
-                edges.add(new RenderDependencyEdge(mixNodeId, outputId,
-                        new RenderDependency.AudioInput(SYNTHETIC_MIX_INPUT)));
-            }
-        }
+        // The multitrack composite owns both the video and audio mix; OUTPUT
+        // consumes the composite artifact. No separate AUDIO_MIX execution node
+        // may bypass the accepted BMF composite path.
 
         return new RenderMaterializationResult(nodes, edges, diagnostics);
     }
@@ -648,4 +637,14 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
         return null;
     }
+    private static AudioRoute routeFor(AudioMix mix, String trackId, String clipId) {
+        if (mix == null) return null;
+        for (AudioRoute route : mix.routes()) {
+            if (route.input().trackId().equals(trackId) && route.input().clipId().equals(clipId)) {
+                return route;
+            }
+        }
+        return null;
+    }
+
 }

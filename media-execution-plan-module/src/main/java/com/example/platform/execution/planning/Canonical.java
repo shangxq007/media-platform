@@ -252,7 +252,8 @@ public final class Canonical {
         }
         if (d instanceof RenderDependency.TimedTrackInput timed) {
             return "TIMED_TRACK_INPUT|" + framed(timed.start().toString())
-                    + "|" + framed(timed.end().toString()) + "|" + timed.layer() + "|" + timed.audio();
+                    + "|" + framed(timed.end().toString()) + "|" + timed.layer() + "|" + timed.audio()
+                    + "|" + timed.gainLinear() + "|" + timed.muted() + "|" + timed.balanceValue();
         }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
     }

@@ -4,11 +4,11 @@ import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { toSeconds } from './trim'
 import { activeClipAt, sourceTimeAt, timelineDuration } from './timeline-preview'
-import { projectSnapshotJson, type ProjectedClip, type TimelineProjection } from './timeline-projection'
+import { audioRouteFor, projectSnapshotJson, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
-interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer }
+interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mute: boolean; pan: number }
 interface PreviewSession {
   controller: AbortController
   urls: string[]
@@ -136,8 +136,12 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
         const audioTracks = projection.tracks.filter(track => track.type === 'AUDIO')
         const videoTracks = projection.tracks.filter(track => track.type === 'VIDEO')
         const videoClips = videoTracks.flatMap(track => track.clips)
-        const embeddedAudio = audioTracks.length === 0 && videoTracks.length === 1
-        const audioClips = audioTracks.flatMap(track => track.clips)
+        // Embedded video audio participates only through an explicit canonical
+        // AudioRoute. A second video track never implicitly adds its audio.
+        const routedVideoClips = videoClips.filter(clip => audioRouteFor(projection, clip.trackId, clip.clipId) !== null)
+        // Embedded video audio is opt-in through an explicit canonical AudioRoute.
+        // No video-track-count heuristic silently adds or drops audio.
+        const audioClips = [...audioTracks.flatMap(track => track.clips), ...routedVideoClips]
         const artifacts = new Set([...videoClips, ...audioClips].map(clip => clip.artifactId))
         const blobs = new Map<string, Blob>()
         for (const id of artifacts) {
@@ -158,7 +162,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
           const media = document.createElement('video')
           media.preload = 'auto'
           media.playsInline = true
-          media.muted = !embeddedAudio
+          media.muted = true
           media.addEventListener('seeked', () => { if (!session.playing) draw(session) }, { signal })
           media.addEventListener('error', () => fail(session, new Error('A video source became unavailable.')), { signal })
           session.videos.set(clip.clipId, media)
@@ -166,11 +170,11 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
         })
         await Promise.all(videosReady)
         if (signal.aborted) return
-        if (audioClips.length || (embeddedAudio && videoClips.length)) {
+        if (audioClips.length) {
           const context = new AudioContext({ sampleRate: 48_000 })
           session.audio = context
           const mixer = context.createGain()
-          mixer.gain.value = embeddedAudio ? 1 : 0.5
+          mixer.gain.value = 0.5
           mixer.channelCount = 2
           mixer.channelCountMode = 'explicit'
           const limiter = context.createWaveShaper()
@@ -180,9 +184,6 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
           mixer.connect(limiter).connect(analyser).connect(context.destination)
           session.mixer = mixer
           session.analyser = analyser
-          if (embeddedAudio) {
-            for (const media of session.videos.values()) context.createMediaElementSource(media).connect(mixer)
-          }
           const buffers = new Map<string, AudioBuffer>()
           for (const clip of audioClips) {
             if (clip.direction !== 'FORWARD' || toSeconds(clip.rate) !== 1) {
@@ -194,7 +195,9 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
               if (signal.aborted) return
               buffers.set(clip.artifactId, buffer)
             }
-            session.audioClips.push({ clip, buffer })
+            const route = audioRouteFor(projection, clip.trackId, clip.clipId)
+            session.audioClips.push({ clip, buffer,
+              gain: route?.gain ?? 1, mute: route?.mute ?? false, pan: route?.pan ?? 0 })
           }
         }
         session.projection = projection
@@ -228,14 +231,29 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
     session.playing = true
     const audio = session.audio
     if (audio && session.mixer) {
-      for (const { clip, buffer } of session.audioClips) {
+      for (const { clip, buffer, gain, mute, pan } of session.audioClips) {
+        if (mute) continue
         const clipStart = toSeconds(clip.start)
         const start = Math.max(session.cursor, clipStart)
         const duration = toSeconds(clip.end) - start
         if (duration <= 0) continue
         const source = audio.createBufferSource()
         source.buffer = buffer
-        source.connect(session.mixer)
+        const level = audio.createGain()
+        level.gain.value = gain
+        const splitter = audio.createChannelSplitter(2)
+        const merger = audio.createChannelMerger(2)
+        const left = audio.createGain()
+        const right = audio.createGain()
+        left.gain.value = (1 - pan) / 2
+        right.gain.value = (1 + pan) / 2
+        source.connect(level).connect(splitter)
+        // Mono sources feed both sides; stereo sources preserve their channels.
+        splitter.connect(left, 0)
+        splitter.connect(right, Math.min(1, buffer.numberOfChannels - 1))
+        left.connect(merger, 0, 0)
+        right.connect(merger, 0, 1)
+        merger.connect(session.mixer)
         source.start(session.origin + start, toSeconds(clip.sourceStart) + start - clipStart, duration)
         session.scheduled.push(source)
       }

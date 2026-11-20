@@ -1,6 +1,7 @@
 package com.example.platform.operation.plan;
 
 import com.example.platform.audio.domain.mix.AudioMix;
+import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.operation.operation.OperationInstance;
 import com.example.platform.operation.operation.OperationDefinitionId;
@@ -271,8 +272,19 @@ public final class OperationPlanner {
                     "target track missing: " + parameters.trackId());
         }
         changes.add(new PlannedChange.ClipAdded(parameters.trackId(), added));
+        AudioMix mix = base.getAudioMix();
+        TimelineTrack addedTrack = tracks.stream()
+                .filter(track -> track.trackId().equals(parameters.trackId())).findFirst().orElseThrow();
+        if (addedTrack.type() == com.example.platform.timeline.canonical.TrackType.AUDIO
+                && mix.routes().stream().noneMatch(route ->
+                        route.input().equals(AudioMixInput.of(parameters.trackId(), parameters.clipId().value())))) {
+            List<AudioRoute> routes = new ArrayList<>(mix.routes());
+            routes.add(AudioRoute.of(AudioMixInput.of(parameters.trackId(), parameters.clipId().value())));
+            mix = mix.withRoutes(routes);
+            changes.add(new PlannedChange.AudioMixReplaced("audio-route-added@" + parameters.clipId().value()));
+        }
         return new TimelineDocument(base.getSchemaVersion(), tracks, base.getMetadata(),
-                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
+                mix, base.getSemanticRelationships(), base.getTextElements(),
                 base.getTransitions(), base.getAutomations());
     }
 
@@ -450,9 +462,6 @@ public final class OperationPlanner {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "destination track must have the same media type");
         }
         var id = moved.getClipId();
-        if (base.getAudioMix().routes().stream().anyMatch(route -> route.input().clipId().equals(id.value()))) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "cannot move a clip with an explicit audio route between tracks");
-        }
         var tracks = new ArrayList<>(removeClip(base, id).getTracks());
         var destinationClips = new ArrayList<>(destination.clips());
         destinationClips.add(moved);
@@ -460,7 +469,21 @@ public final class OperationPlanner {
                 new TimelineTrack(destinationId, destination.name(), destination.type(), destinationClips));
         changes.add(new PlannedChange.ClipRemoved(id));
         changes.add(new PlannedChange.ClipAdded(destinationId, moved));
-        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
+        AudioMix mix = base.getAudioMix();
+        if (mix.routes().stream().anyMatch(route -> route.input().clipId().equals(id.value()))) {
+            List<AudioRoute> routes = new ArrayList<>();
+            for (AudioRoute route : mix.routes()) {
+                if (route.input().clipId().equals(id.value())) {
+                    routes.add(new AudioRoute(AudioMixInput.of(destinationId, id.value()),
+                            route.gain(), route.mute(), route.balance(), route.dspChain()));
+                } else {
+                    routes.add(route);
+                }
+            }
+            mix = mix.withRoutes(routes);
+            changes.add(new PlannedChange.AudioMixReplaced("audio-route-moved@" + id.value()));
+        }
+        return rebuild(base, tracks, mix, base.getSemanticRelationships());
     }
 
     private TimelineDocument planDelete(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -494,7 +517,19 @@ public final class OperationPlanner {
             }
             kept.add(rel);
         }
-        return rebuild(base, cur.getTracks(), base.getAudioMix(), kept);
+        AudioMix mix = base.getAudioMix();
+        if (mix.routes().stream().anyMatch(route -> deleted.stream()
+                .anyMatch(id -> route.input().clipId().equals(id.value())))) {
+            List<AudioRoute> keptRoutes = new ArrayList<>();
+            for (AudioRoute route : mix.routes()) {
+                if (deleted.stream().noneMatch(id -> route.input().clipId().equals(id.value()))) {
+                    keptRoutes.add(route);
+                }
+            }
+            mix = mix.withRoutes(keptRoutes);
+            changes.add(new PlannedChange.AudioMixReplaced("audio-route-removed"));
+        }
+        return rebuild(base, cur.getTracks(), mix, kept);
     }
 
     private TimelineDocument planTrim(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -625,7 +660,28 @@ public final class OperationPlanner {
             }
         }
         if (!found) {
-            throw new PlanException(PlanErrorCode.TARGET_MISSING, "audio input missing in base mix");
+            TimelineClip target = clipOf(base, TimelineClipId.of(audioTarget.audioMixInput().clipId()));
+            TimelineTrack targetTrack = base.getTracks().stream()
+                    .filter(track -> track.trackId().equals(audioTarget.audioMixInput().trackId()))
+                    .findFirst()
+                    .orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING,
+                            "audio target track missing: " + audioTarget.audioMixInput().trackId()));
+            if (targetTrack.clips().stream().noneMatch(c -> c.getClipId().equals(target.getClipId()))) {
+                throw new PlanException(PlanErrorCode.TARGET_MISSING,
+                        "audio target clip is not on the target track: " + audioTarget.audioMixInput());
+            }
+            if (targetTrack.type() != com.example.platform.timeline.canonical.TrackType.AUDIO
+                    && targetTrack.type() != com.example.platform.timeline.canonical.TrackType.VIDEO) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "audio target requires an audio or video clip");
+            }
+            AudioRoute route = AudioRoute.of(audioTarget.audioMixInput());
+            route = switch (inst.parameters()) {
+                case OperationParameters.AudioGainParameters g -> route.withGain(g.gain());
+                case OperationParameters.AudioMuteParameters m -> route.withMute(m.mute());
+                case OperationParameters.StereoBalanceParameters b -> route.withBalance(b.balance());
+                default -> route;
+            };
+            routes.add(route);
         }
         AudioMix newMix = mix.withRoutes(routes);
         String summary = inst.definitionId().value() + "@" + audioTarget.audioMixInput();

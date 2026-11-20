@@ -28,9 +28,18 @@ export interface ProjectedTrack {
   readonly clips: readonly ProjectedClip[]
 }
 
+export interface ProjectedAudioRoute {
+  readonly trackId: string
+  readonly clipId: string
+  readonly gain: number
+  readonly mute: boolean
+  readonly pan: number
+}
+
 export interface TimelineProjection {
   readonly tracks: readonly ProjectedTrack[]
   readonly clips: readonly ProjectedClip[]
+  readonly audioRoutes: readonly ProjectedAudioRoute[]
 }
 
 const IDENTITY: Rational = { numerator: 1n, denominator: 1n }
@@ -43,8 +52,24 @@ function safeRational(value: unknown): Rational | null {
 /** Projects a parsed canonical Timeline document; malformed clips are omitted, never invented. */
 export function projectTimeline(document: unknown): TimelineProjection {
   const rawTracks = (document as { tracks?: unknown } | null)?.tracks
+  const rawMix = (document as { audioMix?: { routes?: unknown } } | null)?.audioMix
+  const audioRoutes: ProjectedAudioRoute[] = []
+  if (rawMix && Array.isArray(rawMix.routes)) {
+    for (const rawRoute of rawMix.routes) {
+      if (!rawRoute || typeof rawRoute !== 'object') continue
+      const route = rawRoute as { input?: { trackId?: unknown; clipId?: unknown }; gain?: { linear?: unknown }; mute?: { muted?: unknown }; balance?: { value?: unknown } }
+      const trackId = typeof route.input?.trackId === 'string' ? route.input.trackId : ''
+      const clipId = typeof route.input?.clipId === 'string' ? route.input.clipId : ''
+      if (!trackId || !clipId) continue
+      const gain = typeof route.gain?.linear === 'number' && Number.isFinite(route.gain.linear)
+        && route.gain.linear >= 0 && route.gain.linear <= 2 ? route.gain.linear : 1
+      const pan = typeof route.balance?.value === 'number' && Number.isFinite(route.balance.value)
+        && route.balance.value >= -1 && route.balance.value <= 1 ? route.balance.value : 0
+      audioRoutes.push({ trackId, clipId, gain, mute: route.mute?.muted === true, pan })
+    }
+  }
   const tracks: ProjectedTrack[] = []
-  if (!Array.isArray(rawTracks)) return { tracks, clips: [] }
+  if (!Array.isArray(rawTracks)) return { tracks, clips: [], audioRoutes }
   for (const rawTrack of rawTracks) {
     if (!rawTrack || typeof rawTrack !== 'object') continue
     const track = rawTrack as Record<string, unknown>
@@ -83,7 +108,7 @@ export function projectTimeline(document: unknown): TimelineProjection {
       clips,
     })
   }
-  return { tracks, clips: tracks.flatMap(track => track.clips) }
+  return { tracks, clips: tracks.flatMap(track => track.clips), audioRoutes }
 }
 
 export function projectSnapshotJson(canonicalTimelineJson: string): TimelineProjection {
@@ -96,6 +121,10 @@ export function clipById(projection: TimelineProjection, clipId: string): Projec
 
 export function trackById(projection: TimelineProjection, trackId: string): ProjectedTrack | null {
   return projection.tracks.find(track => track.trackId === trackId) ?? null
+}
+
+export function audioRouteFor(projection: TimelineProjection, trackId: string, clipId: string): ProjectedAudioRoute | null {
+  return projection.audioRoutes.find(route => route.trackId === trackId && route.clipId === clipId) ?? null
 }
 
 /** First track that can host a video clip (falls back to the first track). */

@@ -550,7 +550,9 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         if (dependency instanceof RenderDependency.TimedTrackInput timed) {
             return writer.field("variant", "TIMED_TRACK_INPUT")
                     .field("start", timed.start().toString()).field("end", timed.end().toString())
-                    .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio())).build();
+                    .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio()))
+                    .field("gain", Double.toString(timed.gainLinear())).field("mute", Boolean.toString(timed.muted()))
+                    .field("balance", Double.toString(timed.balanceValue())).build();
         }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
@@ -570,7 +572,10 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
             case "TIMED_TRACK_INPUT" -> new RenderDependency.TimedTrackInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")),
-                    Integer.parseInt(reader.field("layer")), Boolean.parseBoolean(reader.field("audio")));
+                    Integer.parseInt(reader.field("layer")), Boolean.parseBoolean(reader.field("audio")),
+                    com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain"))),
+                    com.example.platform.audio.domain.mix.AudioMute.of(Boolean.parseBoolean(reader.field("mute"))),
+                    com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance"))));
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }

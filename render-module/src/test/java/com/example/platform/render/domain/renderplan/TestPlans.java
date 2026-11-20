@@ -415,7 +415,7 @@ final class TestPlans {
                 List.of(new TimelineTrack(TRACK_ID, "v1",
                         TrackType.VIDEO, List.of(customClip))),
                 TimelineMetadata.empty(),
-                audioMix(),
+                AudioMix.EMPTY,
                 List.of(),
                 List.of(textElement()));
         TimelineContentDigester digester = new TimelineContentDigester();
@@ -523,7 +523,7 @@ final class TestPlans {
                 List.of(new TimelineTrack(TRACK_ID, "v1",
                         TrackType.VIDEO, List.of(customClip))),
                 TimelineMetadata.empty(),
-                audioMix(),
+                AudioMix.EMPTY,
                 List.of(),
                 List.of(textElement()));
         TimelineContentDigester digester = new TimelineContentDigester();
@@ -777,8 +777,10 @@ final class TestPlans {
                 CapabilityId.of("video.effect.gaussian-blur"),
                 CapabilityId.of("audio.process"),
                 CapabilityId.of("audio.mix"),
+                CapabilityId.of("audio.decode"),
                 CapabilityId.of("subtitle.rasterize"),
                 CapabilityId.of("render.composite"),
+                CapabilityId.of("render.multitrack-composite"),
                 CapabilityId.of("render.output")));
     }
 }

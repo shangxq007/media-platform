@@ -26,6 +26,23 @@ the instruction inventory, scopes and precedence in task evidence.
 If a user instruction conflicts with a higher-precedence system or developer instruction, follow the
 higher one and record the conflict. If repository instruction files conflict with each other, stop implementation, record a governance finding with exact paths and statements, apply the higher-scope authority provisionally, and schedule instruction alignment before resuming feature work. Do not silently edit an instruction file to conceal an unresolved conflict.
 
+## Effective Owner decisions and task authority
+
+The current Owner decisions are indexed in
+[`docs/governance/OWNER_DECISIONS.md`](docs/governance/OWNER_DECISIONS.md). That index is the
+single durable decision register; this file and tool adapters reference it rather than duplicating it.
+
+Before a governed or safety-sensitive task:
+
+1. Read the effective Owner decisions and record the applicable decision IDs in the task evidence.
+2. Read this `AGENTS.md` and every applicable nested `AGENTS.md`, plus the active tool adapter.
+3. If an older architecture/governance document conflicts with a current Owner decision, report the
+   exact conflict and follow the current decision; do not silently restore the older path.
+4. Do not infer broader authority from a failed Agent run or from an old task record.
+
+Task records contain the frozen Git baseline, authorized scope, required real gates, independent
+review scope, and stop conditions. A task may not widen its own authorization.
+
 ## Current product and execution facts (CURRENT)
 
 These are navigation facts; source, executable contracts and accepted ADRs remain the authority for

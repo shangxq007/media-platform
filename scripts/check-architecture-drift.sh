@@ -1254,6 +1254,14 @@ else
     fail "H8 Operation invocation boundary drift"
 fi
 
+# Audio-mixing authority: Owner decisions, canonical Operation lifecycle,
+# inline BMF audio semantics and browser controls must remain one coherent path.
+if PYTHONDONTWRITEBYTECODE=1 python3 scripts/guards/audio-authority-guard.py --root "$ROOT_DIR"; then
+    pass "Audio mixing canonical authority and BMF-first controls"
+else
+    fail "Audio mixing authority or BMF-first contract drift"
+fi
+
 # OPTG-18: AuthorizationDecision immutable record
 if grep -q 'record AuthorizationDecision(' operation-module/src/main/java/com/example/platform/operation/plan/AuthorizationDecision.java; then
     pass "immutable AuthorizationDecision"

@@ -85,20 +85,45 @@ public sealed interface RenderDependency permits
             return "TIMED_COMPOSITE_INPUT:" + start + ":" + end;
         }
     }
-    /** Exact placement of a decoded media clip and its order in the verified Timeline. */
+    /**
+     * Exact placement of a decoded media clip and its order in the verified Timeline.
+     * For audio inputs the canonical AudioRoute gain/mute/balance is carried inline,
+     * so the physical provider receives the authored mix values without a second
+     * audio authority. Video inputs use neutral defaults.
+     */
     record TimedTrackInput(com.example.platform.shared.time.MediaTime start,
-                           com.example.platform.shared.time.MediaTime end, int layer, boolean audio)
+                           com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
+                           com.example.platform.audio.domain.mix.AudioGain gain,
+                           com.example.platform.audio.domain.mix.AudioMute mute,
+                           com.example.platform.audio.domain.mix.StereoBalance balance)
             implements RenderDependency {
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
             java.util.Objects.requireNonNull(end, "end");
+            if (gain == null) gain = com.example.platform.audio.domain.mix.AudioGain.defaultGain();
+            if (mute == null) mute = com.example.platform.audio.domain.mix.AudioMute.defaultMute();
+            if (balance == null) balance = com.example.platform.audio.domain.mix.StereoBalance.neutral();
             if (!start.isLessThan(end) || layer < 0) {
                 throw new IllegalArgumentException("positive track interval and nonnegative layer required");
             }
         }
 
+        /** Compatibility constructor: neutral mix values. */
+        public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                               com.example.platform.shared.time.MediaTime end, int layer, boolean audio) {
+            this(start, end, layer, audio,
+                    com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
+                    com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
+                    com.example.platform.audio.domain.mix.StereoBalance.neutral());
+        }
+
+        public double gainLinear() { return gain.linear(); }
+        public boolean muted() { return mute.muted(); }
+        public double balanceValue() { return balance.value(); }
+
         @Override public String variantKey() {
-            return "TIMED_TRACK_INPUT:" + start + ":" + end + ":" + layer + ":" + audio;
+            return "TIMED_TRACK_INPUT:" + start + ":" + end + ":" + layer + ":" + audio
+                    + ":" + gainLinear() + ":" + muted() + ":" + balanceValue();
         }
     }
 }

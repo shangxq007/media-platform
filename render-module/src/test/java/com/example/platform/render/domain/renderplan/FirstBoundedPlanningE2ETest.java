@@ -22,7 +22,6 @@ class FirstBoundedPlanningE2ETest {
     void firstBoundedSliceEndToEnd() {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningResult result = planner.plan(TestPlans.canonicalInput());
-
         assertEquals(RenderPlanStatus.PLANNABLE, result.status());
         assertNotNull(result.plan(), "plan non-null");
         assertNotNull(result.graph(), "graph non-null");
@@ -37,16 +36,12 @@ class FirstBoundedPlanningE2ETest {
         // expected nodes present (F2: COMPOSITE participates when text is present)
         assertTrue(hasNodeKind(nodes, new RenderNodeKind.Decode()), "DECODE node present");
         assertTrue(hasNodeKind(nodes, new RenderNodeKind.Effect()), "EFFECT node present");
-        assertTrue(hasNodeKind(nodes, new RenderNodeKind.AudioProcess()), "AUDIO_PROCESS node present");
-        assertTrue(hasNodeKind(nodes, new RenderNodeKind.AudioMix()), "AUDIO_MIX node present");
         assertTrue(hasNodeKind(nodes, new RenderNodeKind.TimedText()), "TIMED_TEXT node present");
         assertTrue(hasNodeKind(nodes, new RenderNodeKind.Composite()), "COMPOSITE node present (F2)");
         assertTrue(hasNodeKind(nodes, new RenderNodeKind.Output()), "OUTPUT node present");
 
         RenderNode decode = firstNodeOfKind(nodes, new RenderNodeKind.Decode());
         RenderNode effect = firstNodeOfKind(nodes, new RenderNodeKind.Effect());
-        RenderNode audioProcess = firstNodeOfKind(nodes, new RenderNodeKind.AudioProcess());
-        RenderNode audioMix = firstNodeOfKind(nodes, new RenderNodeKind.AudioMix());
         RenderNode timedText = firstNodeOfKind(nodes, new RenderNodeKind.TimedText());
         RenderNode composite = firstNodeOfKind(nodes, new RenderNodeKind.Composite());
         RenderNode output = firstNodeOfKind(nodes, new RenderNodeKind.Output());
@@ -54,20 +49,25 @@ class FirstBoundedPlanningE2ETest {
         // expected edges (producer -> consumer, data-flow direction)
         assertTrue(hasEdge(result.plan().edges(), decode.id(), effect.id(), "EFFECT_INPUT"),
                 "DECODE--EffectInput-->EFFECT");
-        assertTrue(hasEdge(result.plan().edges(), decode.id(), audioProcess.id(), "AUDIO_INPUT"),
-                "DECODE--AudioInput-->AUDIO_PROCESS");
-        assertTrue(hasEdge(result.plan().edges(), audioProcess.id(), audioMix.id(), "AUDIO_INPUT"),
-                "AUDIO_PROCESS--AudioInput-->AUDIO_MIX");
         // F2: EFFECT --CompositeInput--> COMPOSITE; TIMED_TEXT --CompositeInput--> COMPOSITE;
         //      COMPOSITE --CompositeInput--> OUTPUT
-        assertTrue(hasEdge(result.plan().edges(), effect.id(), composite.id(), "COMPOSITE_INPUT"),
-                "EFFECT--CompositeInput-->COMPOSITE (F2)");
+        assertTrue(hasEdge(result.plan().edges(), effect.id(), composite.id(), "TIMED_TRACK_INPUT"),
+                "EFFECT--TimedTrackInput-->COMPOSITE (multitrack)");
         assertTrue(hasEdge(result.plan().edges(), timedText.id(), composite.id(), "COMPOSITE_INPUT"),
                 "TIMED_TEXT--CompositeInput-->COMPOSITE (F2)");
         assertTrue(hasEdge(result.plan().edges(), composite.id(), output.id(), "COMPOSITE_INPUT"),
                 "COMPOSITE--CompositeInput-->OUTPUT (F2)");
-        assertTrue(hasEdge(result.plan().edges(), audioMix.id(), output.id(), "AUDIO_INPUT"),
-                "AUDIO_MIX--AudioInput-->OUTPUT");
+
+        // Audio gain/mute/balance is carried inline on the composite edge; no separate
+        // AUDIO_PROCESS/AUDIO_MIX execution nodes exist for the BMF multitrack path.
+        var timedAudio = result.plan().edges().stream()
+                .filter(e -> e.dependency() instanceof RenderDependency.TimedTrackInput)
+                .map(e -> (RenderDependency.TimedTrackInput) e.dependency())
+                .filter(RenderDependency.TimedTrackInput::audio)
+                .findFirst().orElseThrow();
+        assertEquals(0.8, timedAudio.gainLinear(), "gain carried on the authoritative timed edge");
+        assertFalse(timedAudio.muted(), "mute carried on the authoritative timed edge");
+        assertEquals(0.0, timedAudio.balanceValue(), "balance carried on the authoritative timed edge");
 
         // F2: no semantically relevant orphan TIMED_TEXT — it has an outgoing edge
         assertFalse(result.plan().edges().stream().noneMatch(
@@ -90,23 +90,11 @@ class FirstBoundedPlanningE2ETest {
         assertTrue(effect.materializationRequirements().get(0)
                         instanceof EffectMaterializationRequirement,
                 "EFFECT requirement is EffectMaterializationRequirement");
-        assertEquals(1, audioProcess.materializationRequirements().size(),
-                "AUDIO_PROCESS carries one typed materialization requirement");
-        assertTrue(audioProcess.materializationRequirements().get(0)
-                        instanceof AudioProcessMaterializationRequirement,
-                "AUDIO_PROCESS requirement is AudioProcessMaterializationRequirement");
         assertEquals(1, timedText.materializationRequirements().size(),
                 "TIMED_TEXT carries one typed materialization requirement");
         assertTrue(timedText.materializationRequirements().get(0)
                         instanceof TimedTextMaterializationRequirement,
                 "TIMED_TEXT requirement is TimedTextMaterializationRequirement");
-
-        // F1: audio WHAT is recoverable from the plan (gain/mute/balance)
-        AudioProcessMaterializationRequirement audioReq =
-                (AudioProcessMaterializationRequirement) audioProcess.materializationRequirements().get(0);
-        assertEquals(0.8, audioReq.gain().linear(), "gain recoverable from plan");
-        assertFalse(audioReq.mute().muted(), "mute recoverable from plan");
-        assertEquals(0.0, audioReq.balance().value(), "balance recoverable from plan");
 
         // F1: effect WHAT is recoverable (category + supported parameters)
         EffectMaterializationRequirement effectReq =

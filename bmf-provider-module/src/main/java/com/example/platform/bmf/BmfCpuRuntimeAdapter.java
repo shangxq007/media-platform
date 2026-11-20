@@ -132,7 +132,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 canvas = ff.overlay(canvas, clip, enable=visible)
 
             audio_inputs = []
-            for path, (kind, start, end) in zip(paths, placements):
+            for path, (kind, start, end, gain, mute, pan) in zip(paths, placements):
                 if kind != 'A':
                     continue
                 audio = graph.decode({'input_path': path})['audio']
@@ -140,15 +140,25 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 audio = ff.asetpts(audio, 'PTS-STARTPTS')
                 delay = str(round(Fraction(start) * 48000)) + 'S'
                 audio = ff.adelay(audio, delays=delay, all=1)
+                # Explicit authored mix: per-route gain and linear stereo balance.
+                # Mute is compiled to zero gain at execution while retaining the stream.
+                level = 0.0 if mute == '1' else float(gain)
+                audio = ff.ff_filter(audio, 'aformat', channel_layouts='stereo')
+                audio = ff.ff_filter(audio, 'volume', str(level))
+                left = (1.0 - float(pan)) / 2.0
+                right = (1.0 + float(pan)) / 2.0
+                audio = ff.ff_filter(audio, 'pan', 'stereo|c0=c0*' + str(left) + '|c1=c1*' + str(right))
                 # The bundled libavfilter normalizes amix by its live input count. Padding all
                 # inputs with silence fixes that count for the whole timeline.
                 audio_inputs.append(ff.atrim(ff.ff_filter(audio, 'apad'), duration=duration))
 
             mixed = None
             if audio_inputs:
-                mixed = (ff.amix(audio_inputs, inputs=len(audio_inputs), duration='first', dropout_transition=0)
+                mixed = (ff.ff_filter(audio_inputs, 'amix', inputs=str(len(audio_inputs)),
+                                      duration='first', dropout_transition='0', normalize='0')
                          if len(audio_inputs) > 1 else audio_inputs[0])
-                mixed = ff.ff_filter(mixed, 'volume', str(len(audio_inputs) / 2))
+                # Fixed, documented master headroom: sum of routed inputs / 2.
+                mixed = ff.ff_filter(mixed, 'volume', '0.5')
                 mixed = ff.ff_filter(mixed, 'aformat', sample_fmts='s16')
             canvas.encode(mixed, {'output_path': output, 'format': 'mp4',
                                   'video_params': {'codec': 'libx264', 'pix_fmt': 'yuv420p'},
@@ -208,7 +218,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         arguments.add(rate.numerator() + "/" + rate.denominator());
         if (multitrack) {
             for (var input : plan.compositeInputs()) {
-                arguments.add((input.audio() ? "A" : "V") + "," + seconds(input.start()) + "," + seconds(input.end()));
+                arguments.add((input.audio() ? "A" : "V") + "," + seconds(input.start()) + ","
+                        + seconds(input.end()) + "," + input.gain() + ","
+                        + (input.mute() ? "1" : "0") + "," + input.balance());
             }
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));

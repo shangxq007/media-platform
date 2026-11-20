@@ -10,6 +10,7 @@
 | Document | Size | Trust | Purpose |
 |----------|------|-------|---------|
 | `AGENTS.md` | ~3KB | 9.5/10 | Project overview, priorities, safety constraints |
+| `docs/governance/OWNER_DECISIONS.md` | ~2KB | 9.5/10 | Current effective Owner decisions and exceptions |
 | `.kilo/agents/main.md` | ~5KB | 9.5/10 | Module boundaries, development rules |
 
 **Load method:** Inject into system prompt  

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
-import { projectSnapshotJson, type ProjectedTrack } from './timeline-projection'
+import { audioRouteFor, projectSnapshotJson, type ProjectedAudioRoute, type ProjectedTrack } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
@@ -39,10 +39,14 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   selectedTrackId, onSelectTrack }: Props) {
   const project = useProjectContext()
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
+  const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
   const [destinationTrackId, setDestinationTrackId] = useState('')
   const trackCommands = useRef<Partial<Record<'VIDEO' | 'AUDIO', { revision: string; id: string }>>>({})
   const [clips, setClips] = useState<ClipGeometry[]>([])
   const [selected, setSelected] = useState('')
+  const [audioGain, setAudioGain] = useState(1)
+  const [audioMute, setAudioMute] = useState(false)
+  const [audioPan, setAudioPan] = useState(0)
   const [type, setType] = useState<ClipEdit['type']>('MOVE_CLIP')
   const [delta, setDelta] = useState('1/4')
   const [absolute, setAbsolute] = useState(false)
@@ -61,7 +65,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
-    if (!head) { setTracks([]); setClips([]); setSelected(''); return }
+    if (!head) { setTracks([]); setAudioRoutes([]); setClips([]); setSelected(''); return }
     const owned = ++generation.current
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
@@ -69,6 +73,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       const rows = geometryOf(projection.clips)
       if (owned !== generation.current) return
       setTracks(projection.tracks)
+      setAudioRoutes(projection.audioRoutes)
       setClips(rows)
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
@@ -88,6 +93,12 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
 
   const active = clips.find(clip => clip.clipId === selected) ?? null
   const activeTrack = tracks.find(track => track.trackId === active?.trackId)
+  const activeAudioRoute = audioRoutes.find(route => route.trackId === active?.trackId && route.clipId === active?.clipId) ?? null
+  useEffect(() => {
+    setAudioGain(activeAudioRoute?.gain ?? 1)
+    setAudioMute(activeAudioRoute?.mute ?? false)
+    setAudioPan(activeAudioRoute?.pan ?? 0)
+  }, [active?.clipId, activeAudioRoute?.gain, activeAudioRoute?.mute, activeAudioRoute?.pan, head?.revisionId])
   useEffect(() => { setDestinationTrackId('') }, [selected, head?.revisionId])
   const projection = active && pending ? projectTrim(active, pending.edge, pending.delta) : null
 
@@ -196,6 +207,34 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     finally { setBusy(false) }
   }
 
+
+  async function applyAudio() {
+    if (!head || !project.tenantId || !active || !activeTrack || busy) return
+    if (activeTrack.type !== 'AUDIO' && activeTrack.type !== 'VIDEO') return
+    if (!Number.isFinite(audioGain) || audioGain < 0 || audioGain > 2) {
+      setActionFailed(true); setMessage('Gain must be within 0.0–2.0.'); return
+    }
+    if (!Number.isFinite(audioPan) || audioPan < -1 || audioPan > 1) {
+      setActionFailed(true); setMessage('Pan must be within -1.0–1.0.'); return
+    }
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'AUDIO_MIX',
+      audioGain, audioMute, audioPan, head.revisionId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    const command = { baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      trackId: active.trackId, clipId: active.clipId, gain: audioGain, mute: audioMute,
+      pan: audioPan, commandId: keys.current[fingerprint] }
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.applyAudioMix(project.tenantId, project.projectId, command)
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setMessage(`Audio mix applied at revision ${authoritative.revisionId}: gain ${audioGain.toFixed(2)}, mute ${audioMute ? 'on' : 'off'}, pan ${audioPan.toFixed(2)}.`)
+    } catch (error) { handleFailure(error, 'Audio mix', null, true) }
+    finally { setBusy(false) }
+  }
 
   function beginMove(clip: ClipGeometry, event: ReactPointerEvent<HTMLDivElement>) {
     if (!head || busy) return
@@ -493,6 +532,19 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
+    {active && (activeTrack?.type === 'AUDIO' || activeTrack?.type === 'VIDEO') && <fieldset className="ff-nle-audio-controls" aria-label="Audio mix controls" disabled={!head || !project.tenantId || busy}>
+      <legend>Audio mix · {active.clipId}</legend>
+      <label>Gain <Input aria-label="Audio gain" type="number" min={0} max={2} step={0.05} value={audioGain}
+        onChange={event => setAudioGain(Number(event.target.value))} /></label>
+      <label><input aria-label="Mute clip" type="checkbox" checked={audioMute}
+        onChange={event => setAudioMute(event.target.checked)} /> Mute</label>
+      <label>Pan <input aria-label="Audio pan" type="range" min={-1} max={1} step={0.05} value={audioPan}
+        onChange={event => setAudioPan(Number(event.target.value))} /> <output>{audioPan.toFixed(2)}</output></label>
+      <Button type="button" disabled={!head || !active || busy} onClick={() => void applyAudio()}>Apply audio mix</Button>
+      <p role="status">{activeAudioRoute
+        ? `Canonical route: gain ${activeAudioRoute.gain.toFixed(2)}, mute ${activeAudioRoute.mute ? 'on' : 'off'}, pan ${activeAudioRoute.pan.toFixed(2)}`
+        : 'No canonical audio route yet; applying a value creates the route (including embedded video audio).'}</p>
+    </fieldset>}
     {pending && active && <p role="status">
       Pending {pending.edge === 'START' ? 'left' : 'right'} trim by {formatRational(pending.delta)}s
       {' '}(source {formatRational(projectTrim(active, pending.edge, pending.delta).sourceStart)}s →

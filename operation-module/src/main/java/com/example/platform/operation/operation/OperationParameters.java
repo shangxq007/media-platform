@@ -204,6 +204,9 @@ public sealed interface OperationParameters permits
             if (gain == null) {
                 throw new IllegalArgumentException("gain required");
             }
+            if (gain.linear() > 2.0) {
+                throw new IllegalArgumentException("gain must be within [0.0, 2.0]");
+            }
         }
     }
 

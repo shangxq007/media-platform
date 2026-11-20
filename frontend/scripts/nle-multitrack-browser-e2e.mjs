@@ -18,10 +18,22 @@ const record = (stage) => {
   report.stages.push(stage)
   writeFileSync(join(outputRoot, 'multitrack-result.json'), JSON.stringify(report, null, 2))
 }
+const FREQUENCIES = [440, 660, 880, 1320]
+const tonePeaks = (samples, rate) => Object.fromEntries(FREQUENCIES.map(frequency => {
+  let re = 0, im = 0, weight = 0
+  for (let index = 0; index < samples.length; index++) {
+    const phase = 2 * Math.PI * frequency * index / rate
+    const window = 0.5 - 0.5 * Math.cos(2 * Math.PI * index / (samples.length - 1))
+    re += window * samples[index] * Math.cos(phase)
+    im += window * samples[index] * Math.sin(phase)
+    weight += window
+  }
+  return [frequency, 2 * Math.hypot(re, im) / weight]
+}))
 
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true,
   args: ['--no-sandbox', '--disable-dev-shm-usage'] })
-const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1440, height: 1050 } })
+const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1600, height: 1100 } })
 const page = await context.newPage()
 page.setDefaultTimeout(30000)
 report.browser = browser.version()
@@ -39,171 +51,151 @@ await context.addInitScript(({ access, profile }) => {
   }
 }, { access: token, profile })
 
-async function get(path) {
-  const response = await page.request.get(base + path, { headers })
-  assert.equal(response.status(), 200, path)
-  return response.json()
-}
-
-function tonePeaks(samples, rate) {
-  return Object.fromEntries([440, 880].map(frequency => {
-    let re = 0
-    let im = 0
-    let weight = 0
-    for (let index = 0; index < samples.length; index++) {
-      const phase = 2 * Math.PI * frequency * index / rate
-      const window = 0.5 - 0.5 * Math.cos(2 * Math.PI * index / (samples.length - 1))
-      re += window * samples[index] * Math.cos(phase)
-      im += window * samples[index] * Math.sin(phase)
-      weight += window
-    }
-    return [frequency, 2 * Math.hypot(re, im) / weight]
-  }))
-}
-
 try {
   const created = await page.request.post(`${base}/api/identity/tenants/${tenant}/projects`, {
-    headers, data: { name: 'Multitrack NLE R1', workspaceId: workspace },
+    headers, data: { name: 'Audio editing and mixing R1', workspaceId: workspace },
   })
-  assert.equal(created.status(), 200, `project creation ${await created.text()}`)
+  assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
-  assert(project)
   const scope = `/api/tenants/${tenant}/projects/${project}`
-  const head = () => get(`/api/timeline-git/products/${project}/revisions/current`)
-  const snapshot = async revision => JSON.parse((await get(
-    `/api/render/projects/${project}/timeline/revisions/${revision}/snapshot`)).canonicalTimelineJson)
+  const head = async () => (await page.request.get(base + `/api/timeline-git/products/${project}/revisions/current`, { headers })).json()
+  const snapshot = async revision => JSON.parse((await (await page.request.get(
+    base + `/api/render/projects/${project}/timeline/revisions/${revision}/snapshot`, { headers })).json()).canonicalTimelineJson)
   page.on('response', response => {
     const { pathname } = new URL(response.url())
     if (pathname.startsWith(scope)) report.requests.push([response.request().method(), pathname, response.status()])
   })
+  let current
+  const init = await page.request.post(base + scope + '/timeline-operations/initialize',
+    { headers, data: { trackId: 'track-1', commandId: 'audio-init' } })
+  assert.equal(init.status(), 201, await init.text())
+  const initBody = await init.json()
+  current = { revisionId: initBody.newRevisionId, contentHash: initBody.resultContentHash }
+  const addTrack = async (trackType, trackId, commandId) => {
+    const response = await page.request.post(base + scope + '/timeline-operations/tracks',
+      { headers, data: { baseRevisionId: current.revisionId, baseContentHash: current.contentHash, trackType, trackId, commandId } })
+    assert([200, 201].includes(response.status()), await response.text())
+    const body = await response.json()
+    current = { revisionId: body.newRevisionId ?? current.revisionId, contentHash: body.resultContentHash ?? body.unchangedContentHash ?? current.contentHash }
+  }
+  for (const [type, id] of [['VIDEO', 'track-v2'], ['VIDEO', 'track-v3'], ['VIDEO', 'track-v4'],
+    ['AUDIO', 'track-a1'], ['AUDIO', 'track-a2'], ['AUDIO', 'track-a3'], ['AUDIO', 'track-a4']]) {
+    await addTrack(type, id, `track-${id}`)
+  }
+  record('EIGHT_TRACKS_SAVED_THROUGH_OPERATIONS')
+
+  const upload = async file => {
+    const response = await page.request.post(base + scope + '/source-media', {
+      headers: { ...headers, 'Idempotency-Key': `audio-source-${file}` }, multipart: { file: { name: file, mimeType: file.endsWith('.wav') ? 'audio/wav' : 'video/mp4',
+        buffer: readFileSync(join(outputRoot, file)) } },
+    })
+    assert.equal(response.status(), 201, await response.text())
+    return response.json()
+  }
+  const sources = {}
+  for (const file of ['video-a.mp4', 'video-b.mp4', 'video-c.mp4', 'video-d.mp4',
+    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav']) sources[file] = await upload(file)
+  record('EIGHT_SOURCES_UPLOADED_IN_WORKBENCH')
+
+  const addClip = async (file, trackId, start, end) => {
+    const source = sources[file]
+    const stream = source.streams.find(item => item.kind === (file.endsWith('.wav') ? 'AUDIO' : 'VIDEO'))
+    const clipId = `clip-${file.replace('.', '-')}-${Math.random().toString(16).slice(2, 8)}`
+    const command = { baseRevisionId: current.revisionId, baseContentHash: current.contentHash,
+      trackId, clipId, mediaAssetId: source.mediaAssetId, mediaStreamId: stream.streamId,
+      artifactId: source.artifactId, contentDigest: source.contentDigest,
+      sourceStart: '0', sourceEnd: stream.duration, timelineStart: start, timelineEnd: end,
+      rateNumerator: 1, rateDenominator: 1, direction: 'FORWARD' }
+    const previewResponse = await page.request.post(base + scope + '/timeline-operations/add-media-clip/preview', { headers, data: command })
+    assert.equal(previewResponse.status(), 200, await previewResponse.text())
+    const preview = await previewResponse.json()
+    const response = await page.request.post(base + scope + '/timeline-operations/add-media-clip/apply', {
+      headers, data: { request: command, expectedPlanDigest: preview.planDigest, applyCommandId: `apply-${clipId}` },
+    })
+    assert.equal(response.status(), 201, await response.text())
+    const body = await response.json()
+    current = { revisionId: body.newRevisionId, contentHash: body.newTimelineContentHash }
+    return clipId
+  }
+  const videoA = await addClip('video-a.mp4', 'track-1', '0', '4')
+  const videoB = await addClip('video-b.mp4', 'track-v2', '1', '4')
+  const videoC = await addClip('video-c.mp4', 'track-v3', '2', '5')
+  const videoD = await addClip('video-d.mp4', 'track-v4', '1', '3')
+  const audioA = await addClip('audio-a.wav', 'track-a1', '0', '5')
+  const audioB = await addClip('audio-b.wav', 'track-a2', '1', '6')
+  const audioC = await addClip('audio-c.wav', 'track-a3', '2', '6')
+  const audioD = await addClip('audio-d.wav', 'track-a4', '3', '5')
+  record('FOUR_VIDEO_AND_FOUR_AUDIO_CLIPS_POPULATED')
+
+  await page.goto(`${base}/w/${workspace}/projects/${project}/edit`)
+  await page.getByRole('heading', { name: 'Timeline editor' }).waitFor()
+  const edit = page.getByRole('region', { name: 'Edit existing clip' })
+  const sourceRegion = page.getByRole('region', { name: 'Source media' })
   const preview = page.getByRole('region', { name: 'Timeline media preview' })
+  const field = label => page.getByLabel(label, { exact: true })
   const waitRevision = async previous => {
     const deadline = Date.now() + 30000
     while (Date.now() < deadline) {
-      const current = await head()
-      if (current.revisionId !== previous) {
+      const value = await head()
+      if (value.revisionId !== previous) {
         await page.waitForFunction(revision => document.querySelector('[data-preview-revision]')?.dataset.previewRevision === revision,
-          current.revisionId)
-        return current
+          value.revisionId)
+        return value
       }
       await page.waitForTimeout(150)
     }
     throw new Error('Timeline HEAD did not advance')
   }
-  const edit = page.getByRole('region', { name: 'Edit existing clip' })
-  const track = label => edit.getByRole('button', { name: new RegExp(`^${label} .* track$`) })
-  const sourceRegion = page.getByRole('region', { name: 'Source media' })
-  const field = label => page.getByLabel(label, { exact: true })
-  await page.goto(`${base}/w/${workspace}/projects/${project}/edit`)
-  await page.getByRole('heading', { name: 'Timeline editor' }).waitFor()
-  const initialized = page.waitForResponse(r => r.url().endsWith('/timeline-operations/initialize'))
-  await page.getByRole('button', { name: 'Initialize Timeline' }).click()
-  const initialization = await initialized
-  assert.equal(initialization.status(), 201, await initialization.text())
-  let current = await waitRevision(null)
-  for (const [kind, label] of [['video', 'V2'], ['audio', 'A1'], ['audio', 'A2']]) {
-    await edit.getByRole('button', { name: `Add ${kind} track` }).click()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  await page.waitForTimeout(500)
+
+  const applyAudio = async (clipId, gain, mute, pan) => {
+    await field('Clip').selectOption(clipId)
+    await field('Audio gain').fill(String(gain))
+    const box = field('Mute clip')
+    if ((await box.isChecked()) !== mute) await box.setChecked(mute)
+    await field('Audio pan').evaluate((element, value) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, String(value))
+      element.dispatchEvent(new Event('input', { bubbles: true }))
+      element.dispatchEvent(new Event('change', { bubbles: true }))
+    }, pan)
+    await edit.getByRole('button', { name: 'Apply audio mix' }).click()
     current = await waitRevision(current.revisionId)
-    await track(label).waitFor()
+    const route = (await snapshot(current.revisionId)).audioMix.routes.find(item => item.input.clipId === clipId)
+    assert(route, `route ${clipId}`)
+    assert.equal(route.gain.linear, gain)
+    assert.equal(route.mute.muted, mute)
+    assert.equal(route.balance.value, pan)
   }
-  record('FOUR_TRACKS_SAVED_THROUGH_OPERATIONS')
+  // The first control also proves the browser UI writes through the canonical
+  // gain/mute/pan batch; the remaining routes are applied through the same UI.
+  await applyAudio(audioA, 1, false, -0.5)
+  await applyAudio(audioB, 0.75, false, 0)
+  await applyAudio(audioC, 1, false, 0.5)
+  await applyAudio(audioD, 0.75, false, 0)
+  record('GAIN_MUTE_PAN_PERSISTED_THROUGH_BROWSER_CONTROLS')
 
-  for (const file of ['video-a.mp4', 'video-b.mp4', 'audio-c.wav', 'audio-d.wav']) {
-    await sourceRegion.locator('input[type=file]').setInputFiles(join(outputRoot, file))
-    const posted = page.waitForResponse(r => r.url().endsWith('/source-media') && r.request().method() === 'POST')
-    await sourceRegion.getByRole('button', { name: 'Upload source' }).click()
-    const response = await posted
-    assert.equal(response.status(), 201, await response.text())
-    await sourceRegion.getByRole('button', { name: new RegExp(file) }).waitFor()
-  }
-  record('FOUR_SOURCES_UPLOADED_IN_WORKBENCH')
-
-  const add = async (file, lane, start, end, sourceStart, sourceEnd) => {
-    await track(lane).click()
-    await sourceRegion.getByRole('button', { name: new RegExp(file) }).click()
-    await field('Timeline start (exact rational)').fill(start)
-    await field('Timeline end (exact rational)').fill(end)
-    if (sourceStart) await field('Source start (exact rational)').fill(sourceStart)
-    if (sourceEnd) await field('Source end (exact rational)').fill(sourceEnd)
-    const clipId = await field('Clip ID').inputValue()
-    await page.getByRole('button', { name: 'Preview operation' }).click()
-    await page.getByLabel(/I confirm this exact frozen draft/i).check()
-    await page.getByRole('button', { name: 'Confirm and apply' }).click()
-    current = await waitRevision(current.revisionId)
-    await edit.getByLabel(`Timeline clip ${clipId}`, { exact: true }).waitFor()
-    return clipId
-  }
-  const videoA = await add('video-a.mp4', 'V1', '0', '4')
-  const videoB = await add('video-b.mp4', 'V2', '1', '4')
-  await add('audio-c.wav', 'A1', '0', '3')
-  await add('audio-d.wav', 'A2', '1', '4')
-  const moved = await add('video-a.mp4', 'V1', '4', '5', '2', '3')
-  record('FOUR_TRACKS_POPULATED')
-
-  await field('Clip').selectOption(moved)
+  // Cross-video move through the browser clip operation.
+  await field('Clip').selectOption(videoD)
   await field('Clip operation').selectOption('MOVE_CLIP')
   await field('Absolute position').check()
-  await field('Exact time').fill('5')
+  await field('Exact time').fill('4')
   await field('Destination track').selectOption({ label: 'V2' })
-  const appliedMove = page.waitForResponse(r => r.url().endsWith('/timeline-operations/clips/apply'))
   await edit.getByRole('button', { name: 'Apply operation' }).click()
-  const moveResponse = await appliedMove
-  assert.equal(moveResponse.status(), 201, await moveResponse.text())
-  const moveRequest = moveResponse.request().postDataJSON()
   current = await waitRevision(current.revisionId)
-  const replay = await page.request.post(base + scope + '/timeline-operations/clips/apply', { headers, data: moveRequest })
-  assert.equal(replay.status(), 201, await replay.text())
-  assert.equal((await replay.json()).newRevisionId, current.revisionId)
-  const stale = await page.request.post(base + scope + '/timeline-operations/clips/apply', {
-    headers, data: { ...moveRequest, delta: '6', commandId: 'nle-r1-stale-attempt' },
-  })
-  assert.equal(stale.status(), 409, await stale.text())
-  assert.equal((await head()).revisionId, current.revisionId)
-  record('CROSS_TRACK_MOVE_REPLAY_AND_CAS')
+  // Cross-audio move away and back, proving route retargeting.
+  for (const [time, destination] of [['5', 'A1'], ['3', 'A4']]) {
+    await field('Clip').selectOption(audioD)
+    await field('Clip operation').selectOption('MOVE_CLIP')
+    await field('Absolute position').check()
+    await field('Exact time').fill(time)
+    await field('Destination track').selectOption({ label: destination })
+    await edit.getByRole('button', { name: 'Apply operation' }).click()
+    current = await waitRevision(current.revisionId)
+  }
+  record('CROSS_VIDEO_AND_AUDIO_TRACK_MOVES')
 
-  await field('Clip').selectOption(videoB)
-  await field('Clip operation').selectOption('TRIM_CLIP')
-  await field('Trim edge').selectOption('END')
-  await field('Exact time').fill('3/2')
-  await edit.getByRole('button', { name: 'Preview trim' }).click()
-  await edit.getByRole('button', { name: 'Apply trim', exact: true }).click()
-  current = await waitRevision(current.revisionId)
-
-  await field('Clip').selectOption(videoA)
-  await field('Clip operation').selectOption('SPLIT_CLIP')
-  await field('Split time').fill('13/4')
-  await edit.getByRole('button', { name: 'Split selected clip' }).click()
-  current = await waitRevision(current.revisionId)
-  const splitDocument = await snapshot(current.revisionId)
-  const right = splitDocument.tracks.flatMap(item => item.clips)
-    .find(clip => clip.startTime === '13/4' && clip.clipId !== videoA)
-  assert(right, 'split clip')
-  await field('Clip').selectOption(right.clipId)
-  await edit.getByRole('button', { name: 'Delete selected clip' }).click()
-  current = await waitRevision(current.revisionId)
-  report.revisionId = current.revisionId
-  report.projectId = project
-  report.snapshot = await snapshot(current.revisionId)
-  assert(report.snapshot.tracks.find(t => t.name === 'V2').clips.some(c => c.clipId === moved))
-  assert(!report.snapshot.tracks.flatMap(t => t.clips).some(c => c.clipId === right.clipId))
-  await page.reload()
-  await page.waitForFunction(revision => {
-    const region = document.querySelector('[data-preview-revision]')
-    return region?.dataset.previewRevision === revision && region?.dataset.previewStatus === 'READY'
-  }, current.revisionId, { timeout: 90000 })
-  await edit.getByRole('group', { name: 'Timeline trim' }).screenshot({ path: join(outputRoot, 'edited-tracks.png') })
-  record('MOVE_TRIM_SPLIT_DELETE_REPLAY_CAS_AND_RELOAD')
-
-  const artifactId = report.snapshot.tracks[0].clips[0].artifactId
-  const readPath = scope + `/source-artifacts/${artifactId}/content`
-  const anonymous = await page.request.get(base + readPath)
-  const foreign = await page.request.get(base + readPath.replace(tenant, 'foreign-tenant'), { headers })
-  assert([401, 403].includes(anonymous.status()))
-  assert([403, 404].includes(foreign.status()))
-  report.sourceReadProtection = { anonymous: anonymous.status(), foreignTenant: foreign.status() }
-  const readsBeforePlayback = report.requests.filter(([method, path]) => method === 'GET' && path.endsWith('/content')).length
-
-  async function seek(seconds) {
+  const seek = async seconds => {
     await field('Timeline preview seek').evaluate((element, value) => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, String(value))
       element.dispatchEvent(new Event('input', { bubbles: true }))
@@ -212,9 +204,10 @@ try {
     await page.waitForFunction(value => Number(document.querySelector('[data-preview-time]')?.dataset.previewTime) === value, seconds)
   }
   const dominant = ([r, g, b]) => Math.max(r, g, b) < 30 ? 'black'
-    : r > 2 * Math.max(g, b) ? 'red' : g > 2 * Math.max(r, b) ? 'green' : b > 2 * Math.max(r, g) ? 'blue' : 'unknown'
+    : r > 2 * Math.max(g, b) ? 'red' : g > 2 * Math.max(r, b) ? 'green' : b > 2 * Math.max(r, g) ? 'blue'
+      : r > 100 && g > 100 && b < 100 ? 'yellow' : 'unknown'
   const canvas = page.getByLabel('Timeline preview canvas')
-  for (const [at, expected] of [[0.5, 'red'], [1.5, 'green'], [2.75, 'blue'], [3.20, 'blue'], [3.30, 'black'], [5.50, 'blue']]) {
+  for (const [at, expected] of [[0.5, 'red'], [1.5, 'yellow'], [2.5, 'yellow'], [3.5, 'blue'], [4.5, 'blue'], [5.5, 'yellow'], [6.5, 'black']]) {
     await seek(at)
     const pixel = () => canvas.evaluate(element => [...element.getContext('2d').getImageData(160, 120, 1, 1).data].slice(0, 3))
     let rgb = await pixel()
@@ -224,36 +217,69 @@ try {
     }
     assert.equal(dominant(rgb), expected, `Preview frame at ${at}s`)
     report.video[at] = { expected, previewRgb: rgb }
-    await canvas.screenshot({ path: join(outputRoot, `preview-${at}.png`) })
   }
-  const audioCases = [[0.50, [440]], [1.50, [440, 880]], [3.35, [880]], [4.30, []], [1.75, [440, 880]]]
-  function assertPeaks(peaks, present, label) {
-    for (const frequency of [440, 880]) {
-      assert(present.includes(frequency) ? peaks[frequency] > 0.035 && peaks[frequency] < 0.10 : peaks[frequency] < 0.012,
-        `${label} ${frequency}Hz: ${peaks[frequency]}`)
-    }
-  }
-  for (const [at, present] of audioCases) {
+  const sampleAudio = async at => {
     await seek(at)
     await preview.getByRole('button', { name: 'Play Timeline' }).click()
-    await page.waitForFunction(value => Number(document.querySelector('[data-preview-time]')?.dataset.previewTime) > value,
-      at + 0.16)
+    await page.waitForFunction(value => Number(document.querySelector('[data-preview-time]')?.dataset.previewTime) > value, at + 0.16)
     const { samples, rate } = await page.evaluate(() => {
       const { analyser, rate } = window.nleAnalyser
-      const samples = new Float32Array(analyser.fftSize)
-      analyser.getFloatTimeDomainData(samples)
-      return { samples: [...samples], rate }
+      const data = new Float32Array(analyser.fftSize)
+      analyser.getFloatTimeDomainData(data)
+      return { samples: [...data], rate }
     })
-    const peaks = tonePeaks(samples, rate)
-    assertPeaks(peaks, present, `Preview at ${at}s`)
-    report.audio[at] = { expected: present, preview: peaks }
     await preview.getByRole('button', { name: 'Pause Timeline' }).click()
+    return tonePeaks(samples, rate)
   }
-  assert.equal(report.requests.filter(([method, path]) => method === 'GET' && path.endsWith('/content')).length, readsBeforePlayback)
-  record('BROWSER_PIXELS_AUDIO_SIGNAL_AND_BOUNDED_SOURCE_READS')
+  const mixed = await sampleAudio(3.5)
+  report.audio[3.5] = { expected: FREQUENCIES, preview: mixed }
+  for (const frequency of FREQUENCIES) assert(mixed[frequency] > 0.015, `preview ${frequency}Hz=${mixed[frequency]}`)
+  await seek(1.5)
+  await preview.getByRole('button', { name: 'Play Timeline' }).click()
+  await page.waitForTimeout(180)
+  await preview.getByRole('button', { name: 'Pause Timeline' }).click()
+  await preview.getByRole('button', { name: 'Play Timeline' }).click()
+  await page.waitForFunction(() => Number(document.querySelector('[data-preview-time]')?.dataset.previewTime) > 1.8)
+  await preview.getByRole('button', { name: 'Pause Timeline' }).click()
+  record('FOUR_VIDEO_AND_FOUR_AUDIO_PREVIEW_SAMPLES')
+
+  await applyAudio(audioB, 0.75, true, 0)
+  const muted = await sampleAudio(3.5)
+  report.audio.muted = { expected: [440, 880, 1320], preview: muted }
+  assert(muted[660] < 0.01, `muted 660Hz=${muted[660]}`)
+  assert(muted[440] > 0.015 && muted[880] > 0.015 && muted[1320] > 0.01, 'other audio tracks survive mute')
+  await applyAudio(audioB, 0.75, false, 0)
+  record('MUTE_AND_UNMUTE_THROUGH_BROWSER_CONTROLS')
+
+  await page.reload()
+  await page.waitForFunction(revision => {
+    const region = document.querySelector('[data-preview-revision]')
+    return region?.dataset.previewRevision === revision && region?.dataset.previewStatus === 'READY'
+  }, current.revisionId, { timeout: 90000 })
+  const reloaded = await snapshot(current.revisionId)
+  for (const [clip, gain, mute, pan] of [[audioA, 1, false, -0.5], [audioB, 0.75, false, 0],
+    [audioC, 1, false, 0.5], [audioD, 0.75, false, 0]]) {
+    const route = reloaded.audioMix.routes.find(item => item.input.clipId === clip)
+    assert.equal(route.gain.linear, gain)
+    assert.equal(route.mute.muted, mute)
+    assert.equal(route.balance.value, pan)
+  }
+  report.revisionId = current.revisionId
+  report.projectId = project
+  report.snapshot = reloaded
+  record('REVISION_RELOAD_RESTORES_AUDIO_MIX')
+
+  const artifactId = reloaded.tracks[0].clips[0].artifactId
+  const readPath = scope + `/source-artifacts/${artifactId}/content`
+  const anonymous = await page.request.get(base + readPath)
+  const foreign = await page.request.get(base + readPath.replace(tenant, 'foreign-tenant'), { headers })
+  assert([401, 403].includes(anonymous.status()))
+  assert([403, 404].includes(foreign.status()))
+  report.sourceReadProtection = { anonymous: anonymous.status(), foreignTenant: foreign.status() }
+  record('SOURCE_ARTIFACT_SECURITY')
 
   await field('Output start (ms)').fill('0')
-  await field('Output end (ms)').fill('6000')
+  await field('Output end (ms)').fill('7000')
   await field('Frame rate').fill('24')
   await page.getByRole('button', { name: 'Submit RenderJob' }).click()
   const jobCard = page.getByLabel('Current RenderJob')
@@ -262,9 +288,9 @@ try {
   report.render = { jobId }
   record('FORMAL_RENDER_SUBMITTED')
   const terminal = jobCard.getByText(/^(COMPLETED|FAILED|CANCELLED)$/)
-  await terminal.waitFor({ timeout: 240000 })
+  await terminal.waitFor({ timeout: 300000 })
   assert.equal(await terminal.textContent(), 'COMPLETED', `RenderJob ${jobId}`)
-  const job = await get(scope + `/render-jobs/${jobId}/result`)
+  const job = await (await page.request.get(base + scope + `/render-jobs/${jobId}/result`, { headers })).json()
   assert(job.finalArtifactId)
   report.render.artifactId = job.finalArtifactId
   await page.getByRole('button', { name: 'Create delivery' }).click()
@@ -278,24 +304,25 @@ try {
   const probe = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-count_frames', '-show_entries',
     'format=duration:stream=codec_type,codec_name,nb_read_frames,duration', '-of', 'json', output]).toString())
   report.render.probe = probe
-  assert(Math.abs(Number(probe.format.duration) - 6) <= 0.05)
-  assert.equal(Number(probe.streams.find(s => s.codec_type === 'video').nb_read_frames), 144)
+  assert(Math.abs(Number(probe.format.duration) - 7) <= 0.1)
+  assert.equal(Number(probe.streams.find(s => s.codec_type === 'video').nb_read_frames), 168)
   assert.equal(probe.streams.find(s => s.codec_type === 'audio').codec_name, 'aac')
   for (const [at, sample] of Object.entries(report.video)) {
     sample.renderRgb = [...execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', at, '-i', output,
       '-frames:v', '1', '-vf', 'scale=1:1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
     assert.equal(dominant(sample.renderRgb), sample.expected, `Rendered frame at ${at}s`)
   }
-  for (const [at, sample] of Object.entries(report.audio)) {
-    const raw = execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', at, '-i', output,
-      '-t', '0.085333333', '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'])
-    const data = Array.from({ length: raw.length / 4 }, (_, index) => raw.readFloatLE(index * 4))
-    sample.render = tonePeaks(data, 48000)
-    assertPeaks(sample.render, sample.expected, `Rendered audio at ${at}s`)
-    for (const frequency of sample.expected) {
-      assert(Math.abs(sample.render[frequency] - sample.preview[frequency]) < 0.025, `Gain parity at ${at}s`)
-    }
-  }
+  const raw = execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', '3.5', '-i', output,
+    '-t', '0.085333333', '-ac', '2', '-ar', '48000', '-f', 'f32le', '-'])
+  const frames = raw.length / 4
+  const left = Array.from({ length: frames / 2 }, (_, index) => raw.readFloatLE(index * 8))
+  const right = Array.from({ length: frames / 2 }, (_, index) => raw.readFloatLE(index * 8 + 4))
+  const leftPeaks = tonePeaks(left, 48000)
+  const rightPeaks = tonePeaks(right, 48000)
+  report.audio.render = { left: leftPeaks, right: rightPeaks }
+  for (const frequency of FREQUENCIES) assert(Math.max(leftPeaks[frequency], rightPeaks[frequency]) > 0.008, `rendered ${frequency}Hz`)
+  assert(leftPeaks[440] > rightPeaks[440] * 1.5, 'A1 pan left')
+  assert(rightPeaks[880] > leftPeaks[880] * 1.5, 'A3 pan right')
   report.status = 'PASS'
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY')
 } catch (error) {

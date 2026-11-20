@@ -208,13 +208,26 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     private static boolean validPlacement(String placement, String duration) {
         String[] parts = placement.split(",", -1);
-        if (parts.length != 3 || !List.of("V", "A").contains(parts[0])
+        if (parts.length != 6 || !List.of("V", "A").contains(parts[0])
                 || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
             return false;
         }
         var start = new java.math.BigDecimal(parts[1]);
         var end = new java.math.BigDecimal(parts[2]);
-        return start.compareTo(end) < 0 && end.compareTo(new java.math.BigDecimal(duration)) <= 0;
+        if (start.compareTo(end) >= 0 || end.compareTo(new java.math.BigDecimal(duration)) > 0) {
+            return false;
+        }
+        try {
+            var gain = new java.math.BigDecimal(parts[3]);
+            var pan = new java.math.BigDecimal(parts[5]);
+            return gain.compareTo(java.math.BigDecimal.ZERO) >= 0
+                    && gain.compareTo(new java.math.BigDecimal("2")) <= 0
+                    && (parts[4].equals("0") || parts[4].equals("1"))
+                    && pan.compareTo(new java.math.BigDecimal("-1")) >= 0
+                    && pan.compareTo(java.math.BigDecimal.ONE) <= 0;
+        } catch (NumberFormatException invalid) {
+            return false;
+        }
     }
 
     private static boolean isNonNegativeSeconds(String value) {
