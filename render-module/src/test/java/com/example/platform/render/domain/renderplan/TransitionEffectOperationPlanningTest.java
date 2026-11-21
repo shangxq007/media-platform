@@ -70,6 +70,16 @@ class TransitionEffectOperationPlanningTest {
         assertThatThrownBy(() -> plan(base, OperationDefinition.V3.CREATE_CROSS_DISSOLVE, "clip-b",
                 new OperationParameters.TransitionCreateParameters("transition-3", "clip-a",
                         MediaTime.ofRational(1, 1)))).isInstanceOf(PlanException.class);
+
+        OperationPlan updated = plan(created.candidateTimeline(), OperationDefinition.V3.UPDATE_CROSS_DISSOLVE,
+                "clip-a", new OperationParameters.TransitionUpdateParameters("transition-1",
+                        MediaTime.ofRational(1, 2)));
+        assertThat(updated.candidateTimeline().getTransitions().getFirst().duration())
+                .isEqualTo(MediaTime.ofRational(1, 2));
+
+        OperationPlan deleted = plan(created.candidateTimeline(), OperationDefinition.V3.DELETE_CROSS_DISSOLVE,
+                "clip-a", new OperationParameters.TransitionDeleteParameters("transition-1"));
+        assertThat(deleted.candidateTimeline().getTransitions()).isEmpty();
     }
 
     private static OperationPlan plan(TimelineDocument base, OperationDefinition definition,
