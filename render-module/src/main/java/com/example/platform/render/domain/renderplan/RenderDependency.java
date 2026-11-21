@@ -96,7 +96,10 @@ public sealed interface RenderDependency permits
                            com.example.platform.audio.domain.mix.AudioGain gain,
                            com.example.platform.audio.domain.mix.AudioMute mute,
                            com.example.platform.audio.domain.mix.StereoBalance balance,
-                           VideoTransformSpec transform)
+                           VideoTransformSpec transform,
+                           VideoEffectSpec effect,
+                           com.example.platform.shared.time.MediaTime transitionStart,
+                           com.example.platform.shared.time.MediaTime transitionDuration)
             implements RenderDependency {
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
@@ -105,6 +108,9 @@ public sealed interface RenderDependency permits
             if (mute == null) mute = com.example.platform.audio.domain.mix.AudioMute.defaultMute();
             if (balance == null) balance = com.example.platform.audio.domain.mix.StereoBalance.neutral();
             if (transform == null) transform = VideoTransformSpec.IDENTITY;
+            if (effect == null) effect = VideoEffectSpec.IDENTITY;
+            if (transitionStart == null) transitionStart = start;
+            if (transitionDuration == null) transitionDuration = com.example.platform.shared.time.MediaTime.ZERO;
             if (!start.isLessThan(end) || layer < 0) {
                 throw new IllegalArgumentException("positive track interval and nonnegative layer required");
             }
@@ -119,6 +125,17 @@ public sealed interface RenderDependency permits
             this(start, end, layer, audio, gain, mute, balance, VideoTransformSpec.IDENTITY);
         }
 
+        /** Compatibility constructor: identity effect/transition with explicit transform. */
+        public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                               com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
+                               com.example.platform.audio.domain.mix.AudioGain gain,
+                               com.example.platform.audio.domain.mix.AudioMute mute,
+                               com.example.platform.audio.domain.mix.StereoBalance balance,
+                               VideoTransformSpec transform) {
+            this(start, end, layer, audio, gain, mute, balance, transform,
+                    VideoEffectSpec.IDENTITY, start, com.example.platform.shared.time.MediaTime.ZERO);
+        }
+
         /** Compatibility constructor: neutral mix values. */
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                                com.example.platform.shared.time.MediaTime end, int layer, boolean audio) {
@@ -126,7 +143,8 @@ public sealed interface RenderDependency permits
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
                     com.example.platform.audio.domain.mix.StereoBalance.neutral(),
-                    VideoTransformSpec.IDENTITY);
+                    VideoTransformSpec.IDENTITY, VideoEffectSpec.IDENTITY, start,
+                    com.example.platform.shared.time.MediaTime.ZERO);
         }
 
         public double gainLinear() { return gain.linear(); }
@@ -139,7 +157,11 @@ public sealed interface RenderDependency permits
                     + ":" + gainLinear() + ":" + muted() + ":" + balanceValue()
                     + ":" + t.positionX() + ":" + t.positionY() + ":" + t.scaleX() + ":" + t.scaleY()
                     + ":" + t.rotationDegrees() + ":" + t.cropLeft() + ":" + t.cropRight()
-                    + ":" + t.cropTop() + ":" + t.cropBottom() + ":" + t.opacity();
+                    + ":" + t.cropTop() + ":" + t.cropBottom() + ":" + t.opacity()
+                    + ":" + effect.brightness() + ":" + effect.contrast() + ":" + effect.saturation()
+                    + ":" + effect.grayscale() + ":" + effect.fadeInSeconds() + ":"
+                    + effect.fadeOutSeconds() + ":" + effect.enabled()
+                    + ":" + transitionStart + ":" + transitionDuration;
         }
     }
 }

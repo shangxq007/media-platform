@@ -103,6 +103,21 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.FreezeParameters f) {
             return "freeze(" + f.sourcePosition() + ")";
         }
+        if (p instanceof OperationParameters.VideoEffectParameters ve) {
+            var e = ve.effect();
+            return "video-effect(" + e.brightness() + "," + e.contrast() + "," + e.saturation()
+                    + "," + e.grayscale() + "," + e.fadeInSeconds() + "," + e.fadeOutSeconds()
+                    + "," + e.enabled() + ")";
+        }
+        if (p instanceof OperationParameters.TransitionCreateParameters tc) {
+            return "transition-create(" + tc.transitionId() + "," + tc.incomingClipId() + "," + tc.duration() + ")";
+        }
+        if (p instanceof OperationParameters.TransitionUpdateParameters tu) {
+            return "transition-update(" + tu.transitionId() + "," + tu.duration() + ")";
+        }
+        if (p instanceof OperationParameters.TransitionDeleteParameters td) {
+            return "transition-delete(" + td.transitionId() + ")";
+        }
         if (p instanceof OperationParameters.VideoTransformParameters vt) {
             var t = vt.transform();
             return "video-transform(" + t.positionX() + "," + t.positionY() + ","

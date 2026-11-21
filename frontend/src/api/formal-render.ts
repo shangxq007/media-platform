@@ -11,6 +11,11 @@ export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'S
 export interface VideoTransformCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
   positionX: number; positionY: number; scaleX: number; scaleY: number; rotationDegrees: number;
   cropLeft: number; cropRight: number; cropTop: number; cropBottom: number; opacity: number; commandId: string }
+export interface VideoEffectCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
+  brightness: number; contrast: number; saturation: number; grayscale: boolean;
+  fadeInSeconds: number; fadeOutSeconds: number; enabled: boolean; commandId: string }
+export interface TransitionCommand { baseRevisionId: string; baseContentHash: string; outgoingClipId: string;
+  transitionId: string; incomingClipId?: string; duration?: string; commandId: string }
 export interface AudioMixCommand { baseRevisionId: string; baseContentHash: string; trackId: string; clipId: string; gain: number; mute: boolean; pan: number; commandId: string }
 const Submission = z.object({ renderJobId: id, requestId: id, executionPlanId: id, status: z.literal('PLANNED'), workflowId: id, workflowStarted: z.boolean() })
 const Result = z.object({ renderJobId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
@@ -68,6 +73,50 @@ export const FormalRenderAPI = {
         `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/apply`, body, c), signal))
     return { revisionId: value.newRevisionId ?? command.baseRevisionId, contentHash: value.newContentHash }
   },
+  async applyVideoEffect(tenant: string, project: string, command: VideoEffectCommand, signal?: AbortSignal) {
+    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+      baseContentHash: command.baseContentHash, message: 'Video effect',
+      operations: [{ definitionId: 'timeline.clip.effect.set',
+        target: { clipId: command.clipId }, parameters: {
+          brightness: command.brightness, contrast: command.contrast, saturation: command.saturation,
+          grayscale: command.grayscale, fadeInSeconds: command.fadeInSeconds,
+          fadeOutSeconds: command.fadeOutSeconds, enabled: command.enabled } }] }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
+  },
+
+  async removeVideoEffect(tenant: string, project: string, command: Omit<VideoEffectCommand,
+      'brightness' | 'contrast' | 'saturation' | 'grayscale' | 'fadeInSeconds' | 'fadeOutSeconds' | 'enabled'>, signal?: AbortSignal) {
+    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+      baseContentHash: command.baseContentHash, message: 'Remove video effect',
+      operations: [{ definitionId: 'timeline.clip.effect.remove', target: { clipId: command.clipId } }] }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
+  },
+
+  async createTransition(tenant: string, project: string, command: Required<TransitionCommand>, signal?: AbortSignal) {
+    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+      baseContentHash: command.baseContentHash, message: 'Cross dissolve',
+      operations: [{ definitionId: 'timeline.transition.cross-dissolve.create',
+        target: { clipId: command.outgoingClipId }, parameters: {
+          transitionId: command.transitionId, incomingClipId: command.incomingClipId,
+          duration: command.duration } }] }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
+  },
+
+  async deleteTransition(tenant: string, project: string, command: TransitionCommand, signal?: AbortSignal) {
+    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+      baseContentHash: command.baseContentHash, message: 'Delete cross dissolve',
+      operations: [{ definitionId: 'timeline.transition.cross-dissolve.delete',
+        target: { clipId: command.outgoingClipId }, parameters: { transitionId: command.transitionId } }] }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
+  },
+
+  async applyBatch(tenant: string, project: string, body: unknown, fallbackRevision: string, signal?: AbortSignal) {
+    const value = z.object({ status: z.enum(['APPLIED', 'NO_OP']), newRevisionId: id.nullable().optional(), newContentHash: id })
+      .parse(await request(c => versionlessApi.post(
+        `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/apply`, body, c), signal))
+    return { revisionId: value.newRevisionId ?? fallbackRevision, contentHash: value.newContentHash }
+  },
+
   async applyAudioMix(tenant: string, project: string, command: AudioMixCommand, signal?: AbortSignal) {
     const body = {
       batchId: command.commandId,

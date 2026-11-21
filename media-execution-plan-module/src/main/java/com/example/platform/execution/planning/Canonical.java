@@ -258,7 +258,12 @@ public final class Canonical {
                     + "|" + timed.transform().scaleX() + "|" + timed.transform().scaleY()
                     + "|" + timed.transform().rotationDegrees() + "|" + timed.transform().cropLeft()
                     + "|" + timed.transform().cropRight() + "|" + timed.transform().cropTop()
-                    + "|" + timed.transform().cropBottom() + "|" + timed.transform().opacity();
+                    + "|" + timed.transform().cropBottom() + "|" + timed.transform().opacity()
+                    + "|" + timed.effect().brightness() + "|" + timed.effect().contrast()
+                    + "|" + timed.effect().saturation() + "|" + timed.effect().grayscale()
+                    + "|" + timed.effect().fadeInSeconds() + "|" + timed.effect().fadeOutSeconds()
+                    + "|" + timed.effect().enabled() + "|" + timed.transitionStart()
+                    + "|" + timed.transitionDuration();
         }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
     }

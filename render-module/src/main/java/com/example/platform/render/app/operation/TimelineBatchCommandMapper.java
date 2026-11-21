@@ -2,6 +2,7 @@ package com.example.platform.render.app.operation;
 
 import com.example.platform.audio.domain.mix.AudioGain;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.StereoBalance;
@@ -140,6 +141,22 @@ public final class TimelineBatchCommandMapper {
                             requiredDouble(parameters, "cropTop"),
                             requiredDouble(parameters, "cropBottom"),
                             requiredDouble(parameters, "opacity")));
+            case "timeline.clip.effect.set" -> new OperationParameters.VideoEffectParameters(
+                    new BasicVideoEffect(requiredDouble(parameters, "brightness"),
+                            requiredDouble(parameters, "contrast"),
+                            requiredDouble(parameters, "saturation"),
+                            requiredBoolean(parameters, "grayscale"),
+                            requiredDouble(parameters, "fadeInSeconds"),
+                            requiredDouble(parameters, "fadeOutSeconds"),
+                            requiredBoolean(parameters, "enabled")));
+            case "timeline.clip.effect.remove" -> new OperationParameters.NoParameters();
+            case "timeline.transition.cross-dissolve.create" -> new OperationParameters.TransitionCreateParameters(
+                    requiredText(parameters, "transitionId"),
+                    requiredText(parameters, "incomingClipId"), time(parameters, "duration"));
+            case "timeline.transition.cross-dissolve.update" -> new OperationParameters.TransitionUpdateParameters(
+                    requiredText(parameters, "transitionId"), time(parameters, "duration"));
+            case "timeline.transition.cross-dissolve.delete" -> new OperationParameters.TransitionDeleteParameters(
+                    requiredText(parameters, "transitionId"));
             case "timeline.clip.split" -> new OperationParameters.SplitParameters(
                     TimelineClipId.of(requiredText(parameters, "rightClipId")),
                     time(parameters, "splitTimelineTime"));

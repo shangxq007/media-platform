@@ -208,7 +208,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     private static boolean validPlacement(String placement, String duration) {
         String[] parts = placement.split(",", -1);
-        if (parts.length != 16 || !List.of("V", "A").contains(parts[0])
+        if (parts.length != 17 || !List.of("V", "A").contains(parts[0])
                 || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
             return false;
         }
@@ -234,6 +234,23 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             var right = new java.math.BigDecimal(parts[12]);
             var top = new java.math.BigDecimal(parts[13]);
             var bottom = new java.math.BigDecimal(parts[14]);
+            String[] fx = parts[16].split(";", -1);
+            if (fx.length != 9) return false;
+            var brightness = new java.math.BigDecimal(fx[0]);
+            var contrast = new java.math.BigDecimal(fx[1]);
+            var saturation = new java.math.BigDecimal(fx[2]);
+            var fadeIn = new java.math.BigDecimal(fx[4]);
+            var fadeOut = new java.math.BigDecimal(fx[5]);
+            if (brightness.compareTo(java.math.BigDecimal.ONE.negate()) < 0
+                    || brightness.compareTo(java.math.BigDecimal.ONE) > 0
+                    || contrast.compareTo(java.math.BigDecimal.ZERO) < 0
+                    || contrast.compareTo(new java.math.BigDecimal("2")) > 0
+                    || saturation.compareTo(java.math.BigDecimal.ZERO) < 0
+                    || saturation.compareTo(new java.math.BigDecimal("2")) > 0
+                    || fadeIn.compareTo(java.math.BigDecimal.ZERO) < 0
+                    || fadeOut.compareTo(java.math.BigDecimal.ZERO) < 0
+                    || !(fx[3].equals("0") || fx[3].equals("1"))
+                    || !(fx[6].equals("0") || fx[6].equals("1"))) return false;
             return scaleX.compareTo(java.math.BigDecimal.ZERO) > 0
                     && scaleX.compareTo(java.math.BigDecimal.TEN) <= 0
                     && scaleY.compareTo(java.math.BigDecimal.ZERO) > 0

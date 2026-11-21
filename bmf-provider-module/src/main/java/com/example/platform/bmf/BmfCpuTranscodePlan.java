@@ -36,22 +36,30 @@ public record BmfCpuTranscodePlan(
      */
     public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
-                             com.example.platform.render.domain.renderplan.VideoTransformSpec transform) {
+                             com.example.platform.render.domain.renderplan.VideoTransformSpec transform,
+                             com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
+                             MediaTime transitionStart, MediaTime transitionDuration) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
             this(inputId, start, end, 0, false, 1.0, false, 0.0,
-                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY);
+                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                    com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                    start, MediaTime.ZERO);
         }
 
         /** Compatibility shape for video-only timed inputs. */
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio) {
             this(inputId, start, end, layer, audio, 1.0, false, 0.0,
-                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY);
+                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                    com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                    start, MediaTime.ZERO);
         }
 
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                           double gain, boolean mute, double balance) {
             this(inputId, start, end, layer, audio, gain, mute, balance,
-                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY);
+                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                    com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                    start, MediaTime.ZERO);
         }
 
         public TimedInput {
@@ -67,6 +75,9 @@ public record BmfCpuTranscodePlan(
             if (!start.isLessThan(end) || start.isLessThan(MediaTime.ZERO) || layer < 0) {
                 throw new IllegalArgumentException("positive composite input interval required");
             }
+            if (effect == null) effect = com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY;
+            if (transitionStart == null) transitionStart = start;
+            if (transitionDuration == null) transitionDuration = MediaTime.ZERO;
         }
     }
 

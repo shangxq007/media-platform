@@ -3,7 +3,7 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { toSeconds } from './trim'
-import { activeClipsAt, sourceTimeAt, timelineDuration } from './timeline-preview'
+import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 
@@ -111,6 +111,18 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
         })
       }
       if (media.seeking || media.readyState < 2) continue
+      const effect = clip.effect.enabled ? clip.effect : null
+      const now = toSeconds(time)
+      const clipStart = toSeconds(clip.start)
+      const clipEnd = toSeconds(clip.end)
+      const fadeIn = effect && effect.fadeInSeconds > 0
+        ? Math.min(1, Math.max(0, (now - clipStart) / effect.fadeInSeconds)) : 1
+      const fadeOut = effect && effect.fadeOutSeconds > 0
+        ? Math.min(1, Math.max(0, (clipEnd - now) / effect.fadeOutSeconds)) : 1
+      const transition = session.projection
+        ? transitionForIncoming(session.projection, clip.clipId) : null
+      const transitionAlpha = transition
+        ? Math.min(1, Math.max(0, (now - clipStart) / toSeconds(transition.duration))) : 1
       const t = clip.transform
       const sourceWidth = media.videoWidth || 320
       const sourceHeight = media.videoHeight || 240
@@ -124,7 +136,12 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
       const rotatedWidth = Math.abs(dw * Math.cos(radians)) + Math.abs(dh * Math.sin(radians))
       const rotatedHeight = Math.abs(dw * Math.sin(radians)) + Math.abs(dh * Math.cos(radians))
       context.save()
-      context.globalAlpha = t.opacity
+      context.globalAlpha = t.opacity * fadeIn * fadeOut * transitionAlpha
+      if (effect && (effect.brightness !== 0 || effect.contrast !== 1
+          || effect.saturation !== 1 || effect.grayscale)) {
+        context.filter = `brightness(${1 + effect.brightness}) contrast(${effect.contrast}) `
+          + `saturate(${effect.saturation})${effect.grayscale ? ' grayscale(1)' : ''}`
+      }
       // Position is the top-left of the rotated output frame, matching BMF rotate+overlay.
       context.translate(t.positionX + rotatedWidth / 2, t.positionY + rotatedHeight / 2)
       context.rotate(radians)

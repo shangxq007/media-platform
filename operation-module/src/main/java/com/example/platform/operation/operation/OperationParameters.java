@@ -2,6 +2,7 @@ package com.example.platform.operation.operation;
 
 import com.example.platform.audio.domain.mix.AudioGain;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.StereoBalance;
 import com.example.platform.timeline.canonical.TimelineClipId;
@@ -37,6 +38,10 @@ public sealed interface OperationParameters permits
         OperationParameters.AudioMuteParameters,
         OperationParameters.StereoBalanceParameters,
         OperationParameters.VideoTransformParameters,
+        OperationParameters.VideoEffectParameters,
+        OperationParameters.TransitionCreateParameters,
+        OperationParameters.TransitionUpdateParameters,
+        OperationParameters.TransitionDeleteParameters,
         OperationParameters.CreateGroupParameters,
         OperationParameters.UpdateGroupMembershipParameters,
         OperationParameters.CreateSyncParameters,
@@ -197,6 +202,39 @@ public sealed interface OperationParameters permits
             if (sourcePosition == null) {
                 throw new IllegalArgumentException("sourcePosition required");
             }
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record VideoEffectParameters(BasicVideoEffect effect) implements OperationParameters {
+        public VideoEffectParameters {
+            if (effect == null) throw new IllegalArgumentException("video effect required");
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record TransitionCreateParameters(String transitionId, String incomingClipId,
+                                      com.example.platform.shared.time.MediaTime duration) implements OperationParameters {
+        public TransitionCreateParameters {
+            if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("transitionId required");
+            if (incomingClipId == null || incomingClipId.isBlank()) throw new IllegalArgumentException("incomingClipId required");
+            if (duration == null) throw new IllegalArgumentException("duration required");
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record TransitionUpdateParameters(String transitionId,
+                                      com.example.platform.shared.time.MediaTime duration) implements OperationParameters {
+        public TransitionUpdateParameters {
+            if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("transitionId required");
+            if (duration == null) throw new IllegalArgumentException("duration required");
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record TransitionDeleteParameters(String transitionId) implements OperationParameters {
+        public TransitionDeleteParameters {
+            if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("transitionId required");
         }
     }
 

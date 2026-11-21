@@ -3,6 +3,9 @@ package com.example.platform.operation.plan;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
+import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
+import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.operation.operation.OperationInstance;
 import com.example.platform.operation.operation.OperationDefinitionId;
@@ -64,6 +67,11 @@ public final class OperationPlanner {
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
+            case "timeline.clip.effect.set" -> planVideoEffectSet(instance, base, changes);
+            case "timeline.clip.effect.remove" -> planVideoEffectRemove(instance, base, changes);
+            case "timeline.transition.cross-dissolve.create" -> planTransitionCreate(instance, base, changes);
+            case "timeline.transition.cross-dissolve.update" -> planTransitionUpdate(instance, base, changes);
+            case "timeline.transition.cross-dissolve.delete" -> planTransitionDelete(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
             case "timeline.clip.split" -> planSplit(instance, base, changes);
@@ -208,6 +216,17 @@ public final class OperationPlanner {
         return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
     }
 
+    private static void rejectTransitionMutation(TimelineDocument base, TimelineClipId id, String operation) {
+        for (CanonicalTransition transition : base.getTransitions()) {
+            if (transition.outgoingClipId().equals(id.value())
+                    || transition.incomingClipId().equals(id.value())) {
+                throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                        operation + " of a clip referenced by transition " + transition.transitionId()
+                                + " requires deleting the transition first");
+            }
+        }
+    }
+
     private static TimelineClip clipOf(TimelineDocument base, TimelineClipId id) {
         for (var track : base.getTracks()) {
             for (var clip : track.clips()) {
@@ -298,6 +317,7 @@ public final class OperationPlanner {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "split requires exactly one target");
         }
         TimelineClipId leftId = scope.get(0);
+        rejectTransitionMutation(base, leftId, "split");
         TimelineClipId rightId = params.rightClipId();
         if (rightId.equals(leftId)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "right clip id must differ from the left clip");
@@ -425,6 +445,7 @@ public final class OperationPlanner {
         var params = (OperationParameters.MoveParameters) inst.parameters();
         TimelineDocument cur = base;
         for (TimelineClipId id : scopeOf(inst)) {
+            rejectTransitionMutation(base, id, "move");
             TimelineClip clip = clipOf(base, id);
             MediaTime newStart = params.absolute() ? params.delta() : clip.getStartTime().add(params.delta());
             MediaTime newEnd = params.absolute() ? params.delta().add(clip.getEndTime().subtract(clip.getStartTime()))
@@ -490,6 +511,7 @@ public final class OperationPlanner {
 
     private TimelineDocument planDelete(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
         Set<TimelineClipId> deleted = new HashSet<>(scopeOf(inst));
+        for (TimelineClipId id : deleted) rejectTransitionMutation(base, id, "delete");
         TimelineDocument cur = base;
         for (TimelineClipId id : deleted) {
             changes.add(new PlannedChange.ClipRemoved(id));
@@ -540,6 +562,7 @@ public final class OperationPlanner {
         if (scope.size() != 1) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "trim requires exactly one target");
         }
+        rejectTransitionMutation(base, scope.get(0), "trim");
         TimelineClip clip = clipOf(base, scope.get(0));
         if (!(clip.getTemporalMapping() instanceof ConstantRateTemporalMapping mapping)) {
             throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
@@ -709,6 +732,188 @@ public final class OperationPlanner {
                 clip.getSourceKind(), clip.getTemporalMapping(), clip.getEffects(), params.transform());
         changes.add(new PlannedChange.ClipReplaced(scope.get(0), updated));
         return replaceClip(base, scope.get(0), updated);
+    }
+
+    private TimelineDocument planVideoEffectSet(OperationInstance inst, TimelineDocument base,
+            List<PlannedChange> changes) {
+        if (!(inst.parameters() instanceof OperationParameters.VideoEffectParameters params)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "video effect parameters required");
+        }
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "video effect requires exactly one target");
+        }
+        TimelineClip clip = clipOf(base, scope.get(0));
+        List<TimelineClipEffect> effects = new ArrayList<>();
+        for (TimelineClipEffect effect : clip.getEffects()) {
+            if (!BasicVideoEffect.EFFECT_KEY.equals(effect.effectKey())) effects.add(effect);
+        }
+        BasicVideoEffect e = params.effect();
+        effects.add(new TimelineClipEffect("video-basic-" + clip.getClipId().value(),
+                BasicVideoEffect.EFFECT_KEY, Map.of(
+                        "brightness", e.brightness(), "contrast", e.contrast(),
+                        "saturation", e.saturation(), "grayscale", e.grayscale(),
+                        "fadeInSeconds", e.fadeInSeconds(), "fadeOutSeconds", e.fadeOutSeconds(),
+                        "enabled", e.enabled())));
+        TimelineClip updated = new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
+                clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
+                clip.getSourceKind(), clip.getTemporalMapping(), effects, clip.getTransform());
+        changes.add(new PlannedChange.ClipReplaced(scope.get(0), updated));
+        return replaceClip(base, scope.get(0), updated);
+    }
+
+    private TimelineDocument planVideoEffectRemove(OperationInstance inst, TimelineDocument base,
+            List<PlannedChange> changes) {
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "video effect removal requires exactly one target");
+        }
+        TimelineClip clip = clipOf(base, scope.get(0));
+        List<TimelineClipEffect> effects = clip.getEffects().stream()
+                .filter(effect -> !BasicVideoEffect.EFFECT_KEY.equals(effect.effectKey())).toList();
+        if (effects.size() == clip.getEffects().size()) return base;
+        TimelineClip updated = new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
+                clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
+                clip.getSourceKind(), clip.getTemporalMapping(), effects, clip.getTransform());
+        changes.add(new PlannedChange.ClipReplaced(scope.get(0), updated));
+        return replaceClip(base, scope.get(0), updated);
+    }
+
+    private TimelineDocument planTransitionCreate(OperationInstance inst, TimelineDocument base,
+            List<PlannedChange> changes) {
+        if (!(inst.parameters() instanceof OperationParameters.TransitionCreateParameters params)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition parameters required");
+        }
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition requires exactly one outgoing target");
+        }
+        TimelineClip outgoing = clipOf(base, scope.get(0));
+        TimelineClip incoming = clipOf(base, TimelineClipId.of(params.incomingClipId()));
+        validateTransition(base, outgoing, incoming, params.duration());
+        for (CanonicalTransition t : base.getTransitions()) {
+            if (t.transitionId().equals(params.transitionId())
+                    || (t.outgoingClipId().equals(outgoing.getClipId().value())
+                    && t.incomingClipId().equals(incoming.getClipId().value()))) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition already exists");
+            }
+        }
+        CanonicalTransition transition = transition(params.transitionId(), outgoing, incoming, params.duration());
+        List<CanonicalTransition> transitions = new ArrayList<>(base.getTransitions());
+        transitions.add(transition);
+        return withTransitions(base, transitions);
+    }
+
+    private TimelineDocument planTransitionUpdate(OperationInstance inst, TimelineDocument base,
+            List<PlannedChange> changes) {
+        if (!(inst.parameters() instanceof OperationParameters.TransitionUpdateParameters params)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition update parameters required");
+        }
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition update requires one outgoing target");
+        }
+        List<CanonicalTransition> transitions = new ArrayList<>();
+        boolean found = false;
+        for (CanonicalTransition t : base.getTransitions()) {
+            if (t.transitionId().equals(params.transitionId())) {
+                if (!t.outgoingClipId().equals(scope.get(0).value())) {
+                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition outgoing target mismatch");
+                }
+                TimelineClip outgoing = clipOf(base, scope.get(0));
+                TimelineClip incoming = clipOf(base, TimelineClipId.of(t.incomingClipId()));
+                validateTransition(base, outgoing, incoming, params.duration());
+                transitions.add(new CanonicalTransition(t.transitionId(), t.transitionDefinitionId(),
+                        t.transitionDefinitionVersion(), t.outgoingClipId(), t.incomingClipId(),
+                        t.mediaType(), params.duration(), t.alignment(), t.temporalPolicy(), t.parameters()));
+                found = true;
+            } else {
+                transitions.add(t);
+            }
+        }
+        if (!found) throw new PlanException(PlanErrorCode.TARGET_MISSING,
+                "transition " + params.transitionId() + " missing");
+        return withTransitions(base, transitions);
+    }
+
+    private TimelineDocument planTransitionDelete(OperationInstance inst, TimelineDocument base,
+            List<PlannedChange> changes) {
+        if (!(inst.parameters() instanceof OperationParameters.TransitionDeleteParameters params)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition delete parameters required");
+        }
+        List<TimelineClipId> scope = scopeOf(inst);
+        if (scope.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition delete requires one outgoing target");
+        }
+        List<CanonicalTransition> transitions = new ArrayList<>();
+        boolean found = false;
+        for (CanonicalTransition t : base.getTransitions()) {
+            if (t.transitionId().equals(params.transitionId())) {
+                if (!t.outgoingClipId().equals(scope.get(0).value())) {
+                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition outgoing target mismatch");
+                }
+                found = true;
+            } else {
+                transitions.add(t);
+            }
+        }
+        if (!found) throw new PlanException(PlanErrorCode.TARGET_MISSING,
+                "transition " + params.transitionId() + " missing");
+        return withTransitions(base, transitions);
+    }
+
+    private void validateTransition(TimelineDocument base, TimelineClip outgoing,
+            TimelineClip incoming, com.example.platform.shared.time.MediaTime duration) {
+        if (duration == null || !duration.isGreaterThan(com.example.platform.shared.time.MediaTime.ZERO)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition duration must be positive");
+        }
+        var outgoingTrack = trackOf(base, outgoing.getClipId());
+        var incomingTrack = trackOf(base, incoming.getClipId());
+        if (outgoingTrack.type() != com.example.platform.timeline.canonical.TrackType.VIDEO
+                || incomingTrack.type() != com.example.platform.timeline.canonical.TrackType.VIDEO) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "cross dissolve requires video tracks");
+        }
+        int outgoingLayer = base.getTracks().indexOf(outgoingTrack);
+        int incomingLayer = base.getTracks().indexOf(incomingTrack);
+        if (incomingLayer <= outgoingLayer) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition incoming must be on a higher video layer");
+        }
+        if (incoming.getStartTime().isLessThan(outgoing.getStartTime())
+                || !incoming.getStartTime().isLessThan(outgoing.getEndTime())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition requires overlapping incoming clip");
+        }
+        var overlapEnd = incoming.getEndTime().isLessThan(outgoing.getEndTime())
+                ? incoming.getEndTime() : outgoing.getEndTime();
+        var overlap = overlapEnd.subtract(incoming.getStartTime());
+        if (duration.isGreaterThan(overlap)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition exceeds common overlap");
+        }
+    }
+
+    private static com.example.platform.timeline.canonical.TimelineTrack trackOf(
+            TimelineDocument document, TimelineClipId clipId) {
+        for (var track : document.getTracks()) {
+            for (var clip : track.clips()) {
+                if (clip.getClipId().equals(clipId)) return track;
+            }
+        }
+        throw new PlanException(PlanErrorCode.TARGET_MISSING, "clip " + clipId + " missing");
+    }
+
+    private static CanonicalTransition transition(String id, TimelineClip outgoing, TimelineClip incoming,
+            com.example.platform.shared.time.MediaTime duration) {
+        return new CanonicalTransition(id, "video.cross-dissolve", "1.0",
+                outgoing.getClipId().value(), incoming.getClipId().value(), "VIDEO", duration,
+                "START_AT_INCOMING", "OVERLAP_TIMELINE", Map.of("curve", "LINEAR"));
+    }
+
+    private static TimelineDocument withTransitions(TimelineDocument base,
+            List<CanonicalTransition> transitions) {
+        return new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(),
+                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
+                transitions, base.getAutomations());
     }
 
     private TimelineDocument planGroupCreate(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {

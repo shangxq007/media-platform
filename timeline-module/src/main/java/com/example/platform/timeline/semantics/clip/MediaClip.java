@@ -5,6 +5,7 @@ import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.timeline.semantics.temporal.TemporalMapping;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.shared.time.MediaTime;
 
 import java.util.Objects;
@@ -28,6 +29,7 @@ public final class MediaClip {
     private final TemporalMapping temporalMapping;
     private final MediaStreamSourceBinding sourceBinding;
     private final VideoTransform transform;
+    private final BasicVideoEffect effect;
 
     public MediaClip(
             String clipId,
@@ -37,7 +39,7 @@ public final class MediaClip {
             TemporalMapping temporalMapping,
             MediaStreamSourceBinding sourceBinding) {
         this(clipId, trackId, timelineRange, sourceRange, temporalMapping, sourceBinding,
-                VideoTransform.IDENTITY);
+                VideoTransform.IDENTITY, BasicVideoEffect.IDENTITY);
     }
 
     public MediaClip(
@@ -48,6 +50,19 @@ public final class MediaClip {
             TemporalMapping temporalMapping,
             MediaStreamSourceBinding sourceBinding,
             VideoTransform transform) {
+        this(clipId, trackId, timelineRange, sourceRange, temporalMapping, sourceBinding,
+                transform, BasicVideoEffect.IDENTITY);
+    }
+
+    public MediaClip(
+            String clipId,
+            String trackId,
+            TimeRange timelineRange,
+            TimeRange sourceRange,
+            TemporalMapping temporalMapping,
+            MediaStreamSourceBinding sourceBinding,
+            VideoTransform transform,
+            BasicVideoEffect effect) {
         this.clipId = Objects.requireNonNull(clipId, "clipId");
         this.trackId = Objects.requireNonNull(trackId, "trackId");
         this.timelineRange = Objects.requireNonNull(timelineRange, "timelineRange");
@@ -55,6 +70,7 @@ public final class MediaClip {
         this.temporalMapping = Objects.requireNonNull(temporalMapping, "temporalMapping");
         this.sourceBinding = Objects.requireNonNull(sourceBinding, "sourceBinding");
         this.transform = transform != null ? transform : VideoTransform.IDENTITY;
+        this.effect = effect != null ? effect : BasicVideoEffect.IDENTITY;
         validate();
     }
 
@@ -98,6 +114,7 @@ public final class MediaClip {
     public TemporalMapping temporalMapping() { return temporalMapping; }
     public MediaStreamSourceBinding sourceBinding() { return sourceBinding; }
     public VideoTransform transform() { return transform; }
+    public BasicVideoEffect effect() { return effect; }
 
     /**
      * Returns the duration of this clip on the timeline.

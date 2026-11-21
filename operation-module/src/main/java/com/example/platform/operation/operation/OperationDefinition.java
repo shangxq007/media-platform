@@ -145,6 +145,21 @@ public record OperationDefinition(
         public static final OperationDefinition SET_VIDEO_TRANSFORM = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.transform.set"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.VideoTransformParameters.class);
+        public static final OperationDefinition SET_VIDEO_EFFECT = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.effect.set"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.VideoEffectParameters.class);
+        public static final OperationDefinition REMOVE_VIDEO_EFFECT = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.effect.remove"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.NoParameters.class);
+        public static final OperationDefinition CREATE_CROSS_DISSOLVE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.transition.cross-dissolve.create"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionCreateParameters.class);
+        public static final OperationDefinition UPDATE_CROSS_DISSOLVE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.transition.cross-dissolve.update"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionUpdateParameters.class);
+        public static final OperationDefinition DELETE_CROSS_DISSOLVE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.transition.cross-dissolve.delete"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionDeleteParameters.class);
         /** SPLIT: one clip -> two adjacent clips, no ripple/gap/overlap. */
         public static final OperationDefinition SPLIT_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.split"), OperationDefinitionVersion.of(1, 0),
@@ -153,7 +168,9 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE,
-                                SPLIT_CLIP, ADD_TRACK, RELOCATE_CLIP, SET_VIDEO_TRANSFORM)).toList();
+                                SPLIT_CLIP, ADD_TRACK, RELOCATE_CLIP, SET_VIDEO_TRANSFORM,
+                                SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
+                                UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE)).toList();
         private V3() {}
     }
 }

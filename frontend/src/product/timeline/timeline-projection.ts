@@ -7,6 +7,28 @@
  */
 import { add, compare, parseRational, type Rational } from './trim'
 
+export interface ProjectedVideoEffect {
+  readonly brightness: number
+  readonly contrast: number
+  readonly saturation: number
+  readonly grayscale: boolean
+  readonly fadeInSeconds: number
+  readonly fadeOutSeconds: number
+  readonly enabled: boolean
+}
+
+export const IDENTITY_VIDEO_EFFECT: ProjectedVideoEffect = {
+  brightness: 0, contrast: 1, saturation: 1, grayscale: false,
+  fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true,
+}
+
+export interface ProjectedTransition {
+  readonly transitionId: string
+  readonly outgoingClipId: string
+  readonly incomingClipId: string
+  readonly duration: Rational
+}
+
 export interface ProjectedVideoTransform {
   readonly positionX: number
   readonly positionY: number
@@ -40,6 +62,22 @@ function projectTransform(value: unknown): ProjectedVideoTransform {
   }
 }
 
+function projectEffect(value: unknown): ProjectedVideoEffect {
+  if (!Array.isArray(value)) return IDENTITY_VIDEO_EFFECT
+  const effect = value.find(item => item && typeof item === 'object'
+    && (item as { effectKey?: unknown }).effectKey === 'video.basic')
+  if (!effect || typeof effect !== 'object') return IDENTITY_VIDEO_EFFECT
+  const p = (effect as { parameters?: Record<string, unknown> }).parameters ?? {}
+  const number = (key: string, fallback: number) =>
+    typeof p[key] === 'number' && Number.isFinite(p[key]) ? p[key] as number : fallback
+  return {
+    brightness: number('brightness', 0), contrast: number('contrast', 1),
+    saturation: number('saturation', 1), grayscale: p.grayscale === true,
+    fadeInSeconds: number('fadeInSeconds', 0), fadeOutSeconds: number('fadeOutSeconds', 0),
+    enabled: p.enabled !== false,
+  }
+}
+
 export interface ProjectedClip {
   readonly clipId: string
   readonly trackId: string
@@ -53,6 +91,7 @@ export interface ProjectedClip {
   readonly rate: Rational
   readonly direction: 'FORWARD' | 'REVERSE'
   readonly transform: ProjectedVideoTransform
+  readonly effect: ProjectedVideoEffect
 }
 
 export interface ProjectedTrack {
@@ -74,6 +113,7 @@ export interface TimelineProjection {
   readonly tracks: readonly ProjectedTrack[]
   readonly clips: readonly ProjectedClip[]
   readonly audioRoutes: readonly ProjectedAudioRoute[]
+  readonly transitions: readonly ProjectedTransition[]
 }
 
 const IDENTITY: Rational = { numerator: 1n, denominator: 1n }
@@ -102,8 +142,21 @@ export function projectTimeline(document: unknown): TimelineProjection {
       audioRoutes.push({ trackId, clipId, gain, mute: route.mute?.muted === true, pan })
     }
   }
+  const transitions: ProjectedTransition[] = []
+  const rawTransitions = (document as { transitions?: unknown } | null)?.transitions
+  if (Array.isArray(rawTransitions)) {
+    for (const raw of rawTransitions) {
+      if (!raw || typeof raw !== 'object') continue
+      const t = raw as Record<string, unknown>
+      const duration = safeRational(t.duration)
+      if (typeof t.transitionId !== 'string' || typeof t.outgoingClipId !== 'string'
+          || typeof t.incomingClipId !== 'string' || !duration) continue
+      transitions.push({ transitionId: t.transitionId, outgoingClipId: t.outgoingClipId,
+        incomingClipId: t.incomingClipId, duration })
+    }
+  }
   const tracks: ProjectedTrack[] = []
-  if (!Array.isArray(rawTracks)) return { tracks, clips: [], audioRoutes }
+  if (!Array.isArray(rawTracks)) return { tracks, clips: [], audioRoutes, transitions }
   for (const rawTrack of rawTracks) {
     if (!rawTrack || typeof rawTrack !== 'object') continue
     const track = rawTrack as Record<string, unknown>
@@ -134,6 +187,7 @@ export function projectTimeline(document: unknown): TimelineProjection {
         mediaStreamId: typeof clip.mediaStreamId === 'string' ? clip.mediaStreamId : '',
         direction: mapping?.direction === 'REVERSE' ? 'REVERSE' : 'FORWARD',
         transform: projectTransform(clip.transform),
+        effect: projectEffect(clip.effects),
       })
     }
     tracks.push({
@@ -143,7 +197,7 @@ export function projectTimeline(document: unknown): TimelineProjection {
       clips,
     })
   }
-  return { tracks, clips: tracks.flatMap(track => track.clips), audioRoutes }
+  return { tracks, clips: tracks.flatMap(track => track.clips), audioRoutes, transitions }
 }
 
 export function projectSnapshotJson(canonicalTimelineJson: string): TimelineProjection {

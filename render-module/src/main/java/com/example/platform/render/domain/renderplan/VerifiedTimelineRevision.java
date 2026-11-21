@@ -3,6 +3,7 @@ package com.example.platform.render.domain.renderplan;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.timeline.canonical.TextElement;
+import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import java.util.List;
@@ -41,6 +42,7 @@ public final class VerifiedTimelineRevision {
 
     record Track(String id, TrackType type) {}
     private final List<TextElement> textElements;
+    private final List<CanonicalTransition> transitions;
 
     /** Restricted constructor — private on purpose; factory-only construction. */
     private VerifiedTimelineRevision(
@@ -48,12 +50,14 @@ public final class VerifiedTimelineRevision {
             List<MediaClip> clips,
             List<Track> tracks,
             AudioMix audioMix,
-            List<TextElement> textElements) {
+            List<TextElement> textElements,
+            List<CanonicalTransition> transitions) {
         this.revision = Objects.requireNonNull(revision, "revision");
         this.clips = List.copyOf(clips);
         this.tracks = List.copyOf(tracks);
         this.audioMix = Objects.requireNonNull(audioMix, "audioMix");
         this.textElements = List.copyOf(textElements);
+        this.transitions = List.copyOf(transitions);
     }
 
     /** Factory-only construction path (see {@link VerifiedTimelineRevisionFactory}). */
@@ -62,8 +66,9 @@ public final class VerifiedTimelineRevision {
             List<MediaClip> clips,
             List<Track> tracks,
             AudioMix audioMix,
-            List<TextElement> textElements) {
-        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements);
+            List<TextElement> textElements,
+            List<CanonicalTransition> transitions) {
+        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements, transitions);
     }
 
     public TimelineRevisionReference revision() {
@@ -90,6 +95,10 @@ public final class VerifiedTimelineRevision {
         return textElements;
     }
 
+    public List<CanonicalTransition> transitions() {
+        return transitions;
+    }
+
     /** Content digest pin of the verified immutable revision (provenance/fingerprint). */
     public ContentDigest contentDigest() {
         return revision.contentDigest();
@@ -101,12 +110,13 @@ public final class VerifiedTimelineRevision {
             return false;
         }
         return revision.equals(v.revision) && clips.equals(v.clips)
-                && tracks.equals(v.tracks) && audioMix.equals(v.audioMix) && textElements.equals(v.textElements);
+                && tracks.equals(v.tracks) && audioMix.equals(v.audioMix) && textElements.equals(v.textElements)
+                && transitions.equals(v.transitions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(revision, clips, tracks, audioMix, textElements);
+        return Objects.hash(revision, clips, tracks, audioMix, textElements, transitions);
     }
 
     @Override

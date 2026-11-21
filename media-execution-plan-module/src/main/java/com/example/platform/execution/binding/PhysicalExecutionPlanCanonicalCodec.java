@@ -562,7 +562,16 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("cr", Double.toString(timed.transform().cropRight()))
                     .field("ct", Double.toString(timed.transform().cropTop()))
                     .field("cb", Double.toString(timed.transform().cropBottom()))
-                    .field("opacity", Double.toString(timed.transform().opacity())).build();
+                    .field("opacity", Double.toString(timed.transform().opacity()))
+                    .field("brightness", Double.toString(timed.effect().brightness()))
+                    .field("contrast", Double.toString(timed.effect().contrast()))
+                    .field("saturation", Double.toString(timed.effect().saturation()))
+                    .field("grayscale", Boolean.toString(timed.effect().grayscale()))
+                    .field("fadeIn", Double.toString(timed.effect().fadeInSeconds()))
+                    .field("fadeOut", Double.toString(timed.effect().fadeOutSeconds()))
+                    .field("effectEnabled", Boolean.toString(timed.effect().enabled()))
+                    .field("transitionStart", timed.transitionStart().toString())
+                    .field("transitionDuration", timed.transitionDuration().toString()).build();
         }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
@@ -591,7 +600,14 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                             Double.parseDouble(reader.field("sx")), Double.parseDouble(reader.field("sy")),
                             Double.parseDouble(reader.field("rot")), Double.parseDouble(reader.field("cl")),
                             Double.parseDouble(reader.field("cr")), Double.parseDouble(reader.field("ct")),
-                            Double.parseDouble(reader.field("cb")), Double.parseDouble(reader.field("opacity"))));
+                            Double.parseDouble(reader.field("cb")), Double.parseDouble(reader.field("opacity"))),
+                    new com.example.platform.render.domain.renderplan.VideoEffectSpec(
+                            Double.parseDouble(reader.field("brightness")), Double.parseDouble(reader.field("contrast")),
+                            Double.parseDouble(reader.field("saturation")), Boolean.parseBoolean(reader.field("grayscale")),
+                            Double.parseDouble(reader.field("fadeIn")), Double.parseDouble(reader.field("fadeOut")),
+                            Boolean.parseBoolean(reader.field("effectEnabled"))),
+                    com.example.platform.shared.time.MediaTime.parse(reader.field("transitionStart")),
+                    com.example.platform.shared.time.MediaTime.parse(reader.field("transitionDuration")));
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }

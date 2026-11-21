@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
-import { audioRouteFor, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedVideoTransform } from './timeline-projection'
+import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
@@ -41,6 +41,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
   const [transforms, setTransforms] = useState<Record<string, ProjectedVideoTransform>>({})
+  const [effects, setEffects] = useState<Record<string, ProjectedVideoEffect>>({})
+  const [transitions, setTransitions] = useState<readonly ProjectedTransition[]>([])
   const [destinationTrackId, setDestinationTrackId] = useState('')
   const trackCommands = useRef<Partial<Record<'VIDEO' | 'AUDIO', { revision: string; id: string }>>>({})
   const [clips, setClips] = useState<ClipGeometry[]>([])
@@ -58,6 +60,16 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const [cropTop, setCropTop] = useState(0)
   const [cropBottom, setCropBottom] = useState(1)
   const [opacity, setOpacity] = useState(1)
+  const [brightness, setBrightness] = useState(0)
+  const [contrast, setContrast] = useState(1)
+  const [saturation, setSaturation] = useState(1)
+  const [grayscale, setGrayscale] = useState(false)
+  const [fadeIn, setFadeIn] = useState(0)
+  const [fadeOut, setFadeOut] = useState(0)
+  const [effectEnabled, setEffectEnabled] = useState(true)
+  const [transitionId, setTransitionId] = useState('')
+  const [incomingClipId, setIncomingClipId] = useState('')
+  const [transitionDuration, setTransitionDuration] = useState('1/1')
   const [type, setType] = useState<ClipEdit['type']>('MOVE_CLIP')
   const [delta, setDelta] = useState('1/4')
   const [absolute, setAbsolute] = useState(false)
@@ -76,7 +88,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
-    if (!head) { setTracks([]); setAudioRoutes([]); setTransforms({}); setClips([]); setSelected(''); return }
+    if (!head) { setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
     const owned = ++generation.current
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
@@ -86,6 +98,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       setTracks(projection.tracks)
       setAudioRoutes(projection.audioRoutes)
       setTransforms(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.transform])))
+      setEffects(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.effect])))
+      setTransitions(projection.transitions)
       setClips(rows)
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
@@ -112,6 +126,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     setAudioPan(activeAudioRoute?.pan ?? 0)
   }, [active?.clipId, activeAudioRoute?.gain, activeAudioRoute?.mute, activeAudioRoute?.pan, head?.revisionId])
   const activeTransform = active ? transforms[active.clipId] ?? IDENTITY_VIDEO_TRANSFORM : IDENTITY_VIDEO_TRANSFORM
+  const activeEffect = active ? effects[active.clipId] ?? IDENTITY_VIDEO_EFFECT : IDENTITY_VIDEO_EFFECT
   useEffect(() => {
     setTx(activeTransform.positionX); setTy(activeTransform.positionY)
     setSx(activeTransform.scaleX); setSy(activeTransform.scaleY)
@@ -123,6 +138,16 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     activeTransform.scaleY, activeTransform.rotationDegrees, activeTransform.cropLeft,
     activeTransform.cropRight, activeTransform.cropTop, activeTransform.cropBottom,
     activeTransform.opacity, head?.revisionId])
+  useEffect(() => {
+    setBrightness(activeEffect.brightness); setContrast(activeEffect.contrast)
+    setSaturation(activeEffect.saturation); setGrayscale(activeEffect.grayscale)
+    setFadeIn(activeEffect.fadeInSeconds); setFadeOut(activeEffect.fadeOutSeconds)
+    setEffectEnabled(activeEffect.enabled)
+    setTransitionId(active ? `transition-${active.clipId}` : '')
+    setIncomingClipId('')
+  }, [active?.clipId, activeEffect.brightness, activeEffect.contrast, activeEffect.saturation,
+    activeEffect.grayscale, activeEffect.fadeInSeconds, activeEffect.fadeOutSeconds,
+    activeEffect.enabled, head?.revisionId])
   useEffect(() => { setDestinationTrackId('') }, [selected, head?.revisionId])
   const projection = active && pending ? projectTrim(active, pending.edge, pending.delta) : null
 
@@ -293,6 +318,97 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     setTx(0); setTy(0); setSx(1); setSy(1); setRotation(0)
     setCropLeft(0); setCropRight(1); setCropTop(0); setCropBottom(1); setOpacity(1)
     setMessage('Transform reset in the editor; apply to save the default transform.')
+  }
+
+  async function applyEffect() {
+    if (!head || !project.tenantId || !active || busy) return
+    if (![brightness, contrast, saturation, fadeIn, fadeOut].every(Number.isFinite)
+        || brightness < -1 || brightness > 1 || contrast < 0 || contrast > 2
+        || saturation < 0 || saturation > 2 || fadeIn < 0 || fadeOut < 0) {
+      setActionFailed(true); setMessage('Invalid video effect: brightness [-1,1], contrast/saturation [0,2], fades >= 0.')
+      return
+    }
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'VIDEO_EFFECT',
+      brightness, contrast, saturation, grayscale, fadeIn, fadeOut, effectEnabled, head.revisionId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.applyVideoEffect(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash, clipId: active.clipId,
+        brightness, contrast, saturation, grayscale, fadeInSeconds: fadeIn,
+        fadeOutSeconds: fadeOut, enabled: effectEnabled, commandId: keys.current[fingerprint] })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setMessage(`Video effect applied at revision ${authoritative.revisionId}.`)
+    } catch (error) { handleFailure(error, 'Video effect', null, true) }
+    finally { setBusy(false) }
+  }
+
+  async function removeEffect() {
+    if (!head || !project.tenantId || !active || busy) return
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'REMOVE_VIDEO_EFFECT', head.revisionId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.removeVideoEffect(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        clipId: active.clipId, commandId: keys.current[fingerprint] })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setMessage(`Video effect removed at revision ${authoritative.revisionId}.`)
+    } catch (error) { handleFailure(error, 'Remove video effect', null, true) }
+    finally { setBusy(false) }
+  }
+
+  async function createTransition() {
+    if (!head || !project.tenantId || !active || busy || !incomingClipId) return
+    if (!transitionId.trim() || !transitionDuration.trim()) {
+      setActionFailed(true); setMessage('Transition id and exact duration are required.')
+      return
+    }
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'CREATE_TRANSITION',
+      transitionId, incomingClipId, transitionDuration, head.revisionId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.createTransition(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        outgoingClipId: active.clipId, transitionId: transitionId.trim(),
+        incomingClipId, duration: transitionDuration.trim(), commandId: keys.current[fingerprint] })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setMessage(`Cross dissolve created at revision ${authoritative.revisionId}.`)
+    } catch (error) { handleFailure(error, 'Create transition', null, true) }
+    finally { setBusy(false) }
+  }
+
+  async function deleteTransition() {
+    if (!head || !project.tenantId || !active || busy || !transitionId.trim()) return
+    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'DELETE_TRANSITION', transitionId, head.revisionId])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.deleteTransition(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        outgoingClipId: active.clipId, transitionId: transitionId.trim(),
+        commandId: keys.current[fingerprint] })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setMessage(`Cross dissolve deleted at revision ${authoritative.revisionId}.`)
+    } catch (error) { handleFailure(error, 'Delete transition', null, true) }
+    finally { setBusy(false) }
   }
 
   function beginMove(clip: ClipGeometry, event: ReactPointerEvent<HTMLDivElement>) {
@@ -608,6 +724,39 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       <Button type="button" disabled={!head || !active || busy} onClick={() => void applyTransform()}>Apply video transform</Button>
       <Button type="button" disabled={busy} onClick={resetTransform}>Reset transform</Button>
       <p role="status">Canonical transform: position {activeTransform.positionX.toFixed(0)},{activeTransform.positionY.toFixed(0)} · scale {activeTransform.scaleX.toFixed(2)},{activeTransform.scaleY.toFixed(2)} · rotation {activeTransform.rotationDegrees.toFixed(0)}° · opacity {activeTransform.opacity.toFixed(2)}</p>
+    </fieldset>}
+    {active && activeTrack?.type === 'VIDEO' && <fieldset className="ff-nle-effect-controls" aria-label="Video effect controls" disabled={!head || !project.tenantId || busy}>
+      <legend>Video effect · {active.clipId}</legend>
+      <div className="ff-nle-transform-grid">
+        <label>Brightness <Input aria-label="Video brightness" type="number" step={0.05} min={-1} max={1} value={brightness} onChange={event => setBrightness(Number(event.target.value))} /></label>
+        <label>Contrast <Input aria-label="Video contrast" type="number" step={0.05} min={0} max={2} value={contrast} onChange={event => setContrast(Number(event.target.value))} /></label>
+        <label>Saturation <Input aria-label="Video saturation" type="number" step={0.05} min={0} max={2} value={saturation} onChange={event => setSaturation(Number(event.target.value))} /></label>
+        <label>Fade in (s) <Input aria-label="Video fade in" type="number" step={0.1} min={0} value={fadeIn} onChange={event => setFadeIn(Number(event.target.value))} /></label>
+        <label>Fade out (s) <Input aria-label="Video fade out" type="number" step={0.1} min={0} value={fadeOut} onChange={event => setFadeOut(Number(event.target.value))} /></label>
+        <label><Input aria-label="Video grayscale" type="checkbox" checked={grayscale} onChange={event => setGrayscale(event.target.checked)} /> Grayscale</label>
+        <label><Input aria-label="Video effect enabled" type="checkbox" checked={effectEnabled} onChange={event => setEffectEnabled(event.target.checked)} /> Effect enabled</label>
+      </div>
+      <Button type="button" disabled={!head || busy} onClick={() => void applyEffect()}>Apply video effect</Button>
+      <Button type="button" disabled={busy} onClick={() => void removeEffect()}>Remove video effect</Button>
+      <p role="status">Canonical effect: brightness {activeEffect.brightness.toFixed(2)} · contrast {activeEffect.contrast.toFixed(2)} · saturation {activeEffect.saturation.toFixed(2)} · grayscale {String(activeEffect.grayscale)} · fade {activeEffect.fadeInSeconds}/{activeEffect.fadeOutSeconds}s · enabled {String(activeEffect.enabled)}</p>
+    </fieldset>}
+    {active && activeTrack?.type === 'VIDEO' && <fieldset className="ff-nle-transition-controls" aria-label="Transition controls" disabled={!head || !project.tenantId || busy}>
+      <legend>Cross dissolve · outgoing {active.clipId}</legend>
+      <div className="ff-nle-transform-grid">
+        <label>Transition id <Input aria-label="Transition id" value={transitionId} onChange={event => setTransitionId(event.target.value)} /></label>
+        <label>Incoming clip <select aria-label="Transition incoming clip" value={incomingClipId} onChange={event => setIncomingClipId(event.target.value)}>
+          <option value="">Select video clip</option>
+          {tracks.filter(track => track.type === 'VIDEO').flatMap(track => track.clips)
+            .filter(clip => clip.clipId !== active.clipId)
+            .map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} · {clip.trackId}</option>)}
+        </select></label>
+        <label>Duration <Input aria-label="Transition duration" value={transitionDuration} onChange={event => setTransitionDuration(event.target.value)} /></label>
+      </div>
+      <Button type="button" disabled={!head || busy || !incomingClipId} onClick={() => void createTransition()}>Create cross dissolve</Button>
+      <Button type="button" disabled={busy} onClick={() => void deleteTransition()}>Delete cross dissolve</Button>
+      <ul aria-label="Canonical transitions">
+        {transitions.map(transition => <li key={transition.transitionId}>{transition.transitionId}: {transition.outgoingClipId} → {transition.incomingClipId} ({formatRational(transition.duration)}s)</li>)}
+      </ul>
     </fieldset>}
     {active && (activeTrack?.type === 'AUDIO' || activeTrack?.type === 'VIDEO') && <fieldset className="ff-nle-audio-controls" aria-label="Audio mix controls" disabled={!head || !project.tenantId || busy}>
       <legend>Audio mix · {active.clipId}</legend>

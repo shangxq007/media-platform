@@ -12,6 +12,8 @@ import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
+import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.clip.TimelineSourceBinding;
 import com.example.platform.timeline.version.TimelineRevision;
@@ -103,7 +105,8 @@ public final class VerifiedTimelineRevisionFactory {
                 ContentDigest.sha256(base64ToHex(recordedTimelineDigest)));
         var tracks = document.getTracks().stream()
                 .map(track -> new VerifiedTimelineRevision.Track(track.trackId(), track.type())).toList();
-        return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements);
+        return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
+                document.getTransitions());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */
@@ -164,7 +167,37 @@ public final class VerifiedTimelineRevisionFactory {
                 sourceRange,
                 clip.getTemporalMapping(),
                 mediaBinding,
-                clip.getTransform());
+                clip.getTransform(),
+                effectOf(clip));
+    }
+
+    private static BasicVideoEffect effectOf(TimelineClip clip) {
+        for (TimelineClipEffect effect : clip.getEffects()) {
+            if (!BasicVideoEffect.EFFECT_KEY.equals(effect.effectKey())) continue;
+            var p = effect.parameters();
+            return new BasicVideoEffect(
+                    number(p, "brightness", 0), number(p, "contrast", 1),
+                    number(p, "saturation", 1), bool(p, "grayscale", false),
+                    number(p, "fadeInSeconds", 0), number(p, "fadeOutSeconds", 0),
+                    bool(p, "enabled", true));
+        }
+        return BasicVideoEffect.IDENTITY;
+    }
+
+    private static double number(java.util.Map<String, Object> values, String key, double fallback) {
+        Object v = values.get(key);
+        if (v instanceof Number n) return n.doubleValue();
+        if (v instanceof String s) {
+            try { return Double.parseDouble(s); } catch (NumberFormatException ignored) { }
+        }
+        return fallback;
+    }
+
+    private static boolean bool(java.util.Map<String, Object> values, String key, boolean fallback) {
+        Object v = values.get(key);
+        if (v instanceof Boolean b) return b;
+        if (v instanceof String s) return Boolean.parseBoolean(s);
+        return fallback;
     }
 
     private static TimelineSourceBinding timelineSourceBinding(

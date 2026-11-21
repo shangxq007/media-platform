@@ -125,7 +125,7 @@ try {
   const videoA = await addClip('video-a.mp4', 'track-1', '0', '3')
   const videoB = await addClip('video-b.mp4', 'track-v2', '1', '4')
   const videoC = await addClip('video-c.mp4', 'track-v3', '2', '5')
-  const videoD = await addClip('video-d.mp4', 'track-v4', '1', '3', '2')
+  const videoD = await addClip('video-d.mp4', 'track-v4', '1', '4', '3')
   const audioA = await addClip('audio-a.wav', 'track-a1', '0', '5')
   const audioB = await addClip('audio-b.wav', 'track-a2', '1', '6')
   const audioC = await addClip('audio-c.wav', 'track-a3', '2', '7')
@@ -209,10 +209,8 @@ try {
   }
   await applyTransform(videoB, { positionX: 220, positionY: 160, scaleX: 0.3, scaleY: 0.3,
     rotationDegrees: 0, cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 1 })
-  await applyTransform(videoC, { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1,
-    rotationDegrees: 0, cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 0.5 })
   await applyTransform(videoD, { positionX: 20, positionY: 20, scaleX: 0.5, scaleY: 0.5,
-    rotationDegrees: 45, cropLeft: 0.2, cropRight: 0.8, cropTop: 0.2, cropBottom: 0.8, opacity: 1 })
+    rotationDegrees: 45, cropLeft: 0.2, cropRight: 0.8, cropTop: 0.2, cropBottom: 0.8, opacity: 0.5 })
   // Reset is a local editor action; applying identity afterwards is not necessary here.
   await field('Clip').selectOption(videoA)
   await edit.getByRole('button', { name: 'Reset transform' }).click()
@@ -220,6 +218,56 @@ try {
   assert.equal(await field('Video scale X').inputValue(), '1')
   assert.equal(await field('Video opacity').inputValue(), '1')
   record('VIDEO_TRANSFORMS_PERSISTED_THROUGH_BROWSER_CONTROLS')
+  const applyEffect = async (clipId, e) => {
+    await field('Clip').selectOption(clipId)
+    await field('Video brightness').fill(String(e.brightness))
+    await field('Video contrast').fill(String(e.contrast))
+    await field('Video saturation').fill(String(e.saturation))
+    await field('Video fade in').fill(String(e.fadeInSeconds))
+    await field('Video fade out').fill(String(e.fadeOutSeconds))
+    const gray = field('Video grayscale')
+    if ((await gray.isChecked()) !== e.grayscale) await gray.setChecked(e.grayscale)
+    const enabled = field('Video effect enabled')
+    if ((await enabled.isChecked()) !== e.enabled) await enabled.setChecked(e.enabled)
+    await edit.getByRole('button', { name: 'Apply video effect' }).click()
+    current = await waitRevision(current.revisionId)
+    await page.waitForFunction(() => {
+      const status = document.querySelector('[data-preview-status]')?.dataset.previewStatus
+      const max = Number(document.querySelector('input[aria-label="Timeline preview seek"]')?.getAttribute('max'))
+      return ['READY', 'PAUSED', 'PLAYING'].includes(status) && max > 1
+    })
+    const effect = (await snapshot(current.revisionId)).tracks.flatMap(track => track.clips)
+      .find(clip => clip.clipId === clipId).effects.find(item => item.effectKey === 'video.basic').parameters
+    assert.equal(effect.brightness, e.brightness)
+    assert.equal(effect.contrast, e.contrast)
+    assert.equal(effect.saturation, e.saturation)
+    assert.equal(effect.grayscale, e.grayscale)
+    assert.equal(effect.fadeInSeconds, e.fadeInSeconds)
+    assert.equal(effect.fadeOutSeconds, e.fadeOutSeconds)
+    assert.equal(effect.enabled, e.enabled)
+  }
+  const applyTransition = async (outgoing, incoming, id) => {
+    await field('Clip').selectOption(outgoing)
+    await field('Transition id').fill(id)
+    await field('Transition incoming clip').selectOption(incoming)
+    await field('Transition duration').fill('1/1')
+    await edit.getByRole('button', { name: 'Create cross dissolve' }).click()
+    current = await waitRevision(current.revisionId)
+    await page.waitForFunction(() => {
+      const status = document.querySelector('[data-preview-status]')?.dataset.previewStatus
+      const max = Number(document.querySelector('input[aria-label="Timeline preview seek"]')?.getAttribute('max'))
+      return ['READY', 'PAUSED', 'PLAYING'].includes(status) && max > 1
+    })
+    const transition = (await snapshot(current.revisionId)).transitions.find(item => item.transitionId === id)
+    assert(transition, 'canonical transition')
+    assert.equal(transition.outgoingClipId, outgoing)
+    assert.equal(transition.incomingClipId, incoming)
+    assert.equal(transition.duration, '1/1')
+  }
+  await applyEffect(videoD, { brightness: 0.3, contrast: 1.2, saturation: 0.5,
+    grayscale: false, fadeInSeconds: 0.5, fadeOutSeconds: 0.5, enabled: true })
+  await applyTransition(videoA, videoC, 'transition-red-blue')
+  record('EFFECT_AND_CROSS_DISSOLVE_PERSISTED_THROUGH_BROWSER_CONTROLS')
 
   // The first control also proves the browser UI writes through the canonical
   // gain/mute/pan batch; the remaining routes are applied through the same UI.
@@ -296,23 +344,17 @@ try {
   const videoSamples = [
     { at: 0.5, x: 160, y: 120, expected: 'red' },
     { at: 1.5, x: 270, y: 200, expected: 'green' },
-    { at: 1.5, x: 100, y: 80, expected: 'yellow' },
+    { at: 2.1, x: 250, y: 120, expected: 'red' },
     { at: 2.5, x: 250, y: 120, expected: 'purple' },
-    { at: 2.5, x: 270, y: 200, expected: 'blue' },
-    { at: 2.5, x: 100, y: 80, expected: 'yellow' },
-    { at: 2.5, x: 20, y: 20, expected: 'purple' },
+    { at: 2.9, x: 250, y: 120, expected: 'blue' },
     { at: 6.5, x: 160, y: 120, expected: 'black' },
   ]
   report.videoSamples = []
   for (const sample of videoSamples) {
     await seek(sample.at)
-    const pixel = () => canvas.evaluate((element, point) =>
+    await page.waitForTimeout(150)
+    const rgb = await canvas.evaluate((element, point) =>
       [...element.getContext('2d').getImageData(point.x, point.y, 1, 1).data].slice(0, 3), sample)
-    let rgb = await pixel()
-    for (let attempt = 0; dominant(rgb) !== sample.expected && attempt < 40; attempt++) {
-      await page.waitForTimeout(50)
-      rgb = await pixel()
-    }
     assert.equal(dominant(rgb), sample.expected,
       `Preview ${sample.expected} at ${sample.at}s (${sample.x},${sample.y})`)
     report.videoSamples.push({ ...sample, previewRgb: rgb })
@@ -365,8 +407,8 @@ try {
   }
   const reloadedClips = reloaded.tracks.flatMap(track => track.clips)
   for (const [clipId, expected] of [[videoB, [220, 160, 0.3, 0.3, 0, 0, 1, 0, 1, 1]],
-    [videoC, [0, 0, 1, 1, 0, 0, 1, 0, 1, 0.5]],
-    [videoD, [20, 20, 0.5, 0.5, 45, 0.2, 0.8, 0.2, 0.8, 1]]]) {
+    [videoC, [0, 0, 1, 1, 0, 0, 1, 0, 1, 1]],
+    [videoD, [20, 20, 0.5, 0.5, 45, 0.2, 0.8, 0.2, 0.8, 0.5]]]) {
     const clip = reloadedClips.find(item => item.clipId === clipId)
     const t = clip.transform
     const actual = [t.positionX, t.positionY, t.scaleX, t.scaleY, t.rotationDegrees,

@@ -3,7 +3,7 @@
  * this module never mutates the Timeline or performs a write.
  */
 import { compare, multiply, subtract, type Rational } from './trim'
-import type { ProjectedClip, ProjectedVideoTransform, TimelineProjection } from './timeline-projection'
+import type { ProjectedClip, ProjectedTransition, ProjectedVideoTransform, TimelineProjection } from './timeline-projection'
 
 export function timelineDuration(projection: TimelineProjection): Rational {
   let end: Rational = { numerator: 0n, denominator: 1n }
@@ -21,6 +21,11 @@ export function activeClipsAt(projection: TimelineProjection, timelineTime: Rati
     if (clip) active.push(clip)
   }
   return active
+}
+
+/** The canonical cross-dissolve whose incoming clip is this clip, if any. */
+export function transitionForIncoming(projection: TimelineProjection, clipId: string): ProjectedTransition | null {
+  return projection.transitions.find(transition => transition.incomingClipId === clipId) ?? null
 }
 
 /** The topmost video clip covering a Timeline time, or null for a video gap. */
