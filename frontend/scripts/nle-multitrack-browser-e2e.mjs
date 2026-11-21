@@ -359,6 +359,20 @@ try {
       `Preview ${sample.expected} at ${sample.at}s (${sample.x},${sample.y})`)
     report.videoSamples.push({ ...sample, previewRgb: rgb })
   }
+  const effectSamples = [
+    { at: 1.35, x: 100, y: 100, phase: 'fade-in' },
+    { at: 1.8, x: 100, y: 100, phase: 'effect-steady' },
+    { at: 3.8, x: 100, y: 100, phase: 'fade-out' },
+  ]
+  report.effectSamples = []
+  for (const sample of effectSamples) {
+    await seek(sample.at)
+    await page.waitForTimeout(800)
+    const rgb = await canvas.evaluate((element, point) =>
+      [...element.getContext('2d').getImageData(point.x, point.y, 1, 1).data].slice(0, 3), sample)
+    console.log('EFFECT_PREVIEW ' + sample.phase + ' ' + sample.at + ' ' + rgb.join(','))
+    report.effectSamples.push({ ...sample, previewRgb: rgb })
+  }
   const sampleAudio = async at => {
     await seek(at)
     await preview.getByRole('button', { name: 'Play Timeline' }).click()
@@ -464,6 +478,13 @@ try {
       '-frames:v', '1', '-vf', `crop=2:2:${sample.x}:${sample.y},scale=1:1:flags=neighbor`, '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
     assert.equal(dominant(sample.renderRgb), sample.expected,
       `Rendered ${sample.expected} at ${sample.at}s (${sample.x},${sample.y})`)
+  }
+  for (const sample of report.effectSamples) {
+    sample.renderRgb = [...execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', String(sample.at), '-i', output,
+      '-frames:v', '1', '-vf', `crop=2:2:${sample.x}:${sample.y},scale=1:1:flags=neighbor`, '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
+    sample.maxChannelDelta = Math.max(...sample.previewRgb.map((value, index) => Math.abs(value - sample.renderRgb[index])))
+    console.log('EFFECT_PARITY ' + sample.phase + ' ' + sample.at + ' preview=' + sample.previewRgb.join(',')
+      + ' render=' + sample.renderRgb.join(',') + ' delta=' + sample.maxChannelDelta)
   }
   const raw = execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', '3.5', '-i', output,
     '-t', '0.085333333', '-ac', '2', '-ar', '48000', '-f', 'f32le', '-'])

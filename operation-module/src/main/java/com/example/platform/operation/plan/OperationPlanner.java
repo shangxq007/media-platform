@@ -465,6 +465,7 @@ public final class OperationPlanner {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "cross-track move requires one clip");
         }
         var id = scope.getFirst();
+        rejectTransitionMutation(base, id, "relocate");
         var clip = clipOf(base, id);
         var source = base.getTracks().stream()
                 .filter(track -> track.clips().contains(clip)).findFirst().orElseThrow();

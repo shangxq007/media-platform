@@ -92,12 +92,41 @@ class TransitionEffectOperationPlanningTest {
                 parameters, "parameter-digest", "invocation"), REV, base);
     }
 
+    @Test
+    void transitionReferencedClipsRejectMoveTrimSplitDeleteAndRelocate() {
+        TimelineDocument withTransition = plan(timeline(), OperationDefinition.V3.CREATE_CROSS_DISSOLVE,
+                "clip-a", new OperationParameters.TransitionCreateParameters(
+                        "transition-guarded", "clip-b", MediaTime.ofRational(1, 1))).candidateTimeline();
+
+        assertThatThrownBy(() -> plan(withTransition, OperationDefinition.V1.MOVE, "clip-a",
+                new OperationParameters.MoveParameters(MediaTime.ofRational(1, 2), false)))
+                .isInstanceOf(PlanException.class);
+        assertThatThrownBy(() -> plan(withTransition, OperationDefinition.V1.TRIM, "clip-a",
+                new OperationParameters.TrimParameters(
+                        OperationParameters.TrimParameters.TrimEdge.END, MediaTime.ofRational(1, 2))))
+                .isInstanceOf(PlanException.class);
+        assertThatThrownBy(() -> plan(withTransition, OperationDefinition.V3.SPLIT_CLIP, "clip-a",
+                new OperationParameters.SplitParameters(TimelineClipId.of("clip-a-right"),
+                        MediaTime.ofRational(1, 1))))
+                .isInstanceOf(PlanException.class);
+        assertThatThrownBy(() -> plan(withTransition, OperationDefinition.V1.DELETE, "clip-a",
+                new OperationParameters.NoParameters()))
+                .isInstanceOf(PlanException.class);
+        assertThatThrownBy(() -> plan(withTransition, OperationDefinition.V3.RELOCATE_CLIP, "clip-a",
+                new OperationParameters.RelocateClipParameters(MediaTime.ZERO, true, "v3")))
+                .isInstanceOf(PlanException.class);
+        assertThatThrownBy(() -> plan(withTransition, OperationDefinition.V3.RELOCATE_CLIP, "clip-b",
+                new OperationParameters.RelocateClipParameters(MediaTime.ZERO, true, "v3")))
+                .isInstanceOf(PlanException.class);
+    }
+
     private static TimelineDocument timeline() {
         TimelineClip a = clip("clip-a", MediaTime.ZERO, MediaTime.ofRational(2, 1));
         TimelineClip b = clip("clip-b", MediaTime.ofRational(1, 1), MediaTime.ofRational(4, 1));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("v1", "V1", TrackType.VIDEO, List.of(a)),
-                        new TimelineTrack("v2", "V2", TrackType.VIDEO, List.of(b))),
+                        new TimelineTrack("v2", "V2", TrackType.VIDEO, List.of(b)),
+                        new TimelineTrack("v3", "V3", TrackType.VIDEO, List.of())),
                 TimelineMetadata.empty(), com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of());
     }
 
