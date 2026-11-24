@@ -138,9 +138,9 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
 
     @BeforeEach
     void reset() {
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_intent ON payment_transaction");
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_outbox ON payment_outbox");
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_refund_projection ON payment_transaction");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_intent ON payment.payment_transaction");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_outbox ON payment.payment_outbox");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_refund_projection ON payment.payment_transaction");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_payment_test()");
         jdbc.execute("TRUNCATE payment.payment_refund, payment.payment_outbox, payment.provider_webhook_receipt, payment.payment_command, payment.payment_transaction");
         provider.reset();
@@ -333,7 +333,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         assertEquals("FAILED", jdbc.queryForObject(
                 "SELECT refund_state FROM payment.payment_refund WHERE idempotency_key='refund-rollback'", String.class));
 
-        jdbc.execute("DROP TRIGGER fail_payment_refund_projection ON payment_transaction");
+        jdbc.execute("DROP TRIGGER fail_payment_refund_projection ON payment.payment_transaction");
         assertEquals(200, authority.refund(command).refundedAmount().amountMinor());
         assertEquals(2, provider.refundCalls.get());
     }

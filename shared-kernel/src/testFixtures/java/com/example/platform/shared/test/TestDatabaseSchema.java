@@ -25,9 +25,11 @@ public final class TestDatabaseSchema implements AutoCloseable {
     public Connection connection() { return connection; }
     /** Business tables retain their real domain schemas. The local schema holds only test scratch objects. */
     public org.jooq.DSLContext dsl() {
-        return org.jooq.impl.DSL.using(connection,org.jooq.SQLDialect.POSTGRES);
+        var settings=new org.jooq.conf.Settings().withRenderMapping(
+            new org.jooq.conf.RenderMapping().withSchemata(
+                new org.jooq.conf.MappedSchema().withInput("public").withOutput(name)));
+        return org.jooq.impl.DSL.using(connection,org.jooq.SQLDialect.POSTGRES,settings);
     }
-
     public static void migrateApplication() {
         var provider = TestDatabaseConnectionProvider.fromControlledLaunch();
         String location = "classpath:db/migration";

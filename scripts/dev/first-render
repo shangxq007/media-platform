@@ -226,6 +226,8 @@ finally:
   d=json.loads(command('inspect-volume',B+['volume','inspect',volume],environment=E))[0];assert d['Name']==volume and d['Labels']['media-platform.f8-run']==run;command('remove-volume',B+['volume','rm',volume],environment=E);(R/'cleanup.json').write_text(json.dumps({'result':'PASS','exact_containers':[tid,cid],'exact_volume':volume,'clients_complete':True,'zero_sessions':True}))
 
 # Overall success is published only after all owned resources have been closed and cleaned.
+if clients is not None and clients.returncode != 0:
+ raise RuntimeError('Application supervisor failed; see apps-driver.stderr')
 if not pg18_suite_ok:
  raise RuntimeError("PostgreSQL class suite failed; see 04-tests/pg18/result.json")
 if a.services_only:

@@ -151,7 +151,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
 
     @BeforeEach
     void reset() {
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_rated_insert ON rated_usage_record");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_rated_insert ON billing.rated_usage_record");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_rated_insert_for_test()");
         jdbc.execute("TRUNCATE billing.rated_usage_record, billing.billable_usage, billing.discount_policy, billing.custom_pricing_rule, billing.pricing_rule");
         audit.reset();
@@ -296,7 +296,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
         assertThrows(RuntimeException.class, () -> rating.rate(new RateUsageCommand(
                 usage, "rule-api", 1, "persist-fail", EFFECTIVE, "trace")));
         assertEquals(0, audit.calls);
-        jdbc.execute("DROP TRIGGER fail_rated_insert ON rated_usage_record");
+        jdbc.execute("DROP TRIGGER fail_rated_insert ON billing.rated_usage_record");
         jdbc.execute("DROP FUNCTION fail_rated_insert_for_test()");
 
         audit.fail = true;

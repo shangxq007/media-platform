@@ -75,7 +75,7 @@ class SourceVisualDescriptionSnapshotIT {
                     constraint fk_source_visual_snapshot_stream
                         foreign key (media_stream_id) references media.media_stream(id)
                 )""");
-        dsl.execute("alter table source_visual_description_snapshot "
+        dsl.execute("alter table media.source_visual_description_snapshot "
                 + "add constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id)");
         dsl.execute("""
                 create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$

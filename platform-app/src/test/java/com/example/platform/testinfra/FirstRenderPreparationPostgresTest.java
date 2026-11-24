@@ -123,7 +123,13 @@ class FirstRenderPreparationPostgresTest {
             assertEquals(0,world.count("entitlement.quota_usage_operation"));
             verifyNoInteractions(starter);
         }
-        public void close() throws Exception { world.close(); }
+        public void close() throws Exception {
+            try {
+                db.execute("drop trigger if exists reject_bound_graph_save on render.render_binding_inputs");
+            } finally {
+                world.close();
+            }
+        }
     }
     @Test void missingPinnedSnapshotFailsCreatedJobThroughRealPreparationChain() throws Exception {
         try(var s=new Scenario("SNAPSHOT")){assertThrows(RuntimeException.class,s::plan);s.assertFailed("SNAPSHOT");}

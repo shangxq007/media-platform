@@ -93,7 +93,7 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         jdbc.execute("create function ep15_outbox_fault() returns trigger language plpgsql as $$ begin if NEW.event_type like '%.published' then raise exception 'ep15 injected outbox persistence failure'; end if; return NEW; end $$");
         jdbc.execute("create trigger ep15_outbox_fault before insert on infrastructure.outbox_events for each row execute function ep15_outbox_fault()");
         try {assertThat(http(user,"POST",root()+"/listings/"+id+"/transitions",command).statusCode()).isGreaterThanOrEqualTo(400);}
-        finally {jdbc.execute("drop trigger ep15_outbox_fault on outbox_events");jdbc.execute("drop function ep15_outbox_fault()");}
+        finally {jdbc.execute("drop trigger ep15_outbox_fault on infrastructure.outbox_events");jdbc.execute("drop function ep15_outbox_fault()");}
         assertThat(state()).isEqualTo(before);assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,id)).isEqualTo("READY");assertThat(jdbc.queryForObject("select aggregate_version from marketplace.marketplace_listing where id=?",Long.class,id)).isEqualTo(ready.path("version").asLong());assertThat(jdbc.queryForObject("select published_at is null from marketplace.marketplace_listing where id=?",Boolean.class,id)).isTrue();
         response(http(user,"POST",root()+"/listings/"+id+"/transitions",command),200);assertThat(events()).isEqualTo(before.get(3)+1);assertThat(commands()).isEqualTo(before.get(2)+1);var after=state();response(http(user,"POST",root()+"/listings/"+id+"/transitions",command),200);assertThat(state()).isEqualTo(after);
     }

@@ -264,7 +264,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
             assertThat(failure).isInstanceOf(org.springframework.dao.DataAccessException.class);
             assertThat(failure.getSuppressed()).hasSize(1);
         } finally {
-            jdbc.execute("DROP TRIGGER IF EXISTS reject_social_writes ON social_post");
+            jdbc.execute("DROP TRIGGER IF EXISTS reject_social_writes ON publication.social_post");
             jdbc.execute("DROP FUNCTION IF EXISTS reject_social_writes()");
         }
         var before=state();assertThat(before).containsEntry("status","PUBLISHING");assertThat(before.get("dispatch_started_at")).isNotNull();
@@ -363,7 +363,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         jdbc.execute("CREATE OR REPLACE FUNCTION reject_social_completion() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='PUBLISHED' THEN RAISE EXCEPTION 'controlled completion failure'; END IF; RETURN NEW; END $$");
         jdbc.execute("CREATE TRIGGER reject_social_completion BEFORE UPDATE ON publication.social_post FOR EACH ROW EXECUTE FUNCTION reject_social_completion()");
         try {assertThatThrownBy(this::publish).isInstanceOf(org.springframework.dao.DataAccessException.class);}
-        finally {jdbc.execute("DROP TRIGGER reject_social_completion ON social_post");jdbc.execute("DROP FUNCTION reject_social_completion()");}
+        finally {jdbc.execute("DROP TRIGGER reject_social_completion ON publication.social_post");jdbc.execute("DROP FUNCTION reject_social_completion()");}
         var before=state();assertThat(before).containsEntry("status","UNRESOLVED");assertThat(before.get("dispatch_started_at")).isNotNull();
         scheduler.processScheduledPosts();assertThatThrownBy(()->service.retryPost(tenant,actor,id)).isInstanceOf(IllegalStateException.class);assertThat(state()).isEqualTo(before);verify(provider).publish(any(),any());
     }

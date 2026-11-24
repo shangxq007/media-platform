@@ -110,7 +110,7 @@ class PlatformCapabilityExecutionPostgresTest {
             w.db.execute("create function reject_capability_dispatch() returns trigger language plpgsql as $$ begin raise exception 'synthetic owned dispatch failure'; end $$");
             w.db.execute("create trigger reject_capability_dispatch before insert on infrastructure.outbox_events for each row execute function reject_capability_dispatch()");
             var rejected=assertThrows(org.jooq.exception.DataAccessException.class,()->w.tx(()->owner.admit(plan)));assertTrue(rejected.getMessage().contains("synthetic owned dispatch failure"));assertEquals(0,w.count("execution.platform_execution_admission"));assertEquals(0,w.count("infrastructure.outbox_events"));
-            w.db.execute("drop trigger reject_capability_dispatch on outbox_events");w.tx(()->owner.admit(plan));assertEquals(1,w.count("execution.platform_execution_admission"));assertEquals(1,w.count("infrastructure.outbox_events"));
+            w.db.execute("drop trigger reject_capability_dispatch on infrastructure.outbox_events");w.tx(()->owner.admit(plan));assertEquals(1,w.count("execution.platform_execution_admission"));assertEquals(1,w.count("infrastructure.outbox_events"));
         }
     }
     @Test void cancelledStaleAndCrossProjectPublicationNeverReachArtifactCommit() throws Exception {

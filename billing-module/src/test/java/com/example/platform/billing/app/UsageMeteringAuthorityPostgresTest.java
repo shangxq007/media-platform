@@ -125,7 +125,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void reset() {
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_billable_insert ON billable_usage");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_billable_insert ON billing.billable_usage");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_billable_insert_for_test()");
         jdbc.execute("TRUNCATE TABLE billing.billable_usage, billing.observed_runtime_usage");
         rules.clear();

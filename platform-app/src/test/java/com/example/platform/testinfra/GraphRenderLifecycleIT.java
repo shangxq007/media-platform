@@ -32,7 +32,8 @@ class GraphRenderLifecycleIT {
             if (!provider.isIsolatedLocalResource() || !"pgsuite".equals(provider.runId()))
                 throw new IllegalStateException("Graph fixture requires a fresh class-owned PG18 database");
             schema.dsl().execute("""
-                    truncate identity.tenant, artifacts.artifact, render.render_job, infrastructure.outbox_events,
+                    truncate identity.tenant, identity.workspace, artifacts.artifact, render.render_job,
+                             render.render_binding_inputs, infrastructure.outbox_events,
                              entitlement.quota_usage, entitlement.quota_usage_operation,
                              execution.platform_execution_result, execution.platform_execution_admission,
                              worker_fabric.wf_execution_backend_selection, worker_fabric.wf_execution_ownership_generation,
@@ -84,7 +85,7 @@ class GraphRenderLifecycleIT {
             w.db.execute("create trigger reject_completion before insert on infrastructure.outbox_events for each row execute function reject_completion()");
             assertThrows(org.jooq.exception.DataAccessException.class,()->w.tx(()->w.owner.complete(e,w.output())));
             assertEquals("EXECUTING",w.state());assertNull(w.owner.find("tenant-a","project-a","job-a").orElseThrow().finalArtifactId());assertEquals(0,w.count("entitlement.quota_usage_operation"));assertEquals(3,w.count("infrastructure.outbox_events"));
-            w.db.execute("drop trigger reject_completion on outbox_events");w.tx(()->w.owner.complete(e,w.output()));assertEquals("COMPLETED",w.state());assertEquals(1,w.count("entitlement.quota_usage_operation"));
+            w.db.execute("drop trigger reject_completion on infrastructure.outbox_events");w.tx(()->w.owner.complete(e,w.output()));assertEquals("COMPLETED",w.state());assertEquals(1,w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void staleGraphAttemptGenerationAndOutputCannotConsumeQuotaOrPublish() throws Exception {

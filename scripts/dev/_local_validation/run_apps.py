@@ -148,6 +148,7 @@ finally:
  (out/'complete.json').write_text(json.dumps({'all_children_reaped':True,'status':{n:p.returncode for n,p in processes.items()}}))
  for log in logs:log.close()
  for role in roles:
-  password=json.loads((out/(role+'-env.json')).read_text())['SPRING_DATASOURCE_PASSWORD']
+  runtime_db_role = 'mp_worker' if role == 'worker' else 'mp_api'
+  password = (R/'07-runtime/private-correction'/(runtime_db_role+'-password')).read_text()
   assert all(password not in (out/(name+'.log')).read_text() for name in commands)
  print(out,flush=True)

@@ -129,7 +129,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
 
     @BeforeEach
     void reset() {
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_invoice_ledger_insert ON billing_ledger_entry");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_invoice_ledger_insert ON billing.billing_ledger_entry");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_invoice_ledger_for_test()");
         jdbc.execute("TRUNCATE billing.billing_invoice_command, billing.billing_ledger_entry, billing.invoice_line_item, billing.billing_invoice, billing.rated_usage_record");
         persistRated("rated-1", 2, 10, "USD");

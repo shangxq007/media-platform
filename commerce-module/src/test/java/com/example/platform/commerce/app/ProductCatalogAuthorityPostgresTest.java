@@ -82,7 +82,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
     @AfterAll static void close() { if (context != null) context.close(); closeDataSource(dataSource); }
 
     @BeforeEach void reset() {
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_offering ON commercial_offering");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_offering ON commerce.commercial_offering");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_catalog_test()");
         jdbc.execute("TRUNCATE commerce.provider_product_mapping, commerce.product_catalog_command, commerce.commercial_offering, commerce.commerce_product");
     }

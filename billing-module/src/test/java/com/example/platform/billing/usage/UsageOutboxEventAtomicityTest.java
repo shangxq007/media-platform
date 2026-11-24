@@ -57,7 +57,7 @@ class UsageOutboxEventAtomicityTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void reset() {
-        jdbc.execute("TRUNCATE TABLE billing.observed_runtime_usage");
+        jdbc.execute("TRUNCATE TABLE billing.rated_usage_record, billing.billable_usage, billing.observed_runtime_usage");
     }
 
     @Test

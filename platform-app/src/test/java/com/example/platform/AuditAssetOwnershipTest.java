@@ -71,7 +71,7 @@ class AuditAssetOwnershipTest extends PostgresTestContainerSupport {
             assertEquals(0,jdbc.queryForObject("select count(*) from ep27b_business_probe where id=?",Integer.class,resource));
             assertEquals(0,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Integer.class,resource));
         } finally {
-            jdbc.execute("DROP TRIGGER ep27b_reject_audit ON audit_records");
+            jdbc.execute("DROP TRIGGER ep27b_reject_audit ON policy.audit_records");
             jdbc.execute("DROP FUNCTION ep27b_reject_audit()");
         }
         tx.executeWithoutResult(status->{audit.record("SYSTEM","EP27B_ROLLBACK","CONFIG","test",resource,Map.of());status.setRollbackOnly();});

@@ -385,7 +385,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                     ref(productId), root.revisionId(), document("candidate"), "editor",
                     command("claim-failure", "plan-claim-failure", "fp-claim-failure")));
         } finally {
-            dsl.execute("drop trigger h7_reject_counter on project_revision_counter");
+            dsl.execute("drop trigger h7_reject_counter on timeline.project_revision_counter");
             dsl.execute("drop function h7_reject_counter_update()");
         }
         assertEquals(0, commandRows("claim-failure"));
@@ -411,7 +411,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                     command("publication-failure", "plan-publication-failure",
                             "fp-publication-failure")));
         } finally {
-            dsl.execute("drop trigger h7_reject_ref on timeline_revision_ref");
+            dsl.execute("drop trigger h7_reject_ref on timeline.timeline_revision_ref");
             dsl.execute("drop function h7_reject_ref_publication()");
         }
         assertEquals(0, commandRows("publication-failure"));

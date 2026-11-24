@@ -110,9 +110,9 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void reset() {
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_credit_transaction ON credit_transaction");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_credit_transaction ON billing.credit_transaction");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_credit_transaction_for_test()");
-        jdbc.execute("DROP TRIGGER IF EXISTS fail_credit_command ON credit_wallet_command");
+        jdbc.execute("DROP TRIGGER IF EXISTS fail_credit_command ON billing.credit_wallet_command");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_credit_command_for_test()");
         jdbc.execute("TRUNCATE billing.credit_wallet_command, billing.credit_transaction, billing.credit_reservation, billing.credit_wallet");
     }
@@ -258,7 +258,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
                         "transaction-fail", "actor", "credit", "trace", NOW)));
         assertEquals(0L, repository.findWalletForUpdate("tenant-a", "wallet-rollback")
                 .orElseThrow().balanceMinor());
-        jdbc.execute("DROP TRIGGER fail_credit_transaction ON credit_transaction");
+        jdbc.execute("DROP TRIGGER fail_credit_transaction ON billing.credit_transaction");
         jdbc.execute("DROP FUNCTION fail_credit_transaction_for_test()");
 
         jdbc.execute("""

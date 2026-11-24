@@ -96,7 +96,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(result.status()).isEqualTo(LeaseHeartbeatStatus.ACCEPTED);
         assertThat(result.renewedExpiresAt())
                 .contains(HEARTBEAT_AT.plus(LeaseRenewalContract.NATIVE_PULL_V1.leaseDuration()));
-        assertThat(instant("wf_task_lease", "expires_at", "lease_id", grant.lease().id().value()))
+        assertThat(instant("worker_fabric.wf_task_lease", "expires_at", "lease_id", grant.lease().id().value()))
                 .isEqualTo(result.renewedExpiresAt().orElseThrow());
     }
 
@@ -340,7 +340,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
                     .hasMessageContaining("injected registration replacement failure");
         } finally {
             dsl.execute("drop trigger if exists wf_test_fail_runtime_replacement "
-                    + "on wf_runtime_registration");
+                    + "on worker_fabric.wf_runtime_registration");
             dsl.execute("drop function if exists wf_test_fail_runtime_replacement()");
         }
 

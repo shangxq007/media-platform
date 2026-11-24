@@ -67,7 +67,7 @@ class UsageIngestionTransactionTest extends PostgresTestContainerSupport {
             assertThrows(org.jooq.exception.DataAccessException.class,()->emission.emit(observation));
             counts(tenant,0);
         } finally {
-            jdbc.execute("DROP TRIGGER ep28a_reject_outbox ON outbox_events");
+            jdbc.execute("DROP TRIGGER ep28a_reject_outbox ON infrastructure.outbox_events");
             jdbc.execute("DROP FUNCTION ep28a_reject_outbox()");
         }
         assertEquals(observation,emission.emit(observation));

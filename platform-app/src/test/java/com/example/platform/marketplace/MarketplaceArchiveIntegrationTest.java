@@ -56,7 +56,7 @@ class MarketplaceArchiveIntegrationTest extends MarketplaceTestSupport {
   jdbc.execute("create trigger archive_receipt_fault before insert on marketplace.marketplace_command for each row execute function archive_receipt_fault()");
   try {assertThat(http(user,"POST",path,body).statusCode()).isEqualTo(500);assertThat(state()).isEqualTo(before);
    assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,id)).isEqualTo("PUBLISHED");
-  } finally {jdbc.execute("drop trigger archive_receipt_fault on marketplace_command");jdbc.execute("drop function archive_receipt_fault()");}
+  } finally {jdbc.execute("drop trigger archive_receipt_fault on marketplace.marketplace_command");jdbc.execute("drop function archive_receipt_fault()");}
   response(http(user,"POST",path,body),200);
   assertThat(jdbc.queryForObject("select state from artifacts.artifact where id=?",String.class,asset)).as("Withdrawal never mutates the Artifact subject").isEqualTo("AVAILABLE");
   assertThat(jdbc.queryForMap("select status,aggregate_version from marketplace.marketplace_listing where id=?",id)).containsEntry("status","ARCHIVED").containsEntry("aggregate_version",5L);
@@ -97,7 +97,7 @@ class MarketplaceArchiveIntegrationTest extends MarketplaceTestSupport {
     assertThat(archive.isDone()).isFalse();assertThat(writer.isDone()).isFalse();
    } finally {latch.createStatement().execute("select pg_advisory_unlock(715290020)");}
    response(archive.get(15,TimeUnit.SECONDS),200);assertThat(writer.get(15,TimeUnit.SECONDS)).isEqualTo(1);
-  } finally {jdbc.execute("drop trigger archive_receipt_latch on marketplace_command");jdbc.execute("drop function archive_receipt_latch()");}
+  } finally {jdbc.execute("drop trigger archive_receipt_latch on marketplace.marketplace_command");jdbc.execute("drop function archive_receipt_latch()");}
   assertThat(jdbc.queryForObject("select state from artifacts.artifact where id=?",String.class,asset)).isEqualTo("AVAILABLE");
   // The archive committed at version 5; the serialized follower advanced it to 6 exactly once.
   assertThat(jdbc.queryForMap("select status,aggregate_version from marketplace.marketplace_listing where id=?",id)).containsEntry("status","ARCHIVED").containsEntry("aggregate_version",6L);

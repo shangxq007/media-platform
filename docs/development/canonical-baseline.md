@@ -73,20 +73,15 @@ The exact contract and packaging/licensing notes are in
 
 ## Schema and generated code
 
-There is exactly one active migration: platform-app/src/main/resources/db/migration/V1__baseline.sql.
-It incorporates the accepted graph execution/final Artifact/native fencing constraints. This is a
-pre-release greenfield baseline; do not apply it to old populated development databases or edit their
-Flyway history. Create a fresh owned database. Original accepted V1+V2 bytes remain in immutable audit
-snapshots, not in the active migration directory.
+The single application Flyway chain consists of the immutable V1 baseline and the V2 domain
+relocation. Fresh installation and canonical V1 upgrade use the same migration entry point.
+The known historical V1 requires an isolated data transfer. See the [migration lifecycle](../database/flyway-migration-baseline.md)
+for supported lineages, role provisioning and recovery.
 
-jOOQ3.21.9 output under typed-schema-module/src/main/java/.../jooq/generated is versioned and must be
-regenerated from actual PG18 using typed-schema-module/jooq-codegen.xml. The local validation records
-fresh introspection and compiled generated sources externally. Review staged output before installing
-it; never mix generated and hand-written contract classes. `verifyJooqGeneratedSources` checks exact
-canonical table/record identity parity and generated layout. Baseline consolidation compared all
-the then-current business DDL and447 generated files between original V1+V2 and that initial V1, excluding only Flyway bookkeeping,
-dump restrict randomness, and deliberately distinct test-role ownership/ACLs. Structural constraints,
-functions, indexes and views are included. Subsequent Owner-approved Schema changes require a new empty-PG18 run and byte parity against the actual newly generated file set;447 is not a permanent count.
+The typed-schema module runs jOOQ against the fully migrated PostgreSQL 18 catalog. Regenerate
+in external staging with `typed-schema-module/regenerate-jooq-schema.sh`. Review the two passes
+and compare the committed generation tree. The current output exposes 214 schema-qualified tables
+and their records. The earlier greenfield consolidation produced 447 files at that historical revision.
 
 ## Architecture and adoption
 

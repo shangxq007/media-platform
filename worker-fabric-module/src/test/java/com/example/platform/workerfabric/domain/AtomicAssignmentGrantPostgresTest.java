@@ -519,7 +519,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
     }
 
     private static void removeFailureInjection() {
-        dsl.execute("drop trigger if exists wf_test_fail_lease_insert on wf_task_lease");
+        dsl.execute("drop trigger if exists wf_test_fail_lease_insert on worker_fabric.wf_task_lease");
         dsl.execute("drop function if exists wf_test_fail_lease_insert()");
     }
 }
