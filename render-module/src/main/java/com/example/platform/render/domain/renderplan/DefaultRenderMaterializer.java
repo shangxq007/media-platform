@@ -81,6 +81,12 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         var revision = input.verifiedRevision();
         var raster = request.extent().raster();
+        if (!RenderRaster.supportsAspect(revision.aspectRatio())) {
+            diagnostics.add(RenderPlanningDiagnostic.diagnostic(
+                    RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_UNSUPPORTED, RenderDiagnosticSeverity.ERROR,
+                    "No supported output raster exactly matches the authored composition aspect ratio"));
+            return new RenderMaterializationResult(nodes, edges, diagnostics);
+        }
         if (!revision.aspectRatio().matches(raster.width(), raster.height())) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
                     RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_MISMATCH, RenderDiagnosticSeverity.ERROR,

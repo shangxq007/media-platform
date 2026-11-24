@@ -1,3 +1,4 @@
+import { DEFAULT_COMPOSITION_ASPECT, exactCompositionAspect } from '../../contracts/app/composition-aspect'
 import { describe, expect, it } from 'vitest'
 import { audioRouteFor, clipById, firstVideoTrack, projectTimeline, timelineEnd, videoTransformParameters,
   IDENTITY_VIDEO_TRANSFORM } from './timeline-projection'
@@ -59,10 +60,23 @@ describe('canonical Timeline projection', () => {
 
   it('round trips fixed-point geometry and explicit portrait composition', () => {
     const transform = { ...IDENTITY_VIDEO_TRANSFORM, positionX: -0.105001, rotationDegrees: 45.000001 }
-    const projected = projectTimeline({ ...document, metadata: { compositionAspectRatio: 'PORTRAIT_3_4' },
+    const projected = projectTimeline({ ...document, metadata: { compositionAspectRatio: exactCompositionAspect(3, 4) },
       tracks: [{ ...track, clips: [{ ...clip, transform: videoTransformParameters(transform) }] }] })
-    expect(projected.compositionAspectRatio).toBe('PORTRAIT_3_4')
+    expect(projected.compositionAspectRatio).toEqual(exactCompositionAspect(3, 4))
     expect(clipById(projected, 'a')?.transform).toEqual(transform)
+  })
+
+  it('interprets omission only as the default and rejects malformed explicit ratios', () => {
+    expect(projectTimeline(document).compositionAspectRatio).toEqual(DEFAULT_COMPOSITION_ASPECT)
+    for (const value of [
+      null, 'PORTRAIT_3_4', { ...exactCompositionAspect(3, 4), format: 'unsupported' },
+      { ...exactCompositionAspect(3, 4), extra: 1 },
+      { ...exactCompositionAspect(3, 4), numerator: 1.5 },
+      { ...exactCompositionAspect(3, 4), numerator: 2_147_483_648 },
+      { ...exactCompositionAspect(3, 4), numerator: 6, denominator: 8 },
+    ]) {
+      expect(() => projectTimeline({ ...document, metadata: { compositionAspectRatio: value } })).toThrow()
+    }
   })
 
   it('rejects malformed authored transforms and unknown temporal mappings', () => {

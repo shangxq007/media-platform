@@ -13,6 +13,9 @@ import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.identity.api.project.ProjectReadQuery;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.timeline.canonical.CompositionAspectRatio;
 import com.example.platform.storage.api.*;
 import com.example.platform.web.render.TimelineProjectAuthorizationService;
 import java.io.IOException;
@@ -178,6 +181,21 @@ public class SourceMediaUploadController {
                         item.facts().streams().stream().map(stream -> new SourceStream(stream.streamId(),
                                 stream.kind().name(), stream.duration().toString())).toList()))
                 .toList();
+    }
+
+    @GetMapping("/{artifactId}/display-aspect")
+    public CompositionAspectRatio displayAspect(@PathVariable String tenantId, @PathVariable String projectId,
+            @PathVariable String artifactId, @RequestParam String contentDigest, @RequestParam String streamId) {
+        authorization.requireRead(tenantId, projectId);
+        var facts = sourceFacts.find(tenantId, projectId, new ArtifactId(artifactId), ContentDigest.sha256(contentDigest))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Source media unavailable"));
+        return facts.streams().stream()
+                .filter(stream -> stream.kind() == ArtifactSourceFacts.Kind.VIDEO && stream.streamId().equals(streamId))
+                .map(ArtifactSourceFacts.Stream::displayAspectRatio)
+                .filter(java.util.Objects::nonNull)
+                .findFirst().map(CompositionAspectRatio::fromKey)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "Match Source unavailable for the selected stream"));
     }
 
     private static String displayName(String raw, String artifactId) {

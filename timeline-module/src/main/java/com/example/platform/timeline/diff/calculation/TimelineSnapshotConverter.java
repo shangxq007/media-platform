@@ -241,7 +241,7 @@ public final class TimelineSnapshotConverter {
         metadata.put("schemaVersion", document.getSchemaVersion());
         metadata.put("timelineDocument.title", document.getMetadata().title());
         metadata.put("timelineDocument.description", document.getMetadata().description());
-        metadata.put(ASPECT_KEY, document.getMetadata().effectiveCompositionAspectRatio().name());
+        metadata.put(ASPECT_KEY, document.getMetadata().effectiveCompositionAspectRatio().toString());
         document.getMetadata().properties().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(e -> metadata.put("timelineDocument.property." + e.getKey(), e.getValue()));
@@ -260,7 +260,8 @@ public final class TimelineSnapshotConverter {
                 safeMetadata.getOrDefault("timelineDocument.title", ""),
                 safeMetadata.getOrDefault("timelineDocument.description", ""),
                 properties, com.example.platform.timeline.canonical.CompositionAspectRatio
-                        .valueOf(safeMetadata.getOrDefault(ASPECT_KEY, "LANDSCAPE_4_3")));
+                        .fromKey(safeMetadata.getOrDefault(ASPECT_KEY,
+                                com.example.platform.timeline.canonical.CompositionAspectRatio.DEFAULT.toString())));
     }
 
     private static List<com.example.platform.timeline.canonicalmodel.CanonicalTransition> fromTransitionSnapshots(

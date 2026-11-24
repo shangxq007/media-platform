@@ -135,11 +135,12 @@ public class RevisionRenderPlanningAndBindingService {
                 planning.renderRequest(),
                 planning.sourceResolution(),
                 planning.capabilityContext());
-        var aspectMismatch = renderPlanningResult.diagnostics().stream()
-                .filter(diagnostic -> diagnostic.code() == RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_MISMATCH)
+        var rasterRejection = renderPlanningResult.diagnostics().stream()
+                .filter(diagnostic -> diagnostic.code() == RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_MISMATCH
+                        || diagnostic.code() == RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_UNSUPPORTED)
                 .findFirst();
-        if (aspectMismatch.isPresent()) {
-            throw new IllegalArgumentException(aspectMismatch.get().message());
+        if (rasterRejection.isPresent()) {
+            throw new IllegalArgumentException(rasterRejection.get().message());
         }
 
         // #21 provider-neutral execution planning.

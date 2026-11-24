@@ -12,8 +12,15 @@ import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.render.app.operation.TimelineBatchCommand;
 import com.example.platform.render.app.operation.TimelineBatchCommandMapper;
 import com.example.platform.shared.web.TenantContext;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,6 +42,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/timeline-operations/batch")
 public class TimelineBatchOperationController {
 
+    private static final ObjectMapper BATCH_JSON = new ObjectMapper()
+            .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
     private final BatchInvocationPort invocations;
     private final TimelineBatchCommandMapper mapper;
     private final CanonicalActorResolver actors;
@@ -47,27 +59,39 @@ public class TimelineBatchOperationController {
         this.actors = actors;
     }
 
-    @PostMapping("/preview")
+    @PostMapping(value = "/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<BatchPreview> preview(
             @PathVariable String tenantId, @PathVariable String projectId,
-            @RequestBody TimelineBatchCommand body) {
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+                    content = @Content(schema = @Schema(implementation = TimelineBatchCommand.class)))
+            @RequestBody String body) {
         CanonicalActor actor = requireActor(tenantId, projectId);
-        OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, body);
+        OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, decode(body));
         return ResponseEntity.ok(invocations.preview(batch,
                 OperationBatchContext.preview(actor, "timeline-batch-http")));
     }
 
-    @PostMapping("/apply")
+    @PostMapping(value = "/apply", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<BatchCommitResult> apply(
             @PathVariable String tenantId, @PathVariable String projectId,
-            @RequestBody TimelineBatchCommand body) {
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+                    content = @Content(schema = @Schema(implementation = TimelineBatchCommand.class)))
+            @RequestBody String body) {
         CanonicalActor actor = requireActor(tenantId, projectId);
-        OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, body);
+        OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, decode(body));
         BatchCommitResult result = invocations.commit(batch,
                 OperationBatchContext.apply(batch.batchId(), actor, null, "timeline-batch-http"));
         HttpStatus status = BatchCommitResult.APPLIED.equals(result.status()) && !result.replayed()
                 ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(result);
+    }
+
+    private static TimelineBatchCommand decode(String body) {
+        try {
+            return BATCH_JSON.readValue(body, TimelineBatchCommand.class);
+        } catch (JsonProcessingException malformed) {
+            throw new IllegalArgumentException("Invalid or ambiguous Timeline batch JSON");
+        }
     }
 
     private CanonicalActor requireActor(String tenantId, String projectId) {

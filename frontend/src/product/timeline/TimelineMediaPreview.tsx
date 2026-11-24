@@ -1,3 +1,5 @@
+import { DEFAULT_COMPOSITION_ASPECT } from '../../contracts/app/composition-aspect'
+import { previewRaster } from './composition-raster'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
@@ -104,9 +106,9 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
   function draw(session: PreviewSession, forceSeek = false) {
     const target = canvas.current
     if (!target) return
-    const portrait = session.projection?.compositionAspectRatio === 'PORTRAIT_3_4'
-    const width = portrait ? 240 : 320
-    const height = portrait ? 320 : 240
+    const raster = previewRaster(session.projection?.compositionAspectRatio ?? DEFAULT_COMPOSITION_ASPECT)
+    if (!raster) return
+    const { width, height } = raster
     if (target.width !== width || target.height !== height) {
       target.width = width
       target.height = height
@@ -212,6 +214,9 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
         const snapshot = await FormalRenderAPI.snapshot(projectId, revision, signal)
         if (signal.aborted) return
         const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
+        if (!previewRaster(projection.compositionAspectRatio)) {
+          throw new Error('No supported preview raster exactly matches the authored composition aspect ratio.')
+        }
         const audioTracks = projection.tracks.filter(track => track.type === 'AUDIO')
         const videoTracks = projection.tracks.filter(track => track.type === 'VIDEO')
         const videoClips = videoTracks.flatMap(track => track.clips)
@@ -421,7 +426,7 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
           : status === 'PLAYING' ? 'Playing the current Timeline revision.'
             : status === 'PAUSED' ? 'Paused.' : status === 'FAILED' ? message : 'No preview is available.'
     }</p>
-    <canvas ref={canvas} width={320} height={240} aria-label="Timeline preview canvas"
+    <canvas ref={canvas} width={320} height={240} hidden={status === 'FAILED'} aria-label="Timeline preview canvas"
       style={{ display: 'block', width: '100%', maxWidth: 480, background: '#000', borderRadius: 4 }} />
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
       <Button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}

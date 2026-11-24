@@ -506,9 +506,9 @@ public class TimelinePatchApplier {
     // --- Metadata ---
 
     private TimelinePatchApplicationResult applyAspect(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
-        var aspect = com.example.platform.timeline.canonical.CompositionAspectRatio.valueOf(afterVal(op));
+        var aspect = com.example.platform.timeline.canonical.CompositionAspectRatio.fromKey(afterVal(op));
         var metadata = new HashMap<>(s.safeMetadata());
-        metadata.put(TimelineSnapshotConverter.ASPECT_KEY, aspect.name());
+        metadata.put(TimelineSnapshotConverter.ASPECT_KEY, aspect.toString());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(), s.tracks(),
                 s.watermarks(), s.templateApplications(), s.workflowSteps(), s.outputProfile(),
                 metadata, s.textElements(), s.transitions(), s.automations(),

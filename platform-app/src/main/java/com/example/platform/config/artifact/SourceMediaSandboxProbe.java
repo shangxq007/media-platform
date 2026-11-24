@@ -11,6 +11,7 @@ import com.example.platform.sandbox.SandboxCancellation;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.time.ExactDecimalSeconds;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -56,7 +57,8 @@ public class SourceMediaSandboxProbe implements ArtifactSourceProbePort {
                 if (streamDuration.isGreaterThan(normalized.duration())) streamDuration = normalized.duration();
                 streams.add(new ArtifactSourceFacts.Stream(stream.id().value(),
                         stream.kind() == StreamKind.VIDEO ? ArtifactSourceFacts.Kind.VIDEO : ArtifactSourceFacts.Kind.AUDIO,
-                        streamDuration));
+                        streamDuration, stream.kind() == StreamKind.VIDEO
+                                ? SourceDisplayAspect.fromProbe(raw).orElse(null) : null));
             }
             return new ArtifactSourceFacts(normalized.duration(), streams);
         } catch (java.io.IOException unavailable) {
@@ -75,7 +77,7 @@ public class SourceMediaSandboxProbe implements ArtifactSourceProbePort {
         }
     }
 
-    private static MediaTime duration(com.fasterxml.jackson.databind.JsonNode stream) {
+    private static MediaTime duration(JsonNode stream) {
         try {
             String ticks = stream.path("duration_ts").asText("");
             String timeBase = stream.path("time_base").asText("");

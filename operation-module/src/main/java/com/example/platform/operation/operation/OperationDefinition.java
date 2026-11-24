@@ -143,7 +143,7 @@ public record OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.relocate"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.RelocateClipParameters.class);
         public static final OperationDefinition SET_COMPOSITION_ASPECT = new OperationDefinition(
-                OperationDefinitionId.of("timeline.composition.aspect.set"), OperationDefinitionVersion.of(1, 0),
+                OperationDefinitionId.of("timeline.composition.aspect.set"), OperationDefinitionVersion.of(2, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.CompositionAspectParameters.class);
         public static final OperationDefinition SET_VIDEO_TRANSFORM = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.transform.set"), OperationDefinitionVersion.of(2, 0),

@@ -37,6 +37,8 @@ public final class TimelineDocumentJsonSerializer {
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
             .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
 
@@ -79,7 +81,12 @@ public final class TimelineDocumentJsonSerializer {
             throw new IllegalArgumentException("timeline payload must not be blank");
         }
         try {
-            return MAPPER.readValue(payloadJson, TimelineDocument.class);
+            JsonNode payload = MAPPER.readTree(payloadJson);
+            JsonNode aspect = payload.path("metadata").get("compositionAspectRatio");
+            if (aspect != null && aspect.isNull()) {
+                throw new IllegalArgumentException("Explicit null composition aspect is unsupported");
+            }
+            return MAPPER.treeToValue(payload, TimelineDocument.class);
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to deserialize canonical TimelineDocument", e);
         }

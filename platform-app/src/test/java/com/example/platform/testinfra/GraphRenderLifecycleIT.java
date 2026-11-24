@@ -121,6 +121,10 @@ class GraphRenderLifecycleIT {
                             com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO, duration)));
             store.record(scope, id, digest, facts);
             store.record(scope, id, digest, facts);
+            var newlyObservableDisplay = new com.example.platform.artifact.contract.ArtifactSourceFacts(duration,
+                    List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream("source-facts:s0",
+                            com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO, duration, "9:32")));
+            store.record(scope, id, digest, newlyObservableDisplay);
             assertEquals(facts, store.find("tenant-a", "project-a", id, digest).orElseThrow());
             assertTrue(store.find("tenant-a", "other-project", id, digest).isEmpty());
             assertThrows(RuntimeException.class, () -> w.db.execute("update artifact set audit_provenance='{}'::jsonb where id='source-facts'"));

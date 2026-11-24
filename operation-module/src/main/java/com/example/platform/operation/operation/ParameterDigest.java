@@ -119,7 +119,7 @@ public final class ParameterDigest {
             return "transition-delete(" + td.transitionId() + ")";
         }
         if (p instanceof OperationParameters.CompositionAspectParameters aspect) {
-            return "composition-aspect(" + aspect.aspectRatio().name() + ")";
+            return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
         if (p instanceof OperationParameters.VideoTransformParameters vt) {
             var t = vt.transform();

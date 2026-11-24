@@ -18,6 +18,11 @@
 | OD-010 | Independent review and real E2E evidence are required for product acceptance. | ACTIVE | Product tasks | A review session with no verdict is not APPROVE. |
 | OD-011 | Embedded video audio participates only through an explicit Canonical AudioRoute. | ACTIVE | Multi-video timelines | No implicit mixing of all video sources; explicit route avoids double-counting. |
 | OD-012 | Canonical composition uses a versioned, fixed-point, resolution-independent space. Canonical Operation authors aspect and transform. Render requests specify a separate compatible output raster. | ACTIVE | Timeline, NLE preview, planning and native projection | Unsupported composition, raster and effect semantics fail closed. |
+| OD-013 | Authored composition aspect is a reduced exact positive rational. Presets resolve to that value, and a verified source display aspect can initialize it as a fixed value. | ACTIVE | Timeline, NLE, render admission | Preview and output require an exact compatible raster. A canonically valid ratio can have no supported output. |
+| OD-014 | Agent, MCP, frontend, external applications and Workflow consume stable semantic Query and Operation contracts. Generic invocation retains domain-specific semantics. | ACTIVE | Semantic interface direction | This decision does not authorize broad interface implementation. |
+| OD-015 | BMF is preferred for multi-capability media analysis as well as rendering. | ACTIVE | Media analysis direction | Future analysis uses shared decode, safe frame reuse, independent sampling, typed observations, independent result commitment and selective reuse. |
+| OD-016 | Platform-owned Workflow semantics coordinate Query, Analyze, Generate, Plan, Apply, Render, Evaluate, Review and Delivery. Temporal provides durable execution infrastructure. | ACTIVE | Workflow direction | Workflow definitions and native execution graphs retain distinct boundaries. |
+| OD-017 | Future Parameter Channels, keyframes, automation and Auto Reframe build on exact composition and authored temporal semantics. | ACTIVE | Dynamic parameter direction | Scope and implementation require a separate Owner task. |
 
 ## Change control
 

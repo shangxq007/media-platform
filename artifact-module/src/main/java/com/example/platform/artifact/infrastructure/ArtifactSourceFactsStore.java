@@ -24,13 +24,15 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
 
     public void record(ArtifactScope scope, ArtifactId id, ContentDigest digest, ArtifactSourceFacts facts) {
         TenantGuard.assertSameTenant(scope.tenantId());
-        String value = encode(facts);
+        String value = encode(facts, true);
         int changed = dsl.execute("""
-                update artifact set audit_provenance=jsonb_set(audit_provenance,'{sourceProbeV1}',cast(? as jsonb),true)
+                update artifact set audit_provenance=jsonb_set(audit_provenance,'{sourceProbeV1}',
+                    coalesce(audit_provenance->'sourceProbeV1',cast(? as jsonb)),true)
                 where tenant_id=? and project_id=? and workspace_id=? and id=? and content_digest=?
-                  and (audit_provenance->'sourceProbeV1' is null or audit_provenance->'sourceProbeV1'=cast(? as jsonb))
+                  and (audit_provenance->'sourceProbeV1' is null or audit_provenance->'sourceProbeV1'=cast(? as jsonb)
+                       or audit_provenance->'sourceProbeV1'=cast(? as jsonb))
                 """, value, scope.tenantId(), scope.projectId(), scope.workspaceId(), id.value(),
-                digest.canonicalValue(), value);
+                digest.canonicalValue(), value, encode(facts, false));
         if (changed != 1) throw new IllegalStateException("source facts conflict or scoped Artifact unavailable");
     }
 
@@ -79,7 +81,7 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
                 decode(row.get("source_facts", String.class))));
     }
 
-    private static String encode(ArtifactSourceFacts facts) {
+    private static String encode(ArtifactSourceFacts facts, boolean includeDisplayAspect) {
         try {
             var root = JSON.createObjectNode();
             root.put("version", 1); root.put("durationTicks", facts.duration().ticks());
@@ -88,7 +90,11 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
             facts.streams().stream().sorted(java.util.Comparator.comparing(ArtifactSourceFacts.Stream::streamId))
                     .forEach(stream -> { var node = streams.addObject(); node.put("id", stream.streamId());
                         node.put("kind", stream.kind().name()); node.put("durationTicks", stream.duration().ticks());
-                        node.put("durationScale", stream.duration().timeScale()); });
+                        node.put("durationScale", stream.duration().timeScale());
+                        if (includeDisplayAspect && stream.displayAspectRatio() != null) {
+                            node.put("displayAspectV1", stream.displayAspectRatio());
+                        }
+                    });
             return JSON.writeValueAsString(root);
         } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
             throw new IllegalStateException("cannot encode source facts", invalid);
@@ -104,9 +110,14 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
             }
             var streams = new ArrayList<ArtifactSourceFacts.Stream>();
             for (var node : root.path("streams")) {
+                var display = node.get("displayAspectV1");
+                if (display != null && !display.isTextual()) {
+                    throw new IllegalArgumentException("invalid source display aspect fact");
+                }
                 streams.add(new ArtifactSourceFacts.Stream(node.path("id").asText(),
                         ArtifactSourceFacts.Kind.valueOf(node.path("kind").asText()),
-                        MediaTime.ofTicks(node.path("durationTicks").longValue(), node.path("durationScale").longValue())));
+                        MediaTime.ofTicks(node.path("durationTicks").longValue(), node.path("durationScale").longValue()),
+                        display == null ? null : display.textValue()));
             }
             return new ArtifactSourceFacts(MediaTime.ofTicks(root.path("durationTicks").longValue(),
                     root.path("durationScale").longValue()), streams);

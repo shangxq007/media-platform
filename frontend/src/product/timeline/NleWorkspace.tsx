@@ -1,3 +1,4 @@
+import { DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 import { useEffect, useReducer, useRef, useState, type ChangeEvent } from 'react'
 import { operationGateway as defaultOperationGateway } from '../../api/app/operation.gateway'
 import { timelineQueryGateway as defaultTimelineQueryGateway } from '../../api/app/timeline-query.gateway'
@@ -19,7 +20,7 @@ import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
-import { projectSnapshotJson, timelineEnd, type CompositionAspectRatio, type ProjectedTrack } from './timeline-projection'
+import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timeline-projection'
 import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
@@ -180,7 +181,7 @@ export function NleWorkspace({
   const [confirmed, setConfirmed] = useState(false)
   const [readbackRetrying, setReadbackRetrying] = useState(false)
   const [applyOwnershipRelease, setApplyOwnershipRelease] = useState(0)
-  const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>('LANDSCAPE_4_3')
+  const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>(DEFAULT_COMPOSITION_ASPECT)
   const [projectionError, setProjectionError] = useState<string | null>(null)
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [previewTime, setPreviewTime] = useState(0)

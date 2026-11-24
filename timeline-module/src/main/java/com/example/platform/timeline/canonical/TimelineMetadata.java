@@ -14,7 +14,7 @@ public record TimelineMetadata(
     }
 
     public CompositionAspectRatio effectiveCompositionAspectRatio() {
-        return compositionAspectRatio == null ? CompositionAspectRatio.LANDSCAPE_4_3 : compositionAspectRatio;
+        return compositionAspectRatio == null ? CompositionAspectRatio.DEFAULT : compositionAspectRatio;
     }
 
     public TimelineMetadata {
@@ -22,7 +22,7 @@ public record TimelineMetadata(
         if (description == null) description = "";
         if (properties == null) properties = Map.of();
         properties = Map.copyOf(properties);
-        if (compositionAspectRatio == CompositionAspectRatio.LANDSCAPE_4_3) compositionAspectRatio = null;
+        if (CompositionAspectRatio.DEFAULT.equals(compositionAspectRatio)) compositionAspectRatio = null;
     }
 
     public static TimelineMetadata empty() {

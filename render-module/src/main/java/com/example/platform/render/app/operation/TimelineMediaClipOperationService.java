@@ -325,6 +325,7 @@ public class TimelineMediaClipOperationService {
     private PreparedOperation prepareForInvocation(String tenantId, String projectId,
             OperationRequest request, CanonicalActor actor) {
         return isClipEdit(request) || OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId())
+                || OperationDefinition.V3.SET_COMPOSITION_ASPECT.definitionId().equals(request.definitionId())
                 ? prepareClipEdit(tenantId, projectId, request, actor)
                 : prepareInternal(tenantId, projectId, request, actor);
     }
@@ -337,7 +338,12 @@ public class TimelineMediaClipOperationService {
         boolean clipEdit = isClipEdit(request)
                 && request.target() instanceof OperationTargetRequest.ClipSelectionTargetRequest target
                 && projectId.equals(target.timelineId());
-        if (!trackAddition && !clipEdit) {
+        boolean compositionAspect = OperationDefinition.V3.SET_COMPOSITION_ASPECT.definitionId().equals(request.definitionId())
+                && OperationDefinition.V3.SET_COMPOSITION_ASPECT.version().equals(request.version())
+                && request.parameters() instanceof OperationParameters.CompositionAspectParameters
+                && request.target() instanceof OperationTargetRequest.TimelineTargetRequest target
+                && projectId.equals(target.timelineId());
+        if (!trackAddition && !clipEdit && !compositionAspect) {
             throw new TimelineOperationException(TimelineOperationException.Code.CANDIDATE_INVALID,
                     List.of("exact clip selection and Timeline target required"));
         }

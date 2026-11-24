@@ -1,3 +1,4 @@
+import { decodeCompositionAspect, type CompositionAspectRatio } from '../contracts/app/composition-aspect'
 import { z } from 'zod'
 import { versionlessApi } from './app/versionless-api'
 import { sessionBoundRequest as request } from './oidc-transport'
@@ -63,9 +64,17 @@ export const FormalRenderAPI = {
         target: { clipId: command.clipId }, parameters: command.parameters }] }
     return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
   },
+  async sourceDisplayAspect(tenant: string, project: string, artifactId: string, contentDigest: string,
+    streamId: string, signal?: AbortSignal): Promise<CompositionAspectRatio> {
+    const path = `/tenants/${part(tenant)}/projects/${part(project)}/source-media/${part(artifactId)}/display-aspect`
+    return decodeCompositionAspect(await request(config => versionlessApi.get(path, {
+      ...config, params: { contentDigest, streamId },
+    }), signal))
+  },
+
   async setCompositionAspect(tenant: string, project: string, command: {
     baseRevisionId: string; baseContentHash: string; commandId: string;
-    aspectRatio: 'LANDSCAPE_4_3' | 'PORTRAIT_3_4'
+    aspectRatio: CompositionAspectRatio
   }, signal?: AbortSignal) {
     const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Set composition aspect ratio',

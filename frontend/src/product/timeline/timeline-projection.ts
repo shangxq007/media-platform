@@ -1,3 +1,4 @@
+import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 /**
  * Read-only projection of a canonical Timeline snapshot.
  *
@@ -163,8 +164,6 @@ export interface ProjectedAudioRoute {
   readonly pan: number
 }
 
-export type CompositionAspectRatio = 'LANDSCAPE_4_3' | 'PORTRAIT_3_4'
-
 export interface TimelineProjection {
   readonly compositionAspectRatio: CompositionAspectRatio
   readonly tracks: readonly ProjectedTrack[]
@@ -216,8 +215,8 @@ export function projectTimeline(document: unknown): TimelineProjection {
     }
   }
   const metadata = root.metadata == null ? {} : object(root.metadata, 'Timeline metadata')
-  const aspect = metadata.compositionAspectRatio ?? 'LANDSCAPE_4_3'
-  if (aspect !== 'LANDSCAPE_4_3' && aspect !== 'PORTRAIT_3_4') throw new Error('Unsupported composition aspect ratio')
+  const aspect = metadata.compositionAspectRatio === undefined ? DEFAULT_COMPOSITION_ASPECT
+    : decodeCompositionAspect(metadata.compositionAspectRatio)
   const tracks: ProjectedTrack[] = entries(root.tracks, 'Timeline tracks').map(raw => {
     const track = object(raw, 'Timeline track')
     if (track.type !== 'video' && track.type !== 'audio') throw new Error('Unsupported Timeline track type')

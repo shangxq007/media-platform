@@ -1,6 +1,8 @@
+import { aspectLabel, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
+import { COMPOSITION_PRESETS, customCompositionAspect } from './composition-raster'
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
-import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, videoTransformParameters, type CompositionAspectRatio, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
+import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, videoTransformParameters, type ProjectedClip, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
@@ -28,17 +30,22 @@ interface PreviewedTrim extends PendingTrim { clipId: string; revisionId: string
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
 
-function geometryOf(clips: ReturnType<typeof projectSnapshotJson>['clips']): ClipGeometry[] {
+type EditorClip = ClipGeometry & Pick<ProjectedClip, 'artifactId' | 'contentDigest' | 'mediaStreamId'>
+
+function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
   return clips.map(clip => ({
     clipId: clip.clipId, trackId: clip.trackId, start: clip.start, end: clip.end,
     sourceStart: clip.sourceStart, sourceEnd: clip.sourceEnd, rate: clip.rate,
+    artifactId: clip.artifactId, contentDigest: clip.contentDigest, mediaStreamId: clip.mediaStreamId,
   }))
 }
 
 export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhead = 0,
   selectedTrackId, onSelectTrack }: Props) {
   const project = useProjectContext()
-  const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>('LANDSCAPE_4_3')
+  const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio | null>(null)
+  const [aspectWidth, setAspectWidth] = useState('')
+  const [aspectHeight, setAspectHeight] = useState('')
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
   const [transforms, setTransforms] = useState<Record<string, ProjectedVideoTransform>>({})
@@ -46,7 +53,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const [transitions, setTransitions] = useState<readonly ProjectedTransition[]>([])
   const [destinationTrackId, setDestinationTrackId] = useState('')
   const trackCommands = useRef<Partial<Record<'VIDEO' | 'AUDIO', { revision: string; id: string }>>>({})
-  const [clips, setClips] = useState<ClipGeometry[]>([])
+  const [clips, setClips] = useState<EditorClip[]>([])
   const [selected, setSelected] = useState('')
   const [audioGain, setAudioGain] = useState(1)
   const [audioMute, setAudioMute] = useState(false)
@@ -89,7 +96,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
-    if (!head) { setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
+    if (!head) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
     const owned = ++generation.current
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
@@ -97,6 +104,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       const rows = geometryOf(projection.clips)
       if (owned !== generation.current) return
       setAspectRatio(projection.compositionAspectRatio)
+      setAspectWidth(String(projection.compositionAspectRatio.numerator))
+      setAspectHeight(String(projection.compositionAspectRatio.denominator))
       setTracks(projection.tracks)
       setAudioRoutes(projection.audioRoutes)
       setTransforms(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.transform])))
@@ -106,7 +115,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
       if (owned === generation.current) {
-        setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setActionFailed(true)
+        setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setActionFailed(true)
         setMessage(error instanceof Error ? error.message : 'Clip readback failed.')
       }
     }
@@ -308,12 +317,17 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     finally { setBusy(false) }
   }
 
-  async function applyAspect(next: CompositionAspectRatio) {
-    if (!head || !project.tenantId || busy || next === aspectRatio) return
-    const fingerprint = JSON.stringify([project.projectId, head.revisionId, 'composition-aspect', next])
-    keys.current[fingerprint] ??= crypto.randomUUID()
+  async function applyAspect(resolve: () => CompositionAspectRatio | Promise<CompositionAspectRatio>) {
+    if (!head || !project.tenantId || !aspectRatio || busy) return
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
+      const next = await resolve()
+      if (aspectLabel(next) === aspectLabel(aspectRatio)) {
+        setMessage('The composition already uses this exact ratio.')
+        return
+      }
+      const fingerprint = JSON.stringify([project.projectId, head.revisionId, 'composition-aspect', next])
+      keys.current[fingerprint] ??= crypto.randomUUID()
       const accepted = await FormalRenderAPI.setCompositionAspect(project.tenantId, project.projectId, {
         baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
         aspectRatio: next, commandId: keys.current[fingerprint] })
@@ -322,10 +336,21 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
         throw headMismatch()
       }
       await onRevisionChanged()
-      setAspectRatio(next)
       setMessage('Composition aspect ratio saved.')
     } catch (error) { handleFailure(error, 'Composition aspect ratio', null, true) }
     finally { setBusy(false) }
+  }
+
+  function matchSourceAspect() {
+    if (!active || activeTrack?.type !== 'VIDEO' || !project.tenantId) return
+    void applyAspect(async () => {
+      try {
+        return await FormalRenderAPI.sourceDisplayAspect(project.tenantId!, project.projectId,
+          active.artifactId, active.contentDigest, active.mediaStreamId)
+      } catch {
+        throw new Error('Match Source unavailable for the selected stream.')
+      }
+    })
   }
 
   function resetTransform() {
@@ -721,14 +746,34 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
-    <label>Composition aspect ratio
-      <select className="ff-input" aria-label="Composition aspect ratio"
-        value={aspectRatio} disabled={!head || !project.tenantId || busy}
-        onChange={event => void applyAspect(event.target.value as CompositionAspectRatio)}>
-        <option value="LANDSCAPE_4_3">Landscape 4:3</option>
-        <option value="PORTRAIT_3_4">Portrait 3:4</option>
-      </select>
-    </label>
+    <fieldset disabled={!head || !project.tenantId || !aspectRatio || busy}>
+      <legend>Composition aspect</legend>
+      <label>Composition aspect ratio
+        <select className="ff-input" aria-label="Composition aspect ratio"
+          value={aspectRatio ? aspectLabel(aspectRatio) : ''}
+          onChange={event => {
+            const preset = COMPOSITION_PRESETS.find(item => aspectLabel(item.ratio) === event.target.value)
+            if (preset) void applyAspect(() => preset.ratio)
+          }}>
+          <option value="" disabled>Aspect unavailable</option>
+          {aspectRatio && !COMPOSITION_PRESETS.some(preset => aspectLabel(preset.ratio) === aspectLabel(aspectRatio))
+            && <option value={aspectLabel(aspectRatio)}>Custom {aspectLabel(aspectRatio)}</option>}
+          {COMPOSITION_PRESETS.map(preset => <option key={aspectLabel(preset.ratio)} value={aspectLabel(preset.ratio)}>
+            {preset.label}
+          </option>)}
+        </select>
+      </label>
+      <div className="ff-nle-transform-grid">
+        <label>Custom aspect width <Input aria-label="Custom aspect width" inputMode="numeric" value={aspectWidth}
+          onChange={event => setAspectWidth(event.target.value)} /></label>
+        <label>Custom aspect height <Input aria-label="Custom aspect height" inputMode="numeric" value={aspectHeight}
+          onChange={event => setAspectHeight(event.target.value)} /></label>
+      </div>
+      <Button type="button" onClick={() => void applyAspect(() => customCompositionAspect(aspectWidth, aspectHeight))}>
+        Apply custom aspect
+      </Button>
+      <Button type="button" disabled={activeTrack?.type !== 'VIDEO'} onClick={matchSourceAspect}>Match Source</Button>
+    </fieldset>
     {active && activeTrack?.type === 'VIDEO' && <fieldset className="ff-nle-transform-controls" aria-label="Video transform controls" disabled={!head || !project.tenantId || busy}>
       <legend>Video transform · {active.clipId}</legend>
       <div className="ff-nle-transform-grid">

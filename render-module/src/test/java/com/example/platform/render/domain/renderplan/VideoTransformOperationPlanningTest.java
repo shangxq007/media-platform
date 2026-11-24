@@ -110,10 +110,10 @@ class VideoTransformOperationPlanningTest {
                 OperationDefinition.V3.SET_COMPOSITION_ASPECT.version(), REV, DIGESTER.digest(changed),
                 new OperationTarget.TimelineTarget("timeline"),
                 new OperationParameters.CompositionAspectParameters(
-                        com.example.platform.timeline.canonical.CompositionAspectRatio.PORTRAIT_3_4),
+                        new com.example.platform.timeline.canonical.CompositionAspectRatio(13, 11)),
                 "parameter-digest", "invocation"), REV, changed).candidateTimeline();
         String serialized = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.serialize(aspect);
-        assertThat(serialized).contains("composition-transform-micro-v1", "175031", "PORTRAIT_3_4");
+        assertThat(serialized).contains("composition-transform-micro-v1", "175031", "composition-aspect-rational-v1", "\"numerator\":13");
         var reloaded = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.deserialize(serialized);
         assertThat(reloaded.getTracks().getFirst().clips().getFirst().getTransform()).isEqualTo(transform);
         assertThat(DIGESTER.digest(reloaded)).isEqualTo(DIGESTER.digest(aspect));

@@ -749,7 +749,7 @@ public class CanonicalTimelineDiffCalculator {
         Map<String, String> am = new TreeMap<>(after.safeMetadata());
         String beforeAspect = bm.remove(TimelineSnapshotConverter.ASPECT_KEY);
         String afterAspect = am.remove(TimelineSnapshotConverter.ASPECT_KEY);
-        String defaultAspect = "LANDSCAPE_4_3";
+        String defaultAspect = com.example.platform.timeline.canonical.CompositionAspectRatio.DEFAULT.toString();
         if (!Objects.equals(Objects.requireNonNullElse(beforeAspect, defaultAspect),
                 Objects.requireNonNullElse(afterAspect, defaultAspect))) {
             ops.add(change(seq, TimelineChangeType.COMPOSITION_ASPECT_CHANGED,

@@ -242,6 +242,44 @@ class CanonicalOperationInvocationServiceTest {
     }
 
     @Test
+    void exactAspectInvokesTheExistingAuthoritativeWriterWithThePinnedBase() {
+        var base = baseTimeline();
+        var writer = mock(TimelineRevisionSaveService.class);
+        when(writer.findById(TENANT, BASE_REVISION)).thenReturn(revision(BASE_REVISION, null, base, "author"));
+        when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
+        when(writer.saveRevisionForCommand(any(), eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION), any(), any()))
+                .thenAnswer(invocation -> {
+                    TimelineDocument candidate = invocation.getArgument(3);
+                    assertEquals(new com.example.platform.timeline.canonical.CompositionAspectRatio(13, 11),
+                            candidate.getMetadata().effectiveCompositionAspectRatio());
+                    return new TimelineRevisionCommands.RevisionWriteResult(
+                            "revision-R1", BASE_REVISION, DIGESTER.digest(candidate), false);
+                });
+        AuthorizationDecisionPort authorization = request -> {
+            assertEquals(TENANT, request.resource().tenantId());
+            assertEquals(PROJECT, request.resource().projectId());
+            return com.example.platform.shared.authorization.AuthorizationDecision.allow("rbac-v1");
+        };
+        var owner = new TimelineMediaClipOperationService(writer, mock(TimelineSourceValidation.class),
+                new InternalTimelineValidationService(), authorization, new OperationPlanApplyService(writer));
+        OperationInvocationPort port = new CanonicalOperationInvocationService(owner,
+                mock(TextOperationService.class), mock(AlignmentOperationService.class));
+        var definition = OperationDefinition.V3.SET_COMPOSITION_ASPECT;
+        var request = new OperationRequest(definition.definitionId(), definition.version(),
+                new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                new OperationParameters.CompositionAspectParameters(
+                        new com.example.platform.timeline.canonical.CompositionAspectRatio(26, 22)),
+                BASE_REVISION, DIGESTER.digest(base), null);
+        assertEquals("revision-R1", assertInstanceOf(OperationInvocationResult.Applied.class,
+                port.invoke(request, context(TENANT))).newRevisionId());
+        var retired = new OperationRequest(definition.definitionId(), OperationDefinitionVersion.of(1, 0),
+                request.target(), request.parameters(), BASE_REVISION, DIGESTER.digest(base), null);
+        assertEquals(OperationInvocationFailureCode.INVALID_PARAMETER, assertThrows(OperationInvocationException.class,
+                () -> port.invoke(retired, context(TENANT))).code());
+        verify(writer, times(1)).saveRevisionForCommand(any(), any(), any(), any(), any());
+    }
+
+    @Test
     void noOpApplyOutcomeProjectsWithoutInventingAnotherExecutableOperation() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);

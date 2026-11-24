@@ -119,7 +119,16 @@ if multitrack:
         subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',
                                  *args, str(app / name)], env=env, check=True, timeout=60)
         shutil.copyfile(app / name, fixture_dir / name)
-    print(json.dumps({'status': 'PASS', 'fixtures': list(fixtures), 'workspaceId': 'workspace-fr-e2e'}))
+    non_square = app / 'composition-source-anamorphic.mp4'
+    rotated = app / 'composition-source-rotated.mp4'
+    subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',
+                             '-i', str(app / 'composition-pattern.mp4'), '-vf', 'setsar=2/1',
+                             *video_args, str(non_square)], env=env, check=True, timeout=60)
+    subprocess.run(prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',
+                             '-display_rotation', '90', '-i', str(non_square), '-c', 'copy', str(rotated)],
+                   env=env, check=True, timeout=60)
+    shutil.copyfile(rotated, fixture_dir / rotated.name)
+    print(json.dumps({'status': 'PASS', 'fixtures': [*fixtures, rotated.name], 'workspaceId': 'workspace-fr-e2e'}))
     raise SystemExit(0)
 
 client = app / 'workflow-client.py'

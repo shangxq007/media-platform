@@ -4,7 +4,8 @@ import { FormalRenderAPI, type RenderResult } from '../../api/formal-render'
 import { DeliveryAPI, type Delivery } from '../../api/delivery'
 import { renderReadSource } from '../../api/render-jobs'
 import type { RenderJobSummary } from '../../contracts/app/render-job'
-import type { CompositionAspectRatio } from './timeline-projection'
+import { aspectLabel, DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
+import { outputRasterError, suggestedOutputRaster } from './composition-raster'
 import type { CanonicalHeadReference } from './gateways'
 import { useProjectContext } from '../../foundation/projectContext'
 
@@ -15,7 +16,7 @@ function save(blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
-export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = 'LANDSCAPE_4_3' }: {
+export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = DEFAULT_COMPOSITION_ASPECT }: {
   head: CanonicalHeadReference | null
   timelineEndMillis?: number
   aspectRatio?: CompositionAspectRatio
@@ -25,10 +26,12 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = '
   const [requestedEnd, setEndMillis] = useState<number | null>(null)
   const endMillis = requestedEnd ?? timelineEndMillis
   const [fps, setFps] = useState(24)
-  const [raster, setRaster] = useState<{ aspect: CompositionAspectRatio; width: number; height: number } | null>(null)
-  const portrait = aspectRatio === 'PORTRAIT_3_4'
-  const width = raster?.aspect === aspectRatio ? raster.width : portrait ? 240 : 320
-  const height = raster?.aspect === aspectRatio ? raster.height : portrait ? 320 : 240
+  const [raster, setRaster] = useState<{ aspect: string; width: number; height: number } | null>(null)
+  const aspect = aspectLabel(aspectRatio)
+  const dimensions = raster?.aspect === aspect ? raster : suggestedOutputRaster(aspectRatio)
+  const width = dimensions?.width ?? 0
+  const height = dimensions?.height ?? 0
+  const rasterError = outputRasterError(aspectRatio, width, height)
   const [jobs, setJobs] = useState<RenderJobSummary[]>([])
   const [job, setJob] = useState<RenderResult | null>(null)
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
@@ -70,7 +73,7 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = '
     finally { setBusy(false) }
   }
   function submit() {
-    if (!head || !project.tenantId) return
+    if (!head || !project.tenantId || rasterError) return
     const intent = { revisionId: head.revisionId, extent: { startMillis, endMillis,
       frameRateNumerator: fps, frameRateDenominator: 1, width, height }, outputFormat: 'MP4' as const, profile: 'default' }
     void run(async () => {
@@ -91,12 +94,13 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = '
     <label>Output start (ms) <Input type="number" min={0} value={startMillis} onChange={event => setStartMillis(Number(event.target.value))} /></label>
     <label>Output end (ms) <Input type="number" min={1} value={endMillis} onChange={event => setEndMillis(Number(event.target.value))} /></label>
     <label>Frame rate <Input type="number" min={1} value={fps} onChange={event => setFps(Number(event.target.value))} /></label>
-    <label>Output width <Input type="number" min={16} max={1920} step={2} value={width}
-      onChange={event => setRaster({ aspect: aspectRatio, width: Number(event.target.value), height })} /></label>
-    <label>Output height <Input type="number" min={16} max={1920} step={2} value={height}
-      onChange={event => setRaster({ aspect: aspectRatio, width, height: Number(event.target.value) })} /></label>
-    <Button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || endMillis <= startMillis || startMillis < 0 || fps <= 0} onClick={submit}>Submit RenderJob</Button>
+    <label>Output width <Input type="number" min={16} max={1920} step={2} value={width || ''}
+      onChange={event => setRaster({ aspect, width: Number(event.target.value), height })} /></label>
+    <label>Output height <Input type="number" min={16} max={1920} step={2} value={height || ''}
+      onChange={event => setRaster({ aspect, width, height: Number(event.target.value) })} /></label>
+    <Button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || endMillis <= startMillis || startMillis < 0 || fps <= 0 || !!rasterError} onClick={submit}>Submit RenderJob</Button>
     </div>
+    {head && rasterError && <p role="alert">{rasterError}</p>}
     <Button type="button" disabled={busy} onClick={() => void refresh()}>Refresh jobs</Button>
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
     <h4>Render jobs</h4>

@@ -74,7 +74,9 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
                 .equals(request.definitionId());
         boolean clipEdit = isClipEdit(request);
         boolean addTrack = request != null && OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId());
-        boolean mediaClip = addMediaClip || clipEdit || addTrack;
+        boolean compositionAspect = request != null && OperationDefinition.V3.SET_COMPOSITION_ASPECT
+                .definitionId().equals(request.definitionId());
+        boolean mediaClip = addMediaClip || clipEdit || addTrack || compositionAspect;
         boolean textOperation = request.definitionId().value() != null
                 && request.definitionId().value().startsWith("timeline.text.");
         boolean alignment = OperationDefinition.V2.CREATE_ALIGNMENT.definitionId().equals(request.definitionId());
@@ -109,6 +111,9 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         if (addTrack && (!OperationDefinition.V3.ADD_TRACK.version().equals(request.version())
                 || !(request.parameters() instanceof OperationParameters.AddTrackParameters))) {
             throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-track-parameters");
+        }
+        if (compositionAspect && !validCompositionAspectRequest(request)) {
+            throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-composition-aspect");
         }
         if (clipEdit && !validClipEditParameters(request)) {
             throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-parameter");
@@ -179,7 +184,9 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
                 && OperationDefinition.V3.IMPORT_TIMELINE.definitionId().equals(request.definitionId());
         boolean clipEdit = isClipEdit(request);
         boolean addTrack = request != null && OperationDefinition.V3.ADD_TRACK.definitionId().equals(request.definitionId());
-        boolean mediaClip = addMediaClip || clipEdit || addTrack;
+        boolean compositionAspect = request != null && OperationDefinition.V3.SET_COMPOSITION_ASPECT
+                .definitionId().equals(request.definitionId());
+        boolean mediaClip = addMediaClip || clipEdit || addTrack || compositionAspect;
         boolean textOperation = request != null && request.definitionId() != null
                 && request.definitionId().value() != null
                 && request.definitionId().value().startsWith("timeline.text.");
@@ -198,6 +205,9 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         if (addTrack && (!OperationDefinition.V3.ADD_TRACK.version().equals(request.version())
                 || !(request.parameters() instanceof OperationParameters.AddTrackParameters))) {
             throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-track-parameters");
+        }
+        if (compositionAspect && !validCompositionAspectRequest(request)) {
+            throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-composition-aspect");
         }
         if (clipEdit && !validClipEditParameters(request)) {
             throw failure(OperationInvocationFailureCode.UNSUPPORTED_OPERATION, "unsupported-operation-or-scope");
@@ -225,6 +235,13 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         catch(TimelineOperationException rejected){throw translate(rejected.code());}
         catch(OperationInvocationException rejected){throw rejected;}
         catch(RuntimeException rejected){throw failure(OperationInvocationFailureCode.APPLY_FAILURE,"preflight-failure");}
+    }
+
+    private static boolean validCompositionAspectRequest(OperationRequest request) {
+        return OperationDefinition.V3.SET_COMPOSITION_ASPECT.version().equals(request.version())
+                && request.target() instanceof OperationTargetRequest.TimelineTargetRequest target
+                && target.timelineId() != null && !target.timelineId().isBlank()
+                && request.parameters() instanceof OperationParameters.CompositionAspectParameters;
     }
 
     private static boolean isClipEdit(OperationRequest request) {

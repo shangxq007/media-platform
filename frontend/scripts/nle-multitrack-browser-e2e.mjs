@@ -99,8 +99,8 @@ try {
   }
   const sources = {}
   for (const file of ['video-a.mp4', 'video-b.mp4', 'video-c.mp4', 'video-d.mp4',
-    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav', 'video-embed.mp4', 'composition-pattern.mp4']) sources[file] = await upload(file)
-  record('EIGHT_SOURCES_UPLOADED_IN_WORKBENCH')
+    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav', 'video-embed.mp4', 'composition-pattern.mp4', 'composition-source-rotated.mp4']) sources[file] = await upload(file)
+  record('SOURCES_UPLOADED_IN_WORKBENCH')
 
   const addClip = async (file, trackId, start, end, sourceEnd = null) => {
     const source = sources[file]
@@ -710,12 +710,21 @@ try {
 
   const composition = report.composition = { outputs: [], samples: [],
     rasterRejections: [invalidRaster.status(), rejectedAspect.status()], aspectDiagnostic }
+  const aspect = (numerator, denominator) => ({ format: 'composition-aspect-rational-v1', numerator, denominator })
+  const aspectOfRaster = (width, height) => {
+    let a = width, b = height
+    while (b !== 0) [a, b] = [b, a % b]
+    return (width / a) + ':' + (height / a)
+  }
   const render = async (label, end, width = 320, height = 240) => {
     const delivered = await formalOutput(current.revisionId, 0, end, label, width, height)
     const [video] = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-select_streams', 'v:0',
-      '-count_frames', '-show_entries', 'stream=width,height,nb_read_frames,duration', '-of', 'json', delivered.path])).streams
+      '-count_frames', '-show_entries', 'stream=width,height,sample_aspect_ratio,display_aspect_ratio,nb_read_frames,duration',
+      '-of', 'json', delivered.path])).streams
     assert.equal(video.width, width)
     assert.equal(video.height, height)
+    assert.equal(video.sample_aspect_ratio, '1:1')
+    assert.equal(video.display_aspect_ratio, aspectOfRaster(width, height))
     assert.equal(Number(video.nb_read_frames), end * 24 / 1000)
     assert(Math.abs(Number(video.duration) - end / 1000) < 1 / 24)
     composition.outputs.push({ ...delivered, label, video })
@@ -772,20 +781,184 @@ try {
 
   await page.reload()
   await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
-  await field('Composition aspect ratio').selectOption('PORTRAIT_3_4')
+  await field('Composition aspect ratio').selectOption('3:4')
   current = await waitRevision(current.revisionId)
-  assert.equal((await snapshot(current.revisionId)).metadata.compositionAspectRatio, 'PORTRAIT_3_4')
+  assert.deepEqual((await snapshot(current.revisionId)).metadata.compositionAspectRatio, aspect(3, 4))
   await page.reload()
   await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
-  assert.equal(await field('Composition aspect ratio').inputValue(), 'PORTRAIT_3_4')
+  assert.equal(await field('Composition aspect ratio').inputValue(), '3:4')
   const portrait = await render('portrait-composition', 4000, 240, 320)
   const portraitPixels = [[5,5], [114,148], [135,162]].map(([x,y]) => pixel(portrait.path, 0.5, x, y))
   assert(Math.max(...portraitPixels[0]) <= 8)
   assert(portraitPixels.slice(1).some(rgb => Math.max(...rgb) > 32))
   composition.samples.push({ label: 'portrait', positions: [[5,5], [114,148], [135,162]], portraitPixels })
+  const aspectOperation = ratio => ({ definitionId: 'timeline.composition.aspect.set', parameters: { aspectRatio: ratio } })
+  const selectPreset = async (label, expected) => {
+    await field('Composition aspect ratio').selectOption(label)
+    current = await waitRevision(current.revisionId)
+    assert.deepEqual((await snapshot(current.revisionId)).metadata.compositionAspectRatio, expected)
+  }
+  const waitReady = () => page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  const setCustom = async (width, height) => {
+    await field('Custom aspect width').fill(String(width))
+    await field('Custom aspect height').fill(String(height))
+    await edit.getByRole('button', { name: 'Apply custom aspect' }).click()
+    current = await waitRevision(current.revisionId)
+    const output = await snapshot(current.revisionId)
+    assert.deepEqual(output.metadata.compositionAspectRatio, aspect(width, height))
+    await page.reload()
+    await waitReady()
+    assert.equal(await field('Composition aspect ratio').inputValue(), width + ':' + height)
+  }
+  const generalized = composition.generalized = { samples: [], rejected: [] }
+  const expectedGeometry = (await snapshot(current.revisionId)).tracks
+    .flatMap(track => track.clips).find(clip => clip.clipId === pattern).transform
+  const probePlacement = async (label, output, width, height) => {
+    const angle = transform.rotationDegrees * Math.PI / 180
+    const cos = Math.cos(angle), sin = Math.sin(angle)
+    const w = width * transform.scaleX, h = height * transform.scaleY
+    const left = width * transform.positionX, top = height * transform.positionY
+    const centerX = left + (w * cos + h * sin) / 2
+    const centerY = top + (w * sin + h * cos) / 2
+    const interior = [[0.2, 0.58], [0.47, 0.61], [0.68, 0.6], [0.82, 0.57]].map(([u, v]) => {
+      const x = (u - 0.5) * w, y = (v - 0.5) * h
+      return [2 * Math.round((centerX + x * cos - y * sin) / 2),
+        2 * Math.round((centerY + x * sin + y * cos) / 2)]
+    })
+    const points = [[4, 4], [2 * Math.ceil(left / 2) + 2, 2 * Math.ceil(top / 2) + 2], ...interior]
+    const rgb = points.map(([x,y]) => pixel(output.path, 0.5, x, y))
+    const measured = { label, points, rgb }
+    generalized.samples.push(measured)
+    record('MEASURED_LAYOUT_' + label)
+    assert(rgb.slice(0, 2).every(value => Math.max(...value) <= 8), label + ' outside-crop or rotated corner')
+    assert(rgb.slice(2).every(value => Math.max(...value) > 32), label + ' lost an interior sample')
+    assert(new Set(rgb.slice(2).map(value => value.join(','))).size >= 3, label + ' lost chromatic detail')
+    assert.deepEqual((await snapshot(current.revisionId)).tracks
+      .flatMap(track => track.clips).find(clip => clip.clipId === pattern).transform, expectedGeometry)
+    return measured
+  }
+
+  const matchedClip = await addClip('composition-source-rotated.mp4', 'track-v4', '4', '6', '2')
+  await page.reload()
+  await waitReady()
+  await field('Clip').selectOption(matchedClip)
+  const matchFile = sources['composition-source-rotated.mp4']
+  const matchStream = matchFile.streams.find(stream => stream.kind === 'VIDEO')
+  const matchPath = scope + '/source-media/' + matchFile.artifactId + '/display-aspect'
+  const matchQuery = '?' + new URLSearchParams({ contentDigest: matchFile.contentDigest, streamId: matchStream.streamId })
+  const deniedMatch = await page.request.get(base + matchPath.replace(tenant, 'foreign-tenant') + matchQuery, { headers })
+  assert([403, 404].includes(deniedMatch.status()))
+  const missingMatch = await page.request.get(base + matchPath + '?' + new URLSearchParams({
+    contentDigest: matchFile.contentDigest, streamId: 'unknown-stream',
+  }), { headers })
+  assert.equal(missingMatch.status(), 422, await missingMatch.text())
+  await edit.getByRole('button', { name: 'Match Source' }).click()
+  current = await waitRevision(current.revisionId)
+  const matchAspect = (await snapshot(current.revisionId)).metadata.compositionAspectRatio
+  assert.deepEqual(matchAspect, aspect(9, 32))
+  generalized.matchSource = { aspect: matchAspect, revisionId: current.revisionId,
+    unavailable: missingMatch.status(), foreignDenied: deniedMatch.status() }
+  await deleteClip(matchedClip)
+  await page.reload()
+  await waitReady()
+
+  const presets = await field('Composition aspect ratio').locator('option').allTextContents()
+  for (const expected of ['16:9', '9:16', '1:1', '4:3', '3:4', '4:5', '21:9', '2.39:1']) {
+    assert(presets.includes(expected), 'Missing preset ' + expected)
+  }
+  await selectPreset('16:9', aspect(16, 9))
+  const landscapeHead = await head()
+  const normalized = async (width, height) => {
+    const response = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+      headers, data: { batchId: 'equivalent-ratio-replay', baseRevisionId: landscapeHead.revisionId,
+        baseContentHash: landscapeHead.contentHash, operations: [aspectOperation(aspect(width, height))] },
+    })
+    assert(response.ok(), await response.text())
+    return response.json()
+  }
+  const normalizedFirst = await normalized(1920, 1080)
+  const normalizedAgain = await normalized(3840, 2160)
+  assert.equal(normalizedFirst.status, 'NO_OP')
+  assert.equal(normalizedAgain.status, 'NO_OP')
+  assert.equal(normalizedAgain.newContentHash, landscapeHead.contentHash)
+  assert.deepEqual(await head(), landscapeHead)
+  generalized.normalization = { unchangedHead: landscapeHead, first: normalizedFirst.status, replay: normalizedAgain.status }
+  const conflict = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+    headers, data: { batchId: 'equivalent-ratio-replay', baseRevisionId: landscapeHead.revisionId,
+      baseContentHash: landscapeHead.contentHash, operations: [aspectOperation(aspect(9, 16))] },
+  })
+  assert.equal(conflict.status(), 409, await conflict.text())
+  assert.deepEqual(await head(), landscapeHead)
+  generalized.normalization.conflictStatus = conflict.status()
+
+  const ambiguousBody = JSON.stringify({ batchId: 'duplicate-aspect-member', baseRevisionId: landscapeHead.revisionId,
+    baseContentHash: landscapeHead.contentHash, operations: [aspectOperation(aspect(13, 11))] })
+    .replace('"numerator":13', '"numerator":0,"numerator":13')
+  const ambiguous = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+    headers: { ...headers, 'Content-Type': 'application/json' }, data: ambiguousBody,
+  })
+  assert.equal(ambiguous.status(), 400, await ambiguous.text())
+  assert((await ambiguous.text()).includes('Invalid or ambiguous Timeline batch JSON'))
+  assert.deepEqual(await head(), landscapeHead)
+  generalized.duplicateJsonStatus = ambiguous.status()
+
+  const wide = await render('generalized-16-9', 4000, 320, 180)
+  const wideDouble = await render('generalized-16-9-double', 4000, 640, 360)
+  assert.equal(wide.revisionId, wideDouble.revisionId)
+  assert.deepEqual(await head(), landscapeHead)
+  const wideSample = await probePlacement('16:9', wide, 320, 180)
+  await waitReady()
+  await seek(0.5)
+  const widePreview = await canvas.evaluate((element, points) => ({
+    width: element.width, height: element.height,
+    rgb: points.map(([x,y]) => [...element.getContext('2d').getImageData(x,y,1,1).data].slice(0,3)),
+  }), wideSample.points)
+  assert.equal(widePreview.width, 320)
+  assert.equal(widePreview.height, 180)
+  const wideHigh = wideSample.points.map(([x,y]) => pixel(wideDouble.path, 0.5, 2*x, 2*y))
+  generalized.resolution = { revisionId: landscapeHead.revisionId, points: wideSample.points,
+    low: wideSample.rgb, high: wideHigh, preview: widePreview.rgb,
+    resolutionDeltas: wideSample.rgb.map((value, index) => maxDelta(value, wideHigh[index])),
+    previewDeltas: wideSample.rgb.map((value, index) => maxDelta(value, widePreview.rgb[index])) }
+  record('MEASURED_GENERALIZED_RESOLUTION')
+  assert(Math.max(...generalized.resolution.resolutionDeltas) <= 24, JSON.stringify(generalized.resolution))
+  assert(Math.max(...generalized.resolution.previewDeltas) <= 24, JSON.stringify(generalized.resolution))
+
+  for (const [label, n, d, width, height] of [['9:16', 9, 16, 180, 320], ['1:1', 1, 1, 320, 320]]) {
+    await selectPreset(label, aspect(n, d))
+    const output = await render('generalized-' + label.replace(':', '-'), 4000, width, height)
+    await probePlacement(label, output, width, height)
+  }
+  await setCustom(13, 11)
+  const custom = await render('generalized-custom-13-11', 4000, 312, 264)
+  await probePlacement('13:11', custom, 312, 264)
+  for (const [label, invalid, diagnostic] of [
+    ['old-named-aspect', 'PORTRAIT_3_4', 'Unsupported composition aspect ratio format'],
+    ['zero-aspect', aspect(0, 11), 'Composition aspect components'],
+    ['fractional-aspect', aspect(1.5, 11), 'Composition aspect components'],
+    ['overflow-aspect', aspect(2147483648, 11), 'Composition aspect components'],
+  ]) {
+    await rejectBatch(label, [aspectOperation(invalid)], diagnostic)
+  }
+
+  await setCustom(1000, 777)
+  const unsupported = await page.request.post(base + '/api/render-jobs', {
+    headers: { ...headers, 'Idempotency-Key': 'no-exact-aligned-raster' },
+    data: { revisionId: current.revisionId, extent: { startMillis: 0, endMillis: 2000,
+      frameRateNumerator: 24, frameRateDenominator: 1, width: 1000, height: 778 }, profile: 'default', outputFormat: 'MP4' },
+  })
+  assert.equal(unsupported.status(), 400, await unsupported.text())
+  const unsupportedDiagnostic = (await unsupported.json()).detail
+  assert.equal(unsupportedDiagnostic, 'No supported output raster exactly matches the authored composition aspect ratio')
+  assert.equal(await page.getByRole('button', { name: 'Submit RenderJob' }).isDisabled(), true)
+  assert.deepEqual(await head(), current)
+  generalized.unsupported = { authored: aspect(1000, 777), revisionId: current.revisionId,
+    status: unsupported.status(), detail: unsupportedDiagnostic }
+  record('FORMAL_GENERALIZED_ASPECTS_AND_EXACT_REJECTIONS')
+
   for (const clipId of [pattern, second]) await deleteClip(clipId)
   await batch('restore-landscape-for-common-provider', [{ definitionId: 'timeline.composition.aspect.set',
-    parameters: { aspectRatio: 'LANDSCAPE_4_3' } }])
+    parameters: { aspectRatio: aspect(4, 3) } }])
   await addClip('video-a.mp4', 'track-1', '0', '2', '2')
   const commonRevision = await head()
   const commonBmf = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-provider-bmf')

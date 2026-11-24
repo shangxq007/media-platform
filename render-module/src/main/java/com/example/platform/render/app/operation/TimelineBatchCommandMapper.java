@@ -15,6 +15,7 @@ import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.CompositionAspectRatio;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.relationship.AlignmentAttribute;
@@ -75,6 +76,9 @@ public final class TimelineBatchCommandMapper {
             throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, index,
                     "text operations are not part of the v1 batch scope");
         }
+        if ("timeline.composition.aspect.set".equals(definitionId) && operation.target() != null) {
+            throw new IllegalArgumentException("Composition aspect targets the scoped Timeline without object coordinates");
+        }
         OperationDefinition definition = definition(definitionId, index);
         Map<String, Object> parameters = operation.parameters() == null
                 ? Map.of() : operation.parameters();
@@ -131,8 +135,7 @@ public final class TimelineBatchCommandMapper {
                             requiredText(parameters, "edge")),
                     time(parameters, "delta"));
             case "timeline.composition.aspect.set" -> new OperationParameters.CompositionAspectParameters(
-                    com.example.platform.timeline.canonical.CompositionAspectRatio.valueOf(
-                            requiredText(parameters, "aspectRatio")));
+                    CompositionAspectRatio.fromParameters(parameters));
             case "timeline.clip.transform.set" -> new OperationParameters.VideoTransformParameters(
                     VideoTransform.fromParameters(parameters));
             case "timeline.clip.effect.set" -> new OperationParameters.VideoEffectParameters(
