@@ -92,10 +92,10 @@ class BmfCpuWorkerRuntimeIntegrationTest {
 
     @Test
     void repeated_materialized_source_keeps_each_input_and_sandbox_runtime_addressable() throws Exception {
-        Path distribution = configuredRuntime();
-        Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("shared.mp4"));
-        Path runtime = Files.createSymbolicLink(temp.resolve("z-runtime"), distribution);
-        Path python = distribution.resolve("host-bundle/usr/bin/python3.9");
+        Path runtime = configuredRuntime();
+        Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("a-shared.mp4"));
+        Path followingSource = Files.copy(source, temp.resolve("z-following.mp4"));
+        Path python = runtime.resolve("host-bundle/usr/bin/python3.9");
         var launcher = BubblewrapSandboxCapabilityDetector.detect().launcher().orElseThrow();
         var workspace = BmfSandboxWorkspace.under(temp.resolve("shared-workspace"));
         var resolver = new BmfSandboxExecutionPolicyResolver(python, runtime, workspace,
@@ -103,17 +103,22 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         var executor = new SandboxRuntimeCommandExecutor(launcher, resolver, SandboxCancellation.never(),
                 workspace.outputStagingRoot());
         var repeated = new ExecutionInputId("same-source-second-clip");
+        var following = new ExecutionInputId("following-source-clip");
         var midpoint = MediaTime.ofMillis(2000);
-        var end = MediaTime.ofMillis(4000);
+        var thirdStart = MediaTime.ofMillis(4000);
+        var end = MediaTime.ofMillis(6000);
         var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.COMPOSITE,
                 INPUT_ID, OUTPUT_ID, Optional.empty(),
                 List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, midpoint),
-                        new BmfCpuTranscodePlan.TimedInput(repeated, midpoint, end)),
+                        new BmfCpuTranscodePlan.TimedInput(repeated, midpoint, thirdStart),
+                        new BmfCpuTranscodePlan.TimedInput(following, thirdStart, end)),
                 Optional.of(end), Optional.of(FrameRate.of(24, 1)), RenderRaster.DEFAULT);
         var command = new BmfCpuRuntimeAdapter(python).adapt(plan, context("repeated-source"));
         var first = materialized(source);
         var second = new MaterializedExecutionInput(repeated, first.artifactPin(), first.materializedArtifact());
-        try (var output = executor.execute(command, List.of(first, second))) {
+        var third = new MaterializedExecutionInput(following, first.artifactPin(),
+                new MaterializedArtifact(first.artifactPin(), followingSource, Files.size(followingSource)));
+        try (var output = executor.execute(command, List.of(first, second, third))) {
             var bytes = output.content().readAllBytes();
             assertThat(bytes.length).isGreaterThan(1000);
             assertThat(new String(bytes, 4, 4, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("ftyp");
