@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /** Resolves the exact Artifact input and mounts the pinned BMF distribution read-only. */
@@ -135,10 +136,14 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 || !byToken.keySet().containsAll(inputTokens)) {
             return rejected("BMF input identity does not match the materialized Artifact");
         }
-        List<Path> mounts = new ArrayList<>(List.of(python, runtimeRoot));
+        // The launcher numbers unique read-only paths. Multiple graph inputs can reuse one Artifact.
+        var readOnlyInputs = new TreeSet<Path>(Comparator.comparing(Path::toString));
+        readOnlyInputs.add(python);
+        readOnlyInputs.add(runtimeRoot);
         for (var token : inputTokens) {
-            mounts.add(byToken.get(token).materializedArtifact().path().toAbsolutePath().normalize());
+            readOnlyInputs.add(byToken.get(token).materializedArtifact().path().toAbsolutePath().normalize());
         }
+        var mounts = List.copyOf(readOnlyInputs);
         if (!Files.isRegularFile(python) || !Files.isExecutable(python)
                 || !Files.isDirectory(runtimeRoot.resolve("output/bmf"))
                 || !Files.isRegularFile(runtimeRoot.resolve("output/bmf/lib/libbuiltin_modules.so"))
@@ -147,7 +152,6 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             return rejected("BMF Python or pinned runtime distribution is unavailable");
         }
         try {
-            mounts.sort(Comparator.comparing(Path::toString));
             int runtimeIndex = mounts.indexOf(runtimeRoot);
             Path sandboxRuntime = Path.of("/sandbox-inputs/input-" + runtimeIndex);
             Path working = workspace.outputStagingRoot().resolve("attempt-"
@@ -177,7 +181,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             }
             var requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(Set.of(python.toString()), python.toString(), args, timeout),
-                    FilesystemPolicy.exact(Set.copyOf(mounts), workspace.root(),
+                    FilesystemPolicy.exact(readOnlyInputs, workspace.root(),
                             workspace.temporaryRoot(), workspace.outputStagingRoot(), working),
                     NetworkPolicy.none(),
                     EnvironmentPolicy.exact(Map.of(

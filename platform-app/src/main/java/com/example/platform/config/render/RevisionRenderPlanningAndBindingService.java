@@ -10,6 +10,7 @@ import com.example.platform.execution.taskgraph.ExecutableTaskGraphDigest;
 import com.example.platform.providerplugin.ProviderCandidateProjection;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.render.app.renderplan.RenderPlanningEntryService;
+import com.example.platform.render.domain.renderplan.RenderPlanningDiagnosticCode;
 import com.example.platform.render.domain.renderplan.RenderPlanningResult;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
@@ -134,6 +135,12 @@ public class RevisionRenderPlanningAndBindingService {
                 planning.renderRequest(),
                 planning.sourceResolution(),
                 planning.capabilityContext());
+        var aspectMismatch = renderPlanningResult.diagnostics().stream()
+                .filter(diagnostic -> diagnostic.code() == RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_MISMATCH)
+                .findFirst();
+        if (aspectMismatch.isPresent()) {
+            throw new IllegalArgumentException(aspectMismatch.get().message());
+        }
 
         // #21 provider-neutral execution planning.
         ExecutionPlanningEntry.PlanningResult planningResult = physicalPlanningEntryService.plan(

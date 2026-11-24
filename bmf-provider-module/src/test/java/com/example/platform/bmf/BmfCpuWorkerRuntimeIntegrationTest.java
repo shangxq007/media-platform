@@ -17,17 +17,22 @@ import com.example.platform.execution.taskgraph.ExecutableInputProjection;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.extension.domain.CapabilityRequirement;
+import com.example.platform.render.domain.renderplan.RenderRaster;
+import com.example.platform.sandbox.BubblewrapSandboxCapabilityDetector;
 import com.example.platform.sandbox.SandboxCancellation;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
 import com.example.platform.shared.capability.ContractVersionRange;
 import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionContext;
+import com.example.platform.workerfabric.domain.providernative.SandboxRuntimeCommandExecutor;
 import com.example.platform.workerfabric.reuse.MaterializedArtifact;
 import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
 import java.nio.file.Files;
@@ -36,6 +41,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -82,6 +88,36 @@ class BmfCpuWorkerRuntimeIntegrationTest {
                 .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
                         failure -> assertThat(failure.code())
                                 .isEqualTo(ProviderNativeFailureCode.PROCESS_NONZERO_EXIT));
+    }
+
+    @Test
+    void repeated_materialized_source_keeps_each_input_and_sandbox_runtime_addressable() throws Exception {
+        Path distribution = configuredRuntime();
+        Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("shared.mp4"));
+        Path runtime = Files.createSymbolicLink(temp.resolve("z-runtime"), distribution);
+        Path python = distribution.resolve("host-bundle/usr/bin/python3.9");
+        var launcher = BubblewrapSandboxCapabilityDetector.detect().launcher().orElseThrow();
+        var workspace = BmfSandboxWorkspace.under(temp.resolve("shared-workspace"));
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, runtime, workspace,
+                Duration.ofSeconds(30), 2_000_000, launcher.capabilities());
+        var executor = new SandboxRuntimeCommandExecutor(launcher, resolver, SandboxCancellation.never(),
+                workspace.outputStagingRoot());
+        var repeated = new ExecutionInputId("same-source-second-clip");
+        var midpoint = MediaTime.ofMillis(2000);
+        var end = MediaTime.ofMillis(4000);
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.COMPOSITE,
+                INPUT_ID, OUTPUT_ID, Optional.empty(),
+                List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, midpoint),
+                        new BmfCpuTranscodePlan.TimedInput(repeated, midpoint, end)),
+                Optional.of(end), Optional.of(FrameRate.of(24, 1)), RenderRaster.DEFAULT);
+        var command = new BmfCpuRuntimeAdapter(python).adapt(plan, context("repeated-source"));
+        var first = materialized(source);
+        var second = new MaterializedExecutionInput(repeated, first.artifactPin(), first.materializedArtifact());
+        try (var output = executor.execute(command, List.of(first, second))) {
+            var bytes = output.content().readAllBytes();
+            assertThat(bytes.length).isGreaterThan(1000);
+            assertThat(new String(bytes, 4, 4, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("ftyp");
+        }
     }
 
     private static Path configuredRuntime() {

@@ -703,10 +703,13 @@ try {
     data: { revisionId: current.revisionId, extent: { startMillis: 0, endMillis: 2000,
       frameRateNumerator: 24, frameRateDenominator: 1, width: 240, height: 320 }, profile: 'default', outputFormat: 'MP4' },
   })
-  assert.equal(rejectedAspect.ok(), false, await rejectedAspect.text())
+  assert.equal(rejectedAspect.status(), 400, await rejectedAspect.text())
+  const aspectDiagnostic = (await rejectedAspect.json()).detail
+  assert.equal(aspectDiagnostic, 'Output raster must match the authored composition aspect ratio')
   assert.equal((await head()).revisionId, current.revisionId)
 
-  const composition = report.composition = { outputs: [], samples: [], rasterRejections: [invalidRaster.status(), rejectedAspect.status()] }
+  const composition = report.composition = { outputs: [], samples: [],
+    rasterRejections: [invalidRaster.status(), rejectedAspect.status()], aspectDiagnostic }
   const render = async (label, end, width = 320, height = 240) => {
     const delivered = await formalOutput(current.revisionId, 0, end, label, width, height)
     const [video] = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-select_streams', 'v:0',
