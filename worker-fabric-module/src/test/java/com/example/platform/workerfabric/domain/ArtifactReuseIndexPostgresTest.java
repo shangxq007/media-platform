@@ -55,7 +55,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
         schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
         dataSource = createDataSourceForSchema(schema.name());
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
-        AssignmentGrantPostgresFixture.migrate(dataSource);
+        AssignmentGrantPostgresFixture.migrate(PROVIDER);
     }
 
     @AfterAll

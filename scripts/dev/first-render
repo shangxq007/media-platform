@@ -109,9 +109,9 @@ try:
  if a.gradle:
   root=a.gradle.resolve().parents[1];args+=['--ro-bind',str(root),'/gradle'];gradle='/gradle/bin/gradle'
  init=R/'03-build/external-build.gradle';init.write_text('''gradle.projectsEvaluated { rootProject.tasks.register("exportValidationClasspath") { doLast {
- def p=rootProject.project(":platform-app"); def m=rootProject.project(":media-module"); def wf=rootProject.project(":worker-fabric-module");
- def ss=p.extensions.getByType(org.gradle.api.tasks.SourceSetContainer);def ms=m.extensions.getByType(org.gradle.api.tasks.SourceSetContainer);def ws=wf.extensions.getByType(org.gradle.api.tasks.SourceSetContainer);
- new File("/build/platform-app-test-classpath.txt").text=(ss.test.runtimeClasspath.files+ms.test.runtimeClasspath.files+ws.test.runtimeClasspath.files).collect { it.absolutePath.replaceFirst('^/work(?=/|$)',"'''+str(W)+'''").replaceFirst('^/build(?=/|$)',"'''+str(R/'03-build')+'''") }.unique().join(":")
+ def modules=[":platform-app",":media-module",":worker-fabric-module",":billing-module",":entitlement-module",":workflow-module"]
+ def testFiles=modules.collectMany { name -> rootProject.project(name).extensions.getByType(org.gradle.api.tasks.SourceSetContainer).test.runtimeClasspath.files.toList() }
+ new File("/build/platform-app-test-classpath.txt").text=testFiles.collect { it.absolutePath.replaceFirst('^/work(?=/|$)',"'''+str(W)+'''").replaceFirst('^/build(?=/|$)',"'''+str(R/'03-build')+'''") }.unique().join(":")
 } } }
 ''')
  command('build',args+['--',gradle,*(['--offline'] if a.offline else []),'--no-daemon','--max-workers=2','--project-cache-dir','/build/project-cache','--init-script','/build/external-build.gradle','-PbuildRoot=/build/outputs','-Dorg.gradle.java.installations.auto-download=false','-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=768m','compileJava','testClasses','assemble',':shared-kernel:testFixturesJar',':ffmpeg-provider-module:stageFfmpegLinuxRuntime',':exportValidationClasspath'],timeout=1200)

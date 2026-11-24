@@ -2,7 +2,7 @@
   {
     "path": "platform-app/src/test/java/com/example/platform/runtime/LocalHostRegistrationRoundTripIT.java",
     "methods": {
-      "registrationTicksAreDurableIdempotentAndGenerationAdvancing": "15738dec65776e45299e27f193084e09eb757b0f9676d204d86261808aaa5864"
+      "registrationTicksAreDurableIdempotentAndGenerationAdvancing": "f7f450494fb4172eec5e34af7c0e12d06954a60fbdabf31ea63d2b8d1dbd0979"
     },
     "assertions": 20,
     "business_test_bodies_unchanged": false,
@@ -23,7 +23,7 @@
   {
     "path": "platform-app/src/test/java/com/example/platform/runtime/mediatask/MediaTaskExecuteTaskIntegrationTest.java",
     "methods": {
-      "executesTheStoredGraphAndPlansTheTerminalOutputPublication": "bab6a83e6841035c34672cad296f2399ad101292a9429838b7b6b2f3378139fe",
+      "executesTheStoredGraphAndPlansTheTerminalOutputPublication": "5bc4387a42811191b4b5b9e14b1d8b2958f0d1c4ddb9c9a0bb54d16424683774",
       "failsClosedWhenTheTaskHasNoCurrentGrant": "4449dd371402451f97ff0f5db5d0dbb47f6d7704106f9c882f4364f85610a46b",
       "failsClosedWhenThePublicationScopeIsNotConfigured": "1135778802fea500e0c367aa9cb22380ec38aac30303f0bacc83cb305512ba15",
       "failsClosedWhenTheTenantDoesNotMatchTheReference": "4d96f8a8e3381966c63c787f87c9bc920cddf4708de8fa93b56a542c8cfb60f6"
@@ -36,10 +36,10 @@
   {
     "path": "platform-app/src/test/java/com/example/platform/persistence/binding/JooqBoundGraphInputStoreIT.java",
     "methods": {
-      "migrationCreatesRenderBindingInputsWithUniqueJobKeyAndPlanBytes": "d22f773efdead691ceb436ea31374089b099213f6c3de40e73494e04dd9d7d3c",
+      "migrationCreatesRenderBindingInputsWithUniqueJobKeyAndPlanBytes": "a1e5b7ead1283379ae37ae91aa7ea908123f894b9a3009a394816187e26e5dde",
       "saveThenLoadRoundTripsCanonicalInputs": "6f3b76e73c218720c95ef413fd34207073ac358cf5ff5bdf6d8450c66934cfda",
-      "saveIsUpsertPerTenantAndJob": "0f0589ded9eeae18a78e7407a60818ff59c69a36cf0ee479418c49da0f1f2054",
-      "loadFailsClosedWhenStoredPlanBytesDoNotMatchTheReferenceDigest": "66bea30f2b0bf08756af376fd8806fbd7bcc72e711202424af68ed91b4219005",
+      "saveRejectsRebindingButAllowsExactReplayPerTenantAndJob": "a946f37658e80b60090ce8394abd7592ea3c677a3b2d390b07d097d9918ef463",
+      "loadFailsClosedWhenStoredPlanBytesDoNotMatchTheReferenceDigest": "4f267dd42783ad2428be33f3e2870a1aaa86bbccf2439fee8f59969d3193a183",
       "loadRejectsUnknownReference": "7c737b2744f514898cc6a2ddedc15ad9f3d7b8f690223438ec06d4cdc520925b"
     },
     "assertions": 16,
@@ -56,7 +56,7 @@
       "unspecifiedUnknownRoundtripDistinct": "bb212545576b19caf529dc49b89a39d3244267aefb871ad2eaefbf553c615ede",
       "rationalExactnessPreserved": "5c148da5fba58e4d1e4ddbc2b5cde47606740d204984b28be5467c2764eaa9e9",
       "staticHdrOptionalityPreserved": "99b08c9c23d82851cb27205239522c9f4495230ef452146a15d4b552a490ee77",
-      "transactionRollbackLeavesNoOrphan": "f2202f02089e529be3fd3e56992fdf3ca65edf077f51d119bc6b8bd36c1b29ad",
+      "transactionRollbackLeavesNoOrphan": "fb3b53eaf59b84ad0da9e968ade3ea3b2db1cc5bdb520a9963d00cb9c8917b88",
       "nonVisualStreamNoFakeDescription": "3bc02ce42057975981fbb7addf3b2fe9d41f03fc2e1bfdc7d05550899d63d3de"
     },
     "assertions": 23,
@@ -66,13 +66,13 @@
   {
     "path": "media-module/src/test/java/com/example/platform/media/infrastructure/persistence/SourceVisualOwnershipIntegrityIT.java",
     "methods": {
-      "v7DirectSqlArtifactRebindRejected": "32aa1a06cd1a270d840a565c308cf2627bdee27974378705548196f00fda2150",
-      "v7DirectSqlPayloadRewriteRejected": "9d17ba2f3dce9cf250ba0f6148d0a22ed847d53f8680d0709cbdd46bc0a0029b",
-      "independentStreamSnapshotsCoexist": "05ec19e7832f7eb7d9c36233f274ccf2d37db6eb4b593b75e4737123ec66bbbe",
-      "d1CrossStreamArtifactMismatchRejected": "55a135e9945e66caf9c572e2abe72fa3b30b87e902d1c8285c067147a4d5b938",
-      "d2NonexistentArtifactRejected": "c2ac731064e67f9938809b347ddd68fc2d3fe926785de6aea4aceb1a84334b00",
-      "d3NonexistentStreamRejected": "88622be7bf1f94d9f132e1e2026ace57805135d6c505af79342b473c4b19a8ee",
-      "d4ValidOwnershipInsertSucceeds": "7c4ddeca05e65045c2c3d45e87c02eefd8d40514f719d4e36937d753bc4cb607",
+      "v7DirectSqlArtifactRebindRejected": "22a4f5acfaf91be5fe1959da75f2c1317839da641094bceb68d425f6d57e1cea",
+      "v7DirectSqlPayloadRewriteRejected": "d644377479a277299da14607fb114584dd7ad0360933bd8db61cf7247304b3f1",
+      "independentStreamSnapshotsCoexist": "b67d8bba897a84456d4e5556818281d9b49d7f9426ce9f3b0d849c5a765a2ccd",
+      "d1CrossStreamArtifactMismatchRejected": "73d4684f3ed9e397fc2761ec516c9529fd92bb3169cf2a0b6910ca5497ef2070",
+      "d2NonexistentArtifactRejected": "b5fccc4ef98d03aa4e68bbb335c7e81dbae23b2ffbf9394c5b52ffffa35a2fc5",
+      "d3NonexistentStreamRejected": "9b7a8f9f3cea538f31f847ca5790fbebdef175953a6b0b13aaf3c26a37146702",
+      "d4ValidOwnershipInsertSucceeds": "a87d74b669b3dc39390749883357a63a349ffa20b226bdad009472bf6c9f063e",
       "validSnapshotRoundtripThroughRepositoryStillPasses": "309c33e57e34835499ee70a0b86ccb1c953637e21478888f8a736f648c62a1e5"
     },
     "assertions": 9,

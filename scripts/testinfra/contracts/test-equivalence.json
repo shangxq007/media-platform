@@ -1,7 +1,7 @@
 {
   "original_target_methods": 28,
   "original_assertions": 237,
-  "current_assertions": 238,
+  "current_assertions": 246,
   "migrated_methods": 30,
   "original_migrated_assertions": 90,
   "current_migrated_assertions": 91,
@@ -126,5 +126,17 @@
     "current_target_assertions": 238,
     "reason": "Owner consolidates accepted V2 into the single greenfield V1. Remove only V2 history-row assertions; retain exact one-V1 inventory and all table/column/ownership/business assertions. Actual original-V1+V2 versus new-V1 catalog and codegen comparison is additional external evidence.",
     "methods_preserved": 28
+  },
+  "schema_convergence": {
+    "baseline": "b97fcbacba81e27f82ef2805dcac2848e09dfecd",
+    "previous_manifest_assertions": 238,
+    "baseline_extracted_assertions": 240,
+    "domain_chain_assertions": 246,
+    "selected_methods": 28,
+    "migrated_methods": 30,
+    "migrated_assertion_sequences": "All 30 preserved. The snapshot repository test retains its original component fixture. The relational ownership test now uses both canonical Flyway migrations.",
+    "migration_assertions": "Six additional assertions verify the canonical V2 alongside V1. The prior manifest counted allRequiredTablesPresent as 59 instead of 58 and render_job_immutable as 10 instead of 13.",
+    "renamed_method": "SchemaEquivalenceVerificationTest.noActiveV2ToV5 to exactMigrationInventory",
+    "evidence": "MEDIA_PLATFORM_DOMAIN_SCHEMA_AND_DATA_OWNERSHIP_CONVERGENCE_R1/VERIFICATION_REPORT.md"
   }
 }

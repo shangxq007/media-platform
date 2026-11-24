@@ -28,10 +28,18 @@ public final class TestDatabaseSchema implements AutoCloseable {
         return org.jooq.impl.DSL.using(connection,org.jooq.SQLDialect.POSTGRES);
     }
 
-    public void migrateApplication() {
+    public static void migrateApplication() {
         var provider = TestDatabaseConnectionProvider.fromControlledLaunch();
+        String location = "classpath:db/migration";
+        if (TestDatabaseSchema.class.getResource("/db/migration/V1__baseline.sql") == null) {
+            var root = java.nio.file.Path.of("").toAbsolutePath();
+            while (root != null && !java.nio.file.Files.isDirectory(
+                    root.resolve("platform-app/src/main/resources/db/migration"))) root = root.getParent();
+            if (root == null) throw new IllegalStateException("Canonical Flyway migration directory unavailable");
+            location = "filesystem:" + root.resolve("platform-app/src/main/resources/db/migration");
+        }
         org.flywaydb.core.Flyway.configure().dataSource(provider.jdbcUrl(), provider.username(), provider.secret())
-                .defaultSchema("public").locations("classpath:db/migration").validateOnMigrate(true).load().migrate();
+                .defaultSchema("public").locations(location).validateOnMigrate(true).load().migrate();
     }
     /** Trusted baseline SQL only. PostgreSQL JDBC parses dollar-quoted/multi-statement SQL.
      * Any SQL failure fails setup; no psql/container shell, URL or credential override.

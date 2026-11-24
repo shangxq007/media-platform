@@ -476,4 +476,8 @@ GRANT USAGE ON SEQUENCE render.render_binding_inputs_id_seq TO mp_api;
 GRANT USAGE ON SEQUENCE notification.notification_template_id_seq TO mp_api;
 GRANT USAGE ON SEQUENCE media.ingest_preflight_safe_report_records_id_seq TO mp_api;
 GRANT INSERT ON TABLE workflow.workflow_run TO mp_api;
+-- Atomic assignment locks the immutable host snapshot together with its generation.
+-- PostgreSQL requires UPDATE on a column for SELECT FOR UPDATE; the existing
+-- immutable snapshot trigger rejects changes to the row.
+GRANT UPDATE (snapshot_generation) ON worker_fabric.wf_host_resource_snapshot TO mp_worker;
 COMMIT;

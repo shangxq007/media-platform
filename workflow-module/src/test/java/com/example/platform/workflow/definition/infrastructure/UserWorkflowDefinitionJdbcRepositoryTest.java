@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * UWD-RED-014 (JDBC_INTEGRATION). Authentic RED: fails at compile time until
- * the W2 JDBC adapter exists. Uses the canonical V1 W2 DDL inline against
+ * the W2 JDBC adapter exists. Uses the canonical Flyway migrations against
  * PostgresTestContainerSupport; the real migration file is proven by
  * UWD-RED-015 in platform-app.
  */
@@ -36,77 +36,11 @@ class UserWorkflowDefinitionJdbcRepositoryTest extends PostgresTestContainerSupp
     private static DataSource dataSource;
     private static UserWorkflowDefinitionJdbcRepository repository;
 
-    /** Canonical V1 W2 DDL — kept in sync with the consolidated V1 migration by the migration test. */
-    private static final String W2_DDL = """
-            create table workflow.user_workflow_definition (
-                definition_id varchar(64) primary key,
-                tenant_id varchar(64) not null,
-                project_id varchar(128),
-                created_at timestamp not null,
-                created_by varchar(128) not null
-            );
-
-            create table workflow.user_workflow_definition_version (
-                definition_id varchar(64) not null,
-                version_number int not null,
-                tenant_id varchar(64) not null,
-                project_id varchar(128),
-                name varchar(255) not null,
-                description text,
-                status varchar(32) not null,
-                schema_version int not null,
-                optimistic_version bigint not null default 1,
-                trigger_json text not null,
-                parameter_json text not null,
-                created_at timestamp not null,
-                created_by varchar(128) not null,
-                updated_at timestamp not null,
-                updated_by varchar(128) not null,
-                published_at timestamp,
-                published_by varchar(128),
-                archived_at timestamp,
-                archived_by varchar(128),
-                primary key (definition_id, version_number)
-            );
-
-            create table workflow.user_workflow_definition_node (
-                definition_id varchar(64) not null,
-                version_number int not null,
-                node_id varchar(64) not null,
-                tenant_id varchar(64) not null,
-                node_type varchar(32) not null,
-                name varchar(255) not null,
-                config_json text not null,
-                input_json text,
-                output_json text,
-                error_policy varchar(16) not null default 'FAIL',
-                sort_order int not null default 0,
-                primary key (definition_id, version_number, node_id)
-            );
-
-            create table workflow.user_workflow_definition_edge (
-                definition_id varchar(64) not null,
-                version_number int not null,
-                edge_id varchar(64) not null,
-                tenant_id varchar(64) not null,
-                source_node_id varchar(64) not null,
-                target_node_id varchar(64) not null,
-                condition_ref varchar(255) not null default '',
-                sort_order int not null default 0,
-                primary key (definition_id, version_number, edge_id),
-                unique (definition_id, version_number, source_node_id, target_node_id, condition_ref)
-            );
-            """;
-
     @BeforeAll
     static void setUpDatabase() {
+        com.example.platform.shared.test.TestDatabaseSchema.migrateApplication();
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
-        for (String stmt : W2_DDL.split(";")) {
-            if (!stmt.isBlank()) {
-                jdbc.execute(stmt);
-            }
-        }
         repository = new UserWorkflowDefinitionJdbcRepository(jdbc);
     }
 

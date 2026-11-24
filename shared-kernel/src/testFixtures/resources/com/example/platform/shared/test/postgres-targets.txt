@@ -30,3 +30,7 @@ local com.example.platform.workerfabric.domain.ExecutionBackendSelectionPostgres
 local com.example.platform.workerfabric.domain.ExecutionLifecyclePostgresTest
 local com.example.platform.workerfabric.domain.JooqReservationFeasibilityQueryPostgresTest
 local com.example.platform.workerfabric.domain.WorkerFabricRegistrationPostgresTest
+local com.example.platform.billing.usage.UsageOutboxEventAtomicityTest
+local com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepositoryPostgresTest
+local com.example.platform.entitlement.app.QuotaUsageAuthorityPostgresTest
+local com.example.platform.workflow.definition.infrastructure.UserWorkflowDefinitionJdbcRepositoryTest

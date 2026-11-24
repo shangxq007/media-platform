@@ -39,27 +39,12 @@ class UsageOutboxEventAtomicityTest extends PostgresTestContainerSupport {
 
     @BeforeAll
     static void createSchema() {
+        com.example.platform.shared.test.TestDatabaseSchema.migrateApplication();
         dataSource = createDataSource();
         TestConfiguration.dataSource = dataSource;
         context = new AnnotationConfigApplicationContext(TestConfiguration.class);
         jdbc = context.getBean(JdbcTemplate.class);
         publisher = context.getBean(ObservedRuntimeUsageOutboxPublisher.class);
-        jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS billing.observed_runtime_usage (
-                    observed_usage_id varchar(64) primary key,
-                    tenant_id varchar(64) not null, project_id varchar(64),
-                    principal_type varchar(32) not null, principal_id varchar(128) not null,
-                    operation_ref varchar(128) not null, attempt_ref varchar(128) not null,
-                    execution_ref varchar(128), provider_ref varchar(128) not null,
-                    capability varchar(128) not null, dimension varchar(64) not null,
-                    quantity_base_units bigint not null, quantity_unit varchar(32) not null,
-                    operation_outcome varchar(32) not null, occurred_at timestamptz not null,
-                    observed_at timestamptz not null, recorded_at timestamptz not null,
-                    provenance varchar(32) not null, source varchar(128) not null,
-                    source_reference varchar(255) not null, trace_id varchar(128) not null,
-                    idempotency_key varchar(255) not null, unique (tenant_id, idempotency_key)
-                )
-                """);
     }
 
     @AfterAll

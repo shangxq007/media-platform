@@ -119,6 +119,14 @@
       "artifact": "r2dbc-spi",
       "version": "1.0.0.RELEASE",
       "filename": "r2dbc-spi-1.0.0.RELEASE.jar"
+    },
+    {
+      "sha256": "71dc5aba396aa4636f29f2124fe715fa799e6fd8126ce1bcdf162b4166efab4b",
+      "bytes": 749548,
+      "group": "org.flywaydb",
+      "artifact": "flyway-core",
+      "version": "11.20.3",
+      "filename": "flyway-core-11.20.3.jar"
     }
   ],
   "target_versions_verified": true,

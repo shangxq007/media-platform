@@ -4,9 +4,18 @@ DO $verify$
 DECLARE
     fingerprint text;
 BEGIN
+    IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
+        IF EXISTS (SELECT FROM public.flyway_schema_history WHERE version='2' AND success) THEN RETURN; END IF;
+    END IF;
+    IF EXISTS (
+        SELECT FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname NOT IN ('public','information_schema') AND n.nspname !~ '^pg_'
+          AND c.relkind IN ('r','p','v','m','S','f')
+    ) THEN
+        RAISE EXCEPTION 'Unsupported pre-relocation database: objects outside the V1 application schema.';
+    END IF;
     IF to_regclass('public.flyway_schema_history') IS NULL THEN RETURN; END IF;
-    IF NOT EXISTS (SELECT FROM public.flyway_schema_history WHERE version='1' AND success)
-       OR EXISTS (SELECT FROM public.flyway_schema_history WHERE version='2' AND success) THEN RETURN; END IF;
+    IF NOT EXISTS (SELECT FROM public.flyway_schema_history WHERE version='1' AND success) THEN RETURN; END IF;
     PERFORM set_config('search_path', 'pg_catalog', true);
     SELECT digest INTO fingerprint FROM (
         WITH relations AS (

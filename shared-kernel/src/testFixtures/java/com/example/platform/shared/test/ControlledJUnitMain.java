@@ -65,7 +65,8 @@ public final class ControlledJUnitMain {
                 if (selected == null || selected.endsWith(".FlywaySchemaIntegrationTest")) {
                     bootstrap.getMethod("prepare").invoke(null);
                 } else if (!selected.endsWith(".SchemaEquivalenceVerificationTest") &&
-                           !selected.endsWith(".UserWorkflowDefinitionV1SchemaMigrationTest")) {
+                           !selected.endsWith(".UserWorkflowDefinitionV1SchemaMigrationTest") &&
+                           !selected.endsWith(".SourceVisualDescriptionSnapshotIT")) {
                     bootstrap.getMethod("migrate").invoke(null);
                 }
             }

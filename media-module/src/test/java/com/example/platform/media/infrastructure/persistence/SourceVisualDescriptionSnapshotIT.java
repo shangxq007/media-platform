@@ -55,19 +55,48 @@ class SourceVisualDescriptionSnapshotIT {
     static void setup() throws Exception {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         dsl = database.dsl();
-        database.migrateApplication();
-        dsl.execute("insert into identity.tenant(id,name,created_at) values ('media-test','Media test',now())");
-        for (String artifact : java.util.List.of("artifact-v1", "artifact-v2")) {
-            dsl.execute("""
-                    insert into artifacts.artifact(id, tenant_id, content_digest, byte_length, media_type,
-                        artifact_kind, state, created_at)
-                    values (?, 'media-test', repeat('a', 64), 1, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', now())
-                    """, artifact);
-        }
-        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind, timebase_num, timebase_den) "
-                + "values ('stream-1', 'artifact-v1', 0, 'VIDEO', 1, 1000)");
-        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind, timebase_num, timebase_den) "
-                + "values ('stream-audio', 'artifact-v1', 1, 'AUDIO', 1, 1000)");
+        // This existing repository test exercises the composite lookup key independently of the
+        // stream ownership FK. SourceVisualOwnershipIntegrityIT exercises the actual migrated FK.
+        dsl.execute("create schema media");
+        dsl.execute("create schema artifacts");
+        dsl.execute("""
+                create table media.media_stream (
+                    id varchar(64) primary key,
+                    artifact_id varchar(64) not null,
+                    stream_index int not null,
+                    stream_kind varchar(16) not null
+                )""");
+        dsl.execute("""
+                create table media.source_visual_description_snapshot (
+                    media_stream_id varchar(64) not null,
+                    artifact_id      varchar(64) not null,
+                    canonical_payload text not null,
+                    created_at       timestamp not null default current_timestamp,
+                    constraint fk_source_visual_snapshot_stream
+                        foreign key (media_stream_id) references media.media_stream(id)
+                )""");
+        dsl.execute("alter table source_visual_description_snapshot "
+                + "add constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id)");
+        dsl.execute("""
+                create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
+                begin
+                    if new.media_stream_id is distinct from old.media_stream_id
+                       or new.artifact_id is distinct from old.artifact_id
+                       or new.canonical_payload is distinct from old.canonical_payload then
+                        raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE';
+                    end if;
+                    return new;
+                end;
+                $$ language plpgsql""");
+        dsl.execute("create trigger trg_svd_snapshot_immutable before update on "
+                + "media.source_visual_description_snapshot for each row "
+                + "execute function trg_fn_svd_snapshot_immutable()");
+        dsl.execute("create table artifacts.artifact (id varchar(64) primary key)");
+        dsl.execute("insert into artifacts.artifact (id) values ('artifact-v1'), ('artifact-v2')");
+        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind) "
+                + "values ('stream-1', 'artifact-v1', 0, 'VIDEO')");
+        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind) "
+                + "values ('stream-audio', 'artifact-v1', 1, 'AUDIO')");
         repo = new JooqSourceVisualDescriptionSnapshotRepository(dsl);
     }
 

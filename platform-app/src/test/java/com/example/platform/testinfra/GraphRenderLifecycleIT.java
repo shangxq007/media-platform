@@ -34,7 +34,10 @@ class GraphRenderLifecycleIT {
             schema.dsl().execute("""
                     truncate identity.tenant, artifacts.artifact, render.render_job, infrastructure.outbox_events,
                              entitlement.quota_usage, entitlement.quota_usage_operation,
-                             execution.platform_execution_result, execution.platform_execution_admission cascade
+                             execution.platform_execution_result, execution.platform_execution_admission,
+                             worker_fabric.wf_execution_backend_selection, worker_fabric.wf_execution_ownership_generation,
+                             worker_fabric.wf_execution_attempt, worker_fabric.wf_completion_event,
+                             worker_fabric.wf_task_ownership cascade
                     """);
             db=schema.dsl();
             db.execute("insert into identity.tenant(id,name,created_at) values('tenant-a','test',current_timestamp),('tenant-b','other',current_timestamp)");

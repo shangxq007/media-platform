@@ -26,7 +26,7 @@ class ExecutionBackendSelectionPostgresTest extends PostgresTestContainerSupport
     static void migrateCanonicalSchema() throws Exception {
         schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
         dataSource = createDataSourceForSchema(schema.name());
-        AssignmentGrantPostgresFixture.migrate(dataSource);
+        AssignmentGrantPostgresFixture.migrate(PROVIDER);
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
     }
 

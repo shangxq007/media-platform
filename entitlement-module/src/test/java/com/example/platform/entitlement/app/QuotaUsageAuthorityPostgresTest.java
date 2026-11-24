@@ -53,57 +53,12 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
 
     @BeforeAll
     static void setUpDatabase() {
+        com.example.platform.shared.test.TestDatabaseSchema.migrateApplication();
         dataSource = createDataSource();
         TestConfiguration.dataSource = dataSource;
         context = new AnnotationConfigApplicationContext(TestConfiguration.class);
         jdbc = context.getBean(JdbcTemplate.class);
         authority = context.getBean(QuotaUsageAuthority.class);
-        jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS entitlement.quota_usage (
-                    id varchar(64) primary key,
-                    tenant_id varchar(64) not null,
-                    principal_type varchar(32) not null,
-                    principal_id varchar(128) not null,
-                    workspace_scope varchar(64) not null default '',
-                    organization_scope varchar(64) not null default '',
-                    quota_key varchar(128) not null,
-                    period_start timestamptz not null,
-                    period_end timestamptz not null,
-                    usage_value numeric(38,18) not null default 0 check (usage_value >= 0),
-                    created_at timestamptz not null,
-                    updated_at timestamptz not null,
-                    unique (tenant_id, principal_type, principal_id, workspace_scope,
-                            organization_scope, quota_key, period_start, period_end)
-                )
-                """);
-        jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS entitlement.quota_usage_operation (
-                    id varchar(64) primary key,
-                    tenant_id varchar(64) not null,
-                    principal_type varchar(32) not null,
-                    principal_id varchar(128) not null,
-                    workspace_scope varchar(64) not null default '',
-                    organization_scope varchar(64) not null default '',
-                    quota_key varchar(128) not null,
-                    period_start timestamptz not null,
-                    period_end timestamptz not null,
-                    signed_delta numeric(38,18) not null,
-                    limit_value numeric(38,18) not null check (limit_value >= 0),
-                    idempotency_key varchar(255) not null,
-                    operation_kind varchar(32) not null check (
-                        operation_kind in ('CONSUMPTION', 'ADJUSTMENT', 'REVERSAL', 'RECONCILIATION')),
-                    outcome varchar(32) not null check (outcome in ('PENDING', 'APPLIED', 'REJECTED')),
-                    usage_before numeric(38,18),
-                    usage_after numeric(38,18),
-                    rejection_reason varchar(64),
-                    trace_id varchar(128) not null,
-                    reason varchar(512) not null,
-                    occurred_at timestamptz not null,
-                    created_at timestamptz not null,
-                    unique (tenant_id, principal_type, principal_id, workspace_scope,
-                            organization_scope, idempotency_key)
-                )
-                """);
     }
 
     @AfterAll
@@ -116,7 +71,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void resetTables() {
-        jdbc.execute("DROP TRIGGER IF EXISTS quota_audit_forced_failure ON quota_usage_operation");
+        jdbc.execute("DROP TRIGGER IF EXISTS quota_audit_forced_failure ON entitlement.quota_usage_operation");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_quota_audit_for_test()");
         jdbc.execute("TRUNCATE TABLE entitlement.quota_usage_operation, entitlement.quota_usage");
     }

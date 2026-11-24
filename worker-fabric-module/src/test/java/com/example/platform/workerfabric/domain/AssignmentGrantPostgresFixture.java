@@ -2,7 +2,7 @@ package com.example.platform.workerfabric.domain;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import javax.sql.DataSource;
+import com.example.platform.shared.test.TestDatabaseConnectionProvider;
 import org.flywaydb.core.Flyway;
 import org.jooq.DSLContext;
 
@@ -11,10 +11,10 @@ final class AssignmentGrantPostgresFixture {
 
     private AssignmentGrantPostgresFixture() {}
 
-    static void migrate(DataSource dataSource) {
+    static void migrate(TestDatabaseConnectionProvider provider) {
         Path migrations = canonicalMigrationDirectory();
         Flyway.configure()
-                .dataSource(dataSource)
+                .dataSource(provider.jdbcUrl(), provider.username(), provider.secret())
                 .locations("filesystem:" + migrations)
                 .defaultSchema("public").baselineOnMigrate(false)
                 .load()

@@ -5,7 +5,7 @@
     "candidate_total": 6,
     "selected": 6,
     "file_identical": false,
-    "sha256": "572c47a39708e68fba02be9e65ab361c08361dd8fae5b160f9d364cd4047e5b3"
+    "sha256": "1e9d2e9060d6285191f6b8de51a76bb20f698236780aff56810068f5656761df"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/H7V2CanonicalOwnershipInvariantTest.java",
@@ -13,7 +13,7 @@
     "candidate_total": 27,
     "selected": 1,
     "file_identical": false,
-    "sha256": "d411f8ccfb37dc02f11d643d81046b0ab5d8a6720a2d1337b846cc2b2883955d"
+    "sha256": "1fa33f16b095b0a0f24f22e39ff2e17b1487cb085478f057d87d5c9df5b01a2b"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
@@ -21,7 +21,7 @@
     "candidate_total": 10,
     "selected": 10,
     "file_identical": true,
-    "sha256": "fe8f66a001ed1e6af84353998963068608b294982ad3ef3ebc4eeeb05844fd1f"
+    "sha256": "c7990ce54061417f0ab6930a40ac9b165541eedbc61e804e881d16c673726497"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/Gcr5Gcr6DatabaseStructuralIntegrityTest.java",
@@ -29,7 +29,7 @@
     "candidate_total": 8,
     "selected": 8,
     "file_identical": true,
-    "sha256": "f302c5468165e9e2c1c55a48b580067183e3cc08f685f6ecceb1d3c401067ebf"
+    "sha256": "132a5c248eddcbe77733211461922920879095dc128c6656f69f55d647ff895d"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/FlywaySchemaIntegrationTest.java",
@@ -37,7 +37,7 @@
     "candidate_total": 1,
     "selected": 1,
     "file_identical": true,
-    "sha256": "a242cc3a484232a3e908cfeb8b3b3fe8e9a58884c09d7ecf1ee5b909ec023586"
+    "sha256": "168e254523246896612979cb434772f908bd764fb576106cbd501ed69f76ce31"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/testinfra/TestDatabaseIsolationGuardTest.java",
@@ -45,6 +45,6 @@
     "candidate_total": 2,
     "selected": 2,
     "file_identical": true,
-    "sha256": "3796ff9a4ab1dfe8e894cd461f72345167bf642d2b1d38f280001a25ff017372"
+    "sha256": "83f28c5fe2a013f3116aa810c2a7b8662886d1eb4b77d8126e8df2887d8f297e"
   }
 ]
