@@ -91,7 +91,10 @@ def bmf_runtime(root: Path | None) -> dict:
     """Provider-aware preflight input: the exact verified BMF 0.2.0 runtime distribution."""
     import hashlib
     source = '8fb3ec03b06ba56e5276a6844614879cdc0ae3886b42a4bf783782708130e327'
-    bundle = '0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1'
+    allowed_bundles = {
+        '0d4c2e9220a582f9ce286f7185f513ca71a0272910d0e79da8a226d734a03be1',
+        '7b6de78d235e77e14c3de47ed84268b17a071298465d72fb321af0565a0aff4c',
+    }
     report = {'configured': bool(root), 'path': str(root) if root else '', 'certificate': 'NOT_RUN',
               'digest': None, 'blockers': []}
     if root is None:
@@ -110,8 +113,9 @@ def bmf_runtime(root: Path | None) -> dict:
                 key, _, value = line.partition('=')
                 metadata[key.strip()] = value.strip()
     expected = {'bmf.version': '0.2.0', 'ffmpeg.version': '4.3.7', 'python.version': '3.9.2',
-                'numpy.version': '1.19.5', 'source.sha256': source, 'bundle.sha256': bundle}
-    if any(metadata.get(key) != value for key, value in expected.items()):
+                'numpy.version': '1.19.5', 'source.sha256': source}
+    bundle = metadata.get('bundle.sha256')
+    if bundle not in allowed_bundles or any(metadata.get(key) != value for key, value in expected.items()):
         report['blockers'].append('bmf runtime manifest does not declare the pinned distribution')
         return report
     python = resolved / 'host-bundle/usr/bin/python3.9'

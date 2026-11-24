@@ -5,7 +5,9 @@
             "fonttext :: diagnostics",
             "fonttext :: resolution",
             "fonttext :: text",
+            "timeline :: canonicalmodel",
             "timeline :: clip",
+            "timeline :: effect",
             "timeline :: relationship",
             "timeline :: selection",
             "timeline :: temporal"

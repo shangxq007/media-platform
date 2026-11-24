@@ -279,7 +279,8 @@ class BmfArchitectureGuardTest {
                         "src/test/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceAssessmentTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuTranscodeSeamsTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuWorkerRuntimeIntegrationTest.java",
-                        "src/test/java/com/example/platform/bmf/BmfArchitectureGuardTest.java");
+                        "src/test/java/com/example/platform/bmf/BmfArchitectureGuardTest.java",
+                        "src/test/java/com/example/platform/bmf/BmfVideoEffectTransitionGraphTest.java");
     }
 
     private static long declarationCount(String source, String simpleName) {
