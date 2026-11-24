@@ -1,7 +1,7 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD;
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT;
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.NotificationProviderRouter;

@@ -1,39 +1,28 @@
 package com.example.platform;
 
+import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.sql.DataSource;
-
-/**
- * Manual Flyway configuration for PostgreSQL preview startup.
- *
- * This is required because Spring Boot 4.0.4's FlywayAutoConfiguration
- * does not properly initialize in the current setup. This bean ensures
- * migrations run after DataSource is created but before application starts.
- *
- * TODO: Remove this when Spring Boot Flyway auto-configuration works correctly.
- */
+/** Both processes validate the migration history through their ordinary read privileges. */
 @Configuration
-@ConditionalOnProperty(name = "spring.flyway.enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "spring.flyway.enabled", havingValue = "true")
 public class FlywayConfiguration {
-
-    private static final Logger log = LoggerFactory.getLogger(FlywayConfiguration.class);
+    static FluentConfiguration migrationChain() {
+        return Flyway.configure().defaultSchema("public").locations("classpath:db/migration")
+                .baselineOnMigrate(false).validateMigrationNaming(true).validateOnMigrate(true);
+    }
 
     @Bean
     public Flyway flyway(DataSource dataSource) {
-        log.info("Running Flyway migration...");
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
-                .load();
-        flyway.migrate();
-        log.info("Flyway migration completed");
+        Flyway flyway = migrationChain().dataSource(dataSource).load();
+        flyway.validate();
+        if (flyway.info().current() == null || flyway.info().pending().length != 0) {
+            throw new IllegalStateException("Database migration required before runtime startup");
+        }
         return flyway;
     }
 }

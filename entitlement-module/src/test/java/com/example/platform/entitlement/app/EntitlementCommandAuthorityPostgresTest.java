@@ -67,7 +67,7 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
     @BeforeEach
     void reset() {
         createTables();
-        jdbc.execute("TRUNCATE entitlement_command_audit, workspace_member_entitlement_grant, entitlement_grant CASCADE");
+        jdbc.execute("TRUNCATE entitlement.entitlement_command_audit, workspace_member_entitlement_grant, entitlement_grant CASCADE");
         cache.clear();
     }
 
@@ -172,7 +172,7 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
 
     private static void createTables() {
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS entitlement_grant (
+                CREATE TABLE IF NOT EXISTS entitlement.entitlement_grant (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     subject_type varchar(32) not null, subject_id varchar(128) not null,
                     bundle_code varchar(128) not null, quota_profile_code varchar(128),
@@ -183,7 +183,7 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
                     unique (tenant_id, subject_type, subject_id, bundle_code, source_type, source_ref))
                 """);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS workspace_member_entitlement_grant (
+                CREATE TABLE IF NOT EXISTS entitlement.workspace_member_entitlement_grant (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     workspace_id varchar(64) not null, principal_type varchar(32) not null,
                     member_id varchar(128) not null, feature_key varchar(128) not null,
@@ -196,7 +196,7 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
                     unique (tenant_id, workspace_id, principal_type, member_id, feature_key, source_type, source_ref))
                 """);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS entitlement_command_audit (
+                CREATE TABLE IF NOT EXISTS entitlement.entitlement_command_audit (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     idempotency_key varchar(255) not null, command_type varchar(32) not null,

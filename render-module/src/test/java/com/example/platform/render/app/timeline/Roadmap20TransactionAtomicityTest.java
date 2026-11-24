@@ -76,10 +76,10 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
     private void insertFixtures(String productId) {
         com.example.platform.render.testsupport.RenderTestSchemaFixture.insertCanonicalProject(
                 dsl, "tenant-1", productId);
-        dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, representation_kind, status, created_at, updated_at) "
+        dsl.execute("insert into render.product (product_id, tenant_id, project_id, product_type, representation_kind, status, created_at, updated_at) "
                 + "values (?, 'tenant-1', ?, 'video', 'master', 'REGISTERED', now(), now()) on conflict (product_id) do nothing",
                 productId, productId);
-        dsl.execute("insert into artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
+        dsl.execute("insert into artifacts.artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
                 + "values ('art-1', 'tenant-1', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 100, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now()) "
                 + "on conflict (id) do nothing");
     }
@@ -207,12 +207,12 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
     }
 
     private long countRevisions(String productId) {
-        return dsl.fetchOne("select count(1) from timeline_revision where project_id = ?", productId)
+        return dsl.fetchOne("select count(1) from timeline.timeline_revision where project_id = ?", productId)
                 .get(0, Long.class);
     }
 
     private long countSnapshots(String productId) {
-        return dsl.fetchOne("select count(1) from timeline_snapshot where project_id = ?", productId)
+        return dsl.fetchOne("select count(1) from timeline.timeline_snapshot where project_id = ?", productId)
                 .get(0, Long.class);
     }
 

@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -97,29 +97,29 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
     private void insertProduct(String productId) {
         RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
-        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID, productId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.STATUS, "REGISTERED")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.TENANT_ID, TENANT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PROJECT_ID, productId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
+        dsl.insertInto(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.PRODUCT_ID, productId)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.STATUS, "REGISTERED")
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.PROJECT_ID, productId)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
     }
 
     private void insertArtifact(String artifactId, String digest) {
-        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.ID, artifactId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.TENANT_ID, TENANT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.CONTENT_DIGEST, digest)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.BYTE_LENGTH, 1024L)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.MEDIA_TYPE, "VIDEO")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.ARTIFACT_KIND, "SOURCE_MEDIA")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.STATE, "AVAILABLE")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.SCHEMA_VERSION, 1)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.CREATED_AT, java.time.LocalDateTime.now())
+        dsl.insertInto(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.ID, artifactId)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.CONTENT_DIGEST, digest)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.BYTE_LENGTH, 1024L)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.MEDIA_TYPE, "VIDEO")
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.ARTIFACT_KIND, "SOURCE_MEDIA")
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.STATE, "AVAILABLE")
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.SCHEMA_VERSION, 1)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.CREATED_AT, java.time.LocalDateTime.now())
                 .execute();
     }
 
@@ -161,18 +161,18 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         // artifact_pin row = 1 with EXACT revision id / artifact id / digest
         var pinRow = dsl.selectFrom(
-                        com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN)
-                .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))
+                        com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN)
+                .where(com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))
                 .fetchOne();
         assertNotNull(pinRow, "real pin row must exist");
         assertEquals(revision.revisionId(), pinRow.get(
-                com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.REVISION_ID),
+                com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.REVISION_ID),
                 "pin must be registered for the NEW revision id");
         assertEquals("art-1", pinRow.get(
-                com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.ARTIFACT_ID),
+                com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.ARTIFACT_ID),
                 "exact artifact id");
         assertEquals(DIGEST_HEX, pinRow.get(
-                com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.CONTENT_DIGEST),
+                com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.CONTENT_DIGEST),
                 "exact content digest");
 
         // head
@@ -222,8 +222,8 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 "no revision may be durable after real pin failure");
         // no pin rows
         assertEquals(0, dsl.fetchCount(DSL.selectFrom(
-                        com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN)
-                .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
+                        com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN)
+                .where(com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "no partial pin rows after rollback");
         // head unchanged (never set)
         assertTrue(currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)) == null
@@ -282,8 +282,8 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
         // artifact_pin count for the project = 0 — pin 1's successful INSERT
         // was rolled back together with pin 2's failure.
         assertEquals(0, dsl.fetchCount(DSL.selectFrom(
-                        com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN)
-                .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
+                        com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN)
+                .where(com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "no partial pin set may survive (pin 1 rolled back with pin 2 failure)");
         // Head unchanged.
         assertTrue(currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)) == null

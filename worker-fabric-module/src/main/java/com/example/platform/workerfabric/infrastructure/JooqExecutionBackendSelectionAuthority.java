@@ -45,7 +45,7 @@ public class JooqExecutionBackendSelectionAuthority
             Instant selectedAt) {
         Record inserted = tx.fetchOne(
                 """
-                insert into wf_execution_backend_selection (
+                insert into worker_fabric.wf_execution_backend_selection (
                     selection_id, task_id, backend, placement_authority_scope,
                     active, selected_at)
                 values (?, ?, ?, ?, true, cast(? as timestamptz))
@@ -62,7 +62,7 @@ public class JooqExecutionBackendSelectionAuthority
         }
         Record active = tx.fetchOne(
                 """
-                select * from wf_execution_backend_selection
+                select * from worker_fabric.wf_execution_backend_selection
                  where task_id = ? and active
                  for update
                 """,
@@ -84,7 +84,7 @@ public class JooqExecutionBackendSelectionAuthority
         Objects.requireNonNull(terminalAt, "terminalAt");
         return dsl.execute(
                 """
-                update wf_execution_backend_selection
+                update worker_fabric.wf_execution_backend_selection
                    set active = false, terminal_at = cast(? as timestamptz)
                  where selection_id = ? and active
                 """,
@@ -97,7 +97,7 @@ public class JooqExecutionBackendSelectionAuthority
             ExecutableTaskId executableTaskId) {
         Objects.requireNonNull(executableTaskId, "executableTaskId");
         Record row = dsl.fetchOne(
-                "select * from wf_execution_backend_selection where task_id = ? and active",
+                "select * from worker_fabric.wf_execution_backend_selection where task_id = ? and active",
                 executableTaskId.sha256Hex());
         return Optional.ofNullable(row).map(JooqExecutionBackendSelectionAuthority::from);
     }

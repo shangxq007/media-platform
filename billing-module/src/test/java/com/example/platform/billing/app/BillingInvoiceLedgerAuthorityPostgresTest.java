@@ -56,7 +56,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
         ledger = context.getBean(BillingLedgerJdbcRepository.class);
         jdbc.execute("DROP TABLE IF EXISTS billing_invoice_command, billing_ledger_entry, invoice_line_item, billing_invoice, rated_usage_record CASCADE");
         jdbc.execute("""
-                CREATE TABLE billing_invoice (
+                CREATE TABLE billing.billing_invoice (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     contract_id varchar(64), provider_code varchar(64), external_invoice_ref varchar(255),
@@ -68,7 +68,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE invoice_line_item (
+                CREATE TABLE billing.invoice_line_item (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     invoice_id varchar(64) not null, rated_usage_id varchar(64),
                     line_type varchar(32) not null, description text not null,
@@ -77,11 +77,11 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
                     period_start timestamptz, period_end timestamptz, created_at timestamptz not null,
                     primary key (tenant_id, id),
                     unique (tenant_id, rated_usage_id),
-                    foreign key (tenant_id, invoice_id) references billing_invoice(tenant_id, id)
+                    foreign key (tenant_id, invoice_id) references billing.billing_invoice(tenant_id, id)
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE billing_invoice_command (
+                CREATE TABLE billing.billing_invoice_command (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     invoice_id varchar(64) not null, idempotency_key varchar(255) not null,
                     command_type varchar(32) not null, payload_fingerprint varchar(64) not null,
@@ -93,7 +93,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE billing_ledger_entry (
+                CREATE TABLE billing.billing_ledger_entry (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     workspace_id varchar(64), entry_type varchar(32) not null,
@@ -108,7 +108,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE rated_usage_record (
+                CREATE TABLE billing.rated_usage_record (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     billable_usage_id varchar(64) not null, pricing_rule_id varchar(64) not null,
                     pricing_rule_version bigint not null, quantity_base_units bigint not null,
@@ -131,7 +131,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
     void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_invoice_ledger_insert ON billing_ledger_entry");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_invoice_ledger_for_test()");
-        jdbc.execute("TRUNCATE billing_invoice_command, billing_ledger_entry, invoice_line_item, billing_invoice, rated_usage_record");
+        jdbc.execute("TRUNCATE billing.billing_invoice_command, billing_ledger_entry, invoice_line_item, billing_invoice, rated_usage_record");
         persistRated("rated-1", 2, 10, "USD");
         persistRated("rated-issue", 2, 10, "USD");
         persistRated("rated-concurrent", 1, 7, "USD");
@@ -292,7 +292,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
 
     private static void persistRated(String id, long quantity, long amount, String currency) {
         jdbc.update("""
-                INSERT INTO rated_usage_record
+                INSERT INTO billing.rated_usage_record
                 (id, tenant_id, billable_usage_id, pricing_rule_id, pricing_rule_version,
                  quantity_base_units, rated_amount_minor, currency_code, rating_details,
                  rated_at, trace_id, idempotency_key, payload_fingerprint)

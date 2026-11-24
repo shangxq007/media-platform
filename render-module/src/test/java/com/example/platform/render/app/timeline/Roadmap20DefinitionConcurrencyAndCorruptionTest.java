@@ -93,10 +93,10 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
     private void insertFixtures(String productId) {
         com.example.platform.render.testsupport.RenderTestSchemaFixture.insertCanonicalProject(
                 dsl, "tenant-1", productId);
-        dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, representation_kind, status, created_at, updated_at) "
+        dsl.execute("insert into render.product (product_id, tenant_id, project_id, product_type, representation_kind, status, created_at, updated_at) "
                 + "values (?, 'tenant-1', ?, 'video', 'master', 'REGISTERED', now(), now()) on conflict (product_id) do nothing",
                 productId, productId);
-        dsl.execute("insert into artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
+        dsl.execute("insert into artifacts.artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
                 + "values ('art-1', 'tenant-1', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 100, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now()) "
                 + "on conflict (id) do nothing");
     }
@@ -162,7 +162,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // DIAGNOSTIC: how many esnap_ rows exist after the first save?
         java.util.List<String> esnapPayloads = dsl.fetch(
-                        "select payload_json from timeline_snapshot where id like 'esnap_%'")
+                        "select payload_json from timeline.timeline_snapshot where id like 'esnap_%'")
                 .getValues(0, String.class);
         System.out.println("[AI18-DIAG] esnap rows after first save: " + esnapPayloads.size()
                 + " first-payload-prefix=" + (esnapPayloads.isEmpty() ? "NONE"
@@ -234,7 +234,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 List.of(blurEffect("eff-1", "4")), List.of(blurDef("4")), sampleDocument());
         EffectDefinitionSnapshot def = snap.entries().get(0).definitionSnapshot();
         // corrupt the authoritative esnap_ row payload
-        dsl.execute("update timeline_snapshot set payload_json = '{corrupt-json' where id = ?",
+        dsl.execute("update timeline.timeline_snapshot set payload_json = '{corrupt-json' where id = ?",
                 revision.effectSemanticSnapshotReference().snapshotId().value());
 
         // subsequent definition-version identity verification MUST FAIL CLOSED

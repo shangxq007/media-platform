@@ -24,7 +24,7 @@ public class JdbcStorageDatabaseBindingRepository implements StorageDatabaseBind
         OffsetDateTime firstSeen = utc(binding.firstSeenAt());
         OffsetDateTime lastObserved = utc(binding.lastObservedAt());
         jdbc.update("""
-                insert into storage_database_binding (
+                insert into storage.storage_database_binding (
                     binding_id, database_kind, database_oid, database_name,
                     database_identity, deployment_identity, environment_identity,
                     schema_identity, schema_version, query_evidence_version,
@@ -45,7 +45,7 @@ public class JdbcStorageDatabaseBindingRepository implements StorageDatabaseBind
         }
         if (binding.lastObservedAt().isAfter(persisted.lastObservedAt())) {
             jdbc.update("""
-                    update storage_database_binding set last_observed_at = ?
+                    update storage.storage_database_binding set last_observed_at = ?
                      where binding_id = ? and last_observed_at < ?
                     """, lastObserved, binding.bindingId(), lastObserved);
         }
@@ -58,7 +58,7 @@ public class JdbcStorageDatabaseBindingRepository implements StorageDatabaseBind
                        database_identity, deployment_identity, environment_identity,
                        schema_identity, schema_version, query_evidence_version,
                        binding_evidence_ref, is_canonical, first_seen_at, last_observed_at
-                  from storage_database_binding where binding_id = ?
+                  from storage.storage_database_binding where binding_id = ?
                 """, (rs, rowNumber) -> new StorageDatabaseBinding(
                 rs.getString("binding_id"),
                 DatabaseKind.valueOf(rs.getString("database_kind")),

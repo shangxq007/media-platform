@@ -21,7 +21,7 @@ class I5InvoiceLedgerArchitectureTest {
         String ledger = table(schema, "billing_ledger_entry");
         assertTrue(invoice.contains("tenant_id varchar(64) not null"));
         assertTrue(invoice.contains("version bigint not null"));
-        assertTrue(schema.contains("create table billing_invoice_command"));
+        assertTrue(schema.contains("create table billing.billing_invoice_command"));
         assertTrue(lines.contains("rated_usage_id varchar(64)"));
         assertTrue(lines.contains("quantity_base_units bigint not null"));
         assertFalse(lines.contains("double precision"));

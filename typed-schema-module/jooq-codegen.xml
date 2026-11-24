@@ -12,7 +12,30 @@
       <name>org.jooq.meta.postgres.PostgresDatabase</name>
       <includes>.*</includes>
       <excludes>flyway_schema_history</excludes>
-      <inputSchema>public</inputSchema>
+      <schemata>
+        <schema><inputSchema>analytics</inputSchema></schema>
+        <schema><inputSchema>artifacts</inputSchema></schema>
+        <schema><inputSchema>billing</inputSchema></schema>
+        <schema><inputSchema>commerce</inputSchema></schema>
+        <schema><inputSchema>composition</inputSchema></schema>
+        <schema><inputSchema>publication</inputSchema></schema>
+        <schema><inputSchema>entitlement</inputSchema></schema>
+        <schema><inputSchema>execution</inputSchema></schema>
+        <schema><inputSchema>extension</inputSchema></schema>
+        <schema><inputSchema>identity</inputSchema></schema>
+        <schema><inputSchema>infrastructure</inputSchema></schema>
+        <schema><inputSchema>marketplace</inputSchema></schema>
+        <schema><inputSchema>media</inputSchema></schema>
+        <schema><inputSchema>notification</inputSchema></schema>
+        <schema><inputSchema>payment</inputSchema></schema>
+        <schema><inputSchema>policy</inputSchema></schema>
+        <schema><inputSchema>prompt</inputSchema></schema>
+        <schema><inputSchema>render</inputSchema></schema>
+        <schema><inputSchema>storage</inputSchema></schema>
+        <schema><inputSchema>timeline</inputSchema></schema>
+        <schema><inputSchema>worker_fabric</inputSchema></schema>
+        <schema><inputSchema>workflow</inputSchema></schema>
+      </schemata>
       <forcedTypes>
         <!-- TIMESTAMPTZ → Instant via InstantConverter -->
         <forcedType>

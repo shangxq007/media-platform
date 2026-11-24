@@ -3,7 +3,7 @@ import com.example.platform.outbox.operations.OutboxOperationalQuery;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Component;
-import static com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS;
+import static com.example.platform.typedschema.jooq.generated.infrastructure.tables.OutboxEvents.OUTBOX_EVENTS;
 @Component
 public class JdbcOutboxOperationalQuery implements OutboxOperationalQuery {
     private final DSLContext dsl;

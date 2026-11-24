@@ -17,15 +17,15 @@ class I6PaymentAuthorityArchitectureTest {
     void schemaDefinesCanonicalAuthorityWithoutRawPayloadColumns() throws Exception {
         String schema = Files.readString(ROOT.resolve(
                 "platform-app/src/main/resources/db/migration/V1__baseline.sql"));
-        assertTrue(schema.contains("create table payment_transaction"));
-        assertTrue(schema.contains("create table payment_command"));
-        assertTrue(schema.contains("create table provider_webhook_receipt"));
-        assertTrue(schema.contains("create table payment_refund"));
-        assertTrue(schema.contains("create table payment_outbox"));
+        assertTrue(schema.contains("create table payment.payment_transaction"));
+        assertTrue(schema.contains("create table payment.payment_command"));
+        assertTrue(schema.contains("create table payment.provider_webhook_receipt"));
+        assertTrue(schema.contains("create table payment.payment_refund"));
+        assertTrue(schema.contains("create table payment.payment_outbox"));
         assertFalse(schema.contains("create table payment_attempt"));
         assertFalse(schema.contains("create table provider_webhook_event"));
-        String paymentSchema = schema.substring(schema.indexOf("create table payment_transaction"),
-                schema.indexOf("create table subscription_contract"));
+        String paymentSchema = schema.substring(schema.indexOf("create table payment.payment_transaction"),
+                schema.indexOf("create table billing.subscription_contract"));
         assertFalse(paymentSchema.contains("request_payload"));
         assertFalse(paymentSchema.contains("response_payload"));
         assertFalse(paymentSchema.contains("raw_payload"));
@@ -53,11 +53,11 @@ class I6PaymentAuthorityArchitectureTest {
         List<Path> writers = Files.walk(main).filter(path -> path.toString().endsWith(".java"))
                 .filter(path -> { try {
                     String source = Files.readString(path);
-                    return source.contains("INSERT INTO payment_transaction")
-                            || source.contains("UPDATE payment_transaction")
-                            || source.contains("INSERT INTO provider_webhook_receipt")
-                            || source.contains("INSERT INTO payment_refund")
-                            || source.contains("INSERT INTO payment_outbox");
+                    return source.contains("INSERT INTO payment.payment_transaction")
+                            || source.contains("UPDATE payment.payment_transaction")
+                            || source.contains("INSERT INTO payment.provider_webhook_receipt")
+                            || source.contains("INSERT INTO payment.payment_refund")
+                            || source.contains("INSERT INTO payment.payment_outbox");
                 } catch (Exception e) { throw new RuntimeException(e); } })
                 .toList();
         assertEquals(java.util.List.of(main.resolve(

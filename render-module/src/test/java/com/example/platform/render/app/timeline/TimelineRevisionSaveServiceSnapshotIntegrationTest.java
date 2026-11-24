@@ -32,9 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -259,9 +259,9 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
 
 
     private Optional<String> payloadOf(String snapshotId) {
-        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
-                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
-                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
-                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
+        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
+                .fetchOne(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
     }
 }

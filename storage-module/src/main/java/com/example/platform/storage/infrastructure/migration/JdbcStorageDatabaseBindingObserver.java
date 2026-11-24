@@ -22,7 +22,9 @@ public final class JdbcStorageDatabaseBindingObserver implements StorageDatabase
     @Override
     public StorageDatabaseObservation observe() {
         StorageDatabaseObservation observed = jdbc.queryForObject("""
-                select d.oid::bigint, d.datname, current_schema(),
+                select d.oid::bigint, d.datname, (select n.nspname from pg_catalog.pg_class c
+                        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+                        where c.oid = 'storage.storage_database_binding'::regclass),
                        coalesce(inet_server_addr()::text, 'local-socket') || ':' ||
                        coalesce(inet_server_port()::text, 'local-socket')
                   from pg_database d

@@ -46,7 +46,7 @@ class AnalyticsCompositionPostgresTest extends PostgresTestContainerSupport {
                     .withBean(JdbcTemplate.class, () -> jdbc).run(c -> {
                         assertThat(c).hasNotFailed().doesNotHaveBean(AnalyticsController.class).doesNotHaveBean(BehaviorEventService.class);
                         assertThat(c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks()).isEmpty();
-                        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_behavior_event", Long.class)).isZero();
+                        assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics.user_behavior_event", Long.class)).isZero();
                     });
         }
     }
@@ -63,8 +63,8 @@ class AnalyticsCompositionPostgresTest extends PostgresTestContainerSupport {
             var tasks = c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
             assertThat(tasks).hasSize(2);
             tasks.forEach(task -> task.getTask().getRunnable().run());
-            assertThat(jdbc.queryForObject("SELECT total_actions FROM user_profile WHERE tenant_id='tenant'", Integer.class)).isEqualTo(1);
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM user_segment", Integer.class)).isEqualTo(6);
+            assertThat(jdbc.queryForObject("SELECT total_actions FROM analytics.user_profile WHERE tenant_id='tenant'", Integer.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics.user_segment", Integer.class)).isEqualTo(6);
             assertThat(c.getBean(UserProfileRepository.class).findByTenantIdAndUserId("tenant", "actor").orElseThrow().totalActions()).isEqualTo(1);
         });
         persistent().run(c -> {
@@ -78,7 +78,7 @@ class AnalyticsCompositionPostgresTest extends PostgresTestContainerSupport {
                 assertThat(c).hasNotFailed().hasSingleBean(UserProfileRepository.class).doesNotHaveBean(JdbcUserProfileRepository.class);
                 c.getBean(BehaviorEventService.class).ingestEvent("tenant", "actor", "USE", "edit", null, null, Map.of());
                 assertThat(c.getBean(BehaviorEventService.class).findEventsByTenantAndUser("tenant", "actor", 10)).hasSize(1);
-                assertThat(jdbc.queryForObject("SELECT count(*) FROM user_behavior_event", Long.class)).isZero();
+                assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics.user_behavior_event", Long.class)).isZero();
             });
         }
         for (String profile : new String[]{"prod", "dev,prod", ""}) {
@@ -102,12 +102,12 @@ class AnalyticsCompositionPostgresTest extends PostgresTestContainerSupport {
             var tx = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
             assertThatThrownBy(() -> tx.executeWithoutResult(status -> {
                 events.ingestEvent("tenant", "actor", "USE", "edit", null, null, Map.of());
-                jdbc.update("INSERT INTO user_behavior_event(event_id,tenant_id,user_id,event_type) VALUES ('invalid',null,'actor','USE')");
+                jdbc.update("INSERT INTO analytics.user_behavior_event(event_id,tenant_id,user_id,event_type) VALUES ('invalid',null,'actor','USE')");
             })).isInstanceOf(org.springframework.dao.DataAccessException.class);
             assertThat(events.findEventsByTenantAndUser("tenant", "actor", 10)).isEmpty();
             events.ingestEvent("tenant", "actor", "USE", "edit", null, null, Map.of());
             assertThat(events.findEventsByTenantAndUser("tenant", "actor", 10)).hasSize(1);
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM user_behavior_event", Long.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics.user_behavior_event", Long.class)).isEqualTo(1);
         });
     }
 }

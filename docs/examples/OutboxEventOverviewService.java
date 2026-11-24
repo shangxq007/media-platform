@@ -1,6 +1,6 @@
 package com.example.platform.outbox.app;
 
-import static com.example.platform.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS;
+import static com.example.platform.jooq.generated.infrastructure.tables.OutboxEvents.OUTBOX_EVENTS;
 
 import java.util.Map;
 import org.jooq.DSLContext;

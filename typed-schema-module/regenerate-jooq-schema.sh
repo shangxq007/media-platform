@@ -201,8 +201,8 @@ if [[ ! -f "$SCHEMA_FILE" ]]; then
 fi
 
 mapfile -t migrations < <(find "$MIGRATION_DIR" -maxdepth 1 -type f -name 'V*__*.sql' -printf '%f\n' | sort -V)
-if [[ "${#migrations[@]}" -ne 1 || "${migrations[0]}" != "V1__baseline.sql" ]]; then
-    echo "FAIL: active migration inventory must contain exactly V1__baseline.sql" >&2
+if [[ "${migrations[*]}" != "V1__baseline.sql V2__domain_schemas.sql" ]]; then
+    echo "FAIL: active migration inventory must contain the canonical V1 and domain V2" >&2
     printf '  found: %s\n' "${migrations[@]}" >&2
     exit 1
 fi
@@ -351,9 +351,11 @@ public class FlywayRunner {
         for (var info : applied) {
             System.out.println("FLYWAY_APPLIED=" + info.getVersion() + "|" + info.getScript() + "|" + info.getState());
         }
-        if (result.migrationsExecuted != 1 || applied.length != 1
+        if (result.migrationsExecuted != 2 || applied.length != 2
                 || !"1".equals(applied[0].getVersion().getVersion())
-                || !"V1__baseline.sql".equals(applied[0].getScript())) {
+                || !"V1__baseline.sql".equals(applied[0].getScript())
+                || !"2".equals(applied[1].getVersion().getVersion())
+                || !"V2__domain_schemas.sql".equals(applied[1].getScript())) {
             throw new IllegalStateException("Unexpected Flyway result");
         }
     }
@@ -372,7 +374,7 @@ set -e
 podman rm -f "$FLYWAY_COMPILE_CONTAINER" >/dev/null 2>&1 || true
 [[ "$FLYWAY_COMPILE_RC" -eq 0 ]] || exit "$FLYWAY_COMPILE_RC"
 
-echo "Running Flyway V1 in isolated Pod"
+echo "Running canonical Flyway migration chain in isolated Pod"
 FLYWAY_RUN_CONTAINER="${POD_NAME}-flyway-run"
 set +e
 podman run --name "$FLYWAY_RUN_CONTAINER" --pod "$POD_NAME" --pull=never --entrypoint java \
@@ -387,8 +389,8 @@ podman rm -f "$FLYWAY_RUN_CONTAINER" >/dev/null 2>&1 || true
 
 HISTORY_COUNT="$(podman exec "$PG_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -At -c "select count(*) from flyway_schema_history")"
 HISTORY_SUCCESS="$(podman exec "$PG_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -At -c "select count(*) from flyway_schema_history where success")"
-if [[ "$HISTORY_COUNT" != "1" || "$HISTORY_SUCCESS" != "1" ]]; then
-    echo "FAIL: Flyway history must contain exactly one successful V1 row" >&2
+if [[ "$HISTORY_COUNT" != "2" || "$HISTORY_SUCCESS" != "2" ]]; then
+    echo "FAIL: Flyway history must contain both successful versioned migrations" >&2
     exit 1
 fi
 
@@ -429,33 +431,31 @@ if [[ -z "$GENERATED_ROOT" ]]; then
     echo "FAIL: GenerationTool produced no generated source tree" >&2
     exit 1
 fi
-TABLE_COUNT="$(find "$GENERATED_ROOT/tables" -maxdepth 1 -type f -name '*.java' | wc -l)"
-RECORD_COUNT="$(find "$GENERATED_ROOT/tables/records" -maxdepth 1 -type f -name '*.java' | wc -l)"
+CATALOG_SQL="SELECT n.nspname || '.' || c.relname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p') AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_' AND (n.nspname,c.relname) <> ('public','flyway_schema_history') ORDER BY 1"
+podman exec "$PG_CONTAINER" psql -XAt -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -c "$CATALOG_SQL" > "$STAGING_DIR/catalog-tables.txt"
+python3 "$ROOT_DIR/scripts/verify-jooq-generated-schema-parity.py" \
+    --schema "$SCHEMA_FILE" --generated "$GENERATED_ROOT" --catalog "$STAGING_DIR/catalog-tables.txt"
+TABLE_COUNT="$(find "$GENERATED_ROOT" -path '*/tables/*.java' ! -path '*/records/*' | wc -l)"
+RECORD_COUNT="$(find "$GENERATED_ROOT" -path '*/tables/records/*.java' | wc -l)"
 TOTAL_FILES="$(find "$STAGING_DIR" -type f -name '*.java' | wc -l)"
-if [[ "$TABLE_COUNT" -ne 214 || "$RECORD_COUNT" -ne 214 || "$TOTAL_FILES" -ne 433 ]]; then
-    echo "FAIL: generation inventory mismatch: table=$TABLE_COUNT record=$RECORD_COUNT total=$TOTAL_FILES" >&2
-    exit 1
-fi
 if find "$STAGING_DIR" -type f -iname '*FlywaySchemaHistory*' | grep -q .; then
     echo "FAIL: FlywaySchemaHistory must not be generated" >&2
     exit 1
 fi
 for required_file in \
-    "$GENERATED_ROOT/tables/WfHostReadiness.java" \
-    "$GENERATED_ROOT/tables/WfPhysicalHostDescriptor.java" \
-    "$GENERATED_ROOT/tables/WfPhysicalHostDescriptorDevice.java" \
-    "$GENERATED_ROOT/tables/WfProviderCandidateSnapshot.java" \
-    "$GENERATED_ROOT/tables/records/WfHostReadinessRecord.java" \
-    "$GENERATED_ROOT/tables/records/WfPhysicalHostDescriptorRecord.java" \
-    "$GENERATED_ROOT/tables/records/WfPhysicalHostDescriptorDeviceRecord.java" \
-    "$GENERATED_ROOT/tables/records/WfProviderCandidateSnapshotRecord.java"; do
+    "$GENERATED_ROOT/worker_fabric/tables/WfHostReadiness.java" \
+    "$GENERATED_ROOT/worker_fabric/tables/WfPhysicalHostDescriptor.java" \
+    "$GENERATED_ROOT/worker_fabric/tables/WfPhysicalHostDescriptorDevice.java" \
+    "$GENERATED_ROOT/worker_fabric/tables/records/WfHostReadinessRecord.java" \
+    "$GENERATED_ROOT/worker_fabric/tables/records/WfPhysicalHostDescriptorRecord.java" \
+    "$GENERATED_ROOT/worker_fabric/tables/records/WfPhysicalHostDescriptorDeviceRecord.java"; do
     [[ -f "$required_file" ]] || { echo "FAIL: required generated file missing: $required_file" >&2; exit 1; }
 done
-grep -q 'candidate_set_digest' "$GENERATED_ROOT/tables/RenderBindingInputs.java" || { echo "FAIL: candidate_set_digest missing" >&2; exit 1; }
-grep -q 'artifact_id' "$GENERATED_ROOT/tables/WfCompletionEvent.java" || { echo "FAIL: artifact_id missing" >&2; exit 1; }
-grep -q 'OBSERVED_CPU_UTILIZATION_RATIO' "$GENERATED_ROOT/tables/WfHostResourceSnapshot.java" || { echo "FAIL: host observed fields missing" >&2; exit 1; }
-grep -q 'wfCompletionEvent()' "$GENERATED_ROOT/tables/Artifact.java" || { echo "FAIL: Artifact inverse relation missing" >&2; exit 1; }
-grep -q 'IX_WF_COMPLETION_EVENT_ARTIFACT_ID' "$GENERATED_ROOT/tables/WfCompletionEvent.java" || { echo "FAIL: WfCompletionEvent index reference missing" >&2; exit 1; }
+grep -q 'candidate_set_digest' "$GENERATED_ROOT/render/tables/RenderBindingInputs.java" || { echo "FAIL: candidate_set_digest missing" >&2; exit 1; }
+grep -q 'artifact_id' "$GENERATED_ROOT/worker_fabric/tables/WfCompletionEvent.java" || { echo "FAIL: artifact_id missing" >&2; exit 1; }
+grep -q 'OBSERVED_CPU_UTILIZATION_RATIO' "$GENERATED_ROOT/worker_fabric/tables/WfHostResourceSnapshot.java" || { echo "FAIL: host observed fields missing" >&2; exit 1; }
+grep -q 'wfCompletionEvent()' "$GENERATED_ROOT/artifacts/tables/Artifact.java" || { echo "FAIL: Artifact inverse relation missing" >&2; exit 1; }
+grep -q 'IX_WF_COMPLETION_EVENT_ARTIFACT_ID' "$GENERATED_ROOT/worker_fabric/tables/WfCompletionEvent.java" || { echo "FAIL: WfCompletionEvent index reference missing" >&2; exit 1; }
 
 manifest_stage() {
     local stage="$1"

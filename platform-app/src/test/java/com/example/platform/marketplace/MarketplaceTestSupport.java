@@ -38,7 +38,7 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
     void fixture() {
         tenant = "market-" + UUID.randomUUID();
         jdbc.update(
-                "insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",
+                "insert into identity.tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",
                 tenant,
                 "workflow test");
         user = member();
@@ -87,7 +87,7 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
         }
         String membership =
                 jdbc.queryForObject(
-                        "select id from workspace_member where workspace_id=? and user_id=?",
+                        "select id from identity.workspace_member where workspace_id=? and user_id=?",
                         String.class,
                         workspace,
                         user);
@@ -114,7 +114,7 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
     String member() {
         String id = "member-" + UUID.randomUUID();
         jdbc.update(
-                "insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values"
+                "insert into identity.\"user\"(id,tenant_id,username,email,role,status,created_at) values"
                         + " (?,?,?,?,'MEMBER','ACTIVE',now())",
                 id,
                 tenant,
@@ -183,7 +183,7 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
             var permission=roles.findAllPermissions().stream().filter(p->p.permissionKey().equals(key)).findFirst().orElseThrow();
             roles.saveRolePermission(new RolePermission(UUID.randomUUID().toString(),role.id(),permission.id(),Instant.now()));
         }
-        String membership=jdbc.queryForObject("select id from workspace_member where workspace_id=? and user_id=?",String.class,workspace,member);
+        String membership=jdbc.queryForObject("select id from identity.workspace_member where workspace_id=? and user_id=?",String.class,workspace,member);
         as(user,()->context.getBean(WorkspaceService.class).assignRoleToMember(workspace,membership,new AssignRoleRequest(role.roleKey(),user)));
     }
     /**
@@ -194,7 +194,7 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
     /** Creates a canonical Artifact row with a deterministic content-digest pin and returns its id. */
     String artifact(String mediaType) {
         String id="art_"+UUID.randomUUID().toString().replace("-","");
-        jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,?,'SOURCE_MEDIA','AVAILABLE',1,now())",
+        jdbc.update("insert into artifacts.artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,?,'SOURCE_MEDIA','AVAILABLE',1,now())",
                 id,tenant,project,workspace,digest(id),mediaType);
         return id;
     }
@@ -212,22 +212,22 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
     JsonNode submit(JsonNode listing) throws Exception {return response(http(user,"POST",root()+"/listings/"+listing.path("id").asText()+"/reviews",Map.of("commandId",UUID.randomUUID().toString(),"expectedVersion",listing.path("version").asLong(),"title","Review title","description","Private review details")),201);}
     JsonNode approve(JsonNode review) throws Exception {return response(http(user,"POST",root()+"/reviews/"+review.path("id").asText()+"/decisions",Map.of("commandId",UUID.randomUUID().toString(),"expectedVersion",review.path("version").asLong(),"decision","APPROVE")),200);}
     JsonNode publish(JsonNode review) throws Exception {return response(http(user,"POST",root()+"/listings/"+review.path("listingId").asText()+"/transitions",Map.of("commandId",UUID.randomUUID().toString(),"expectedVersion",review.path("version").asLong(),"transition","PUBLISH")),200);}
-    long events(){return jdbc.queryForObject("select count(*) from outbox_events where payload like ?",Long.class,"%"+tenant+"%");}
-    long listings(){return jdbc.queryForObject("select count(*) from marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant);}
-    long reviews(){return jdbc.queryForObject("select count(*) from marketplace_review where tenant_id=?",Long.class,tenant);}
-    long commands(){return jdbc.queryForObject("select count(*) from marketplace_command where tenant_id=?",Long.class,tenant);}
+    long events(){return jdbc.queryForObject("select count(*) from infrastructure.outbox_events where payload like ?",Long.class,"%"+tenant+"%");}
+    long listings(){return jdbc.queryForObject("select count(*) from marketplace.marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant);}
+    long reviews(){return jdbc.queryForObject("select count(*) from marketplace.marketplace_review where tenant_id=?",Long.class,tenant);}
+    long commands(){return jdbc.queryForObject("select count(*) from marketplace.marketplace_command where tenant_id=?",Long.class,tenant);}
     List<Long> state(){return List.of(listings(),reviews(),commands(),events(),
-        jdbc.queryForObject("select coalesce(sum(aggregate_version),0) from marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant),
-        jdbc.queryForObject("select coalesce(sum(aggregate_version),0) from marketplace_review where tenant_id=?",Long.class,tenant),
-        jdbc.queryForObject("select count(*) from marketplace_review_decision d join marketplace_review r on r.id=d.review_id where r.tenant_id=?",Long.class,tenant),
-        jdbc.queryForObject("select count(*) from marketplace_review_comment c join marketplace_review r on r.id=c.review_id where r.tenant_id=?",Long.class,tenant),
-        jdbc.queryForObject("select count(*) from marketplace_review_thread t join marketplace_review r on r.id=t.review_id where r.tenant_id=? and t.resolved",Long.class,tenant),
+        jdbc.queryForObject("select coalesce(sum(aggregate_version),0) from marketplace.marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant),
+        jdbc.queryForObject("select coalesce(sum(aggregate_version),0) from marketplace.marketplace_review where tenant_id=?",Long.class,tenant),
+        jdbc.queryForObject("select count(*) from marketplace.marketplace_review_decision d join marketplace.marketplace_review r on r.id=d.review_id where r.tenant_id=?",Long.class,tenant),
+        jdbc.queryForObject("select count(*) from marketplace.marketplace_review_comment c join marketplace.marketplace_review r on r.id=c.review_id where r.tenant_id=?",Long.class,tenant),
+        jdbc.queryForObject("select count(*) from marketplace.marketplace_review_thread t join marketplace.marketplace_review r on r.id=t.review_id where r.tenant_id=? and t.resolved",Long.class,tenant),
         // Publication state is Marketplace-owned (V28): the retired Media publication mirror is gone.
-        jdbc.queryForObject("select coalesce(sum(case status when 'PUBLISHED' then 1 when 'ARCHIVED' then 2 else 0 end),0) from marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant));}
+        jdbc.queryForObject("select coalesce(sum(case status when 'PUBLISHED' then 1 when 'ARCHIVED' then 2 else 0 end),0) from marketplace.marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant));}
     List<java.net.http.HttpResponse<String>> race(java.util.concurrent.Callable<java.net.http.HttpResponse<String>> a,java.util.concurrent.Callable<java.net.http.HttpResponse<String>> b) throws Exception {
         try(var connection=context.getBean(javax.sql.DataSource.class).getConnection();var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
             connection.setAutoCommit(false);
-            try(var lock=connection.prepareStatement("select id from workspace where id=? for update")){lock.setString(1,workspace);lock.executeQuery().close();}
+            try(var lock=connection.prepareStatement("select id from identity.workspace where id=? for update")){lock.setString(1,workspace);lock.executeQuery().close();}
             var first=pool.submit(a);var second=pool.submit(b);
             try {
                 org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).until(()->jdbc.queryForObject("select count(*) from pg_stat_activity where datname=current_database() and wait_event_type='Lock'",Integer.class)>=2);

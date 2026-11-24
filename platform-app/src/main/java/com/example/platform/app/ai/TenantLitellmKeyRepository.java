@@ -9,7 +9,7 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.TenantLitellmVirtualKey.TENANT_LITELLM_VIRTUAL_KEY;
+import static com.example.platform.typedschema.jooq.generated.infrastructure.tables.TenantLitellmVirtualKey.TENANT_LITELLM_VIRTUAL_KEY;
 
 
 @Repository

@@ -59,10 +59,10 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         ds.setPassword(password());
         dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
         // Exact V1 ownership: seed the tenant before its owned project.
-        dsl.execute("insert into tenant (id, name, status, created_at) "
+        dsl.execute("insert into identity.tenant (id, name, status, created_at) "
                 + "values (?, 'effect-snapshot-tenant', 'ACTIVE', now()) "
                 + "on conflict (id) do nothing", TENANT_ID);
-        dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
+        dsl.execute("insert into identity.project (id, tenant_id, name, status, created_at) "
                 + "values (?, ?, 'effect-snapshot-fixture', 'ACTIVE', now()) "
                 + "on conflict (id) do nothing", PROJECT_ID, TENANT_ID);
     }

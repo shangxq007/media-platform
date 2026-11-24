@@ -46,13 +46,13 @@ public final class JdbcTimelineRevisionSemanticContextStore
         String id = ID_PREFIX + revisionId;
         String payload = TimelineRevisionSemanticContextJsonCodec.serialize(context);
         String existingProject = tx.fetch(
-                        "select project_id from timeline_snapshot where id = ?", id)
+                        "select project_id from timeline.timeline_snapshot where id = ?", id)
                 .getValues(0, String.class).stream().findFirst().orElse(null);
         if (existingProject != null) {
             validateExistingRow(id, projectId, tenantId, context, tx);
             return; // exact identical -> idempotent PASS
         }
-        tx.execute("insert into timeline_snapshot "
+        tx.execute("insert into timeline.timeline_snapshot "
                         + "(id, project_id, tenant_id, payload_json, schema_version, "
                         + " semantic_revision_id, created_at) "
                         + "values (?, ?, ?, ?, ?, ?, now())",
@@ -63,7 +63,7 @@ public final class JdbcTimelineRevisionSemanticContextStore
     private void validateExistingRow(String id, String requestedProject, String requestedTenant,
                                      TimelineRevisionSemanticContext incoming, DSLContext tx) {
         org.jooq.Record rec = tx.fetchOne(
-                "select project_id, tenant_id, payload_json from timeline_snapshot where id = ?", id);
+                "select project_id, tenant_id, payload_json from timeline.timeline_snapshot where id = ?", id);
         String storedProject = rec == null ? null : rec.get(0, String.class);
         String storedTenant = rec == null ? null : rec.get(1, String.class);
         String storedPayload = rec == null ? null : rec.get(2, String.class);
@@ -116,7 +116,7 @@ public final class JdbcTimelineRevisionSemanticContextStore
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(revisionId, "revisionId");
         String payload = readDsl.fetch(
-                        "select payload_json from timeline_snapshot "
+                        "select payload_json from timeline.timeline_snapshot "
                                 + "where id = ? and project_id = ? and tenant_id = ?",
                         ID_PREFIX + revisionId, projectId, tenantId)
                 .getValues(0, String.class).stream().findFirst().orElse(null);

@@ -30,8 +30,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSupport {
@@ -48,7 +48,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
         RenderTestSchemaFixture.createSchema(dsl);
         dsl.execute("""
-                create table if not exists apply_command (
+                create table if not exists timeline.apply_command (
                     apply_command_id varchar(64) primary key,
                     plan_digest varchar(64) not null,
                     fingerprint varchar(64) not null,
@@ -71,7 +71,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        dsl.execute("delete from apply_command");
+        dsl.execute("delete from timeline.apply_command");
         com.example.platform.shared.web.TenantContext.set(TENANT);
         currentRevisionService = new TimelineRevisionRefMutation(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
@@ -243,7 +243,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         assertEquals(2L, dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class));
         assertEquals(1, dsl.fetchOne(
-                "select count(*) from apply_command where apply_command_id = 'apply-H7-durable'")
+                "select count(*) from timeline.apply_command where apply_command_id = 'apply-H7-durable'")
                 .get(0, Integer.class));
 
         var conflict = new TimelineRevisionCommands.RevisionWriteCommand(

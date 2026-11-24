@@ -31,18 +31,18 @@ podenv = json.loads((R/'03-build/podman/environment.json').read_text())
 owned = json.loads(subprocess.check_output(base+['container','inspect',ctx['container_id']],env=podenv))[0]
 assert owned['Config']['Labels']['media-platform.f8-run'] == RUN_ID
 sql = '''begin;
-insert into tenant(id,name,created_at) values ('tenant-fr-e2e','Owned Operation E2E',now());
-insert into workspace(id,tenant_id,name,created_at,updated_at) values ('workspace-fr-e2e','tenant-fr-e2e','Owned',now(),now());
-insert into project(id,tenant_id,workspace_id,name,created_at) values ('project-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','Timeline',now());
-insert into project(id,tenant_id,workspace_id,name,created_at) values ('project-fr-other','tenant-fr-e2e','workspace-fr-e2e','Other',now());
-insert into account(id,issuer,subject,status,created_at) values ('account-fr-e2e','http://127.0.0.1:18081','f8-subject','ACTIVE',now());
-insert into "user"(id,tenant_id,account_id,username,email,role,status,created_at) values ('actor-fr-e2e','tenant-fr-e2e','account-fr-e2e','f8','f8@example.invalid','ADMIN','ACTIVE',now());
-insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values ('member-fr-e2e','workspace-fr-e2e','actor-fr-e2e','OWNER','ACTIVE',now(),now());
-insert into role(id,role_key,name,scope,created_at) values ('role-fr-e2e','F8_RENDER','Owned synthetic role','WORKSPACE',now());
-insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-e2e','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','render.job.create','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
-insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-upload','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','artifact.source.upload','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
-insert into role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from permission where permission_key in ('READ','WRITE','render.submit','artifact.read');
-insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
+insert into identity.tenant(id,name,created_at) values ('tenant-fr-e2e','Owned Operation E2E',now());
+insert into identity.workspace(id,tenant_id,name,created_at,updated_at) values ('workspace-fr-e2e','tenant-fr-e2e','Owned',now(),now());
+insert into identity.project(id,tenant_id,workspace_id,name,created_at) values ('project-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','Timeline',now());
+insert into identity.project(id,tenant_id,workspace_id,name,created_at) values ('project-fr-other','tenant-fr-e2e','workspace-fr-e2e','Other',now());
+insert into identity.account(id,issuer,subject,status,created_at) values ('account-fr-e2e','http://127.0.0.1:18081','f8-subject','ACTIVE',now());
+insert into identity."user"(id,tenant_id,account_id,username,email,role,status,created_at) values ('actor-fr-e2e','tenant-fr-e2e','account-fr-e2e','f8','f8@example.invalid','ADMIN','ACTIVE',now());
+insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values ('member-fr-e2e','workspace-fr-e2e','actor-fr-e2e','OWNER','ACTIVE',now(),now());
+insert into identity.role(id,role_key,name,scope,created_at) values ('role-fr-e2e','F8_RENDER','Owned synthetic role','WORKSPACE',now());
+insert into entitlement.entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-e2e','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','render.job.create','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
+insert into entitlement.entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-upload','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','artifact.source.upload','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
+insert into identity.role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from identity.permission where permission_key in ('READ','WRITE','render.submit','artifact.read');
+insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
 commit;'''
 psql = base+['exec','-i','--user','postgres',ctx['container_id'],'psql','-X','-v','ON_ERROR_STOP=1','-U','mp_owner','-d',ctx['database']]
 process = subprocess.run(psql,env=podenv,input=sql,capture_output=True,text=True)
@@ -164,10 +164,10 @@ while True:
     if time.monotonic()>=deadline: raise AssertionError('application startup timeout before role permissions')
     time.sleep(1)
 role_sql="""begin;
-insert into role_permission(id,role_id,permission_id,created_at)
+insert into identity.role_permission(id,role_id,permission_id,created_at)
 select 'rr-'||permission_id,'role-fr-e2e',permission_id,now()
-from role_permission
-where role_id=(select id from role where role_key='EDITOR')
+from identity.role_permission
+where role_id=(select id from identity.role where role_key='EDITOR')
 on conflict (id) do nothing;
 commit;"""
 role_process=subprocess.run(psql,env=podenv,input=role_sql,capture_output=True,text=True)

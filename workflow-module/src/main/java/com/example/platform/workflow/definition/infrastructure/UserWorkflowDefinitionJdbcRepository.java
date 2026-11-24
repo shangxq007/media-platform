@@ -58,7 +58,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     public void insertDraft(UserWorkflowDefinition draft) {
         try {
             jdbc.update("""
-                    INSERT INTO user_workflow_definition
+                    INSERT INTO workflow.user_workflow_definition
                     (definition_id, tenant_id, project_id, created_at, created_by)
                     VALUES (?, ?, ?, ?, ?)
                     """, draft.definitionId().value(), draft.tenantId(), draft.projectId(),
@@ -74,7 +74,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     @Transactional
     public UserWorkflowDefinition updateDraft(UserWorkflowDefinition updated) {
         int rows = jdbc.update("""
-                UPDATE user_workflow_definition_version SET
+                UPDATE workflow.user_workflow_definition_version SET
                 name = ?, description = ?, status = ?, schema_version = ?,
                 trigger_json = ?, parameter_json = ?,
                 updated_at = ?, updated_by = ?, optimistic_version = optimistic_version + 1
@@ -96,7 +96,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     @Transactional
     public UserWorkflowDefinition publish(UserWorkflowDefinition published) {
         int rows = jdbc.update("""
-                UPDATE user_workflow_definition_version SET
+                UPDATE workflow.user_workflow_definition_version SET
                 status = 'PUBLISHED', published_at = ?, published_by = ?,
                 updated_at = ?, updated_by = ?, optimistic_version = optimistic_version + 1
                 WHERE definition_id = ? AND version_number = ?
@@ -115,7 +115,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     @Transactional
     public UserWorkflowDefinition archive(UserWorkflowDefinition archived) {
         int rows = jdbc.update("""
-                UPDATE user_workflow_definition_version SET
+                UPDATE workflow.user_workflow_definition_version SET
                 status = 'ARCHIVED', archived_at = ?, archived_by = ?,
                 updated_at = ?, updated_by = ?, optimistic_version = optimistic_version + 1
                 WHERE definition_id = ? AND version_number = ?
@@ -147,7 +147,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     public Optional<UserWorkflowDefinition> findExactVersion(
             String tenantId, UserWorkflowDefinitionId definitionId, UserWorkflowDefinitionVersion version) {
         List<UserWorkflowDefinition> rows = jdbc.query("""
-                SELECT * FROM user_workflow_definition_version
+                SELECT * FROM workflow.user_workflow_definition_version
                 WHERE definition_id = ? AND version_number = ? AND tenant_id = ?
                 """, VERSION_ROW, definitionId.value(), version.versionNumber(), tenantId);
         if (rows.isEmpty()) {
@@ -159,7 +159,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     @Override
     public Optional<UserWorkflowDefinition> findLatest(String tenantId, UserWorkflowDefinitionId definitionId) {
         List<UserWorkflowDefinition> rows = jdbc.query("""
-                SELECT * FROM user_workflow_definition_version
+                SELECT * FROM workflow.user_workflow_definition_version
                 WHERE definition_id = ? AND tenant_id = ?
                 ORDER BY version_number DESC LIMIT 1
                 """, VERSION_ROW, definitionId.value(), tenantId);
@@ -175,13 +175,13 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
         List<UserWorkflowDefinition> versions;
         if (projectId == null) {
             versions = jdbc.query("""
-                    SELECT * FROM user_workflow_definition_version
+                    SELECT * FROM workflow.user_workflow_definition_version
                     WHERE tenant_id = ?
                     ORDER BY definition_id ASC, version_number DESC
                     """, VERSION_ROW, tenantId);
         } else {
             versions = jdbc.query("""
-                    SELECT * FROM user_workflow_definition_version
+                    SELECT * FROM workflow.user_workflow_definition_version
                     WHERE tenant_id = ? AND project_id = ?
                     ORDER BY definition_id ASC, version_number DESC
                     """, VERSION_ROW, tenantId, projectId);
@@ -209,12 +209,12 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
             UserWorkflowDefinitionId definitionId,
             UserWorkflowDefinitionVersion version) {
         List<UserWorkflowDefinitionNode> nodes = jdbc.query("""
-                SELECT * FROM user_workflow_definition_node
+                SELECT * FROM workflow.user_workflow_definition_node
                 WHERE definition_id = ? AND version_number = ?
                 ORDER BY sort_order ASC, node_id ASC
                 """, NODE_ROW, definitionId.value(), version.versionNumber());
         List<UserWorkflowDefinitionEdge> edges = jdbc.query("""
-                SELECT * FROM user_workflow_definition_edge
+                SELECT * FROM workflow.user_workflow_definition_edge
                 WHERE definition_id = ? AND version_number = ?
                 ORDER BY sort_order ASC, edge_id ASC
                 """, EDGE_ROW, definitionId.value(), version.versionNumber());
@@ -265,7 +265,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
 
     private void insertVersionRows(UserWorkflowDefinition d) {
         jdbc.update("""
-                INSERT INTO user_workflow_definition_version
+                INSERT INTO workflow.user_workflow_definition_version
                 (definition_id, version_number, tenant_id, project_id, name, description, status,
                  schema_version, optimistic_version, trigger_json, parameter_json,
                  created_at, created_by, updated_at, updated_by, published_at, published_by,
@@ -282,9 +282,9 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     }
 
     private void replaceGraphRows(UserWorkflowDefinition d) {
-        jdbc.update("DELETE FROM user_workflow_definition_node WHERE definition_id = ? AND version_number = ?",
+        jdbc.update("DELETE FROM workflow.user_workflow_definition_node WHERE definition_id = ? AND version_number = ?",
                 d.definitionId().value(), d.version().versionNumber());
-        jdbc.update("DELETE FROM user_workflow_definition_edge WHERE definition_id = ? AND version_number = ?",
+        jdbc.update("DELETE FROM workflow.user_workflow_definition_edge WHERE definition_id = ? AND version_number = ?",
                 d.definitionId().value(), d.version().versionNumber());
         insertGraphRows(d);
     }
@@ -292,7 +292,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
     private void insertGraphRows(UserWorkflowDefinition d) {
         for (UserWorkflowDefinitionNode node : d.nodes()) {
             jdbc.update("""
-                    INSERT INTO user_workflow_definition_node
+                    INSERT INTO workflow.user_workflow_definition_node
                     (definition_id, version_number, node_id, tenant_id, node_type, name,
                      config_json, input_json, output_json, error_policy, sort_order)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -304,7 +304,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
         }
         for (UserWorkflowDefinitionEdge edge : d.edges()) {
             jdbc.update("""
-                    INSERT INTO user_workflow_definition_edge
+                    INSERT INTO workflow.user_workflow_definition_edge
                     (definition_id, version_number, edge_id, tenant_id, source_node_id, target_node_id,
                      condition_ref, sort_order)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)

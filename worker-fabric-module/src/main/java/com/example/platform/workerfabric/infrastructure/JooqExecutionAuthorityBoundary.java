@@ -44,7 +44,7 @@ public class JooqExecutionAuthorityBoundary
         return dsl.transactionResult(configuration -> {
             DSLContext tx = DSL.using(configuration);
             Record duplicate = tx.fetchOne(
-                    "select observation_id from wf_execution_observation "
+                    "select observation_id from worker_fabric.wf_execution_observation "
                             + "where observation_id = ? for update",
                     observation.observationId().value());
             if (duplicate != null) {
@@ -53,7 +53,7 @@ public class JooqExecutionAuthorityBoundary
 
             Record attempt = tx.fetchOne(
                     """
-                    select task_id from wf_execution_attempt
+                    select task_id from worker_fabric.wf_execution_attempt
                      where attempt_id = ? and generation = ?
                     """,
                     observation.executionAttemptId().value(),
@@ -63,7 +63,7 @@ public class JooqExecutionAuthorityBoundary
                 Record ownership = tx.fetchOne(
                         """
                         select current_attempt_id, current_generation, claimable
-                          from wf_task_ownership where task_id = ? for update
+                          from worker_fabric.wf_task_ownership where task_id = ? for update
                         """,
                         attempt.get("task_id", String.class));
                 current = ownership != null
@@ -78,7 +78,7 @@ public class JooqExecutionAuthorityBoundary
             }
             tx.execute(
                     """
-                    insert into wf_execution_observation (
+                    insert into worker_fabric.wf_execution_observation (
                         observation_id, attempt_id, generation, observed_state,
                         current_evidence, observed_at)
                     values (?, ?, ?, ?, ?, cast(? as timestamptz))
@@ -111,7 +111,7 @@ public class JooqExecutionAuthorityBoundary
         return dsl.transactionResult(configuration -> {
             DSLContext tx = DSL.using(configuration);
             Record duplicate = tx.fetchOne(
-                    "select completion_event_id, task_id, attempt_id, generation, artifact_id from wf_completion_event "
+                    "select completion_event_id, task_id, attempt_id, generation, artifact_id from worker_fabric.wf_completion_event "
                             + "where completion_event_id = ? for update",
                     completionEvidence.completionEventId().value());
             if (duplicate != null) {
@@ -134,7 +134,7 @@ public class JooqExecutionAuthorityBoundary
                     .value();
             Record attempt = tx.fetchOne(
                     """
-                    select task_id, generation, state from wf_execution_attempt
+                    select task_id, generation, state from worker_fabric.wf_execution_attempt
                      where attempt_id = ?
                     """,
                     attemptId);
@@ -152,7 +152,7 @@ public class JooqExecutionAuthorityBoundary
             Record ownership = tx.fetchOne(
                     """
                     select current_attempt_id, current_generation, claimable
-                      from wf_task_ownership where task_id = ? for update
+                      from worker_fabric.wf_task_ownership where task_id = ? for update
                     """,
                     taskId);
             if (ownership == null
@@ -172,7 +172,7 @@ public class JooqExecutionAuthorityBoundary
             Instant completedAt = clock.instant();
             tx.execute(
                     """
-                    insert into wf_completion_event (
+                    insert into worker_fabric.wf_completion_event (
                         completion_event_id, task_id, attempt_id, generation,
                         artifact_id, completed_at)
                     values (?, ?, ?, ?, ?, cast(? as timestamptz))

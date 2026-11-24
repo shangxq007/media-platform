@@ -23,7 +23,7 @@ public class RatedUsageJdbcRepository {
 
     public AppendResult append(RatedUsageRecord record) {
         int inserted = jdbc.update("""
-                INSERT INTO rated_usage_record
+                INSERT INTO billing.rated_usage_record
                 (id, tenant_id, billable_usage_id, pricing_rule_id, pricing_rule_version,
                  quantity_base_units, rated_amount_minor, currency_code, rating_details,
                  rated_at, trace_id, idempotency_key, payload_fingerprint)
@@ -46,27 +46,27 @@ public class RatedUsageJdbcRepository {
 
     public Optional<RatedUsageRecord> findByIdempotencyKey(String tenantId, String key) {
         return jdbc.query("""
-                SELECT * FROM rated_usage_record WHERE tenant_id = ? AND idempotency_key = ?
+                SELECT * FROM billing.rated_usage_record WHERE tenant_id = ? AND idempotency_key = ?
                 """, this::map, tenantId, key).stream().findFirst();
     }
 
     public Optional<RatedUsageRecord> findByLineage(String tenantId, String billableUsageId,
                                                     String ruleId, long version) {
         return jdbc.query("""
-                SELECT * FROM rated_usage_record
+                SELECT * FROM billing.rated_usage_record
                 WHERE tenant_id = ? AND billable_usage_id = ?
                   AND pricing_rule_id = ? AND pricing_rule_version = ?
                 """, this::map, tenantId, billableUsageId, ruleId, version).stream().findFirst();
     }
 
     public Optional<RatedUsageRecord> findByTenantAndId(String tenantId, String id) {
-        return jdbc.query("SELECT * FROM rated_usage_record WHERE tenant_id = ? AND id = ?",
+        return jdbc.query("SELECT * FROM billing.rated_usage_record WHERE tenant_id = ? AND id = ?",
                 this::map, tenantId, id).stream().findFirst();
     }
 
     public long countByTenant(String tenantId) {
         Long count = jdbc.queryForObject(
-                "SELECT count(*) FROM rated_usage_record WHERE tenant_id = ?", Long.class, tenantId);
+                "SELECT count(*) FROM billing.rated_usage_record WHERE tenant_id = ?", Long.class, tenantId);
         return count == null ? 0 : count;
     }
 

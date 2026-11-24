@@ -45,7 +45,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS project (
+            CREATE TABLE IF NOT EXISTS identity.project (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 name varchar(255) not null,
@@ -57,7 +57,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS product (
+            CREATE TABLE IF NOT EXISTS render.product (
                 product_id varchar(64) primary key,
                 tenant_id varchar(64),
                 project_id varchar(64),
@@ -80,7 +80,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS render_job (
+            CREATE TABLE IF NOT EXISTS render.render_job (
                 id varchar(64) primary key,
                 project_id varchar(128) not null,
                 timeline_snapshot_id varchar(128),
@@ -98,7 +98,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS render_job_status_history (
+            CREATE TABLE IF NOT EXISTS render.render_job_status_history (
                 id varchar(64) primary key,
                 job_id varchar(64) not null,
                 from_status varchar(30),
@@ -112,7 +112,7 @@ public final class RenderTestSchemaFixture {
 
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS quota_usage (
+            CREATE TABLE IF NOT EXISTS entitlement.quota_usage (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 principal_type varchar(32) not null,
@@ -131,7 +131,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS quota_usage_operation (
+            CREATE TABLE IF NOT EXISTS entitlement.quota_usage_operation (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 principal_type varchar(32) not null,
@@ -160,7 +160,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS client_export_session (
+            CREATE TABLE IF NOT EXISTS render.client_export_session (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 workspace_id varchar(64),
@@ -215,7 +215,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS media_stream (
+            CREATE TABLE IF NOT EXISTS media.media_stream (
                 id varchar(64) primary key,
                 media_asset_id varchar(64) not null,
                 stream_index int not null,
@@ -256,7 +256,7 @@ public final class RenderTestSchemaFixture {
 
         // GCR-2: canonical Artifact tables (artifact + artifact_replica + artifact_pin)
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS artifact (
+            CREATE TABLE IF NOT EXISTS artifacts.artifact (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 project_id varchar(64),
@@ -273,7 +273,7 @@ public final class RenderTestSchemaFixture {
             )
         """);
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS artifact_replica (
+            CREATE TABLE IF NOT EXISTS artifacts.artifact_replica (
                 artifact_id varchar(64) not null,
                 replica_id varchar(64) not null,
                 provider_id varchar(64) not null,
@@ -283,11 +283,11 @@ public final class RenderTestSchemaFixture {
                 state varchar(32) not null default 'ACTIVE',
                 created_at timestamp not null,
                 primary key (artifact_id, replica_id),
-                constraint fk_replica_artifact foreign key (artifact_id) references artifact(id)
+                constraint fk_replica_artifact foreign key (artifact_id) references artifacts.artifact(id)
             )
         """);
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS artifact_pin (
+            CREATE TABLE IF NOT EXISTS artifacts.artifact_pin (
                 pin_id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 revision_id varchar(64) not null,
@@ -297,12 +297,12 @@ public final class RenderTestSchemaFixture {
                 pinned_at timestamp not null,
                 constraint uq_pin_revision_artifact unique (tenant_id, project_id, revision_id, artifact_id),
                 constraint fk_pin_artifact foreign key (tenant_id, artifact_id)
-                    references artifact(tenant_id, id)
+                    references artifacts.artifact(tenant_id, id)
             )
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS media_probe_observation (
+            CREATE TABLE IF NOT EXISTS media.media_probe_observation (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 project_id varchar(64) not null,
@@ -319,7 +319,7 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS timeline_snapshot (
+            CREATE TABLE IF NOT EXISTS timeline.timeline_snapshot (
                 id varchar(64) primary key,
                 project_id varchar(64) not null,
                 tenant_id varchar(64) not null,
@@ -332,12 +332,12 @@ public final class RenderTestSchemaFixture {
                 unique (tenant_id, project_id, id),
                 unique (tenant_id, project_id, semantic_revision_id),
                 foreign key (tenant_id, project_id)
-                    references project(tenant_id, id)
+                    references identity.project(tenant_id, id)
             )
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS timeline_revision (
+            CREATE TABLE IF NOT EXISTS timeline.timeline_revision (
                 id varchar(64) primary key,
                 project_id varchar(64) not null,
                 tenant_id varchar(64) not null,
@@ -361,12 +361,12 @@ public final class RenderTestSchemaFixture {
                 unique (tenant_id, project_id, id),
                 unique (project_id, id),
                 foreign key (tenant_id, project_id)
-                    references project(tenant_id, id),
+                    references identity.project(tenant_id, id),
                 foreign key (tenant_id, project_id, parent_revision_id)
-                    references timeline_revision(tenant_id, project_id, id)
+                    references timeline.timeline_revision(tenant_id, project_id, id)
                     deferrable initially deferred,
                 foreign key (tenant_id, project_id, snapshot_id)
-                    references timeline_snapshot(tenant_id, project_id, id)
+                    references timeline.timeline_snapshot(tenant_id, project_id, id)
             )
         """);
 
@@ -382,15 +382,15 @@ public final class RenderTestSchemaFixture {
                 + "timeline_revision(tenant_id, project_id, id)");
         dsl.execute("alter table artifact_pin add constraint "
                 + "fk_artifact_pin_project foreign key (tenant_id, project_id) "
-                + "references project(tenant_id, id)");
+                + "references identity.project(tenant_id, id)");
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS project_revision_counter (
+            CREATE TABLE IF NOT EXISTS timeline.project_revision_counter (
                 project_id varchar(64) primary key,
                 next_revision_number bigint not null
             )
         """);
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS timeline_revision_parent (
+            CREATE TABLE IF NOT EXISTS timeline.timeline_revision_parent (
                 tenant_id varchar(64) not null,
                 project_id varchar(64) not null,
                 revision_id varchar(64) not null,
@@ -401,14 +401,14 @@ public final class RenderTestSchemaFixture {
                 check (parent_order >= 0),
                 check (revision_id <> parent_revision_id),
                 foreign key (tenant_id, project_id, revision_id)
-                    references timeline_revision(tenant_id, project_id, id),
+                    references timeline.timeline_revision(tenant_id, project_id, id),
                 foreign key (tenant_id, project_id, parent_revision_id)
-                    references timeline_revision(tenant_id, project_id, id)
+                    references timeline.timeline_revision(tenant_id, project_id, id)
                     deferrable initially deferred
             )
         """);
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS timeline_revision_ref (
+            CREATE TABLE IF NOT EXISTS timeline.timeline_revision_ref (
                 tenant_id varchar(64) not null,
                 project_id varchar(64) not null,
                 ref_id varchar(64) not null,
@@ -417,12 +417,12 @@ public final class RenderTestSchemaFixture {
                 updated_at timestamp not null default current_timestamp,
                 primary key (tenant_id, project_id, ref_id),
                 foreign key (tenant_id, project_id, head_revision_id)
-                    references timeline_revision(tenant_id, project_id, id)
+                    references timeline.timeline_revision(tenant_id, project_id, id)
                     deferrable initially deferred
             )
         """);
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS apply_command (
+            CREATE TABLE IF NOT EXISTS timeline.apply_command (
                 apply_command_id varchar(64) primary key,
                 plan_digest varchar(64) not null,
                 fingerprint varchar(64) not null,
@@ -439,15 +439,15 @@ public final class RenderTestSchemaFixture {
                 created_at timestamp not null default current_timestamp,
                 completed_at timestamp,
                 foreign key (tenant_id, project_id)
-                    references project(tenant_id, id),
+                    references identity.project(tenant_id, id),
                 foreign key (tenant_id, project_id, target_ref_id)
-                    references timeline_revision_ref(tenant_id, project_id, ref_id)
+                    references timeline.timeline_revision_ref(tenant_id, project_id, ref_id)
                     deferrable initially deferred,
                 foreign key (tenant_id, project_id, expected_head_revision_id)
-                    references timeline_revision(tenant_id, project_id, id)
+                    references timeline.timeline_revision(tenant_id, project_id, id)
                     deferrable initially deferred,
                 foreign key (tenant_id, project_id, result_revision_id)
-                    references timeline_revision(tenant_id, project_id, id)
+                    references timeline.timeline_revision(tenant_id, project_id, id)
                     deferrable initially deferred
             )
         """);
@@ -461,7 +461,7 @@ public final class RenderTestSchemaFixture {
         if (projectId == null || projectId.isBlank() || projectId.length() > 64) {
             throw new IllegalArgumentException("projectId must be 1..64 characters");
         }
-        dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
+        dsl.execute("insert into identity.project (id, tenant_id, name, status, created_at) "
                         + "values (?, ?, ?, 'ACTIVE', now())",
                 projectId, tenantId, projectId);
     }
@@ -473,10 +473,10 @@ public final class RenderTestSchemaFixture {
     public static void insertCanonicalRevisionFixture(
             DSLContext dsl, String tenantId, String projectId, String revisionId) {
         String snapshotId = "fixture-snap-" + revisionId;
-        dsl.execute("insert into timeline_snapshot "
+        dsl.execute("insert into timeline.timeline_snapshot "
                         + "(id, project_id, tenant_id, payload_json) values (?, ?, ?, '{}')",
                 snapshotId, projectId, tenantId);
-        dsl.execute("insert into timeline_revision "
+        dsl.execute("insert into timeline.timeline_revision "
                         + "(id, project_id, tenant_id, revision_number, snapshot_id, "
                         + "internal_revision, content_hash, source, created_at) "
                         + "values (?, ?, ?, 1, ?, 1, ?, 'fixture', current_timestamp)",
@@ -499,7 +499,7 @@ public final class RenderTestSchemaFixture {
     public static void truncate(DSLContext dsl) {
         dsl.execute("""
             TRUNCATE TABLE
-                apply_command,
+                timeline.apply_command,
                 timeline_revision_ref,
                 timeline_revision_parent,
                 project_revision_counter,

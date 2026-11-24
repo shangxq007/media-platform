@@ -40,8 +40,8 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         projectA=readId(callScope(tenant,creator,"POST","/api/identity/tenants/"+tenant+"/projects",Map.of("name","A Project","workspaceId",wsA)),"id");
         projectB=readId(callScope(tenantB,ownerB,"POST","/api/identity/tenants/"+tenantB+"/projects",Map.of("name","B Project","workspaceId",wsB)),"id");
         // V28: the canonical asset identity is the Artifact; the retired Media registration surface is gone.
-        asScope(tenant,creator,()->jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,'BINARY','SOURCE_MEDIA','AVAILABLE',1,now())","art_acct_probe_a",tenant,projectA,wsA,"a".repeat(64)));
-        asScope(tenantB,ownerB,()->jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,'BINARY','SOURCE_MEDIA','AVAILABLE',1,now())","art_acct_probe_b",tenantB,projectB,wsB,"b".repeat(64)));
+        asScope(tenant,creator,()->jdbc.update("insert into artifacts.artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,'BINARY','SOURCE_MEDIA','AVAILABLE',1,now())","art_acct_probe_a",tenant,projectA,wsA,"a".repeat(64)));
+        asScope(tenantB,ownerB,()->jdbc.update("insert into artifacts.artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,'BINARY','SOURCE_MEDIA','AVAILABLE',1,now())","art_acct_probe_b",tenantB,projectB,wsB,"b".repeat(64)));
     }
     CanonicalActor operator(){return CanonicalActor.system("system:identity-provisioning",null);}
     HttpResponse<String> callScope(String scope,String subject,String method,String path,Object body) throws Exception {
@@ -76,10 +76,10 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         assertEquals(200,callScope(tenantB,member,"GET","/api/projects/"+projectB+"/assets",null).statusCode());
         assertEquals(1,json.readTree(callScope(tenant,member,"GET","/api/identity/tenants/"+tenant+"/projects",null).body()).size());
         assertEquals(1,json.readTree(callScope(tenantB,member,"GET","/api/identity/tenants/"+tenantB+"/projects",null).body()).size());
-        long jobs=count("select count(*) from render_job where tenant_id in (?,?)",tenant,tenantB);
+        long jobs=count("select count(*) from render.render_job where tenant_id in (?,?)",tenant,tenantB);
         // Resource rights without feature entitlement cannot create a task.
         assertEquals(403,callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)).statusCode());
-        assertEquals(jobs,count("select count(*) from render_job where tenant_id in (?,?)",tenant,tenantB));
+        assertEquals(jobs,count("select count(*) from render.render_job where tenant_id in (?,?)",tenant,tenantB));
         String grant=entitlement(tenant);entitlement(tenantB);
         // Tenant B entitlement cannot turn VIEWER's READ into WRITE or charge tenant A.
         assertEquals(403,callScope(tenantB,member,"POST",submitPath(tenantB,projectB),submitBody(projectB,wsB)).statusCode());
@@ -99,15 +99,15 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
             assertEquals(fixed,worker.submit(()->reconstructed.get(tenant,projectA,job)).get(10,TimeUnit.SECONDS));
             assertEquals(fixed,worker.submit(()->reconstructed.get(tenant,projectA,job)).get(10,TimeUnit.SECONDS));
         }
-        assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("update render_execution_context set tenant_id=? where job_id=?",tenantB,job));assertEquals(fixed,contexts.get(tenant,projectA,job));
-        assertEquals(jobs+1,count("select count(*) from render_job where tenant_id in (?,?)",tenant,tenantB));
+        assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("update render.render_execution_context set tenant_id=? where job_id=?",tenantB,job));assertEquals(fixed,contexts.get(tenant,projectA,job));
+        assertEquals(jobs+1,count("select count(*) from render.render_job where tenant_id in (?,?)",tenant,tenantB));
         context.getBean(EntitlementService.class).execute(new EntitlementGrantCommand(EntitlementCommandType.REVOKE,
                 PrincipalRef.tenantScoped(tenant,PrincipalType.ORGANIZATION,tenant),grant,null,null,"ADMIN","scope-test",UUID.randomUUID().toString(),"system:acceptance","revocation","scope-test",Instant.now(),null,0));
         assertEquals(fixed,contexts.get(tenant,projectA,job));
         assertEquals(403,callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)).statusCode());
     }
     @Test void forgedScopesRevocationAndIndependentMembershipDisableFailClosed() throws Exception {
-        entitlement(tenant);entitlement(tenantB);long before=count("select count(*) from render_job");long quota=count("select count(*) from quota_usage");
+        entitlement(tenant);entitlement(tenantB);long before=count("select count(*) from render.render_job");long quota=count("select count(*) from entitlement.quota_usage");
         var stale=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+submitPath(tenant,projectA)))
                 .header("Authorization","Bearer "+token(member,tenant)).header("X-Tenant-ID",tenantB).header("Content-Type","application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(submitBody(projectA,wsA)))).build();
@@ -120,11 +120,11 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         accounts.setMembershipActive(operator(),account,tenant,false);
         assertEquals(403,callScope(tenant,member,"GET","/api/identity/session",null).statusCode());
         assertEquals(200,callScope(tenantB,member,"GET","/api/identity/session",null).statusCode());
-        assertEquals(1,count("select count(*) from account where id=? and status='ACTIVE'",account));
+        assertEquals(1,count("select count(*) from identity.account where id=? and status='ACTIVE'",account));
         assertEquals(1,count("select count(*) from media_asset where project_id=?",projectA));
         accounts.setMembershipActive(operator(),account,tenant,true);assertEquals(204,call("DELETE",path(wsA)+"/members/"+member,null,creator).statusCode());
         assertEquals(403,callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)).statusCode());
-        assertEquals(before,count("select count(*) from render_job"));assertEquals(quota,count("select count(*) from quota_usage"));
+        assertEquals(before,count("select count(*) from render.render_job"));assertEquals(quota,count("select count(*) from entitlement.quota_usage"));
     }
     @Test void accountLinkConcurrencyAndTransactionRollbackPreserveIdentity() throws Exception {
         var start=new CountDownLatch(1);
@@ -132,12 +132,12 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
             Callable<String> create=()->{start.await();return accounts.provisionVerifiedAccount(operator(),"issuer-test","subject-test");};
             var a=workers.submit(create);var b=workers.submit(create);start.countDown();assertEquals(a.get(10,TimeUnit.SECONDS),b.get(10,TimeUnit.SECONDS));
         }
-        assertEquals(1,count("select count(*) from account where issuer='issuer-test' and subject='subject-test'"));
+        assertEquals(1,count("select count(*) from identity.account where issuer='issuer-test' and subject='subject-test'"));
         assertEquals(membershipB,accounts.linkMembership(operator(),account,tenantB,membershipB).membershipId());
         assertThrows(RuntimeException.class,()->accounts.linkMembership(operator(),account,tenantB,ownerB));
-        long before=count("select count(*) from account");
+        long before=count("select count(*) from identity.account");
         assertThrows(IllegalStateException.class,()->new TransactionTemplate(transactions).execute(t->{accounts.provisionVerifiedAccount(operator(),"issuer-test","rolled-back");throw new IllegalStateException("after account insert");}));
-        assertEquals(before,count("select count(*) from account"));assertEquals(member,accounts.resolve("urn:media-platform:local-hmac",member,tenant).membershipId());
+        assertEquals(before,count("select count(*) from identity.account"));assertEquals(member,accounts.resolve("urn:media-platform:local-hmac",member,tenant).membershipId());
         String ownerAccount=accounts.resolve("urn:media-platform:local-hmac",creator,tenant).accountId();
         assertThrows(RuntimeException.class,()->accounts.setMembershipActive(operator(),ownerAccount,tenant,false));
         assertEquals(200,call("GET",path(wsA),null,creator).statusCode());
@@ -150,7 +150,7 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
             Callable<String> create=()->{start.await();return accounts.createMembership(operator(),account,c,"same","same@test.invalid","VIEWER").membershipId();};
             var a=threads.submit(create);var b=threads.submit(create);start.countDown();assertEquals(a.get(10,TimeUnit.SECONDS),b.get(10,TimeUnit.SECONDS));
         }
-        assertEquals(1,count("select count(*) from \"user\" where account_id=? and tenant_id=?",account,c));
+        assertEquals(1,count("select count(*) from identity.\"user\" where account_id=? and tenant_id=?",account,c));
         assertThrows(RuntimeException.class,()->accounts.createMembership(operator(),account,c,"same","same@test.invalid","ADMIN"));
         String one=accounts.provisionVerifiedAccount(operator(),"issuer-one","same-subject"),two=accounts.provisionVerifiedAccount(operator(),"issuer-two","same-subject");
         assertNotEquals(one,two);
@@ -161,25 +161,25 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         assertEquals(two,accounts.resolve("issuer-two","same-subject",c).accountId());
     }
     @Test void resourceAndTaskFailuresRollBackWithoutIdentityOrQuotaSideEffects() throws Exception {
-        long usersBefore=count("select count(*) from \"user\""),accountsBefore=count("select count(*) from account");
+        long usersBefore=count("select count(*) from identity.\"user\""),accountsBefore=count("select count(*) from identity.account");
         assertThrows(IllegalStateException.class,()->new TransactionTemplate(transactions).execute(t->{
             String a=accounts.provisionVerifiedAccount(operator(),"rollback-issuer",UUID.randomUUID().toString());
             accounts.createMembership(operator(),a,tenant,"rollback","same@test.invalid","MEMBER");throw new IllegalStateException("after identity writes");
         }));
-        assertEquals(usersBefore,count("select count(*) from \"user\""));assertEquals(accountsBefore,count("select count(*) from account"));
-        long projectsBefore=count("select count(*) from project where tenant_id=?",tenant);
+        assertEquals(usersBefore,count("select count(*) from identity.\"user\""));assertEquals(accountsBefore,count("select count(*) from identity.account"));
+        long projectsBefore=count("select count(*) from identity.project where tenant_id=?",tenant);
         asScope(tenant,creator,()->assertThrows(IllegalStateException.class,()->new TransactionTemplate(transactions).execute(t->{
             context.getBean(TenantProjectService.class).createProject(tenant,new CreateProjectRequest("rollback",null,wsA));throw new IllegalStateException("after project write");
         })));
-        assertEquals(projectsBefore,count("select count(*) from project where tenant_id=?",tenant));
-        entitlement(tenant);long jobsBefore=count("select count(*) from render_job where tenant_id=?",tenant),quotaBefore=count("select count(*) from quota_usage");
+        assertEquals(projectsBefore,count("select count(*) from identity.project where tenant_id=?",tenant));
+        entitlement(tenant);long jobsBefore=count("select count(*) from render.render_job where tenant_id=?",tenant),quotaBefore=count("select count(*) from entitlement.quota_usage");
         String fault="scope_fault_"+UUID.randomUUID().toString().replace("-","");
         jdbc.execute("create function "+fault+"() returns trigger language plpgsql as $$ begin raise exception 'controlled context persistence failure'; return new; end $$");
         try {
             jdbc.execute("create trigger "+fault+" before insert on render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+fault+"()");
             assertEquals(500,callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)).statusCode());
-            assertEquals(jobsBefore,count("select count(*) from render_job where tenant_id=?",tenant));
-            assertEquals(0,count("select count(*) from render_execution_context where tenant_id=?",tenant));assertEquals(quotaBefore,count("select count(*) from quota_usage"));
+            assertEquals(jobsBefore,count("select count(*) from render.render_job where tenant_id=?",tenant));
+            assertEquals(0,count("select count(*) from render.render_execution_context where tenant_id=?",tenant));assertEquals(quotaBefore,count("select count(*) from entitlement.quota_usage"));
         } finally {jdbc.execute("drop trigger if exists "+fault+" on render_execution_context");jdbc.execute("drop function "+fault+"()");}
         String job=readId(callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)),"id");
         assertEquals(tenant,context.getBean(ExecutionContextQueries.class).get(tenant,projectA,job).consumptionPrincipalId());
@@ -190,10 +190,10 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         context.getBean(com.example.platform.entitlement.app.QuotaUsageAuthority.class).execute(new QuotaUsageCommand(
                 PrincipalRef.tenantScoped(tenant,PrincipalType.ORGANIZATION,tenant),"render.job.create",start,end,10000,10000,
                 "fill-"+UUID.randomUUID(),QuotaOperationKind.CONSUMPTION,"scope-test","acceptance capacity control",now));
-        long jobsBefore=count("select count(*) from render_job"),operations=count("select count(*) from quota_usage_operation");
+        long jobsBefore=count("select count(*) from render.render_job"),operations=count("select count(*) from entitlement.quota_usage_operation");
         assertEquals(403,callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)).statusCode());
-        assertEquals(jobsBefore,count("select count(*) from render_job"));assertEquals(operations,count("select count(*) from quota_usage_operation"));
-        assertEquals(0,count("select count(*) from quota_usage where tenant_id=?",tenantB));
+        assertEquals(jobsBefore,count("select count(*) from render.render_job"));assertEquals(operations,count("select count(*) from entitlement.quota_usage_operation"));
+        assertEquals(0,count("select count(*) from entitlement.quota_usage where tenant_id=?",tenantB));
     }
     @Test void migrationPreservesAmbiguousHistoryAndOnlyConvertsKnownScopeEncodings() {
         String schema="scope_migration_"+UUID.randomUUID().toString().replace("-","");
@@ -227,8 +227,8 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         assertEquals(200,callScope(tenant,subject,"GET","/api/identity/admin/tenants",null).statusCode());
         var response=callScope(tenant,subject,"POST","/api/billing/subscriptions",request);assertEquals(200,response.statusCode(),response.body());
         assertEquals(tenant,json.readTree(response.body()).get("beneficiaryTenantId").asText());
-        assertEquals(1,count("select count(*) from subscription_contract where tenant_id=? and subject_type='ORGANIZATION' and subject_id=?",tenant,tenant));
-        assertEquals(1,count("select count(*) from subscription_command where tenant_id=? and actor=?",tenant,admin.membershipId()));
+        assertEquals(1,count("select count(*) from billing.subscription_contract where tenant_id=? and subject_type='ORGANIZATION' and subject_id=?",tenant,tenant));
+        assertEquals(1,count("select count(*) from billing.subscription_command where tenant_id=? and actor=?",tenant,admin.membershipId()));
         assertEquals(403,callScope(tenant,subject,"GET","/api/projects/"+projectA+"/assets",null).statusCode());
         assertEquals(200,callScope(tenant,member,"GET","/api/billing/subscriptions/current",null).statusCode());
     }
@@ -238,14 +238,14 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         var roles=context.getBean(RoleRepository.class);var role=context.getBean(RoleService.class).createRole("project-"+UUID.randomUUID(),"Project read",null,Role.RoleScope.WORKSPACE);
         var read=roles.findAllPermissions().stream().filter(p->"READ".equals(p.permissionKey())).findFirst().orElseThrow();
         roles.saveRolePermission(new RolePermission("rp-"+UUID.randomUUID(),role.id(),read.id(),Instant.now()));
-        jdbc.update("insert into user_role_assignment(id,tenant_id,project_id,user_id,role_id,created_at) values (?,?,?,?,?,now())","pr-"+UUID.randomUUID(),tenant,projectA,outsider,role.id());
+        jdbc.update("insert into identity.user_role_assignment(id,tenant_id,project_id,user_id,role_id,created_at) values (?,?,?,?,?,now())","pr-"+UUID.randomUUID(),tenant,projectA,outsider,role.id());
         // An independent tenant READ binding must not expand into content access.
-        jdbc.update("insert into user_role_assignment(id,tenant_id,user_id,role_id,created_at) values (?,?,?,?,now())","tr-"+UUID.randomUUID(),tenant,outsider,role.id());
+        jdbc.update("insert into identity.user_role_assignment(id,tenant_id,user_id,role_id,created_at) values (?,?,?,?,now())","tr-"+UUID.randomUUID(),tenant,outsider,role.id());
         assertEquals(200,callScope(tenant,outsider,"GET","/api/projects/"+projectA+"/assets",null).statusCode());
         assertEquals(403,callScope(tenant,outsider,"GET","/api/projects/"+second+"/assets",null).statusCode());
         assertEquals(204,call("DELETE",path(wsA)+"/members/"+outsider,null,creator).statusCode());
-        assertEquals(0,count("select count(*) from user_role_assignment where user_id=? and project_id=?",outsider,projectA));
-        assertEquals(1,count("select count(*) from user_role_assignment where user_id=? and workspace_id is null and project_id is null",outsider));
+        assertEquals(0,count("select count(*) from identity.user_role_assignment where user_id=? and project_id=?",outsider,projectA));
+        assertEquals(1,count("select count(*) from identity.user_role_assignment where user_id=? and workspace_id is null and project_id is null",outsider));
         assertEquals(200,add(wsA,outsider,"VIEWER",creator).statusCode());
         assertEquals(403,callScope(tenant,outsider,"GET","/api/projects/"+projectA+"/assets",null).statusCode());
         assertEquals(1,count("select count(*) from media_asset where project_id=?",projectA));
@@ -253,26 +253,26 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
 
     @Test void unresolvedProjectRequiresExplicitIdempotentOwnerMapping() throws Exception {
         String old="old-project-"+UUID.randomUUID();
-        jdbc.update("insert into project(id,tenant_id,name,status,created_at) values (?,?,?,'ACTIVE',now())",old,tenant,"Unresolved history");
-        long jobs=count("select count(*) from render_job");entitlement(tenant);
+        jdbc.update("insert into identity.project(id,tenant_id,name,status,created_at) values (?,?,?,'ACTIVE',now())",old,tenant,"Unresolved history");
+        long jobs=count("select count(*) from render.render_job");entitlement(tenant);
         assertEquals(409,callScope(tenant,member,"POST",submitPath(tenant,old),submitBody(old,wsA)).statusCode());
-        assertEquals(jobs,count("select count(*) from render_job"));assertEquals(1,count("select count(*) from project where id=? and workspace_id is null",old));
+        assertEquals(jobs,count("select count(*) from render.render_job"));assertEquals(1,count("select count(*) from identity.project where id=? and workspace_id is null",old));
         var scopes=context.getBean(ProjectScopeService.class);
         assertThrows(RuntimeException.class,()->scopes.bindUnmappedProject(operator(),tenant,old,wsB));
         assertEquals(wsA,scopes.bindUnmappedProject(operator(),tenant,old,wsA).workspaceId());
         assertEquals(wsA,scopes.bindUnmappedProject(operator(),tenant,old,wsA).workspaceId());
         assertEquals(200,callScope(tenant,member,"GET","/api/identity/projects/"+old,null).statusCode());
-        assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("update project set workspace_id=? where id=?",wsB,old));
-        assertEquals(wsA,jdbc.queryForObject("select workspace_id from project where id=?",String.class,old));
+        assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("update identity.project set workspace_id=? where id=?",wsB,old));
+        assertEquals(wsA,jdbc.queryForObject("select workspace_id from identity.project where id=?",String.class,old));
     }
 
     @Test void projectImportCreatesOnlyInExplicitAuthorizedWorkspace() throws Exception {
         Map<String,Object> payload=Map.of("schemaVersion","project-export-v1","exportMode","metadata_only","project",Map.of("projectId","historical-source","name","Imported"));
         var body=new HashMap<String,Object>();body.put("payload",payload);body.put("createNewProject",true);body.put("workspaceId",wsA);body.put("assetImportPolicy","metadata_only");
         var response=callScope(tenant,creator,"POST","/api/identity/tenants/"+tenant+"/project-imports",body);
-        String project=readId(response,"projectId");assertEquals(wsA,jdbc.queryForObject("select workspace_id from project where id=?",String.class,project));
-        long before=count("select count(*) from project where tenant_id=?",tenant);body.put("workspaceId",wsB);
+        String project=readId(response,"projectId");assertEquals(wsA,jdbc.queryForObject("select workspace_id from identity.project where id=?",String.class,project));
+        long before=count("select count(*) from identity.project where tenant_id=?",tenant);body.put("workspaceId",wsB);
         assertEquals(403,callScope(tenant,creator,"POST","/api/identity/tenants/"+tenant+"/project-imports",body).statusCode());
-        assertEquals(before,count("select count(*) from project where tenant_id=?",tenant));
+        assertEquals(before,count("select count(*) from identity.project where tenant_id=?",tenant));
     }
 }

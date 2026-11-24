@@ -136,13 +136,13 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     @BeforeEach
     void resetRows() {
         jdbc.execute("""
-                truncate table outbox_events, audit_records, notification_delivery, notification_event,
+                truncate table infrastructure.outbox_events, audit_records, notification_delivery, notification_event,
                     apply_command, artifact_pin, timeline_revision_parent, timeline_revision_ref,
                     timeline_revision, timeline_snapshot, project_revision_counter, project,
                     artifact, tenant cascade
                 """);
-        jdbc.update("insert into tenant(id,name,status,created_at) values (?,'A','ACTIVE',now())", TENANT);
-        jdbc.update("insert into project(id,tenant_id,name,created_at) values (?,?,'Batch',now())",
+        jdbc.update("insert into identity.tenant(id,name,status,created_at) values (?,'A','ACTIVE',now())", TENANT);
+        jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values (?,?,'Batch',now())",
                 PROJECT, TENANT);
 
         digester = new TimelineContentDigester();
@@ -206,7 +206,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(base.revisionId(), parentOf(result.newRevisionId()));
 
         Map<String, Object> command = jdbc.queryForMap(
-                "select command_domain, plan_digest, status, result_status from apply_command where apply_command_id = ?",
+                "select command_domain, plan_digest, status, result_status from timeline.apply_command where apply_command_id = ?",
                 batchId);
         assertEquals("OPERATION_BATCH", command.get("command_domain"));
         assertEquals(result.batchDigest(), command.get("plan_digest"));
@@ -214,7 +214,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals("APPLIED", command.get("result_status"));
 
         Map<String, Object> revision = jdbc.queryForMap(
-                "select message, change_summary_json from timeline_revision where id = ?",
+                "select message, change_summary_json from timeline.timeline_revision where id = ?",
                 result.newRevisionId());
         assertEquals("ordered edit", revision.get("message"));
         String provenance = (String) revision.get("change_summary_json");
@@ -347,7 +347,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(1, count("timeline_revision"));
         assertEquals(1, count("apply_command"));
         assertEquals("NO_OP", jdbc.queryForObject(
-                "select result_status from apply_command where apply_command_id = 'batch-noop'",
+                "select result_status from timeline.apply_command where apply_command_id = 'batch-noop'",
                 String.class));
         assertEquals(base.revisionId(), head());
     }
@@ -683,13 +683,13 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
     private String head() {
         return jdbc.query(
-                "select head_revision_id from timeline_revision_ref where project_id = ?",
+                "select head_revision_id from timeline.timeline_revision_ref where project_id = ?",
                 rs -> rs.next() ? rs.getString(1) : null, PROJECT);
     }
 
     private String parentOf(String revisionId) {
         return jdbc.queryForObject(
-                "select parent_revision_id from timeline_revision where id = ?",
+                "select parent_revision_id from timeline.timeline_revision where id = ?",
                 String.class, revisionId);
     }
 

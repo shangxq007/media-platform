@@ -189,7 +189,7 @@ class RepositoryIntegrationTest(unittest.TestCase):
         table_class: str,
         mutate: Callable[[list[str]], list[str]],
     ) -> None:
-        keys_path = generated_root / "Keys.java"
+        keys_path = generated_root / "storage" / "Keys.java"
         lines = keys_path.read_text(encoding="utf-8").splitlines(keepends=True)
         matching_indexes = [
             index for index, line in enumerate(lines) if f" {key_symbol} = " in line

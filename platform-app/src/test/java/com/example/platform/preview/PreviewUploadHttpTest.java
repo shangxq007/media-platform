@@ -33,13 +33,13 @@ class PreviewUploadHttpTest extends PostgresTestContainerSupport {
     String tenant;
     @BeforeEach void scope(){
         tenant="prev-"+UUID.randomUUID();
-        jdbc.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,"Preview fixture");
+        jdbc.update("insert into identity.tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,"Preview fixture");
         String role="prev-"+UUID.randomUUID(),permission="prev-"+UUID.randomUUID();
-        jdbc.update("insert into role(id,role_key,name,scope,created_at) values (?,?,?,'TENANT',now())",role,role,"Preview upload");
-        jdbc.update("insert into permission(id,permission_key,name,created_at) values (?,'WRITE','Write',now()) on conflict(permission_key) do nothing",permission);
-        permission=jdbc.queryForObject("select id from permission where permission_key='WRITE'",String.class);
-        jdbc.update("insert into role_permission(id,role_id,permission_id,created_at) values (?,?,?,now())","rp-"+UUID.randomUUID(),role,permission);
-        jdbc.update("insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values (?,?,?,'preview-user',?,now())","ra-"+UUID.randomUUID(),tenant,tenant,role);
+        jdbc.update("insert into identity.role(id,role_key,name,scope,created_at) values (?,?,?,'TENANT',now())",role,role,"Preview upload");
+        jdbc.update("insert into identity.permission(id,permission_key,name,created_at) values (?,'WRITE','Write',now()) on conflict(permission_key) do nothing",permission);
+        permission=jdbc.queryForObject("select id from identity.permission where permission_key='WRITE'",String.class);
+        jdbc.update("insert into identity.role_permission(id,role_id,permission_id,created_at) values (?,?,?,now())","rp-"+UUID.randomUUID(),role,permission);
+        jdbc.update("insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values (?,?,?,'preview-user',?,now())","ra-"+UUID.randomUUID(),tenant,tenant,role);
     }
     String token(String user){return io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId",tenant).claim("roles",List.of("USER"))
             .expiration(new Date(System.currentTimeMillis()+600000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();}
@@ -64,7 +64,7 @@ class PreviewUploadHttpTest extends PostgresTestContainerSupport {
         assertEquals(Set.of("mediaId","size"),fields);assertEquals(Integer.toString(media().length),response.get("size").asText());
         var replay=upload(key,token("preview-user"),media(),null);assertEquals(200,replay.statusCode(),replay.body());assertEquals(response,json.readTree(replay.body()));
         assertEquals(1,count("product"));assertEquals(1,count("storage_write_intent"));assertEquals(0,count("media_asset"));
-        assertEquals("READY",jdbc.queryForObject("select status from product where tenant_id=?",String.class,tenant));
+        assertEquals("READY",jdbc.queryForObject("select status from render.product where tenant_id=?",String.class,tenant));
         assertEquals(409,upload(key,token("preview-user"),new byte[]{1,2,3},null).statusCode());assertEquals(1,count("product"));
     }
     @Test void missingOrDeniedAuthenticationAndWrongTenantCannotWrite() throws Exception {

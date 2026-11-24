@@ -48,8 +48,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -75,7 +75,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
         RenderTestSchemaFixture.createSchema(dsl);
         dsl.execute("""
-                create table if not exists apply_command (
+                create table if not exists timeline.apply_command (
                     apply_command_id varchar(64) primary key,
                     plan_digest varchar(64) not null,
                     fingerprint varchar(64) not null,
@@ -98,7 +98,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
     @BeforeEach
     void reset() {
         RenderTestSchemaFixture.truncate(dsl);
-        dsl.execute("delete from apply_command");
+        dsl.execute("delete from timeline.apply_command");
         com.example.platform.shared.web.TenantContext.set(TENANT);
     }
 
@@ -138,11 +138,11 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))
                 .and(TIMELINE_REVISION.PARENT_REVISION_ID.eq(root.revisionId()))
                 .fetchOne(0, Long.class));
-        assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_parent "
+        assertEquals(1, dsl.fetchOne("select count(*) from timeline.timeline_revision_parent "
                 + "where project_id = ? and parent_revision_id = ? and parent_order = 0",
                 productId, root.revisionId()).get(0, Integer.class));
         assertEquals(1, dsl.fetchOne(
-                "select count(*) from apply_command where project_id = ? and status = 'COMPLETED'",
+                "select count(*) from timeline.apply_command where project_id = ? and status = 'COMPLETED'",
                 productId).get(0, Integer.class));
     }
 
@@ -174,7 +174,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
 
         assertEquals(root.revisionId(), result.parentRevisionId());
         assertEquals(root.revisionId(), dsl.fetchOne(
-                "select parent_revision_id from timeline_revision_parent "
+                "select parent_revision_id from timeline.timeline_revision_parent "
                         + "where project_id = ? and revision_id = ? and parent_order = 0",
                 productId, result.newRevisionId()).get(0, String.class));
     }
@@ -250,7 +250,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                         command("command-noop-stale", "plan-noop", "fingerprint-noop-stale")));
         assertEquals(0, commandRows("command-noop-stale"), "stale no-op claim must roll back");
         assertEquals(2L, revisionRows(productId), "stale no-op creates no revision");
-        assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_parent "
+        assertEquals(1, dsl.fetchOne("select count(*) from timeline.timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class),
                 "stale no-op creates no parent edge");
     }
@@ -309,7 +309,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         TimelineRevisionSaveService seed = writer(dsl);
         var root = seedRoot(seed, productId, document("base"));
         long counterBefore = counterValue(productId);
-        dsl.execute("delete from timeline_revision_ref "
+        dsl.execute("delete from timeline.timeline_revision_ref "
                         + "where tenant_id = ? and project_id = ? and ref_id = ?",
                 TENANT, productId, RevisionRef.MAIN_REF);
 
@@ -319,7 +319,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         assertNull(currentRevision(productId),
                 "the deliberately deleted canonical ref remains absent after rollback");
         assertEquals(1L, revisionRows(productId));
-        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline.timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
         assertEquals(0, commandRows("command-rollback"));
         assertEquals(counterBefore, counterValue(productId));
@@ -336,7 +336,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 command("command-genesis", "plan-genesis", "fingerprint-genesis"));
 
         assertEquals(genesis.revisionId(), canonicalHead(productId));
-        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline.timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
         assertEquals(genesis.revisionId(), currentRevision(productId));
     }
@@ -361,9 +361,9 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         assertEquals(1, applied.get());
         assertEquals(1, stale.get());
         assertEquals(1L, revisionRows(productId));
-        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline.timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
-        assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_ref "
+        assertEquals(1, dsl.fetchOne("select count(*) from timeline.timeline_revision_ref "
                 + "where tenant_id = ? and project_id = ? and ref_id = ?",
                 TENANT, productId, RevisionRef.MAIN_REF)
                 .get(0, Integer.class));
@@ -416,7 +416,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         }
         assertEquals(0, commandRows("publication-failure"));
         assertEquals(1L, revisionRows(productId));
-        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline.timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
         assertEquals(root.revisionId(), canonicalHead(productId));
         assertEquals(counterBefore, counterValue(productId));
@@ -516,7 +516,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
     }
 
     private static int commandRows(String commandId) {
-        return dsl.fetchOne("select count(*) from apply_command where apply_command_id = ?", commandId)
+        return dsl.fetchOne("select count(*) from timeline.apply_command where apply_command_id = ?", commandId)
                 .get(0, Integer.class);
     }
 
@@ -525,14 +525,14 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
     }
 
     private static String canonicalHead(String productId) {
-        var row = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
+        var row = dsl.fetchOne("select head_revision_id from timeline.timeline_revision_ref "
                         + "where tenant_id = ? and project_id = ? and ref_id = ?",
                         TENANT, productId, RevisionRef.MAIN_REF);
         return row == null ? null : row.get(0, String.class);
     }
 
     private static long counterValue(String productId) {
-        return dsl.fetchOne("select next_revision_number from project_revision_counter "
+        return dsl.fetchOne("select next_revision_number from timeline.project_revision_counter "
                         + "where project_id = ?", productId)
                 .get(0, Long.class);
     }

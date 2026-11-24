@@ -30,13 +30,13 @@ class BillingOwnerReadProjectionTest extends PostgresTestContainerSupport {
    observations.emit(new ObservedRuntimeUsage("o-"+id,tenant,null,new CanonicalActorRef("u","USER"),new OperationRef("op-"+id,"attempt"),null,new ProviderRef("test"),"test",UsageDimension.REQUEST,qty,RuntimeOutcome.SUCCEEDED,now,now,now,UsageProvenance.REPORTED,"test",id,"trace","obs-"+id));
    store.append(new BillableUsage(id,tenant,new CanonicalActorRef("u","USER"),"o-"+id,UsageDimension.REQUEST,qty,"m",UsageDimension.REQUEST,qty,"r","v1",MeteringTransformationKind.IDENTITY,"identity",now,now.plusSeconds(i),"i-"+id,"trace","source"));
   }
-  var before=db.queryForList("select billable_usage_id from billable_usage where tenant_id=? order by metered_at",String.class,tenant);
+  var before=db.queryForList("select billable_usage_id from billing.billable_usage where tenant_id=? order by metered_at",String.class,tenant);
   assertEquals(List.of(tenant+"-1",tenant+"-2"),query.usage(actor,tenant).stream().map(BillingReadQuery.Usage::recordId).toList());
   assertEquals(List.of(1L,2L),query.usage(actor,tenant).stream().map(r->r.quantity().baseUnits()).toList());
   assertThrows(com.example.platform.shared.web.PlatformException.class,()->query.usage(actor,"foreign"));
   var estimate=query.dashboardEstimate(actor);assertEquals(3.0,estimate.usageAmount());assertEquals(3.6,estimate.estimatedRevenue(),0.000001);assertEquals("USD",estimate.currencyCode());
   new TransactionTemplate(tm).executeWithoutResult(s->{db.execute("alter table billable_usage rename to ep22_hidden_billable");assertThrows(org.springframework.dao.DataAccessException.class,()->query.usage(actor,tenant));s.setRollbackOnly();});
   assertEquals(before,query.usage(actor,tenant).stream().map(BillingReadQuery.Usage::recordId).toList());
-  assertEquals(before,db.queryForList("select billable_usage_id from billable_usage where tenant_id=? order by metered_at",String.class,tenant));
+  assertEquals(before,db.queryForList("select billable_usage_id from billing.billable_usage where tenant_id=? order by metered_at",String.class,tenant));
  }
 }

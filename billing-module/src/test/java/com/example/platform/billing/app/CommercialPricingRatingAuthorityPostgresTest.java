@@ -69,7 +69,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
         jdbc.execute("DROP TABLE IF EXISTS rated_usage_record, discount_policy, custom_pricing_rule, pricing_rule CASCADE");
         jdbc.execute("DROP TABLE IF EXISTS billable_usage CASCADE");
         jdbc.execute("""
-                CREATE TABLE pricing_rule (
+                CREATE TABLE billing.pricing_rule (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     rule_key varchar(128) not null, rule_version bigint not null,
                     name varchar(255) not null, description text,
@@ -83,7 +83,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE custom_pricing_rule (
+                CREATE TABLE billing.custom_pricing_rule (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     workspace_id varchar(64), meter_key varchar(128) not null,
                     rule_version bigint not null, override_price_minor bigint,
@@ -100,7 +100,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
                     tenant_id, coalesce(workspace_id, ''), meter_key, rule_version)
                 """);
         jdbc.execute("""
-                CREATE TABLE discount_policy (
+                CREATE TABLE billing.discount_policy (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     policy_key varchar(128) not null, rule_version bigint not null,
                     meter_key varchar(128) not null, currency_code varchar(3) not null,
@@ -113,7 +113,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE billable_usage (
+                CREATE TABLE billing.billable_usage (
                     billable_usage_id varchar(64) primary key, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     observed_usage_id varchar(64) not null, observed_dimension varchar(64) not null,
@@ -129,7 +129,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE rated_usage_record (
+                CREATE TABLE billing.rated_usage_record (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     billable_usage_id varchar(64) not null, pricing_rule_id varchar(64) not null,
                     pricing_rule_version bigint not null, quantity_base_units bigint not null,
@@ -153,7 +153,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
     void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_rated_insert ON rated_usage_record");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_rated_insert_for_test()");
-        jdbc.execute("TRUNCATE rated_usage_record, billable_usage, discount_policy, custom_pricing_rule, pricing_rule");
+        jdbc.execute("TRUNCATE billing.rated_usage_record, billable_usage, discount_policy, custom_pricing_rule, pricing_rule");
         audit.reset();
         pricing.saveRule(rule("GLOBAL", "rule-api", "api", 1, 5, "USD",
                 EFFECTIVE.minusSeconds(60), null));

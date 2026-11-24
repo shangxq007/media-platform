@@ -1,6 +1,6 @@
 package com.example.platform.render.integration;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -86,12 +86,12 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 "ten-vslice", projectId, null, document, RenderTestSchemaFixture.SERVER_ACTOR);
 
         String snapshotId = dsl.select(
-                        com.example.platform.typedschema.jooq.generated.tables.TimelineRevision
+                        com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision
                                 .TIMELINE_REVISION.SNAPSHOT_ID)
-                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION)
-                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineRevision
+                .from(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION)
+                .where(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision
                         .TIMELINE_REVISION.ID.eq(revision.revisionId()))
-                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineRevision
+                .fetchOne(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision
                         .TIMELINE_REVISION.SNAPSHOT_ID);
         Optional<String> payload = payloadOf(snapshotId);
 
@@ -111,8 +111,8 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                         "ten-vslice", projectId, null, invalid,
                         RenderTestSchemaFixture.SERVER_ACTOR));
         assertEquals(0L, dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
-                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot
+                .from(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot
                         .TIMELINE_SNAPSHOT.PROJECT_ID.eq(projectId))
                 .fetchOne(0, Long.class));
     }
@@ -171,12 +171,12 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
 
     private Optional<String> payloadOf(String snapshotId) {
         return Optional.ofNullable(dsl.select(
-                        com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot
+                        com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot
                                 .TIMELINE_SNAPSHOT.PAYLOAD_JSON)
-                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
-                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot
+                .from(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot
                         .TIMELINE_SNAPSHOT.ID.eq(snapshotId))
-                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot
+                .fetchOne(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot
                         .TIMELINE_SNAPSHOT.PAYLOAD_JSON));
     }
 

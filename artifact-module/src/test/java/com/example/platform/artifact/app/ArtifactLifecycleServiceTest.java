@@ -52,7 +52,7 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
         // GCR-2: canonical Artifact schema (artifact + artifact_replica + artifact_pin)
         com.example.platform.artifact.testutil.ArtifactSchemaFixture.createCanonicalTables(jdbc);
-        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS artifacts.artifact_relation ("
                 + "id varchar(64) primary key,"
                 + "source_artifact_id varchar(64) not null,"
                 + "target_artifact_id varchar(64) not null,"
@@ -85,8 +85,8 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         // Clean up before each test
-        dsl.execute("TRUNCATE TABLE artifact_relation CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_relation CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact CASCADE");
     }
 
     @Test

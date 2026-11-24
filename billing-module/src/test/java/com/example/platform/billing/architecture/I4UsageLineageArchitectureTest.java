@@ -80,8 +80,8 @@ class I4UsageLineageArchitectureTest {
     @Test
     void schemaHasDistinctIntegralAppendOnlyTablesAndNoRenderShadow() throws IOException {
         String schema = Files.readString(SCHEMA).toLowerCase();
-        assertTrue(schema.contains("create table observed_runtime_usage"));
-        assertTrue(schema.contains("create table billable_usage"));
+        assertTrue(schema.contains("create table billing.observed_runtime_usage"));
+        assertTrue(schema.contains("create table billing.billable_usage"));
         assertFalse(Pattern.compile("create\\s+table\\s+usage_record\\b")
                 .matcher(schema).find());
         assertFalse(Pattern.compile("create\\s+table\\s+render_usage_record\\b")

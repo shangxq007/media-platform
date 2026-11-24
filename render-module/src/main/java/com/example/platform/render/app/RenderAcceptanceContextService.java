@@ -61,11 +61,11 @@ public class RenderAcceptanceContextService implements ExecutionContextQueries {
         String grantId=grant.grantId();
         var context=new AcceptedExecutionContext(1,job,a.actorId(),a.actorType(),a.accountId(),a.actorType()==ActorType.USER?a.actorId():null,
                 s.tenantId(),s.workspaceId(),s.projectId(),"ORGANIZATION",s.tenantId(),"TENANT_ORGANIZATION",null,d.authorityVersion(),grantId,grant.version(),d.evidence(),snapshot,d.decidedAt());
-        try {jdbc.update("insert into render_execution_context(job_id,tenant_id,workspace_id,project_id,context_json,created_at) values (?,?,?,?,?::jsonb,now())",job,s.tenantId(),s.workspaceId(),s.projectId(),json.writeValueAsString(context));}
+        try {jdbc.update("insert into render.render_execution_context(job_id,tenant_id,workspace_id,project_id,context_json,created_at) values (?,?,?,?,?::jsonb,now())",job,s.tenantId(),s.workspaceId(),s.projectId(),json.writeValueAsString(context));}
         catch(com.fasterxml.jackson.core.JsonProcessingException ex){throw new IllegalStateException("Cannot persist execution facts",ex);}
     }
     public AcceptedExecutionContext get(String tenant,String project,String job) {
-        var rows=jdbc.queryForList("select context_json::text from render_execution_context where job_id=? and tenant_id=? and project_id=?",String.class,job,tenant,project);
+        var rows=jdbc.queryForList("select context_json::text from render.render_execution_context where job_id=? and tenant_id=? and project_id=?",String.class,job,tenant,project);
         if(rows.size()!=1)throw new PlatformException(CommonErrorCode.CONFLICT,"Historical task context unresolved");
         String value=rows.getFirst();
         try {

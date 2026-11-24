@@ -15,8 +15,8 @@ import org.jooq.impl.DSL;
 import com.example.platform.commerce.domain.AuthorityReference;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.CommerceCart.COMMERCE_CART;
-import static com.example.platform.typedschema.jooq.generated.tables.CommerceCartLine.COMMERCE_CART_LINE;
+import static com.example.platform.typedschema.jooq.generated.commerce.tables.CommerceCart.COMMERCE_CART;
+import static com.example.platform.typedschema.jooq.generated.commerce.tables.CommerceCartLine.COMMERCE_CART_LINE;
 
 
 @Repository

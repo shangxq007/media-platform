@@ -4,6 +4,29 @@
 package com.example.platform.typedschema.jooq.generated;
 
 
+import com.example.platform.typedschema.jooq.generated.analytics.Analytics;
+import com.example.platform.typedschema.jooq.generated.artifacts.Artifacts;
+import com.example.platform.typedschema.jooq.generated.billing.Billing;
+import com.example.platform.typedschema.jooq.generated.commerce.Commerce;
+import com.example.platform.typedschema.jooq.generated.composition.Composition;
+import com.example.platform.typedschema.jooq.generated.entitlement.Entitlement;
+import com.example.platform.typedschema.jooq.generated.execution.Execution;
+import com.example.platform.typedschema.jooq.generated.extension.Extension;
+import com.example.platform.typedschema.jooq.generated.identity.Identity;
+import com.example.platform.typedschema.jooq.generated.infrastructure.Infrastructure;
+import com.example.platform.typedschema.jooq.generated.marketplace.Marketplace;
+import com.example.platform.typedschema.jooq.generated.media.Media;
+import com.example.platform.typedschema.jooq.generated.notification.Notification;
+import com.example.platform.typedschema.jooq.generated.payment.Payment;
+import com.example.platform.typedschema.jooq.generated.policy.Policy;
+import com.example.platform.typedschema.jooq.generated.prompt.Prompt;
+import com.example.platform.typedschema.jooq.generated.publication.Publication;
+import com.example.platform.typedschema.jooq.generated.render.Render;
+import com.example.platform.typedschema.jooq.generated.storage.Storage;
+import com.example.platform.typedschema.jooq.generated.timeline.Timeline;
+import com.example.platform.typedschema.jooq.generated.worker_fabric.WorkerFabric;
+import com.example.platform.typedschema.jooq.generated.workflow.Workflow;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,9 +49,114 @@ public class DefaultCatalog extends CatalogImpl {
     public static final DefaultCatalog DEFAULT_CATALOG = new DefaultCatalog();
 
     /**
-     * standard public schema
+     * The schema <code>analytics</code>.
      */
-    public final Public PUBLIC = Public.PUBLIC;
+    public final Analytics ANALYTICS = Analytics.ANALYTICS;
+
+    /**
+     * The schema <code>artifacts</code>.
+     */
+    public final Artifacts ARTIFACTS = Artifacts.ARTIFACTS;
+
+    /**
+     * The schema <code>billing</code>.
+     */
+    public final Billing BILLING = Billing.BILLING;
+
+    /**
+     * The schema <code>commerce</code>.
+     */
+    public final Commerce COMMERCE = Commerce.COMMERCE;
+
+    /**
+     * The schema <code>composition</code>.
+     */
+    public final Composition COMPOSITION = Composition.COMPOSITION;
+
+    /**
+     * The schema <code>entitlement</code>.
+     */
+    public final Entitlement ENTITLEMENT = Entitlement.ENTITLEMENT;
+
+    /**
+     * The schema <code>execution</code>.
+     */
+    public final Execution EXECUTION = Execution.EXECUTION;
+
+    /**
+     * The schema <code>extension</code>.
+     */
+    public final Extension EXTENSION = Extension.EXTENSION;
+
+    /**
+     * The schema <code>identity</code>.
+     */
+    public final Identity IDENTITY = Identity.IDENTITY;
+
+    /**
+     * The schema <code>infrastructure</code>.
+     */
+    public final Infrastructure INFRASTRUCTURE = Infrastructure.INFRASTRUCTURE;
+
+    /**
+     * The schema <code>marketplace</code>.
+     */
+    public final Marketplace MARKETPLACE = Marketplace.MARKETPLACE;
+
+    /**
+     * The schema <code>media</code>.
+     */
+    public final Media MEDIA = Media.MEDIA;
+
+    /**
+     * The schema <code>notification</code>.
+     */
+    public final Notification NOTIFICATION = Notification.NOTIFICATION;
+
+    /**
+     * The schema <code>payment</code>.
+     */
+    public final Payment PAYMENT = Payment.PAYMENT;
+
+    /**
+     * The schema <code>policy</code>.
+     */
+    public final Policy POLICY = Policy.POLICY;
+
+    /**
+     * The schema <code>prompt</code>.
+     */
+    public final Prompt PROMPT = Prompt.PROMPT;
+
+    /**
+     * The schema <code>publication</code>.
+     */
+    public final Publication PUBLICATION = Publication.PUBLICATION;
+
+    /**
+     * The schema <code>render</code>.
+     */
+    public final Render RENDER = Render.RENDER;
+
+    /**
+     * The schema <code>storage</code>.
+     */
+    public final Storage STORAGE = Storage.STORAGE;
+
+    /**
+     * The schema <code>timeline</code>.
+     */
+    public final Timeline TIMELINE = Timeline.TIMELINE;
+
+    /**
+     * The schema <code>worker_fabric</code>.
+     */
+    public final WorkerFabric WORKER_FABRIC = WorkerFabric.WORKER_FABRIC;
+
+    /**
+     * The schema <code>workflow</code>.
+     */
+    public final Workflow WORKFLOW = Workflow.WORKFLOW;
 
     /**
      * No further instances allowed
@@ -40,7 +168,28 @@ public class DefaultCatalog extends CatalogImpl {
     @Override
     public final List<Schema> getSchemas() {
         return Arrays.asList(
-            Public.PUBLIC
+            Analytics.ANALYTICS,
+            Artifacts.ARTIFACTS,
+            Billing.BILLING,
+            Commerce.COMMERCE,
+            Composition.COMPOSITION,
+            Entitlement.ENTITLEMENT,
+            Execution.EXECUTION,
+            Extension.EXTENSION,
+            Identity.IDENTITY,
+            Infrastructure.INFRASTRUCTURE,
+            Marketplace.MARKETPLACE,
+            Media.MEDIA,
+            Notification.NOTIFICATION,
+            Payment.PAYMENT,
+            Policy.POLICY,
+            Prompt.PROMPT,
+            Publication.PUBLICATION,
+            Render.RENDER,
+            Storage.STORAGE,
+            Timeline.TIMELINE,
+            WorkerFabric.WORKER_FABRIC,
+            Workflow.WORKFLOW
         );
     }
 

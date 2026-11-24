@@ -68,7 +68,7 @@ public final class JdbcEffectSemanticSnapshotStore implements EffectSemanticSnap
         // AND ownership — never partial field extraction, never null-digest
         // idempotent success, never cross-project/tenant id reuse.
         org.jooq.Record existingRec = tx.fetchOne(
-                "select project_id, tenant_id, payload_json from timeline_snapshot where id = ?", id);
+                "select project_id, tenant_id, payload_json from timeline.timeline_snapshot where id = ?", id);
         if (existingRec != null) {
             String storedProject = existingRec.get(0, String.class);
             String storedTenant = existingRec.get(1, String.class);
@@ -84,7 +84,7 @@ public final class JdbcEffectSemanticSnapshotStore implements EffectSemanticSnap
             return; // idempotent for EXACT identical content (SC6)
         }
         tx.execute(
-                "insert into timeline_snapshot "
+                "insert into timeline.timeline_snapshot "
                         + "(id, project_id, tenant_id, payload_json, schema_version, created_at) "
                         + "values (?, ?, ?, ?, ?, now())",
                 id, projectId, tenantId, payload,
@@ -153,7 +153,7 @@ public final class JdbcEffectSemanticSnapshotStore implements EffectSemanticSnap
         Objects.requireNonNull(projectId, "projectId");
         Objects.requireNonNull(tenantId, "tenantId");
         String payload = dsl.fetch(
-                        "select payload_json from timeline_snapshot where id = ? and project_id = ? and tenant_id = ?",
+                        "select payload_json from timeline.timeline_snapshot where id = ? and project_id = ? and tenant_id = ?",
                         id.value(), projectId, tenantId)
                 .getValues(0, String.class)
                 .stream().findFirst().orElse(null);

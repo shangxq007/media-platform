@@ -186,12 +186,12 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         assertNotEquals(projectB.objectId(), noProject.objectId());
         assertNotEquals(projectA.objectId(), otherTenant.objectId());
         assertEquals("tenant-owner-a", jdbc.queryForObject("""
-                select o.tenant_id from storage_placement_receipt r
-                  join storage_logical_object o on o.object_id = r.object_id
+                select o.tenant_id from storage.storage_placement_receipt r
+                  join storage.storage_logical_object o on o.object_id = r.object_id
                  where r.receipt_id = ?
                 """, String.class, noProject.receipt().receiptId()));
         assertEquals("unrelated-placement-tenant", jdbc.queryForObject("""
-                select namespace_tenant_id from storage_object_placement where replica_id = ?
+                select namespace_tenant_id from storage.storage_object_placement where replica_id = ?
                 """, String.class, noProject.placement().replicaId().value()));
     }
 
@@ -216,19 +216,19 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
             IssuanceResult secondResult = get(second);
             assertEquals(firstResult, secondResult);
             assertEquals(1, jdbc.queryForObject("""
-                    select count(*) from storage_logical_object
+                    select count(*) from storage.storage_logical_object
                      where tenant_id = 'tenant-concurrent-null'
                        and project_id is null
                        and issuance_idempotency_key = 'concurrent-null-key'
                     """, Integer.class));
             assertEquals(1, jdbc.queryForObject("""
-                    select count(*) from storage_write_intent
+                    select count(*) from storage.storage_write_intent
                      where tenant_id = 'tenant-concurrent-null'
                        and project_id is null
                        and issuance_idempotency_key = 'concurrent-null-key'
                     """, Integer.class));
             assertEquals(1, jdbc.queryForObject("""
-                    select count(*) from storage_placement_receipt
+                    select count(*) from storage.storage_placement_receipt
                      where object_id = ? and receipt_purpose = 'ORIGINAL_ISSUANCE'
                     """, Integer.class, firstResult.objectId().value()));
         } finally {
@@ -238,7 +238,7 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         assertOwnerUniquenessIsNullSafe("uq_storage_logical_object_owner_idempotency");
         assertOwnerUniquenessIsNullSafe("uq_storage_write_intent_owner_idempotency");
         assertThrows(DataIntegrityViolationException.class, () -> jdbc.update("""
-                insert into storage_logical_object (
+                insert into storage.storage_logical_object (
                     object_id, tenant_id, project_id, issuance_idempotency_key,
                     semantic_fingerprint, created_at
                 ) values ('so-duplicate-null-owner', 'tenant-concurrent-null', null,
@@ -265,16 +265,16 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         assertSqlState23514(impersonation);
 
         jdbc.update("""
-                update storage_object_placement
+                update storage.storage_object_placement
                    set placement_state = 'QUARANTINED'
                  where replica_id = 'replica-multi-a'
                 """);
         assertEquals("QUARANTINED", jdbc.queryForObject("""
-                select placement_state from storage_object_placement
+                select placement_state from storage.storage_object_placement
                  where replica_id = 'replica-multi-a'
                 """, String.class));
         assertEquals("AVAILABLE", jdbc.queryForObject("""
-                select placement_state from storage_placement_receipt
+                select placement_state from storage.storage_placement_receipt
                  where receipt_id = ?
                 """, String.class, original.receipt().receiptId()));
 
@@ -291,24 +291,24 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         assertEquals(original.receipt().issuedAt(), replay.receipt().issuedAt());
         assertEquals("replica-multi-a", replay.placement().replicaId().value());
         assertEquals(1, jdbc.queryForObject("""
-                select count(*) from storage_logical_object
+                select count(*) from storage.storage_logical_object
                  where tenant_id = 'tenant-multi' and project_id = 'project-multi'
                    and issuance_idempotency_key = 'multi-key'
                 """, Integer.class));
         assertEquals(2, jdbc.queryForObject(
-                "select count(*) from storage_object_placement where object_id = ?",
+                "select count(*) from storage.storage_object_placement where object_id = ?",
                 Integer.class, original.objectId().value()));
         assertEquals(1, jdbc.queryForObject("""
-                select count(*) from storage_placement_receipt
+                select count(*) from storage.storage_placement_receipt
                  where object_id = ? and receipt_purpose = 'ORIGINAL_ISSUANCE'
                 """, Integer.class, original.objectId().value()));
         assertEquals(1, jdbc.queryForObject("""
-                select count(*) from storage_placement_receipt
+                select count(*) from storage.storage_placement_receipt
                  where receipt_id = 'receipt-multi-b'
                    and receipt_purpose = 'ADDITIONAL_PLACEMENT'
                 """, Integer.class));
         assertEquals("AVAILABLE", jdbc.queryForObject("""
-                select placement_state from storage_object_placement
+                select placement_state from storage.storage_object_placement
                  where replica_id = 'replica-multi-b'
                 """, String.class));
     }
@@ -322,7 +322,7 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
 
         DataIntegrityViolationException mismatch = assertThrows(
                 DataIntegrityViolationException.class, () -> jdbc.update("""
-                insert into storage_placement_receipt (
+                insert into storage.storage_placement_receipt (
                     receipt_id, idempotency_key, semantic_fingerprint, receipt_purpose,
                     object_id, replica_id, provider_id, namespace_tenant_id,
                     namespace_project_id, namespace_class, region_policy,
@@ -338,12 +338,12 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         assertSqlState23514(mismatch);
         DataIntegrityViolationException update = assertThrows(
                 DataIntegrityViolationException.class,
-                () -> jdbc.update("update storage_placement_receipt set committed_length = 99 "
+                () -> jdbc.update("update storage.storage_placement_receipt set committed_length = 99 "
                         + "where receipt_id = ?", issued.receipt().receiptId()));
         assertSqlState23514(update);
         DataIntegrityViolationException delete = assertThrows(
                 DataIntegrityViolationException.class,
-                () -> jdbc.update("delete from storage_placement_receipt where receipt_id = ?",
+                () -> jdbc.update("delete from storage.storage_placement_receipt where receipt_id = ?",
                         issued.receipt().receiptId()));
         assertSqlState23514(delete);
     }
@@ -370,14 +370,14 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
                         intent.writeIntentId(), placement)));
         assertEquals(State.PROVIDER_COMPLETED, intentState(intent.writeIntentId()));
         assertEquals(0, jdbc.queryForObject(
-                "select count(*) from storage_placement_receipt where object_id = ?",
+                "select count(*) from storage.storage_placement_receipt where object_id = ?",
                 Integer.class, intent.objectId().value()));
         assertEquals(1, jdbc.queryForObject(
-                "select count(*) from storage_object_placement where replica_id = ?",
+                "select count(*) from storage.storage_object_placement where replica_id = ?",
                 Integer.class, "replica-recovery-collision"),
                 "canonical failure must not delete physical placement facts automatically");
 
-        jdbc.update("delete from storage_object_placement where replica_id = ?",
+        jdbc.update("delete from storage.storage_object_placement where replica_id = ?",
                 "replica-recovery-collision");
         StorageWriteIntent resumed = recovery.beginOrResume(begin);
         assertEquals(intent.objectId(), resumed.objectId());
@@ -449,7 +449,7 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
 
     private static State intentState(String writeIntentId) {
         return State.valueOf(jdbc.queryForObject("""
-                select intent_state from storage_write_intent where write_intent_id = ?
+                select intent_state from storage.storage_write_intent where write_intent_id = ?
                 """, String.class, writeIntentId));
     }
 
@@ -521,7 +521,7 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
 
     private static void insertPlacement(String objectId, String replicaId, String correlationId) {
         jdbc.update("""
-                insert into storage_object_placement (
+                insert into storage.storage_object_placement (
                     replica_id, object_id, provider_id, namespace_tenant_id,
                     namespace_project_id, namespace_class, region_policy,
                     data_classification, opaque_locator, provider_version_token,
@@ -545,7 +545,7 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
             String objectId, String replicaId, String receiptId,
             String receiptKey, String correlationId, String purpose) {
         jdbc.update("""
-                insert into storage_placement_receipt (
+                insert into storage.storage_placement_receipt (
                     receipt_id, idempotency_key, semantic_fingerprint, receipt_purpose,
                     object_id, replica_id, provider_id, namespace_tenant_id,
                     namespace_project_id, namespace_class, region_policy,

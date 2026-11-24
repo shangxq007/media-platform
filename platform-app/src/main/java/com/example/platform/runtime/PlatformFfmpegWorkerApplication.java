@@ -51,7 +51,7 @@ import org.springframework.context.annotation.Import;
                 type = FilterType.CUSTOM,
                 classes = org.springframework.boot.context.TypeExcludeFilter.class)
         })
-@Import({com.example.platform.production.PlatformReadinessHealthIndicator.class,
+@Import({com.example.platform.FlywayConfiguration.class, com.example.platform.production.PlatformReadinessHealthIndicator.class,
     com.example.platform.lifecycle.TemporalWorkerHealthIndicator.class,com.example.platform.persistence.binding.JooqBoundGraphInputStore.class,
     com.example.platform.render.api.GraphRenderRuntimeConfiguration.class,
     DataSourceConfiguration.class,

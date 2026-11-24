@@ -45,7 +45,7 @@ class UsageOutboxEventAtomicityTest extends PostgresTestContainerSupport {
         jdbc = context.getBean(JdbcTemplate.class);
         publisher = context.getBean(ObservedRuntimeUsageOutboxPublisher.class);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS observed_runtime_usage (
+                CREATE TABLE IF NOT EXISTS billing.observed_runtime_usage (
                     observed_usage_id varchar(64) primary key,
                     tenant_id varchar(64) not null, project_id varchar(64),
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
@@ -72,14 +72,14 @@ class UsageOutboxEventAtomicityTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void reset() {
-        jdbc.execute("TRUNCATE TABLE observed_runtime_usage");
+        jdbc.execute("TRUNCATE TABLE billing.observed_runtime_usage");
     }
 
     @Test
     void outboxFailureRollsBackObservationWithoutHalfState() {
         assertThrows(RuntimeException.class, () -> publisher.appendWithOutbox(observation()));
         assertEquals(0L, jdbc.queryForObject(
-                "SELECT COUNT(*) FROM observed_runtime_usage", Long.class));
+                "SELECT COUNT(*) FROM billing.observed_runtime_usage", Long.class));
     }
 
     private static ObservedRuntimeUsage observation() {

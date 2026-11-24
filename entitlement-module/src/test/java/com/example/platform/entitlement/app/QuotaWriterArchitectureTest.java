@@ -23,8 +23,8 @@ class QuotaWriterArchitectureTest {
                     .filter(path -> path.toString().contains("/src/main/"))
                     .filter(path -> {
                         String source = read(path).toLowerCase();
-                        return source.contains("insert into quota_usage")
-                                || source.contains("update quota_usage")
+                        return source.contains("insert into entitlement.quota_usage")
+                                || source.contains("update entitlement.quota_usage")
                                 || source.contains("insertinto(quota_usage)")
                                 || source.contains("update(quota_usage)");
                     })

@@ -35,7 +35,7 @@ class TenantLitellmKeyServiceTest extends PostgresTestContainerSupport {
         ds.setPassword(password());
         var jdbc = new JdbcTemplate(ds);
         
-        jdbc.execute("CREATE TABLE IF NOT EXISTS tenant_litellm_virtual_key ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS infrastructure.tenant_litellm_virtual_key ("
                 + "tenant_id VARCHAR(64) PRIMARY KEY,"
                 + "virtual_key VARCHAR(512),"
                 + "vault_ref VARCHAR(512),"

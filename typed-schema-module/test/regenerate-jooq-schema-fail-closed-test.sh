@@ -106,10 +106,10 @@ case "${1:-}" in
                 echo "127.0.0.1"
                 ;;
             *"where success"*)
-                echo "1"
+                echo "2"
                 ;;
             *"select count(*) from flyway_schema_history"*)
-                echo "1"
+                echo "2"
                 ;;
             *"pg_isready"*)
                 exit 0
@@ -170,7 +170,7 @@ prepare_case() {
     cp "$REGENERATION_SCRIPT" "$CASE_ROOT/typed-schema-module/regenerate-jooq-schema.sh"
     cp "$TRACKED_CONFIG" "$CASE_ROOT/typed-schema-module/jooq-codegen.xml"
     chmod +x "$CASE_ROOT/typed-schema-module/regenerate-jooq-schema.sh"
-    touch "$CASE_ROOT/platform-app/src/main/resources/db/migration/V1__baseline.sql"
+    touch "$CASE_ROOT/platform-app/src/main/resources/db/migration/"{V1__baseline,V2__domain_schemas}.sql
     printf '%s\n' "sentinel" > "$CASE_ROOT/typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/Sentinel.java"
     printf '%s\n' "index-sentinel" > "$CASE_ROOT/.git/index"
 

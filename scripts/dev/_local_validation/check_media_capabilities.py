@@ -225,14 +225,14 @@ def main():
             execution = case['output']['executionId']
             assert re.fullmatch('exe_[0-9a-f]{64}', execution)
             statement = """select json_build_object('state',a.state,'generation',a.ownership_generation,
-              'results',(select count(*) from platform_execution_result r where r.execution_id=a.execution_id),
-              'quota',(select count(*) from quota_usage_operation where idempotency_key='execution:'||a.execution_id||':completion'),
+              'results',(select count(*) from execution.platform_execution_result r where r.execution_id=a.execution_id),
+              'quota',(select count(*) from entitlement.quota_usage_operation where idempotency_key='execution:'||a.execution_id||':completion'),
               'artifact',r.artifact_id,'digest',ar.content_digest,'length',ar.byte_length,'kind',ar.artifact_kind,
               'media',ar.media_type,'render_job',ar.render_job_id,'tenant',ar.tenant_id,'project',ar.project_id,
-              'provenance',(select count(*) from artifact_relation where source_artifact_id=ar.id and target_artifact_id='art-f8-source' and relation_type='%s'),
-              'native_proof',(select count(*) from wf_execution_attempt n where n.attempt_id=r.attempt_id and n.task_id=r.native_task_id and n.generation=r.native_generation and n.state='SUCCEEDED'))
-              from platform_execution_admission a left join platform_execution_result r on r.execution_id=a.execution_id and r.ownership_generation=a.ownership_generation
-              left join artifact ar on ar.id=r.artifact_id where a.execution_id='%s';""" % ('COVER_OF' if kind == 'cover' else 'THUMBNAIL_OF', execution)
+              'provenance',(select count(*) from artifacts.artifact_relation where source_artifact_id=ar.id and target_artifact_id='art-f8-source' and relation_type='%s'),
+              'native_proof',(select count(*) from worker_fabric.wf_execution_attempt n where n.attempt_id=r.attempt_id and n.task_id=r.native_task_id and n.generation=r.native_generation and n.state='SUCCEEDED'))
+              from execution.platform_execution_admission a left join execution.platform_execution_result r on r.execution_id=a.execution_id and r.ownership_generation=a.ownership_generation
+              left join artifacts.artifact ar on ar.id=r.artifact_id where a.execution_id='%s';""" % ('COVER_OF' if kind == 'cover' else 'THUMBNAIL_OF', execution)
             fact = json.loads(sql(statement))
             if phase == 'blocked-commit':
                 # Same logical execution was explicitly retried in the later phase.

@@ -40,7 +40,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
         Objects.requireNonNull(executionReuseKey, "executionReuseKey");
         Record row = dsl.fetchOne(
                 """
-                select * from wf_artifact_reuse_index
+                select * from worker_fabric.wf_artifact_reuse_index
                  where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
                    and publication_status = 'WINNING'
                 """,
@@ -65,7 +65,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
             }
             int inserted = tx.execute(
                     """
-                    insert into wf_artifact_reuse_index (
+                    insert into worker_fabric.wf_artifact_reuse_index (
                         tenant_id, reuse_key_version, reuse_key_digest, reuse_key_canonical,
                         artifact_id, artifact_digest_algorithm, artifact_digest_value,
                         task_id, attempt_id, generation, publication_status, published_at)
@@ -152,7 +152,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
             }
             int updated = tx.execute(
                     """
-                    update wf_artifact_reuse_index
+                    update worker_fabric.wf_artifact_reuse_index
                        set publication_status = 'WINNING', completion_event_id = ?
                      where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
                        and publication_status = 'PENDING'
@@ -173,7 +173,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
         Objects.requireNonNull(executionReuseKey, "executionReuseKey");
         return dsl.execute(
                 """
-                delete from wf_artifact_reuse_index
+                delete from worker_fabric.wf_artifact_reuse_index
                  where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
                 """,
                 tenantId,
@@ -186,7 +186,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
         Objects.requireNonNull(cutoff, "cutoff");
         return dsl.execute(
                 """
-                delete from wf_artifact_reuse_index
+                delete from worker_fabric.wf_artifact_reuse_index
                  where publication_status = 'PENDING'
                    and published_at < cast(? as timestamptz)
                 """,
@@ -231,7 +231,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
     private static Record lockKey(DSLContext tx, ReusableArtifactRecord candidate) {
         return tx.fetchOne(
                 """
-                select * from wf_artifact_reuse_index
+                select * from worker_fabric.wf_artifact_reuse_index
                  where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
                  for update
                 """,

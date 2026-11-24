@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
 
 
 /**

@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import org.springframework.stereotype.Service;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
 
 
 /**

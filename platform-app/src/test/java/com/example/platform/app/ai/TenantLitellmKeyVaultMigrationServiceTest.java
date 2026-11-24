@@ -38,7 +38,7 @@ class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainerSup
         ds.setPassword(password());
         jdbc = new JdbcTemplate(ds);
         
-        jdbc.execute("CREATE TABLE IF NOT EXISTS tenant_litellm_virtual_key ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS infrastructure.tenant_litellm_virtual_key ("
                 + "tenant_id VARCHAR(64) PRIMARY KEY,"
                 + "virtual_key VARCHAR(512),"
                 + "vault_ref VARCHAR(512),"
@@ -48,7 +48,7 @@ class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainerSup
                 + "updated_at TIMESTAMP NOT NULL)");
         
         // Clean up any existing data
-        jdbc.execute("DELETE FROM tenant_litellm_virtual_key");
+        jdbc.execute("DELETE FROM infrastructure.tenant_litellm_virtual_key");
 
         dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
         

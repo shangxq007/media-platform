@@ -30,14 +30,14 @@ public class SubscriptionJdbcRepository {
     public void savePlan(SubscriptionPlan plan) {
         String quotaJson = plan.includedQuota() == null ? null : BillingPersistenceJson.toJson(plan.includedQuota());
         int updated = jdbc.update("""
-                UPDATE subscription_plan SET name = ?, description = ?, billing_interval = ?,
+                UPDATE billing.subscription_plan SET name = ?, description = ?, billing_interval = ?,
                     base_price_minor = ?, currency_code = ?, included_quota = ?, status = ?, updated_at = ?
                 WHERE plan_key = ?
                 """, plan.name(), plan.description(), plan.billingInterval(), plan.basePriceMinor(),
                 plan.currencyCode(), quotaJson, plan.status(), Timestamp.from(plan.updatedAt()), plan.planKey());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO subscription_plan
+                    INSERT INTO billing.subscription_plan
                         (id, plan_key, name, description, billing_interval, base_price_minor,
                          currency_code, included_quota, status, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -49,7 +49,7 @@ public class SubscriptionJdbcRepository {
 
     public boolean claim(String commandId, SubscriptionCommand command, Instant now) {
         return jdbc.update("""
-                INSERT INTO subscription_command
+                INSERT INTO billing.subscription_command
                     (id, tenant_id, principal_type, principal_id, idempotency_key,
                      command_type, payload_fingerprint, actor, reason, trace_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -63,7 +63,7 @@ public class SubscriptionJdbcRepository {
     public SubscriptionCommandResult replay(SubscriptionCommand command) {
         List<SubscriptionCommandResult> rows = jdbc.query("""
                 SELECT id, payload_fingerprint, result_snapshot
-                FROM subscription_command WHERE tenant_id = ? AND idempotency_key = ?
+                FROM billing.subscription_command WHERE tenant_id = ? AND idempotency_key = ?
                 """, (rs, row) -> {
                     if (!command.fingerprint().equals(rs.getString("payload_fingerprint"))) {
                         throw new IllegalStateException(
@@ -82,7 +82,7 @@ public class SubscriptionJdbcRepository {
 
     public void complete(String commandId, SubscriptionContract contract, Instant completedAt) {
         int updated = jdbc.update("""
-                UPDATE subscription_command SET result_snapshot = ?, completed_at = ?
+                UPDATE billing.subscription_command SET result_snapshot = ?, completed_at = ?
                 WHERE id = ? AND result_snapshot IS NULL
                 """, BillingPersistenceJson.toJson(contract), Timestamp.from(completedAt), commandId);
         if (updated != 1) throw new IllegalStateException("Subscription command audit completion failed");
@@ -90,7 +90,7 @@ public class SubscriptionJdbcRepository {
 
     public void cancelActiveBase(PrincipalRef principal, Instant effectiveAt) {
         jdbc.update("""
-                UPDATE subscription_contract
+                UPDATE billing.subscription_contract
                 SET contract_state = 'CANCELLED', version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND subject_type = ? AND subject_id = ?
                   AND contract_role = 'BASE' AND contract_state = 'ACTIVE'
@@ -100,7 +100,7 @@ public class SubscriptionJdbcRepository {
 
     public void insertContract(SubscriptionContract contract, PrincipalRef principal, Instant createdAt) {
         int inserted = jdbc.update("""
-                INSERT INTO subscription_contract
+                INSERT INTO billing.subscription_contract
                     (id, tenant_id, subject_type, subject_id, canonical_product_code,
                      contract_role, contract_state, period_start_at, period_end_at,
                      created_at, updated_at, plan_key, included_quota_used, version)
@@ -118,7 +118,7 @@ public class SubscriptionJdbcRepository {
             PrincipalRef principal, String contractId, long expectedVersion,
             SubscriptionContract replacement, String requiredState) {
         int updated = jdbc.update("""
-                UPDATE subscription_contract
+                UPDATE billing.subscription_contract
                 SET canonical_product_code = ?, contract_state = ?, period_start_at = ?,
                     period_end_at = ?, updated_at = ?, plan_key = ?, included_quota_used = ?,
                     version = version + 1
@@ -142,7 +142,7 @@ public class SubscriptionJdbcRepository {
 
     public Optional<SubscriptionContract> findByPrincipalAndId(PrincipalRef principal, String contractId) {
         List<SubscriptionContract> rows = jdbc.query("""
-                SELECT * FROM subscription_contract
+                SELECT * FROM billing.subscription_contract
                 WHERE id = ? AND tenant_id = ? AND subject_type = ? AND subject_id = ?
                 """, this::mapContract, contractId, principal.tenantId(),
                 principal.principalType().name(), principal.principalId());
@@ -151,7 +151,7 @@ public class SubscriptionJdbcRepository {
 
     public List<SubscriptionContract> findActive(PrincipalRef principal, Instant now) {
         return jdbc.query("""
-                SELECT * FROM subscription_contract
+                SELECT * FROM billing.subscription_contract
                 WHERE tenant_id = ? AND subject_type = ? AND subject_id = ?
                   AND contract_state = 'ACTIVE' AND (period_end_at IS NULL OR period_end_at > ?)
                 ORDER BY created_at DESC
@@ -160,16 +160,16 @@ public class SubscriptionJdbcRepository {
     }
 
     public List<SubscriptionPlan> loadAllPlans() {
-        return jdbc.query("SELECT * FROM subscription_plan ORDER BY created_at", this::mapPlan);
+        return jdbc.query("SELECT * FROM billing.subscription_plan ORDER BY created_at", this::mapPlan);
     }
 
     public List<SubscriptionContract> loadAllContracts() {
-        return jdbc.query("SELECT * FROM subscription_contract ORDER BY created_at", this::mapContract);
+        return jdbc.query("SELECT * FROM billing.subscription_contract ORDER BY created_at", this::mapContract);
     }
 
     public Optional<SubscriptionPlan> findPlanByKey(String planKey) {
         List<SubscriptionPlan> rows = jdbc.query(
-                "SELECT * FROM subscription_plan WHERE plan_key = ?", this::mapPlan, planKey);
+                "SELECT * FROM billing.subscription_plan WHERE plan_key = ?", this::mapPlan, planKey);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 

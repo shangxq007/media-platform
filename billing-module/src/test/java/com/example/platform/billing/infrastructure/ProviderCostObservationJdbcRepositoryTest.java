@@ -30,7 +30,7 @@ class ProviderCostObservationJdbcRepositoryTest extends PostgresTestContainerSup
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS provider_cost_observation (
+            CREATE TABLE IF NOT EXISTS billing.provider_cost_observation (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 project_id varchar(64),
@@ -55,7 +55,7 @@ class ProviderCostObservationJdbcRepositoryTest extends PostgresTestContainerSup
     @BeforeEach
     void setUp() {
         var jdbc = new JdbcTemplate(dataSource);
-        jdbc.execute("TRUNCATE TABLE provider_cost_observation CASCADE");
+        jdbc.execute("TRUNCATE TABLE billing.provider_cost_observation CASCADE");
         repository = new ProviderCostObservationJdbcRepository(jdbc);
     }
 
@@ -136,6 +136,6 @@ class ProviderCostObservationJdbcRepositoryTest extends PostgresTestContainerSup
 
     private long countRows() {
         return new JdbcTemplate(dataSource).queryForObject(
-                "SELECT COUNT(*) FROM provider_cost_observation", Long.class);
+                "SELECT COUNT(*) FROM billing.provider_cost_observation", Long.class);
     }
 }

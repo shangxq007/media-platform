@@ -10,7 +10,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.PurchaseOrder.PURCHASE_ORDER;
+import static com.example.platform.typedschema.jooq.generated.commerce.tables.PurchaseOrder.PURCHASE_ORDER;
 import org.jooq.impl.DSL;
 
 

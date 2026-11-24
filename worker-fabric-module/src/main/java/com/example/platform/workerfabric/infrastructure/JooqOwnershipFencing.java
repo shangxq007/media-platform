@@ -45,7 +45,7 @@ final class JooqOwnershipFencing {
             DSLContext tx, String attemptId, long generation) {
         return tx.fetchOne(
                 """
-                select l.* from wf_task_lease l
+                select l.* from worker_fabric.wf_task_lease l
                  where l.attempt_id = ? and l.generation = ? and l.active
                  for update
                 """,
@@ -83,7 +83,7 @@ final class JooqOwnershipFencing {
         }
         tx.execute(
                 """
-                update wf_execution_attempt
+                update worker_fabric.wf_execution_attempt
                    set state = ?, updated_at = cast(? as timestamptz)
                  where attempt_id = ? and generation = ?
                    and state in ('CREATED','RUNNING')
@@ -94,9 +94,9 @@ final class JooqOwnershipFencing {
                 lease.get("generation", Long.class));
         tx.execute(
                 """
-                update wf_execution_backend_selection s
+                update worker_fabric.wf_execution_backend_selection s
                    set active = false, terminal_at = cast(? as timestamptz)
-                  from wf_execution_attempt a
+                  from worker_fabric.wf_execution_attempt a
                  where a.backend_selection_id = s.selection_id
                    and a.attempt_id = ? and a.generation = ? and s.active
                 """,
@@ -105,17 +105,17 @@ final class JooqOwnershipFencing {
                 lease.get("generation", Long.class));
         tx.execute(
                 """
-                update wf_reservation r set state = ?
+                update worker_fabric.wf_reservation r set state = ?
                  where r.assignment_id = ? and r.state = 'ACTIVE'
                 """,
                 reservationState.name(),
                 lease.get("assignment_id", String.class));
         tx.execute(
-                "update wf_task_lease set active = false where lease_id = ? and active",
+                "update worker_fabric.wf_task_lease set active = false where lease_id = ? and active",
                 lease.get("lease_id", String.class));
         int ownershipClosed = tx.execute(
                 """
-                update wf_task_ownership
+                update worker_fabric.wf_task_ownership
                    set current_attempt_id = null, active_assignment_id = null,
                        active_lease_id = null, claimable = true,
                        updated_at = cast(? as timestamptz)
@@ -134,7 +134,7 @@ final class JooqOwnershipFencing {
         }
         tx.execute(
                 """
-                update wf_request_work_resolution
+                update worker_fabric.wf_request_work_resolution
                    set result_kind = 'NO_WORK', assignment_id = null, task_id = null
                  where assignment_id = ? and result_kind = 'GRANTED'
                 """,
@@ -148,8 +148,8 @@ final class JooqOwnershipFencing {
             Object... bindings) {
         List<Record> leases = tx.fetch(
                 """
-                select l.* from wf_task_lease l
-                join wf_execution_assignment a on a.assignment_id = l.assignment_id
+                select l.* from worker_fabric.wf_task_lease l
+                join worker_fabric.wf_execution_assignment a on a.assignment_id = l.assignment_id
                 where l.active and
                 """ + condition + " for update",
                 bindings);
@@ -172,11 +172,11 @@ final class JooqOwnershipFencing {
 
     private static void deactivateStaleLease(DSLContext tx, Record lease) {
         tx.execute(
-                "update wf_task_lease set active = false where lease_id = ? and active",
+                "update worker_fabric.wf_task_lease set active = false where lease_id = ? and active",
                 lease.get("lease_id", String.class));
         tx.execute(
                 """
-                update wf_reservation set state = 'RECOVERY_HOLD'
+                update worker_fabric.wf_reservation set state = 'RECOVERY_HOLD'
                  where assignment_id = ? and state = 'ACTIVE'
                 """,
                 lease.get("assignment_id", String.class));

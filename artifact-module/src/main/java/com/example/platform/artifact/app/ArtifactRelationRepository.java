@@ -10,8 +10,8 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ARTIFACT_RELATION;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactRelation.ARTIFACT_RELATION;
 
 
 @Repository

@@ -122,7 +122,7 @@ public class JooqArtifactCommitService implements ArtifactCommitService {
         var result=new ArtifactCommitResult(artifact, replica, List.copyOf(edges), request.idempotencyKey());
         try {
             String receipt=JSON.writeValueAsString(new CommitReceipt(request,result));
-            int changed=dsl.execute("update artifact set idempotency_key=?, audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1}',cast(? as jsonb)) where tenant_id=? and id=?",
+            int changed=dsl.execute("update artifacts.artifact set idempotency_key=?, audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1}',cast(? as jsonb)) where tenant_id=? and id=?",
                     request.idempotencyKey(),receipt,request.tenantId(),request.artifactId().value());
             if(changed!=1)throw new IllegalStateException("Artifact receipt write count");
         } catch(com.fasterxml.jackson.core.JsonProcessingException error) {
@@ -204,7 +204,7 @@ public class JooqArtifactCommitService implements ArtifactCommitService {
     private record CommitReceipt(ArtifactCommitRequest request,ArtifactCommitResult result) {}
 
     private Optional<CommitReceipt> receipt(String tenant,String key) {
-        var rows=dsl.fetch("select project_id, render_job_id, audit_provenance->'artifactCommitV1' as receipt from artifact where tenant_id=? and idempotency_key=?",tenant,key);
+        var rows=dsl.fetch("select project_id, render_job_id, audit_provenance->'artifactCommitV1' as receipt from artifacts.artifact where tenant_id=? and idempotency_key=?",tenant,key);
         if(rows.isEmpty())return Optional.empty();
         if(rows.size()!=1)throw new IllegalStateException("Ambiguous Artifact idempotency identity");
         try {

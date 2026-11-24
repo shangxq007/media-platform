@@ -10,7 +10,7 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
 
 @Service

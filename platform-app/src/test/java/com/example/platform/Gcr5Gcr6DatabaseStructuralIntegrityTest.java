@@ -93,84 +93,84 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
 
     @BeforeEach
     void clean() {
-        jdbc.update("DELETE FROM artifact_pin");
-        jdbc.update("DELETE FROM timeline_revision_parent");
-        jdbc.update("DELETE FROM timeline_revision_ref");
-        jdbc.update("DELETE FROM timeline_revision");
-        jdbc.update("DELETE FROM timeline_snapshot");
-        jdbc.update("DELETE FROM artifact_relation");
-        jdbc.update("DELETE FROM artifact_replica");
-        jdbc.update("DELETE FROM source_visual_description_snapshot");
-        jdbc.update("DELETE FROM media_stream");
-        jdbc.update("DELETE FROM artifact");
-        jdbc.update("DELETE FROM render_job");
-        jdbc.update("DELETE FROM media_stream");
-        jdbc.update("DELETE FROM project");
-        jdbc.update("DELETE FROM tenant");
+        jdbc.update("DELETE FROM artifacts.artifact_pin");
+        jdbc.update("DELETE FROM timeline.timeline_revision_parent");
+        jdbc.update("DELETE FROM timeline.timeline_revision_ref");
+        jdbc.update("DELETE FROM timeline.timeline_revision");
+        jdbc.update("DELETE FROM timeline.timeline_snapshot");
+        jdbc.update("DELETE FROM artifacts.artifact_relation");
+        jdbc.update("DELETE FROM artifacts.artifact_replica");
+        jdbc.update("DELETE FROM media.source_visual_description_snapshot");
+        jdbc.update("DELETE FROM media.media_stream");
+        jdbc.update("DELETE FROM artifacts.artifact");
+        jdbc.update("DELETE FROM render.render_job");
+        jdbc.update("DELETE FROM media.media_stream");
+        jdbc.update("DELETE FROM identity.project");
+        jdbc.update("DELETE FROM identity.tenant");
     }
 
     // ── D4: tenant/project ownership ──
 
     @Test
     void timelineRevisionProjectFkRejectsUnknownProject() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         assertForeignKeyViolation(
-                () -> jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                () -> jdbc.update("INSERT INTO timeline.timeline_snapshot (id, tenant_id, project_id, payload_json) "
                         + "VALUES ('snap-1','ten-1','proj-missing','{}')"),
                 "timeline_snapshot.project_id FK must reject unknown project");
     }
 
     @Test
     void timelineRevisionProjectFkAcceptsSameProject() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                "INSERT INTO timeline.timeline_snapshot (id, tenant_id, project_id, payload_json) "
                         + "VALUES ('snap-1','ten-1','proj-1','{}')"));
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO timeline_revision (id, tenant_id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
+                "INSERT INTO timeline.timeline_revision (id, tenant_id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
                         + "VALUES ('rev-1','ten-1','proj-1',1,'snap-1','hash','internal-1.0','test',now())"));
     }
 
     @Test
     void timelineRevisionParentFkRejectsUnknownParent() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO timeline.timeline_snapshot (id, tenant_id, project_id, payload_json) "
                 + "VALUES ('snap-1','ten-1','proj-1','{}')");
         assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO timeline_revision (id, tenant_id, project_id, parent_revision_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
+                        "INSERT INTO timeline.timeline_revision (id, tenant_id, project_id, parent_revision_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
                                 + "VALUES ('rev-1','ten-1','proj-1','rev-ghost',1,'snap-1','hash','internal-1.0','test',now())"),
                 "parent_revision_id FK must reject unknown parent");
     }
 
     @Test
     void artifactPinRevisionFkRejectsUnknownRevision() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO artifacts.artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
                 + "VALUES ('art-1','ten-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())");
         assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO artifact_pin (pin_id, tenant_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
+                        "INSERT INTO artifacts.artifact_pin (pin_id, tenant_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
                                 + "VALUES ('pin-1','ten-1','rev-ghost','proj-1','art-1','" + "a".repeat(64) + "',now())"),
                 "artifact_pin.revision_id FK must reject unknown revision");
     }
 
     @Test
     void artifactPinProjectFkRejectsUnknownProject() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO timeline.timeline_snapshot (id, tenant_id, project_id, payload_json) "
                 + "VALUES ('snap-1','ten-1','proj-1','{}')");
-        jdbc.update("INSERT INTO timeline_revision (id, tenant_id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
+        jdbc.update("INSERT INTO timeline.timeline_revision (id, tenant_id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
                 + "VALUES ('rev-1','ten-1','proj-1',1,'snap-1','hash','internal-1.0','test',now())");
-        jdbc.update("INSERT INTO artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
+        jdbc.update("INSERT INTO artifacts.artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
                 + "VALUES ('art-1','ten-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())");
         assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO artifact_pin (pin_id, tenant_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
+                        "INSERT INTO artifacts.artifact_pin (pin_id, tenant_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
                                 + "VALUES ('pin-1','ten-1','rev-1','proj-ghost','art-1','" + "a".repeat(64) + "',now())"),
                 "artifact_pin composite ownership FKs must reject an unknown project/cross-project revision");
     }
@@ -179,41 +179,41 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
 
     @Test
     void mediaAssetDeleteRejectedWhenStreamExists() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO artifact (id, tenant_id, project_id, content_digest, byte_length, media_type, artifact_kind, state, created_at) "
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO artifacts.artifact (id, tenant_id, project_id, content_digest, byte_length, media_type, artifact_kind, state, created_at) "
                 + "VALUES ('ma-1','ten-1','proj-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',now())");
-        jdbc.update("INSERT INTO media_stream (id, artifact_id, stream_index, stream_kind, timebase_num, timebase_den) "
+        jdbc.update("INSERT INTO media.media_stream (id, artifact_id, stream_index, stream_kind, timebase_num, timebase_den) "
                 + "VALUES ('ms-1','ma-1',0,'video',1,1)");
         assertSqlState(
-                () -> jdbc.update("DELETE FROM artifact WHERE id='ma-1'"),
+                () -> jdbc.update("DELETE FROM artifacts.artifact WHERE id='ma-1'"),
                 "canonical Artifact deletion is restricted while a media_stream exists (PG18 RESTRICT)","23001");
     }
 
     @Test
     void mediaAssetDeleteAllowedWhenNoStream() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO artifact (id, tenant_id, project_id, content_digest, byte_length, media_type, artifact_kind, state, created_at) "
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO artifacts.artifact (id, tenant_id, project_id, content_digest, byte_length, media_type, artifact_kind, state, created_at) "
                 + "VALUES ('ma-1','ten-1','proj-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',now())");
-        assertDoesNotThrow(() -> jdbc.update("DELETE FROM artifact WHERE id='ma-1'"));
+        assertDoesNotThrow(() -> jdbc.update("DELETE FROM artifacts.artifact WHERE id='ma-1'"));
     }
 
     // ── render_job FK (execution state same-context) ──
 
     @Test
     void renderJobProjectFkRejectsUnknownProject() {
-        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+        jdbc.update("INSERT INTO identity.tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
+        jdbc.update("INSERT INTO identity.project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO timeline.timeline_snapshot (id, tenant_id, project_id, payload_json) "
                 + "VALUES ('snap-1','ten-1','proj-1','{}')");
         assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO render_job (id, project_id, tenant_id, timeline_snapshot_id, profile, status, created_at, initiator_type, initiator_id, initiator_tenant_id) "
+                        "INSERT INTO render.render_job (id, project_id, tenant_id, timeline_snapshot_id, profile, status, created_at, initiator_type, initiator_id, initiator_tenant_id) "
                                 + "VALUES ('job-1','proj-ghost','ten-1','snap-1','default','PENDING',now(),'USER','test-principal-p1','ten-1')"),
                 "render_job.project_id FK must reject unknown project");
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO render_job (id, project_id, tenant_id, timeline_snapshot_id, profile, status, created_at, initiator_type, initiator_id, initiator_tenant_id) "
+                "INSERT INTO render.render_job (id, project_id, tenant_id, timeline_snapshot_id, profile, status, created_at, initiator_type, initiator_id, initiator_tenant_id) "
                         + "VALUES ('job-1','proj-1','ten-1','snap-1','default','PENDING',now(),'USER','test-principal-p1','ten-1')"));
     }
 }

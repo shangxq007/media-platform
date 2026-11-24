@@ -37,8 +37,8 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
     @Override public List<IssuanceResult> references(String storageUri,String projectId,int limit) {
         if(storageUri==null||storageUri.isBlank())return List.of();
         var owners=jdbc.query("""
-            select o.tenant_id,o.project_id,o.issuance_idempotency_key from storage_logical_object o
-            join storage_placement_receipt r on r.object_id=o.object_id
+            select o.tenant_id,o.project_id,o.issuance_idempotency_key from storage.storage_logical_object o
+            join storage.storage_placement_receipt r on r.object_id=o.object_id
             where r.opaque_locator=? and r.receipt_purpose='ORIGINAL_ISSUANCE'
               and (?::text is null or o.project_id=?) order by o.object_id limit ?
             """,(rs,n)->new String[]{rs.getString(1),rs.getString(2),rs.getString(3)},storageUri,projectId,projectId,Math.min(100,Math.max(1,limit)));
@@ -47,9 +47,9 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
 
     @Override public Optional<IssuanceResult> findPlacement(StorageOwnershipScope owner, StorageObjectId objectId, StorageReplicaId replicaId) {
         var keys=jdbc.query("""
-            select o.issuance_idempotency_key from storage_logical_object o
-            join storage_placement_receipt r on r.object_id=o.object_id
-            join storage_object_placement p on p.object_id=r.object_id and p.replica_id=r.replica_id
+            select o.issuance_idempotency_key from storage.storage_logical_object o
+            join storage.storage_placement_receipt r on r.object_id=o.object_id
+            join storage.storage_object_placement p on p.object_id=r.object_id and p.replica_id=r.replica_id
             where o.tenant_id=? and o.project_id is not distinct from ? and o.object_id=?
               and r.replica_id=? and r.receipt_purpose='ORIGINAL_ISSUANCE'
               and p.placement_state='AVAILABLE' and p.provider_id=r.provider_id
@@ -72,8 +72,8 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
                        r.region, r.placement_state, r.committed_digest_algorithm,
                        r.committed_digest, r.committed_length, r.provider_correlation_id,
                        r.receipt_id, r.issued_at
-                  from storage_logical_object o
-                  join storage_placement_receipt r
+                  from storage.storage_logical_object o
+                  join storage.storage_placement_receipt r
                     on r.object_id = o.object_id
                    and r.receipt_purpose = 'ORIGINAL_ISSUANCE'
                  where o.tenant_id = ?
@@ -138,7 +138,7 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
         OffsetDateTime issuedAt = OffsetDateTime.ofInstant(receipt.issuedAt(), ZoneOffset.UTC);
 
         jdbc.update("""
-                insert into storage_object_placement (
+                insert into storage.storage_object_placement (
                     replica_id, object_id, provider_id, namespace_tenant_id,
                     namespace_project_id, namespace_class, region_policy,
                     data_classification, opaque_locator, provider_version_token,
@@ -156,7 +156,7 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
                 placement.providerCorrelationId(), issuedAt);
 
         jdbc.update("""
-                insert into storage_placement_receipt (
+                insert into storage.storage_placement_receipt (
                     receipt_id, idempotency_key, semantic_fingerprint, receipt_purpose,
                     object_id, replica_id,
                     provider_id, namespace_tenant_id, namespace_project_id, namespace_class,

@@ -22,7 +22,7 @@ public class ProductCatalogJdbcRepository {
             String productId, String offeringId, String mappingId, String source, String reason,
             String traceId, Instant at) {
         return jdbc.update("""
-                INSERT INTO product_catalog_command
+                INSERT INTO commerce.product_catalog_command
                   (id,catalog_scope,actor_tenant_id,actor_principal_type,actor_principal_id,command_type,
                    idempotency_key,payload_fingerprint,product_id,offering_id,provider_mapping_id,
                    result_state,result_version,source,reason,trace_id,created_at)
@@ -32,20 +32,20 @@ public class ProductCatalogJdbcRepository {
     }
 
     public Optional<CommandAudit> findCommand(String scope, String key) {
-        return jdbc.query("SELECT * FROM product_catalog_command WHERE catalog_scope=? AND idempotency_key=?",
+        return jdbc.query("SELECT * FROM commerce.product_catalog_command WHERE catalog_scope=? AND idempotency_key=?",
                 (rs, row) -> new CommandAudit(rs.getString("payload_fingerprint"), rs.getString("product_id"),
                         rs.getString("offering_id"), rs.getString("provider_mapping_id"),
                         rs.getString("result_state"), rs.getLong("result_version")), scope, key).stream().findFirst();
     }
 
     public void completeCommand(String scope, String key, String state, long version) {
-        if (jdbc.update("UPDATE product_catalog_command SET result_state=?, result_version=? WHERE catalog_scope=? AND idempotency_key=? AND result_state='PENDING'",
+        if (jdbc.update("UPDATE commerce.product_catalog_command SET result_state=?, result_version=? WHERE catalog_scope=? AND idempotency_key=? AND result_state='PENDING'",
                 state, version, scope, key) != 1) throw new IllegalStateException("catalog command completion lost");
     }
 
     public void insertProductIfAbsent(CreateCommercialOfferingCommand c) {
         jdbc.update("""
-                INSERT INTO commerce_product
+                INSERT INTO commerce.commerce_product
                   (id,product_code,product_line_type,display_name,lifecycle_state,version,created_at,updated_at)
                 VALUES (?,?,?,?, 'DRAFT',1,?,?)
                 ON CONFLICT DO NOTHING
@@ -55,7 +55,7 @@ public class ProductCatalogJdbcRepository {
 
     public void insertOffering(CreateCommercialOfferingCommand c) {
         jdbc.update("""
-                INSERT INTO commercial_offering
+                INSERT INTO commerce.commercial_offering
                   (id,product_id,offering_key,offering_version,lifecycle_state,row_version,purchase_mode,
                    tenant_scope,market_scope,valid_from,valid_to,entitlement_bundle_ref,entitlement_bundle_version,
                    quota_profile_ref,quota_profile_version,subscription_plan_ref,subscription_plan_version,
@@ -73,34 +73,34 @@ public class ProductCatalogJdbcRepository {
     }
 
     public Optional<ProductCatalogEntry> findProductById(String id) {
-        return jdbc.query("SELECT * FROM commerce_product WHERE id=?", this::mapProduct, id).stream().findFirst();
+        return jdbc.query("SELECT * FROM commerce.commerce_product WHERE id=?", this::mapProduct, id).stream().findFirst();
     }
 
     public Optional<ProductCatalogEntry> findProduct(CatalogReadScope scope, String id) {
         return jdbc.query("""
-                SELECT p.* FROM commerce_product p WHERE p.id=? AND EXISTS (
-                  SELECT 1 FROM commercial_offering o WHERE o.product_id=p.id
+                SELECT p.* FROM commerce.commerce_product p WHERE p.id=? AND EXISTS (
+                  SELECT 1 FROM commerce.commercial_offering o WHERE o.product_id=p.id
                     AND (o.tenant_scope='GLOBAL' OR o.tenant_scope=?))
                 """, this::mapProduct, id, scope.tenantId()).stream().findFirst();
     }
 
     public Optional<CommercialOffering> findOfferingById(String id) {
         return jdbc.query("""
-                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commercial_offering o JOIN commerce_product p ON p.id=o.product_id
+                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commerce.commercial_offering o JOIN commerce.commerce_product p ON p.id=o.product_id
                 WHERE o.id=?
                 """, this::mapOffering, id).stream().findFirst();
     }
 
     public Optional<CommercialOffering> findHistorical(CatalogReadScope scope, String id, long offeringVersion) {
         return jdbc.query("""
-                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commercial_offering o JOIN commerce_product p ON p.id=o.product_id
+                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commerce.commercial_offering o JOIN commerce.commerce_product p ON p.id=o.product_id
                 WHERE o.id=? AND o.offering_version=? AND (o.tenant_scope='GLOBAL' OR o.tenant_scope=?)
                 """, this::mapOffering, id, offeringVersion, scope.tenantId()).stream().findFirst();
     }
 
     public Optional<CommercialOffering> resolveActive(CatalogReadScope scope, String market, String productCode, Instant at) {
         return jdbc.query("""
-                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commercial_offering o JOIN commerce_product p ON p.id=o.product_id
+                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commerce.commercial_offering o JOIN commerce.commerce_product p ON p.id=o.product_id
                 WHERE p.product_code=? AND p.lifecycle_state='ACTIVE' AND o.lifecycle_state='ACTIVE'
                   AND (o.tenant_scope='GLOBAL' OR o.tenant_scope=?)
                   AND (o.market_scope='GLOBAL' OR o.market_scope=?)
@@ -112,7 +112,7 @@ public class ProductCatalogJdbcRepository {
 
     public List<CommercialOffering> listActive(CatalogReadScope scope, String market, Instant at) {
         return jdbc.query("""
-                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commercial_offering o JOIN commerce_product p ON p.id=o.product_id
+                SELECT o.*,p.product_code,p.product_line_type,p.display_name FROM commerce.commercial_offering o JOIN commerce.commerce_product p ON p.id=o.product_id
                 WHERE p.lifecycle_state='ACTIVE' AND o.lifecycle_state='ACTIVE'
                   AND (o.tenant_scope='GLOBAL' OR o.tenant_scope=?)
                   AND (o.market_scope='GLOBAL' OR o.market_scope=?) AND o.valid_from<=?
@@ -123,7 +123,7 @@ public class ProductCatalogJdbcRepository {
     public void transitionOffering(String offeringId, long expected, OfferingLifecycleState from,
             OfferingLifecycleState to, Instant at) {
         int updated = jdbc.update("""
-                UPDATE commercial_offering SET lifecycle_state=?,row_version=row_version+1,updated_at=?
+                UPDATE commerce.commercial_offering SET lifecycle_state=?,row_version=row_version+1,updated_at=?
                 WHERE id=? AND row_version=? AND lifecycle_state=?
                 """, to.name(), Timestamp.from(at), offeringId, expected, from.name());
         if (updated != 1) throw new IllegalStateException("stale or illegal offering lifecycle transition");
@@ -132,7 +132,7 @@ public class ProductCatalogJdbcRepository {
     public void transitionProduct(String productId, long expected, ProductLifecycleState from,
             ProductLifecycleState to, Instant at) {
         int updated = jdbc.update("""
-                UPDATE commerce_product SET lifecycle_state=?,version=version+1,updated_at=?
+                UPDATE commerce.commerce_product SET lifecycle_state=?,version=version+1,updated_at=?
                 WHERE id=? AND version=? AND lifecycle_state=?
                 """, to.name(), Timestamp.from(at), productId, expected, from.name());
         if (updated != 1) throw new IllegalStateException("stale or illegal product lifecycle transition");
@@ -140,7 +140,7 @@ public class ProductCatalogJdbcRepository {
 
     public ProviderProductMapping insertMapping(MapProviderOfferingCommand c) {
         jdbc.update("""
-                INSERT INTO provider_product_mapping
+                INSERT INTO commerce.provider_product_mapping
                   (id,provider_code,external_product_ref,external_price_ref,product_id,offering_id,
                    offering_version,version,created_at,updated_at) VALUES (?,?,?,?,?,?,?,1,?,?)
                 """, c.mappingId(), c.providerCode(), c.externalProductReference(), c.externalPriceReference(),
@@ -149,7 +149,7 @@ public class ProductCatalogJdbcRepository {
     }
 
     public Optional<ProviderProductMapping> findMapping(String id) {
-        return jdbc.query("SELECT * FROM provider_product_mapping WHERE id=?", (rs, row) -> new ProviderProductMapping(
+        return jdbc.query("SELECT * FROM commerce.provider_product_mapping WHERE id=?", (rs, row) -> new ProviderProductMapping(
                 rs.getString("id"), rs.getString("provider_code"), rs.getString("external_product_ref"),
                 rs.getString("external_price_ref"), rs.getString("product_id"), rs.getString("offering_id"),
                 rs.getLong("offering_version"), rs.getLong("version"), instant(rs, "created_at"), instant(rs, "updated_at")), id).stream().findFirst();

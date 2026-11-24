@@ -40,7 +40,7 @@ public class ProviderCostObservationJdbcRepository {
      */
     public ProviderCostObservation insert(ProviderCostObservation observation) {
         int updated = jdbc.update("""
-                INSERT INTO provider_cost_observation (
+                INSERT INTO billing.provider_cost_observation (
                     id, tenant_id, project_id, actor_type, actor_ref,
                     operation_ref, execution_ref, provider_ref, capability,
                     amount_minor, currency_code, cost_type, source, observed_at,
@@ -73,7 +73,7 @@ public class ProviderCostObservationJdbcRepository {
 
     public Optional<ProviderCostObservation> findByIdempotencyKey(String idempotencyKey) {
         List<ProviderCostObservation> rows = jdbc.query(
-                "SELECT * FROM provider_cost_observation WHERE idempotency_key = ?",
+                "SELECT * FROM billing.provider_cost_observation WHERE idempotency_key = ?",
                 this::mapRow, idempotencyKey);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
@@ -81,20 +81,20 @@ public class ProviderCostObservationJdbcRepository {
     /** Tenant-constrained query — never returns rows from another tenant. */
     public List<ProviderCostObservation> findByTenant(String tenantId) {
         return jdbc.query(
-                "SELECT * FROM provider_cost_observation WHERE tenant_id = ? ORDER BY observed_at",
+                "SELECT * FROM billing.provider_cost_observation WHERE tenant_id = ? ORDER BY observed_at",
                 this::mapRow, tenantId);
     }
 
     public List<ProviderCostObservation> findByOperationRef(String operationRef) {
         return jdbc.query(
-                "SELECT * FROM provider_cost_observation WHERE operation_ref = ? ORDER BY observed_at",
+                "SELECT * FROM billing.provider_cost_observation WHERE operation_ref = ? ORDER BY observed_at",
                 this::mapRow, operationRef);
     }
 
     /** Finds cost observations linked to a specific usage record (cost↔usage correlation). */
     public List<ProviderCostObservation> findByUsageRecordId(String usageRecordId) {
         return jdbc.query(
-                "SELECT * FROM provider_cost_observation WHERE usage_record_id = ? ORDER BY observed_at",
+                "SELECT * FROM billing.provider_cost_observation WHERE usage_record_id = ? ORDER BY observed_at",
                 this::mapRow, usageRecordId);
     }
 

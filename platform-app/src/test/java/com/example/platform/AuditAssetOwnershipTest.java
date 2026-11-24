@@ -52,9 +52,9 @@ class AuditAssetOwnershipTest extends PostgresTestContainerSupport {
         audit.record("USER","EP27B_USER","CONFIG","test",resource,Map.of("actorId","forged"));
         admin.publish("forged","ADMIN","EP27B_ADMIN","test",resource,"tenant-not-actor","SUCCESS");
         assertEquals(java.util.List.of("server-actor","server-actor"),jdbc.queryForList(
-                "select actor_id from audit_records where resource_id=? order by action",String.class,resource));
+                "select actor_id from policy.audit_records where resource_id=? order by action",String.class,resource));
         MDC.clear();audit.record("SYSTEM","EP27B_SYSTEM","CONFIG","test",resource,Map.of());
-        assertEquals("system",jdbc.queryForObject("select actor_id from audit_records where resource_id=? and action='EP27B_SYSTEM'",String.class,resource));
+        assertEquals("system",jdbc.queryForObject("select actor_id from policy.audit_records where resource_id=? and action='EP27B_SYSTEM'",String.class,resource));
     }
     @Test void requiredAuditFailureAndOuterRollbackLeaveNoBusinessOrAuditEffectThenRetrySucceeds() {
         String resource="ep27b-"+UUID.randomUUID();
@@ -69,16 +69,16 @@ class AuditAssetOwnershipTest extends PostgresTestContainerSupport {
         try {
             assertThrows(org.jooq.exception.DataAccessException.class,operation::run);
             assertEquals(0,jdbc.queryForObject("select count(*) from ep27b_business_probe where id=?",Integer.class,resource));
-            assertEquals(0,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Integer.class,resource));
+            assertEquals(0,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Integer.class,resource));
         } finally {
             jdbc.execute("DROP TRIGGER ep27b_reject_audit ON audit_records");
             jdbc.execute("DROP FUNCTION ep27b_reject_audit()");
         }
         tx.executeWithoutResult(status->{audit.record("SYSTEM","EP27B_ROLLBACK","CONFIG","test",resource,Map.of());status.setRollbackOnly();});
-        assertEquals(0,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Integer.class,resource));
+        assertEquals(0,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Integer.class,resource));
         operation.run();
         assertEquals(1,jdbc.queryForObject("select count(*) from ep27b_business_probe where id=?",Integer.class,resource));
-        assertEquals(1,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Integer.class,resource));
+        assertEquals(1,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Integer.class,resource));
     }
     @Test void missingRequiredAuditInfrastructureCannotSelectAFallback() {
         new ApplicationContextRunner().withBean(AuditPortAdapter.class).run(c->assertNotNull(c.getStartupFailure()));

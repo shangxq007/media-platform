@@ -5,7 +5,7 @@ import com.example.platform.timeline.version.TimelineRevision;
 import java.time.LocalDateTime;
 import org.jooq.DSLContext;
 
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 
 /**
  * Production jOOQ implementation of {@link TimelineRevisionPersistencePort}:

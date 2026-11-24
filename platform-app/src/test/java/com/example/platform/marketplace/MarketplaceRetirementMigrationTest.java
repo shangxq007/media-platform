@@ -53,8 +53,8 @@ class MarketplaceRetirementMigrationTest extends PostgresTestContainerSupport {
         type.equals("SEARCH_REINDEX")&&!("tenant".equals(scope[0])&&"project".equals(scope[1]))&&List.of("PENDING","RUNNING","RETRY").contains(job));
    Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
    for(var e:expected.entrySet()) {
-    var afterJob=jdbc.queryForMap("select * from platform_job where id=?",e.getKey());
-    var afterTask=jdbc.queryForMap("select * from platform_task where job_id=?",e.getKey());
+    var afterJob=jdbc.queryForMap("select * from execution.platform_job where id=?",e.getKey());
+    var afterTask=jdbc.queryForMap("select * from execution.platform_task where job_id=?",e.getKey());
     var before=e.getValue();
     if(before.retireJob()) {
      assertThat(afterJob.get("status")).isEqualTo("FAILED");assertThat(afterJob.get("updated_at")).isNotNull();
@@ -73,8 +73,8 @@ class MarketplaceRetirementMigrationTest extends PostgresTestContainerSupport {
  }
  private void seed(JdbcTemplate jdbc,Map<String,Expected> rows,String payload,String type,String tenant,String project,String jobState,String taskState,boolean retire) {
   String id="case-"+rows.size();
-  jdbc.update("insert into platform_job(id,job_type,aggregate_type,aggregate_id,tenant_id,project_id,status,payload_json,metadata_json,created_at) values (?,?,'ASSET','asset',?,?,?,?,'unchanged metadata',now())",id,type,tenant,project,jobState,payload);
-  jdbc.update("insert into platform_task(id,job_id,task_type,capability,status,error_message,result_json,attempt_count,created_at) values (?,?,'REINDEX','REINDEX',?,'original reason','original result',2,now())","task-"+id,id,taskState);
-  rows.put(id,new Expected(jdbc.queryForMap("select * from platform_job where id=?",id),jdbc.queryForMap("select * from platform_task where job_id=?",id),retire,retire&&List.of("PENDING","RUNNING","RETRY").contains(taskState)));
+  jdbc.update("insert into execution.platform_job(id,job_type,aggregate_type,aggregate_id,tenant_id,project_id,status,payload_json,metadata_json,created_at) values (?,?,'ASSET','asset',?,?,?,?,'unchanged metadata',now())",id,type,tenant,project,jobState,payload);
+  jdbc.update("insert into execution.platform_task(id,job_id,task_type,capability,status,error_message,result_json,attempt_count,created_at) values (?,?,'REINDEX','REINDEX',?,'original reason','original result',2,now())","task-"+id,id,taskState);
+  rows.put(id,new Expected(jdbc.queryForMap("select * from execution.platform_job where id=?",id),jdbc.queryForMap("select * from execution.platform_task where job_id=?",id),retire,retire&&List.of("PENDING","RUNNING","RETRY").contains(taskState)));
  }
 }

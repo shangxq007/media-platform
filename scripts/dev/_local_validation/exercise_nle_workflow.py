@@ -30,20 +30,20 @@ def psql(sql):
 
 
 seed = '''begin;
-insert into tenant(id,name,created_at) values ('tenant-fr-e2e','Owned NLE workflow',now());
-insert into workspace(id,tenant_id,name,created_at,updated_at) values ('workspace-fr-e2e','tenant-fr-e2e','Owned',now(),now());
-insert into project(id,tenant_id,workspace_id,name,created_at) values ('project-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','NLE workflow',now());
-insert into account(id,issuer,subject,status,created_at) values ('account-fr-e2e','http://127.0.0.1:18081','f8-subject','ACTIVE',now());
-insert into "user"(id,tenant_id,account_id,username,email,role,status,created_at) values ('actor-fr-e2e','tenant-fr-e2e','account-fr-e2e','f8','f8@example.invalid','ADMIN','ACTIVE',now());
-insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values ('member-fr-e2e','workspace-fr-e2e','actor-fr-e2e','OWNER','ACTIVE',now(),now());
-insert into role(id,role_key,name,scope,created_at) values ('role-fr-e2e','F8_RENDER','Owned synthetic role','WORKSPACE',now());
-insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-e2e','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','render.job.create','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
-insert into entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-upload','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','artifact.source.upload','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
-insert into role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from permission where permission_key in ('READ','WRITE','render.submit','artifact.read','delivery.read','delivery.manage');
-insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
+insert into identity.tenant(id,name,created_at) values ('tenant-fr-e2e','Owned NLE workflow',now());
+insert into identity.workspace(id,tenant_id,name,created_at,updated_at) values ('workspace-fr-e2e','tenant-fr-e2e','Owned',now(),now());
+insert into identity.project(id,tenant_id,workspace_id,name,created_at) values ('project-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','NLE workflow',now());
+insert into identity.account(id,issuer,subject,status,created_at) values ('account-fr-e2e','http://127.0.0.1:18081','f8-subject','ACTIVE',now());
+insert into identity."user"(id,tenant_id,account_id,username,email,role,status,created_at) values ('actor-fr-e2e','tenant-fr-e2e','account-fr-e2e','f8','f8@example.invalid','ADMIN','ACTIVE',now());
+insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values ('member-fr-e2e','workspace-fr-e2e','actor-fr-e2e','OWNER','ACTIVE',now(),now());
+insert into identity.role(id,role_key,name,scope,created_at) values ('role-fr-e2e','F8_RENDER','Owned synthetic role','WORKSPACE',now());
+insert into entitlement.entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-e2e','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','render.job.create','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
+insert into entitlement.entitlement_grant(id,tenant_id,subject_type,subject_id,bundle_code,source_type,source_ref,grant_status,effective_at,expires_at) values ('grant-fr-upload','tenant-fr-e2e','ORGANIZATION','tenant-fr-e2e','artifact.source.upload','ADMIN','f8-owned-runtime','ACTIVE',now(),now()+interval '1 hour');
+insert into identity.role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from identity.permission where permission_key in ('READ','WRITE','render.submit','artifact.read','delivery.read','delivery.manage');
+insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
 commit;'''
 if multitrack:
-    seed = '\n'.join(line for line in seed.splitlines() if not line.startswith('insert into project('))
+    seed = '\n'.join(line for line in seed.splitlines() if not line.startswith('insert into identity.project('))
     seed = seed.replace("('READ','WRITE',", "('READ','WRITE','CREATE',")
 (app / 'workflow-seed.sql').write_text(seed)
 psql(seed)
@@ -81,16 +81,16 @@ p = subprocess.run(prefix + ['/usr/bin/python3', '-c', probe], env=env, capture_
 (app / 'workflow-ready.stdout').write_text(p.stdout)
 (app / 'workflow-ready.stderr').write_text(p.stderr)
 assert p.returncode == 0, p.stderr[-2000:]
-psql("""insert into role_permission(id,role_id,permission_id,created_at)
-select 'workflow-'||permission_id,'role-fr-e2e',permission_id,now() from role_permission
-where role_id=(select id from role where role_key='EDITOR') on conflict (id) do nothing;""")
+psql("""insert into identity.role_permission(id,role_id,permission_id,created_at)
+select 'workflow-'||permission_id,'role-fr-e2e',permission_id,now() from identity.role_permission
+where role_id=(select id from identity.role where role_key='EDITOR') on conflict (id) do nothing;""")
 for _ in range(60):
-    if int(psql("select count(*) from role_permission where role_id='role-fr-e2e';")) > 0:
+    if int(psql("select count(*) from identity.role_permission where role_id='role-fr-e2e';")) > 0:
         break
     time.sleep(1)
-    psql("""insert into role_permission(id,role_id,permission_id,created_at)
-    select 'workflow-'||permission_id,'role-fr-e2e',permission_id,now() from role_permission
-    where role_id=(select id from role where role_key='EDITOR') on conflict (id) do nothing;""")
+    psql("""insert into identity.role_permission(id,role_id,permission_id,created_at)
+    select 'workflow-'||permission_id,'role-fr-e2e',permission_id,now() from identity.role_permission
+    where role_id=(select id from identity.role where role_key='EDITOR') on conflict (id) do nothing;""")
 else:
     raise AssertionError('owned role permissions did not become available')
 

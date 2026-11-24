@@ -24,7 +24,7 @@ class BillingLedgerServiceTest extends PostgresTestContainerSupport {
         var jdbc = new JdbcTemplate(dataSource);
 
         jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS billing_ledger_entry (
+            CREATE TABLE IF NOT EXISTS billing.billing_ledger_entry (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 principal_type varchar(32) not null,
@@ -48,7 +48,7 @@ class BillingLedgerServiceTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         var jdbc = new JdbcTemplate(dataSource);
-        jdbc.execute("TRUNCATE TABLE billing_ledger_entry CASCADE");
+        jdbc.execute("TRUNCATE TABLE billing.billing_ledger_entry CASCADE");
 
         var repo = new BillingLedgerJdbcRepository(jdbc);
         service = new BillingLedgerService(Optional.of(repo));

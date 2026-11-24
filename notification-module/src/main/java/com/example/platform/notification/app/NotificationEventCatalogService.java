@@ -14,7 +14,7 @@ import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationEventDefinition.NOTIFICATION_EVENT_DEFINITION;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEventDefinition.NOTIFICATION_EVENT_DEFINITION;
 
 
 @Service

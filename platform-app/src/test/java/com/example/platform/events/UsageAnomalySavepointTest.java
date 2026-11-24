@@ -51,7 +51,7 @@ class UsageAnomalySavepointTest extends PostgresTestContainerSupport {
         var observations = (List<?>) histories.get("ep23-review:" + user);
         var ids = observations.stream().map(e -> ((com.example.platform.audit.domain.UsageAnomalyEvent) e).eventId())
                 .sorted().toList();
-        assertEquals(jdbc.queryForList("select aggregate_id from outbox_events where event_type='audit.usage.anomaly.detected'"
+        assertEquals(jdbc.queryForList("select aggregate_id from infrastructure.outbox_events where event_type='audit.usage.anomaly.detected'"
                 + " and payload::jsonb->'payload'->>'userId'=? order by aggregate_id", String.class, user), ids);
     }
     private String prepare() {
@@ -63,7 +63,7 @@ class UsageAnomalySavepointTest extends PostgresTestContainerSupport {
         assertFalse(detector.analyzeSubmission("ep23-review", user, "default", "test").clean());
     }
     private long count(String user) {
-        return jdbc.queryForObject("select count(*) from outbox_events where event_type='audit.usage.anomaly.detected' and payload::jsonb->'payload'->>'userId'=?", Long.class, user);
+        return jdbc.queryForObject("select count(*) from infrastructure.outbox_events where event_type='audit.usage.anomaly.detected' and payload::jsonb->'payload'->>'userId'=?", Long.class, user);
     }
     private int history(String field, String user) {
         var map=(Map<?,?>)ReflectionTestUtils.getField(detector,field);

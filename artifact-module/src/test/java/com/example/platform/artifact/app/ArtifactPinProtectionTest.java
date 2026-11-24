@@ -67,9 +67,9 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE artifact_pin CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact_replica CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_pin CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_replica CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact CASCADE");
 
         artifactRepository = new ArtifactRepository(dsl);
         pinRepository = new ArtifactPinRepository(dsl);

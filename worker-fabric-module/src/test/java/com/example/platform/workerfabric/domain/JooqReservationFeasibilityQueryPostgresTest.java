@@ -183,6 +183,6 @@ class JooqReservationFeasibilityQueryPostgresTest extends PostgresTestContainerS
     }
 
     private static int countReservations() {
-        return dsl.fetchOne("select count(*) from wf_reservation").get(0, Integer.class);
+        return dsl.fetchOne("select count(*) from worker_fabric.wf_reservation").get(0, Integer.class);
     }
 }

@@ -115,12 +115,12 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
     private void seedEventDefinitions() {
         schemaDsl.execute("""
-            INSERT INTO notification_event_definition (id, event_key, name, description, category, severity, visibility, user_configurable, critical, default_enabled, supported_channels, created_at, updated_at)
+            INSERT INTO notification.notification_event_definition (id, event_key, name, description, category, severity, visibility, user_configurable, critical, default_enabled, supported_channels, created_at, updated_at)
             VALUES ('1', 'render.job.completed', 'Render Job Completed', 'desc', 'RENDER', 'INFO', 'USER_CONFIGURABLE', true, false, true, '["IN_APP","EMAIL","SMS","WEBHOOK"]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT (event_key) DO NOTHING
         """);
         schemaDsl.execute("""
-            INSERT INTO notification_event_definition (id, event_key, name, description, category, severity, visibility, user_configurable, critical, default_enabled, supported_channels, created_at, updated_at)
+            INSERT INTO notification.notification_event_definition (id, event_key, name, description, category, severity, visibility, user_configurable, critical, default_enabled, supported_channels, created_at, updated_at)
             VALUES ('2', 'security.suspicious_activity', 'Security Alert', 'desc', 'SECURITY', 'CRITICAL', 'ADMIN_CONTROLLED', false, true, true, '["IN_APP","EMAIL","SMS","WEBHOOK"]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT (event_key) DO NOTHING
         """);
@@ -143,13 +143,13 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
         // B23: Verify typed notification_event insert succeeded
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "notification_event record should be created via typed schema");
 
         // B24: Verify typed notification_delivery_record insert succeeded
         var deliveryCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
                 .fetchOne(0, int.class);
         assertTrue(deliveryCount >= 1, "notification_delivery_record should be created via typed schema");
     }
@@ -183,13 +183,13 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
         // Should have created records only for enabled channels (IN_APP, not EMAIL)
         var deliveryRecords = dsl.select()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
                 .fetch();
         assertFalse(deliveryRecords.isEmpty(), "At least one delivery record should exist");
 
         // Verify channel_type values are from the expected set
         for (var rec : deliveryRecords) {
-            String channelType = rec.get(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD.CHANNEL_TYPE);
+            String channelType = rec.get(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD.CHANNEL_TYPE);
             assertThat(channelType).isIn("IN_APP", "EMAIL", "SMS", "WEBHOOK");
         }
     }
@@ -208,14 +208,14 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("jobId", "job-evt"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "Known event key should resolve and create event");
 
         // Unknown event key should return early
         publisher.publishToUser("user-4", "nonexistent.event.key", Map.of());
         var eventCount2 = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount2, "Unknown event key should not create additional event");
     }
@@ -235,7 +235,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("jobId", "job-glob"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(0, eventCount, "Non-critical event should respect global disabled");
     }
@@ -255,7 +255,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
         // All channels filtered → no delivery records
         var deliveryCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
                 .fetchOne(0, int.class);
         assertEquals(0, deliveryCount, "All channels disabled should result in no deliveries");
     }
@@ -275,7 +275,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("jobId", "job-evt-off"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(0, eventCount, "Event-level disabled should block non-critical event");
     }
@@ -317,7 +317,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("activity", "suspicious_login"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "Critical event should bypass global disabled");
     }
@@ -338,7 +338,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("activity", "suspicious_login"));
 
         var deliveryCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
                 .fetchOne(0, int.class);
         assertEquals(0, deliveryCount, "Critical event should not bypass channel-level disabling — all channels are off");
     }
@@ -358,7 +358,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("activity", "suspicious_login"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "Critical event should bypass event-level disabled");
     }
@@ -376,7 +376,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("activity", "suspicious_login"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "Critical event should bypass quiet hours");
     }
@@ -399,7 +399,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
         // The event is still created; digest affects delivery timing, not event creation
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "Event should be created even with digest mode");
     }
@@ -452,7 +452,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("jobId", "job-dst-gap"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertTrue(eventCount >= 0, "DST gap should not cause errors");
     }
@@ -475,7 +475,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
                 Map.of("jobId", "job-dst-overlap"));
 
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertTrue(eventCount >= 0, "DST overlap should not cause errors");
     }
@@ -497,7 +497,7 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
         // With IMMEDIATE digest, delivery should happen synchronously
         var deliveryCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
                 .fetchOne(0, int.class);
         assertTrue(deliveryCount >= 1, "IMMEDIATE digest should deliver synchronously");
     }
@@ -587,12 +587,12 @@ class SpringNotificationEventPublisherTest extends PostgresTestContainerSupport 
 
         // Verify records exist
         var eventCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT)
                 .fetchOne(0, int.class);
         assertEquals(1, eventCount, "Event should be created without SQL errors");
 
         var deliveryCount = dsl.selectCount()
-                .from(com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
+                .from(com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD)
                 .fetchOne(0, int.class);
         assertTrue(deliveryCount >= 1, "Delivery records should be created without SQL errors");
     }

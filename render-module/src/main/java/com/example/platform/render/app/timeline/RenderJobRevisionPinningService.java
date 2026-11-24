@@ -10,9 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
 
 @Service
 public class RenderJobRevisionPinningService {

@@ -39,8 +39,8 @@ jwk={'keys':[dict(kty='RSA',kid='f8-local',use='sig',alg='RS256',n=b64(n.to_byte
 (out/'oidc/jwks.json').write_text(json.dumps(jwk))
 issuer='http://127.0.0.1:18081'
 (out/'oidc/.well-known').mkdir();(out/'oidc/.well-known/openid-configuration').write_text(json.dumps(dict(issuer=issuer,jwks_uri=issuer+'/jwks.json',authorization_endpoint=issuer+'/authorize',token_endpoint=issuer+'/token',response_types_supported=['id_token'],subject_types_supported=['public'],id_token_signing_alg_values_supported=['RS256'])))
-pwd=Path(c.get('password_file',str(priv/'test-password'))).read_text();url='jdbc:postgresql://127.0.0.1:5432/'+c['database']+'?sslmode=verify-full&sslrootcert='+c['ca']
-base=dict(PATH='/usr/bin:/bin',HOME=str(out),LANG='C.UTF-8',LC_ALL='C.UTF-8',SPRING_DATASOURCE_URL=url,SPRING_DATASOURCE_USERNAME=c['role'],SPRING_DATASOURCE_PASSWORD=pwd,SPRING_FLYWAY_URL=url,SPRING_FLYWAY_USER=c['role'],SPRING_FLYWAY_PASSWORD=pwd,SPRING_PROFILES_ACTIVE='pg18-integration,temporal',PLATFORM_ENV='integration',APP_JWT_SECRET=secrets.token_hex(48),SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=issuer,APP_SECURITY_OAUTH2_AUDIENCE='f8-local',APP_SECURITY_OAUTH2_ENABLED='true',TEMPORAL_TARGET='127.0.0.1:7233',TEMPORAL_NAMESPACE='f8-pg18-'+RUN_ID+'',PLATFORM_PAYMENT_STRIPE_ENABLED='false',APP_AI_OPENAI_ENABLED='false',APP_AI_DEFAULT_PROVIDER='stubChatProvider',FFMPEG_WORKER_FFMPEG_PATH='/usr/local/lib/media-platform/ffmpeg/ffmpeg',FFMPEG_WORKER_FFPROBE_PATH='/usr/local/lib/media-platform/ffmpeg/ffprobe',FFMPEG_WORKER_PLUGINS_DIRECTORY=str(out/'plugins'),FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT=str(out/'workspace'),FFMPEG_WORKER_STAGING_ROOT=str(out/'staging'),FFMPEG_WORKER_WORK_ROOT=str(out/'work'),FFMPEG_WORKER_PUBLICATION_PROJECT_ID='untrusted-project-override',FFMPEG_WORKER_PUBLICATION_STORAGE_PROVIDER='local-object-store',APP_COVER_IMAGE_STORAGE_ROOT=str(out/'object-store'),APP_STORAGE_LOCAL_ROOT=str(out/'local-storage'),APP_COVER_IMAGE_WORK_ROOT=str(out/'cover-work'),PLATFORM_FFMPEG_WORKER_MATERIALIZATION_ROOT=str(out/'materialized'),APP_EXTENSIONS_PLUGINS_DIR=str(out/'plugins'),SERVER_PORT='18080',SERVER_ADDRESS='127.0.0.1',MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED='false',MANAGEMENT_TRACING_ENABLED='false',IDENTITY_BUILTIN_DATA_ENABLED='true')
+url='jdbc:postgresql://127.0.0.1:5432/'+c['database']+'?sslmode=verify-full&sslrootcert='+c['ca']
+base=dict(PATH='/usr/bin:/bin',HOME=str(out),LANG='C.UTF-8',LC_ALL='C.UTF-8',SPRING_DATASOURCE_URL=url,SPRING_PROFILES_ACTIVE='pg18-integration,temporal',PLATFORM_ENV='integration',APP_JWT_SECRET=secrets.token_hex(48),SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=issuer,APP_SECURITY_OAUTH2_AUDIENCE='f8-local',APP_SECURITY_OAUTH2_ENABLED='true',TEMPORAL_TARGET='127.0.0.1:7233',TEMPORAL_NAMESPACE='f8-pg18-'+RUN_ID+'',PLATFORM_PAYMENT_STRIPE_ENABLED='false',APP_AI_OPENAI_ENABLED='false',APP_AI_DEFAULT_PROVIDER='stubChatProvider',FFMPEG_WORKER_FFMPEG_PATH='/usr/local/lib/media-platform/ffmpeg/ffmpeg',FFMPEG_WORKER_FFPROBE_PATH='/usr/local/lib/media-platform/ffmpeg/ffprobe',FFMPEG_WORKER_PLUGINS_DIRECTORY=str(out/'plugins'),FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT=str(out/'workspace'),FFMPEG_WORKER_STAGING_ROOT=str(out/'staging'),FFMPEG_WORKER_WORK_ROOT=str(out/'work'),FFMPEG_WORKER_PUBLICATION_PROJECT_ID='untrusted-project-override',FFMPEG_WORKER_PUBLICATION_STORAGE_PROVIDER='local-object-store',APP_COVER_IMAGE_STORAGE_ROOT=str(out/'object-store'),APP_STORAGE_LOCAL_ROOT=str(out/'local-storage'),APP_COVER_IMAGE_WORK_ROOT=str(out/'cover-work'),PLATFORM_FFMPEG_WORKER_MATERIALIZATION_ROOT=str(out/'materialized'),APP_EXTENSIONS_PLUGINS_DIR=str(out/'plugins'),SERVER_PORT='18080',SERVER_ADDRESS='127.0.0.1',MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED='false',MANAGEMENT_TRACING_ENABLED='false',IDENTITY_BUILTIN_DATA_ENABLED='true')
 # Provider opt-in. The API selects the internal media provider for #22 binding; the Worker needs the
 # verified runtime root of the same exact distribution (its admission evidence comes from it).
 if provider=='bmf':
@@ -60,6 +60,8 @@ if combined:
 # Secret-containing environment file is private, passed by pathname, never command line values.
 for role in roles:
  e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role=='api-ffmpeg' else role.upper()}
+ runtime_db_role = 'mp_worker' if role=='worker' else 'mp_api'
+ e.update(SPRING_DATASOURCE_USERNAME=runtime_db_role, SPRING_DATASOURCE_PASSWORD=(priv/(runtime_db_role+'-password')).read_text())
  if role=='api-ffmpeg':
   e.update(SERVER_PORT='18082',PLATFORM_RENDER_MEDIA_PROVIDER='ffmpeg')
  p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
@@ -87,6 +89,7 @@ if '--bootstrap' in sys.argv:
  for role in roles:
   profile = 'combined' if combined else 'api' if role=='api-ffmpeg' else role
   e=json.loads((out/(role+'-env.json')).read_text());e.pop('PLATFORM_RUNTIME_ROLE',None)
+  (out/(role+'-env.json')).unlink()
   deploy=control/role;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
   names=[line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#')]
   payload=deploy/'synthetic-payload.json';payload.write_text(json.dumps([{'key':name,'value':e.get(name) or secrets.token_hex(32)} for name in names]+[{'key':'PLATFORM_RUNTIME_ROLE','value':'COMBINED'},{'key':'NEON_API_KEY','value':'synthetic-not-authorized'}]));payload.chmod(0o600)

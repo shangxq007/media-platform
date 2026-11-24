@@ -28,7 +28,7 @@ public class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotStore {
         try {
             String json = mapper.writeValueAsString(snapshot.decisions());
             jdbc.update("""
-                    insert into feature_flag_evaluation_snapshot
+                    insert into policy.feature_flag_evaluation_snapshot
                       (snapshot_id, provider_revision, tenant_id, workspace_id, captured_at, decisions_json)
                     values (?, ?, ?, ?, ?, cast(? as jsonb))
                     on conflict (snapshot_id) do nothing
@@ -51,7 +51,7 @@ public class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotStore {
     public FeatureFlagSnapshot load(String snapshotId) {
         return jdbc.query("""
                 select snapshot_id, provider_revision, tenant_id, workspace_id, captured_at, decisions_json::text
-                from feature_flag_evaluation_snapshot where snapshot_id = ?
+                from policy.feature_flag_evaluation_snapshot where snapshot_id = ?
                 """, rs -> {
             if (!rs.next()) return null;
             try {
@@ -70,7 +70,7 @@ public class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotStore {
     public FeatureFlagSnapshot loadForScope(String snapshotId, String tenantId, String workspaceId) {
         FeatureFlagSnapshot snapshot = jdbc.query("""
                 select snapshot_id, provider_revision, tenant_id, workspace_id, captured_at, decisions_json::text
-                from feature_flag_evaluation_snapshot
+                from policy.feature_flag_evaluation_snapshot
                 where snapshot_id = ? and tenant_id = ? and workspace_id is not distinct from ?
                 """, rs -> {
             if (!rs.next()) return null;

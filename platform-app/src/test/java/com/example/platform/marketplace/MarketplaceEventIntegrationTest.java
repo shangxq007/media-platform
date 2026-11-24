@@ -38,19 +38,19 @@ class MarketplaceEventIntegrationTest extends MarketplaceTestSupport {
     }
     @BeforeEach void effects(){jdbc.execute("create table if not exists ep29c_notification_effect(event_id text primary key,attempts integer not null)");controlled.failOnce.set(false);}
     OutboxEventDispatcher dispatcher(){return new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,context.getBean(io.micrometer.core.instrument.MeterRegistry.class));}
-    List<Map<String,Object>> facts(){return jdbc.queryForList("select * from outbox_events where event_type like 'marketplace.%' and payload like ? order by created_at,id","%"+tenant+"%");}
+    List<Map<String,Object>> facts(){return jdbc.queryForList("select * from infrastructure.outbox_events where event_type like 'marketplace.%' and payload like ? order by created_at,id","%"+tenant+"%");}
     Map<String,Object> fact(String type){return facts().stream().filter(r->type.equals(r.get("event_type"))).findFirst().orElseThrow();}
     String notificationId(Map<String,Object> row)throws Exception {
         var ref=JSON.readTree((String)row.get("payload")).path("payload").path("reference");
         return "nev_"+UUID.nameUUIDFromBytes(("marketplace:"+tenant+":"+ref.path("factId").asText()).getBytes(StandardCharsets.UTF_8));
     }
-    String duplicate(Map<String,Object> row){String id="obx_duplicate_"+UUID.randomUUID();jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,?,?,?,?,?,'PENDING',0,3,now())",id,row.get("aggregate_type"),row.get("aggregate_id"),row.get("event_type"),row.get("event_version"),row.get("payload"));return id;}
+    String duplicate(Map<String,Object> row){String id="obx_duplicate_"+UUID.randomUUID();jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,?,?,?,?,?,'PENDING',0,3,now())",id,row.get("aggregate_type"),row.get("aggregate_id"),row.get("event_type"),row.get("event_version"),row.get("payload"));return id;}
 
     @Test void productionCommandsEmitCoherentTypedFactsAndActualConsumersDeduplicate() throws Exception {
         String asset=asset();var published=publish(approve(submit(create(asset))));String listing=published.path("id").asText();var rows=facts();
         assertThat(rows.stream().map(r->r.get("event_type"))).containsExactly("marketplace.listing.created","marketplace.review.created","marketplace.review.approved","marketplace.listing.published");
         Set<String> ids=new HashSet<>();long version=1;
-        String account=jdbc.queryForObject("select account_id from \"user\" where id=?",String.class,user);
+        String account=jdbc.queryForObject("select account_id from identity.\"user\" where id=?",String.class,user);
         for(var row:rows) {
             assertThat(row.get("event_version")).isEqualTo(1);
             var decoded=context.getBean(OutboxEventRouter.class).decode((String)row.get("event_type"),1,(String)row.get("aggregate_type"),(String)row.get("aggregate_id"),(String)row.get("payload"));
@@ -66,82 +66,82 @@ class MarketplaceEventIntegrationTest extends MarketplaceTestSupport {
         }
         var publication=fact("marketplace.listing.published");String notification=notificationId(publication);
         assertThat(jdbc.queryForObject("select attempts from ep29c_notification_effect where event_id=?",Integer.class,notification)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=? and actor_type='USER' and actor_id=?",Integer.class,listing,user)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from policy.audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=? and actor_type='USER' and actor_id=?",Integer.class,listing,user)).isEqualTo(1);
         // V21 fences the search reindex consumer, so publication produces no reindex intent.
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where job_type='SEARCH_REINDEX' and tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where job_type='SEARCH_REINDEX' and tenant_id=?",Integer.class,tenant)).isZero();
         String replay=duplicate(publication);try(var d=dispatcher()){assertThat(d.processOnce(replay)).isTrue();}
         assertThat(jdbc.queryForObject("select attempts from ep29c_notification_effect where event_id=?",Integer.class,notification)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=?",Integer.class,listing)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where job_type='SEARCH_REINDEX' and tenant_id=?",Integer.class,tenant)).isZero();
-        assertThat(jdbc.queryForObject("select aggregate_version from marketplace_listing where id=?",Long.class,listing)).isEqualTo(4L);
+        assertThat(jdbc.queryForObject("select count(*) from policy.audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=?",Integer.class,listing)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where job_type='SEARCH_REINDEX' and tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select aggregate_version from marketplace.marketplace_listing where id=?",Long.class,listing)).isEqualTo(4L);
     }
 
     @Test void consumerFailureRollsBackItsDatabaseEffectsAndAReplacementDispatcherRecovers() throws Exception {
         var published=publish(approve(submit(create(asset()))));String listing=published.path("id").asText();var row=fact("marketplace.listing.published");String event=(String)row.get("id"),notification=notificationId(row);
         controlled.failOnce.set(true);try(var d=dispatcher()){assertThat(d.processOnce(event)).isFalse();}
-        assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing)).isEqualTo("PUBLISHED");
-        assertThat(jdbc.queryForObject("select status from outbox_events where id=?",String.class,event)).isEqualTo("FAILED");
-        assertThat(jdbc.queryForObject("select count(*) from notification_event where id=?",Integer.class,notification)).isZero();
+        assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,listing)).isEqualTo("PUBLISHED");
+        assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,event)).isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("select count(*) from notification.notification_event where id=?",Integer.class,notification)).isZero();
         assertThat(jdbc.queryForObject("select count(*) from ep29c_notification_effect where event_id=?",Integer.class,notification)).isZero();
         try(var restarted=dispatcher()){org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(12)).until(()->restarted.processOnce(event));}
-        assertThat(jdbc.queryForObject("select status from outbox_events where id=?",String.class,event)).isEqualTo("PROCESSED");
-        assertThat(jdbc.queryForObject("select retry_count from outbox_events where id=?",Integer.class,event)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,event)).isEqualTo("PROCESSED");
+        assertThat(jdbc.queryForObject("select retry_count from infrastructure.outbox_events where id=?",Integer.class,event)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select attempts from ep29c_notification_effect where event_id=?",Integer.class,notification)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=?",Integer.class,listing)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where job_type='SEARCH_REINDEX' and tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from policy.audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=?",Integer.class,listing)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where job_type='SEARCH_REINDEX' and tenant_id=?",Integer.class,tenant)).isZero();
     }
 
     @Test void delayedPublicationCannotResurrectArchivedListing() throws Exception {
         String asset=asset();var publication=publish(approve(submit(create(asset))));String listing=publication.path("id").asText();
         response(http(user,"POST",root()+"/listings/"+listing+"/transitions",Map.of("commandId","archive","expectedVersion",publication.path("version").asLong(),"transition","ARCHIVE")),200);
         for(String type:List.of("marketplace.listing.archived","marketplace.listing.published"))try(var d=dispatcher()){assertThat(d.processOnce((String)fact(type).get("id"))).isTrue();}
-        assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
-        assertThat(jdbc.queryForObject("select aggregate_version from marketplace_listing where id=?",Long.class,listing)).isEqualTo(5L);
+        assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("select aggregate_version from marketplace.marketplace_listing where id=?",Long.class,listing)).isEqualTo(5L);
         // V21 fences the search reindex consumer; a publication fact cannot produce reindex intent.
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where tenant_id=?",Integer.class,tenant)).isZero();
         try(var d=dispatcher()){assertThat(d.processOnce(duplicate(fact("marketplace.listing.published")))).isTrue();}
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where tenant_id=?",Integer.class,tenant)).isZero();
-        assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
     }
 
     @Test void obsoleteEnvelopesAndScopeTamperingQuarantineWithoutConsumerEffects() throws Exception {
         var published=publish(approve(submit(create(asset()))));String listing=published.path("id").asText();var row=fact("marketplace.listing.published");
         var envelope=JSON.readTree((String)row.get("payload"));((com.fasterxml.jackson.databind.node.ObjectNode)envelope).put("tenantId","foreign");
-        String malformed="bad_"+UUID.randomUUID();jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,?,?,?,1,?,'PENDING',0,3,now())",malformed,row.get("aggregate_type"),row.get("aggregate_id"),row.get("event_type"),envelope.toString());
+        String malformed="bad_"+UUID.randomUUID();jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,?,?,?,1,?,'PENDING',0,3,now())",malformed,row.get("aggregate_type"),row.get("aggregate_id"),row.get("event_type"),envelope.toString());
         try(var d=dispatcher()){assertThat(d.processOnce(malformed)).isFalse();}
-        assertThat(jdbc.queryForObject("select status from outbox_events where id=?",String.class,malformed)).isEqualTo("DEAD_LETTER");
-        String legacy="legacy_"+UUID.randomUUID();jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'ASSET','asset','asset.published',1,'{}','PENDING',0,3,now())",legacy);
+        assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,malformed)).isEqualTo("DEAD_LETTER");
+        String legacy="legacy_"+UUID.randomUUID();jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'ASSET','asset','asset.published',1,'{}','PENDING',0,3,now())",legacy);
         try(var d=dispatcher()){assertThat(d.processOnce(legacy)).isFalse();}
-        assertThat(jdbc.queryForObject("select status from outbox_events where id=?",String.class,legacy)).isEqualTo("DEAD_LETTER");
-        assertThat(jdbc.queryForObject("select count(*) from audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=?",Integer.class,listing)).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,legacy)).isEqualTo("DEAD_LETTER");
+        assertThat(jdbc.queryForObject("select count(*) from policy.audit_records where action='MARKETPLACE_LISTING_PUBLISHED' and resource_id=?",Integer.class,listing)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where tenant_id=?",Integer.class,tenant)).isZero();
         try(var d=dispatcher()){assertThat(d.processOnce((String)row.get("id"))).isTrue();}
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where tenant_id=?",Integer.class,tenant)).isZero();
         for(String type:List.of("AssetPublishedEvent","AssetApprovedEvent","AssetArchivedEvent","AssetSubmittedForReviewEvent"))
             assertThatThrownBy(()->Class.forName("com.example.platform.shared.events."+type)).isInstanceOf(ClassNotFoundException.class);
     }
 
     @Test void databaseFencesUnversionedLegacyWritersWithoutBlockingOwnerCommands() throws Exception {
         var published=publish(approve(submit(create(asset()))));String listing=published.path("id").asText();var before=state();
-        assertThatThrownBy(()->jdbc.update("update marketplace_listing set status='DRAFT' where id=?",listing)).isInstanceOf(RuntimeException.class).hasMessageContaining("must advance its version");
-        assertThatThrownBy(()->jdbc.update("update marketplace_listing set workspace_id=?,aggregate_version=aggregate_version+1 where id=?",project,listing)).isInstanceOf(RuntimeException.class).hasMessageContaining("immutable");
+        assertThatThrownBy(()->jdbc.update("update marketplace.marketplace_listing set status='DRAFT' where id=?",listing)).isInstanceOf(RuntimeException.class).hasMessageContaining("must advance its version");
+        assertThatThrownBy(()->jdbc.update("update marketplace.marketplace_listing set workspace_id=?,aggregate_version=aggregate_version+1 where id=?",project,listing)).isInstanceOf(RuntimeException.class).hasMessageContaining("immutable");
         assertThat(state()).isEqualTo(before);
         response(http(user,"POST",root()+"/listings/"+listing+"/transitions",Map.of("commandId","valid-archive","expectedVersion",published.path("version").asLong(),"transition","ARCHIVE")),200);
-        assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
     }
 
     @Test void duplicatePublicationFactCannotOverrideArchivedListing() throws Exception {
         String asset=asset();var publication=publish(approve(submit(create(asset))));String listing=publication.path("id").asText();
         var publicationRow=fact("marketplace.listing.published");
         // V21 fences the retired search reindex consumer: publication produces no projection intent.
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where tenant_id=?",Integer.class,tenant)).isZero();
         try(var d=dispatcher()){assertThat(d.processOnce((String)publicationRow.get("id"))).isTrue();}
         response(http(user,"POST",root()+"/listings/"+listing+"/transitions",Map.of("commandId","archive-after-publication","expectedVersion",publication.path("version").asLong(),"transition","ARCHIVE")),200);
         String replay=duplicate(publicationRow);
         var archived=state();
         try(var d=dispatcher()){assertThat(d.processOnce(replay)).isTrue();}
         assertThat(state()).isEqualTo(archived);
-        assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
-        assertThat(jdbc.queryForObject("select count(*) from platform_job where tenant_id=?",Integer.class,tenant)).isZero();
+        assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("select count(*) from execution.platform_job where tenant_id=?",Integer.class,tenant)).isZero();
     }
 }

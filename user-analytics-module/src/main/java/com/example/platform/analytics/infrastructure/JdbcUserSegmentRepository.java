@@ -31,7 +31,7 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
     @Override
     public UserSegment save(UserSegment segment) {
         int updated = jdbc.update("""
-                UPDATE user_segment SET
+                UPDATE analytics.user_segment SET
                 name = ?, description = ?, criteria_json = ?, user_ids_json = ?,
                 user_count = ?, computed_at = ?
                 WHERE segment_id = ?
@@ -45,7 +45,7 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
                 segment.segmentId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO user_segment
+                    INSERT INTO analytics.user_segment
                     (segment_id, tenant_id, name, description, criteria_json, user_ids_json, user_count, computed_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
@@ -64,7 +64,7 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
     @Override
     public Optional<UserSegment> findByTenantIdAndSegmentId(String tenantId, String segmentId) {
         List<UserSegment> rows = jdbc.query(
-                "SELECT * FROM user_segment WHERE tenant_id = ? AND segment_id = ?",
+                "SELECT * FROM analytics.user_segment WHERE tenant_id = ? AND segment_id = ?",
                 this::map,
                 tenantId,
                 segmentId);
@@ -74,7 +74,7 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
     @Override
     public List<UserSegment> findByTenantId(String tenantId) {
         return jdbc.query(
-                "SELECT * FROM user_segment WHERE tenant_id = ? ORDER BY computed_at DESC",
+                "SELECT * FROM analytics.user_segment WHERE tenant_id = ? ORDER BY computed_at DESC",
                 this::map,
                 tenantId);
     }

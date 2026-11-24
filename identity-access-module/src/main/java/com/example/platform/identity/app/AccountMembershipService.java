@@ -20,7 +20,7 @@ public class AccountMembershipService implements AccountIdentityQueries {
         if (issuer==null || subject==null || tenant==null) throw denied();
         var rows=jdbc.query("""
                 select a.id account_id,u.id membership_id,u.tenant_id,u.role,a.platform_admin
-                from account a join "user" u on u.account_id=a.id join tenant t on t.id=u.tenant_id
+                from identity.account a join identity."user" u on u.account_id=a.id join identity.tenant t on t.id=u.tenant_id
                 where a.issuer=? and a.subject=? and u.tenant_id=?
                 """,(r,n)->new AccountMembership(r.getString("account_id"),r.getString("membership_id"),r.getString("tenant_id"),r.getString("role"),r.getBoolean("platform_admin")),issuer,subject,tenant);
         if(rows.size()!=1||!users.isUsableMembership(rows.getFirst().membershipId(),tenant)) throw denied();return rows.getFirst();
@@ -31,8 +31,8 @@ public class AccountMembershipService implements AccountIdentityQueries {
     public String provisionVerifiedAccount(CanonicalActor operator, String issuer, String subject) {
         requireProvisioner(operator);requireText(issuer);requireText(subject);
         String id="acct_"+UUID.randomUUID().toString().replace("-","");
-        jdbc.update("insert into account(id,issuer,subject,status,created_at) values (?,?,?,'ACTIVE',now()) on conflict (issuer,subject) do nothing",id,issuer,subject);
-        return jdbc.queryForObject("select id from account where issuer=? and subject=? and status='ACTIVE'",String.class,issuer,subject);
+        jdbc.update("insert into identity.account(id,issuer,subject,status,created_at) values (?,?,?,'ACTIVE',now()) on conflict (issuer,subject) do nothing",id,issuer,subject);
+        return jdbc.queryForObject("select id from identity.account where issuer=? and subject=? and status='ACTIVE'",String.class,issuer,subject);
     }
 
     /** Create-if-absent membership; never updates another tenant or silently changes an existing role. */
@@ -40,9 +40,9 @@ public class AccountMembershipService implements AccountIdentityQueries {
     public AccountMembership createMembership(CanonicalActor operator,String account,String tenant,String username,String email,String role) {
         requireProvisioner(operator);
         var desired=com.example.platform.identity.domain.User.UserRole.valueOf(role);
-        if(jdbc.queryForList("select id from account where id=? and status='ACTIVE' for update",String.class,account).size()!=1)throw denied();
-        if(jdbc.queryForList("select id from tenant where id=? and status='ACTIVE'",String.class,tenant).size()!=1)throw denied();
-        var existing=jdbc.query("select id,role from \"user\" where account_id=? and tenant_id=?",(r,n)->new AccountMembership(account,r.getString("id"),tenant,r.getString("role")),account,tenant);
+        if(jdbc.queryForList("select id from identity.account where id=? and status='ACTIVE' for update",String.class,account).size()!=1)throw denied();
+        if(jdbc.queryForList("select id from identity.tenant where id=? and status='ACTIVE'",String.class,tenant).size()!=1)throw denied();
+        var existing=jdbc.query("select id,role from identity.\"user\" where account_id=? and tenant_id=?",(r,n)->new AccountMembership(account,r.getString("id"),tenant,r.getString("role")),account,tenant);
         if(!existing.isEmpty()) {
             if(existing.size()!=1||!existing.getFirst().role().equals(role))throw new PlatformException(CommonErrorCode.CONFLICT,"Membership already exists with different role");
             return existing.getFirst();
@@ -56,31 +56,31 @@ public class AccountMembershipService implements AccountIdentityQueries {
     @Transactional
     public AccountMembership linkMembership(CanonicalActor operator, String account, String tenant, String membership) {
         requireProvisioner(operator);
-        var accounts=jdbc.queryForList("select id from account where id=? and status='ACTIVE' for update",String.class,account);
+        var accounts=jdbc.queryForList("select id from identity.account where id=? and status='ACTIVE' for update",String.class,account);
         if(accounts.size()!=1) throw denied();
-        var rows=jdbc.queryForList("select account_id from \"user\" where id=? and tenant_id=? for update",membership,tenant);
+        var rows=jdbc.queryForList("select account_id from identity.\"user\" where id=? and tenant_id=? for update",membership,tenant);
         if(rows.size()!=1) throw denied();
         Object prior=rows.getFirst().get("account_id");
         if(prior!=null && !account.equals(prior))throw new PlatformException(CommonErrorCode.CONFLICT,"Membership already linked");
-        var existing=jdbc.queryForList("select id from \"user\" where account_id=? and tenant_id=?",String.class,account,tenant);
+        var existing=jdbc.queryForList("select id from identity.\"user\" where account_id=? and tenant_id=?",String.class,account,tenant);
         if(!existing.isEmpty()&&!existing.equals(List.of(membership)))throw new PlatformException(CommonErrorCode.CONFLICT,"Account already has a different tenant membership");
-        jdbc.update("update \"user\" set account_id=? where id=? and tenant_id=?",account,membership,tenant);
-        return jdbc.queryForObject("select id,tenant_id,role from \"user\" where id=?",(r,n)->new AccountMembership(account,r.getString("id"),r.getString("tenant_id"),r.getString("role")),membership);
+        jdbc.update("update identity.\"user\" set account_id=? where id=? and tenant_id=?",account,membership,tenant);
+        return jdbc.queryForObject("select id,tenant_id,role from identity.\"user\" where id=?",(r,n)->new AccountMembership(account,r.getString("id"),r.getString("tenant_id"),r.getString("role")),membership);
     }
     /** Explicit platform-account administration; never inferred from a tenant ADMIN membership. */
     @Transactional
     public void setPlatformAdministrator(CanonicalActor operator,String account,boolean administrator) {
         requireProvisioner(operator);
-        if(jdbc.update("update account set platform_admin=? where id=?",administrator,account)!=1)throw denied();
+        if(jdbc.update("update identity.account set platform_admin=? where id=?",administrator,account)!=1)throw denied();
     }
 
     @Transactional
     public void setMembershipActive(CanonicalActor operator,String account,String tenant,boolean active) {
         requireProvisioner(operator);
-        var ids=jdbc.queryForList("select id from \"user\" where account_id=? and tenant_id=? for update",String.class,account,tenant);
+        var ids=jdbc.queryForList("select id from identity.\"user\" where account_id=? and tenant_id=? for update",String.class,account,tenant);
         if(ids.size()!=1)throw denied();
         if(!active)workspaces.getObject().protectOwnershipBeforeDisablingMembership(tenant,ids.getFirst());
-        jdbc.update("update \"user\" set status=? where id=? and tenant_id=?",active?"ACTIVE":"INACTIVE",ids.getFirst(),tenant);
+        jdbc.update("update identity.\"user\" set status=? where id=? and tenant_id=?",active?"ACTIVE":"INACTIVE",ids.getFirst(),tenant);
     }
 
     private static void requireProvisioner(CanonicalActor actor) {

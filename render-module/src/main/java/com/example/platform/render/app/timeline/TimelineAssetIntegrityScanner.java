@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Service;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
 
 /**

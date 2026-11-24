@@ -33,8 +33,8 @@ class HealthControllerTest extends PostgresTestContainerSupport {
  }
  String token(boolean admin){
   String id=UUID.randomUUID().toString(),tenant="t-"+id;
-  db.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,tenant);
-  db.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'ADMIN','ACTIVE',now())",id,tenant,id,id+"@test.invalid");
+  db.update("insert into identity.tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,tenant);
+  db.update("insert into identity.\"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'ADMIN','ACTIVE',now())",id,tenant,id,id+"@test.invalid");
   var operator=CanonicalActor.system("system:identity-provisioning",tenant);
   String account=accounts.provisionVerifiedAccount(operator,"urn:media-platform:local-hmac",id);
   accounts.linkMembership(operator,account,tenant,id);accounts.setPlatformAdministrator(operator,account,admin);
@@ -51,15 +51,15 @@ class HealthControllerTest extends PostgresTestContainerSupport {
  }
  @Test void actualOwnerQueriesAreAccurateEmptyPopulatedAndReadOnly(){
   new TransactionTemplate(tm).executeWithoutResult(s->{
-   db.update("delete from outbox_events");db.update("delete from client_export_session");db.update("delete from render_job");
+   db.update("delete from infrastructure.outbox_events");db.update("delete from render.client_export_session");db.update("delete from render.render_job");
    assertEquals(Map.of(),outbox.snapshot().counts());assertEquals(Map.of(),render.renderJobCounts());assertEquals(Map.of(),render.exportSessionCounts());
-   db.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,created_at,retry_count) values ('ep13-o','t','a','t',1,'{}','PENDING',now(),0)");
-   db.update("insert into client_export_session(id,tenant_id,project_id,status) values ('ep13-e','t','p','CREATED')");
-   db.update("insert into tenant(id,name,status,created_at) values ('t','t','ACTIVE',now())");
-   db.update("insert into project(id,tenant_id,name,status,created_at) values ('p','t','p','ACTIVE',now())");
-   db.update("insert into render_job(id,project_id,timeline_snapshot_id,profile,status,created_at,tenant_id,initiator_type,initiator_id,initiator_tenant_id) values ('ep13-r','p','s','x','QUEUED',now(),'t','USER','u','t')");
+   db.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,created_at,retry_count) values ('ep13-o','t','a','t',1,'{}','PENDING',now(),0)");
+   db.update("insert into render.client_export_session(id,tenant_id,project_id,status) values ('ep13-e','t','p','CREATED')");
+   db.update("insert into identity.tenant(id,name,status,created_at) values ('t','t','ACTIVE',now())");
+   db.update("insert into identity.project(id,tenant_id,name,status,created_at) values ('p','t','p','ACTIVE',now())");
+   db.update("insert into render.render_job(id,project_id,timeline_snapshot_id,profile,status,created_at,tenant_id,initiator_type,initiator_id,initiator_tenant_id) values ('ep13-r','p','s','x','QUEUED',now(),'t','USER','u','t')");
    assertEquals(Map.of("PENDING",1L),outbox.snapshot().counts());assertEquals(Map.of("CREATED",1L),render.exportSessionCounts());assertEquals(Map.of("QUEUED",1L),render.renderJobCounts());
-   assertEquals(1,db.queryForObject("select count(*) from render_job where id='ep13-r'",Integer.class));s.setRollbackOnly();
+   assertEquals(1,db.queryForObject("select count(*) from render.render_job where id='ep13-r'",Integer.class));s.setRollbackOnly();
   });
  }
  @Test void queryFailureIsNotHealthyOrEmptyAndRecoveryWorks() throws Exception {

@@ -28,7 +28,7 @@ class AuditServiceTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS audit_records ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS policy.audit_records ("
                 + "id varchar(64) primary key,"
                 + "actor_type varchar(50) not null,"
                 + "actor_id varchar(100),"
@@ -46,7 +46,7 @@ class AuditServiceTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE audit_records CASCADE");
+        dsl.execute("TRUNCATE TABLE policy.audit_records CASCADE");
         service = new AuditService(dsl, new AuditAlertService(AuditAlertProperties.defaults(), new NoopSecurityAlertAdapter()));
     }
 

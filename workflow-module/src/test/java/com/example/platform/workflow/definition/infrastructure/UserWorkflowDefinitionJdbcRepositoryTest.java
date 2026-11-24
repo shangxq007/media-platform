@@ -38,7 +38,7 @@ class UserWorkflowDefinitionJdbcRepositoryTest extends PostgresTestContainerSupp
 
     /** Canonical V1 W2 DDL — kept in sync with the consolidated V1 migration by the migration test. */
     private static final String W2_DDL = """
-            create table user_workflow_definition (
+            create table workflow.user_workflow_definition (
                 definition_id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 project_id varchar(128),
@@ -46,7 +46,7 @@ class UserWorkflowDefinitionJdbcRepositoryTest extends PostgresTestContainerSupp
                 created_by varchar(128) not null
             );
 
-            create table user_workflow_definition_version (
+            create table workflow.user_workflow_definition_version (
                 definition_id varchar(64) not null,
                 version_number int not null,
                 tenant_id varchar(64) not null,
@@ -69,7 +69,7 @@ class UserWorkflowDefinitionJdbcRepositoryTest extends PostgresTestContainerSupp
                 primary key (definition_id, version_number)
             );
 
-            create table user_workflow_definition_node (
+            create table workflow.user_workflow_definition_node (
                 definition_id varchar(64) not null,
                 version_number int not null,
                 node_id varchar(64) not null,
@@ -84,7 +84,7 @@ class UserWorkflowDefinitionJdbcRepositoryTest extends PostgresTestContainerSupp
                 primary key (definition_id, version_number, node_id)
             );
 
-            create table user_workflow_definition_edge (
+            create table workflow.user_workflow_definition_edge (
                 definition_id varchar(64) not null,
                 version_number int not null,
                 edge_id varchar(64) not null,
@@ -118,10 +118,10 @@ class UserWorkflowDefinitionJdbcRepositoryTest extends PostgresTestContainerSupp
     @BeforeEach
     void cleanTables() {
         var jdbc = new JdbcTemplate(dataSource);
-        jdbc.execute("delete from user_workflow_definition_edge");
-        jdbc.execute("delete from user_workflow_definition_node");
-        jdbc.execute("delete from user_workflow_definition_version");
-        jdbc.execute("delete from user_workflow_definition");
+        jdbc.execute("delete from workflow.user_workflow_definition_edge");
+        jdbc.execute("delete from workflow.user_workflow_definition_node");
+        jdbc.execute("delete from workflow.user_workflow_definition_version");
+        jdbc.execute("delete from workflow.user_workflow_definition");
     }
 
     private static UserWorkflowDefinition draft(String tenantId, String projectId, String name) {

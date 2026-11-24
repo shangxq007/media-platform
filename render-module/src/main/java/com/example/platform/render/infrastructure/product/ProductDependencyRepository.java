@@ -10,7 +10,7 @@ import java.util.*;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.ProductDependency.PRODUCT_DEPENDENCY;
+import static com.example.platform.typedschema.jooq.generated.render.tables.ProductDependency.PRODUCT_DEPENDENCY;
 import org.jooq.impl.DSL;
 
 

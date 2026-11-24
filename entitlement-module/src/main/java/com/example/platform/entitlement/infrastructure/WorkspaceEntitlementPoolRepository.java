@@ -11,7 +11,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL;
+import static com.example.platform.typedschema.jooq.generated.entitlement.tables.WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL;
 
 
 @Repository

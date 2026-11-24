@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.*;
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
-import static com.example.platform.typedschema.jooq.generated.tables.StorageReference.STORAGE_REFERENCE;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
+import static com.example.platform.typedschema.jooq.generated.storage.tables.StorageReference.STORAGE_REFERENCE;
 
 
 /**

@@ -8,7 +8,7 @@ public final class PromptTestSchemaFixture {
 
     public static void createSchema(DSLContext dsl) {
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS prompt_template (
+            CREATE TABLE IF NOT EXISTS prompt.prompt_template (
                 template_id varchar(64) primary key,
                 name varchar(255) not null,
                 description text,
@@ -24,7 +24,7 @@ public final class PromptTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS prompt_template_version (
+            CREATE TABLE IF NOT EXISTS prompt.prompt_template_version (
                 version_id varchar(64) primary key,
                 template_id varchar(64) not null,
                 prompt_version varchar(32) not null,
@@ -40,7 +40,7 @@ public final class PromptTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS prompt_execution_run (
+            CREATE TABLE IF NOT EXISTS prompt.prompt_execution_run (
                 execution_id varchar(64) primary key,
                 template_id varchar(64) not null,
                 prompt_version varchar(32) not null,
@@ -69,7 +69,7 @@ public final class PromptTestSchemaFixture {
     public static void truncate(DSLContext dsl) {
         dsl.execute("""
             TRUNCATE TABLE
-                prompt_execution_run,
+                prompt.prompt_execution_run,
                 prompt_template_version,
                 prompt_template
             RESTART IDENTITY CASCADE

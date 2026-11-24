@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
 
 /**

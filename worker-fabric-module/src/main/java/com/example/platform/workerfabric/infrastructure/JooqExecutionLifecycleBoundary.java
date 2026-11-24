@@ -70,13 +70,13 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
                     lease.get("lease_duration_millis", Long.class));
             int updated = tx.execute(
                     """
-                    update wf_task_lease l
+                    update worker_fabric.wf_task_lease l
                        set last_heartbeat_at = cast(? as timestamptz),
                            expires_at = cast(? as timestamptz)
                      where l.lease_id = ? and l.active
                        and l.generation = ? and l.fencing_token = ?
                        and exists (
-                           select 1 from wf_task_ownership o
+                           select 1 from worker_fabric.wf_task_ownership o
                             where o.task_id = l.task_id
                               and o.current_generation = l.generation
                               and o.current_attempt_id = l.attempt_id
@@ -113,10 +113,10 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             }
             if (!JooqOwnershipFencing.isCurrentOwner(tx, lease)) {
                 tx.execute(
-                        "update wf_task_lease set active = false where lease_id = ? and active",
+                        "update worker_fabric.wf_task_lease set active = false where lease_id = ? and active",
                         lease.get("lease_id", String.class));
                 tx.execute(
-                        "update wf_reservation set state = 'RECOVERY_HOLD' "
+                        "update worker_fabric.wf_reservation set state = 'RECOVERY_HOLD' "
                                 + "where assignment_id = ? and state = 'ACTIVE'",
                         lease.get("assignment_id", String.class));
                 return LeaseExpiryResult.STALE_LEASE_NOOP;
@@ -138,7 +138,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             DSLContext tx = DSL.using(configuration);
             Record current = tx.fetchOne(
                     """
-                    select current_incarnation_id from wf_worker_runtime_connection
+                    select current_incarnation_id from worker_fabric.wf_worker_runtime_connection
                      where worker_runtime_id = ? for update
                     """,
                     disconnect.workerRuntimeId().value());
@@ -149,7 +149,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             }
             tx.execute(
                     """
-                    insert into wf_worker_runtime_connection (
+                    insert into worker_fabric.wf_worker_runtime_connection (
                         worker_runtime_id, current_incarnation_id, connected, updated_at)
                     values (?, ?, false, cast(? as timestamptz))
                     on conflict (worker_runtime_id) do update
@@ -176,7 +176,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             DSLContext tx = DSL.using(configuration);
             Record current = tx.fetchOne(
                     """
-                    select current_incarnation_id from wf_physical_host_connection
+                    select current_incarnation_id from worker_fabric.wf_physical_host_connection
                      where physical_host_id = ? for update
                     """,
                     disconnect.physicalHostId().value());
@@ -187,7 +187,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             }
             tx.execute(
                     """
-                    insert into wf_physical_host_connection (
+                    insert into worker_fabric.wf_physical_host_connection (
                         physical_host_id, current_incarnation_id, connected, updated_at)
                     values (?, ?, false, cast(? as timestamptz))
                     on conflict (physical_host_id) do update
@@ -213,7 +213,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
         return dsl.transactionResult(configuration -> {
             DSLContext tx = DSL.using(configuration);
             Record duplicate = tx.fetchOne(
-                    "select decision from wf_local_admission where lease_id = ? for update",
+                    "select decision from worker_fabric.wf_local_admission where lease_id = ? for update",
                     admission.fence().leaseId().value());
             if (duplicate != null) {
                 return LocalAdmissionResult.DUPLICATE_NOOP;
@@ -227,11 +227,11 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             if (admission.decision() == LocalAdmissionDecision.ACCEPT) {
                 int updated = tx.execute(
                         """
-                        update wf_execution_attempt a
+                        update worker_fabric.wf_execution_attempt a
                            set state = 'RUNNING', updated_at = cast(? as timestamptz)
                          where a.attempt_id = ? and a.generation = ? and a.state = 'CREATED'
                            and exists (
-                               select 1 from wf_task_ownership o
+                               select 1 from worker_fabric.wf_task_ownership o
                                 where o.task_id = a.task_id
                                   and o.current_attempt_id = a.attempt_id
                                   and o.current_generation = a.generation
@@ -282,7 +282,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             }
             if (!lease.get("active", Boolean.class)) {
                 Record attempt = tx.fetchOne(
-                        "select state from wf_execution_attempt where attempt_id = ?",
+                        "select state from worker_fabric.wf_execution_attempt where attempt_id = ?",
                         cancellation.fence().executionAttemptId().value());
                 return attempt != null
                                 && ExecutionAttemptState.CANCELLED.name().equals(
@@ -310,7 +310,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
         return dsl.transactionResult(configuration -> {
             DSLContext tx = DSL.using(configuration);
             Record prior = tx.fetchOne(
-                    "select confirmation_id from wf_physical_release_confirmation where confirmation_id = ?",
+                    "select confirmation_id from worker_fabric.wf_physical_release_confirmation where confirmation_id = ?",
                     confirmation.confirmationId());
             if (prior != null) {
                 return PhysicalReleaseResult.ALREADY_RELEASED_NOOP;
@@ -325,8 +325,8 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             }
             Set<String> states = tx.fetch(
                             """
-                            select state from wf_reservation r
-                             join wf_task_lease_reservation lr
+                            select state from worker_fabric.wf_reservation r
+                             join worker_fabric.wf_task_lease_reservation lr
                                on lr.reservation_id = r.reservation_id
                             where lr.lease_id = ?
                             """,
@@ -342,9 +342,9 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             }
             tx.execute(
                     """
-                    update wf_reservation r set state = 'RELEASED'
+                    update worker_fabric.wf_reservation r set state = 'RELEASED'
                      where r.reservation_id in (
-                         select lr.reservation_id from wf_task_lease_reservation lr
+                         select lr.reservation_id from worker_fabric.wf_task_lease_reservation lr
                           where lr.lease_id = ?)
                        and r.state = 'RECOVERY_HOLD'
                     """,
@@ -373,7 +373,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
     }
 
     private static Record lockLease(DSLContext tx, String leaseId) {
-        return tx.fetchOne("select * from wf_task_lease where lease_id = ? for update", leaseId);
+        return tx.fetchOne("select * from worker_fabric.wf_task_lease where lease_id = ? for update", leaseId);
     }
 
     private static boolean matchesFence(Record lease, LeaseOwnershipFence fence) {
@@ -399,7 +399,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             DSLContext tx, LocalAdmission admission, LocalAdmissionResult result) {
         tx.execute(
                 """
-                insert into wf_local_admission (
+                insert into worker_fabric.wf_local_admission (
                     lease_id, attempt_id, generation, decision, decline_reason,
                     result, received_at)
                 values (?, ?, ?, ?, ?, ?, cast(? as timestamptz))
@@ -420,7 +420,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
         }
         Set<String> authoritative = tx.fetch(
                         """
-                        select reservation_id from wf_task_lease_reservation
+                        select reservation_id from worker_fabric.wf_task_lease_reservation
                          where lease_id = ? order by reservation_id
                         """,
                         confirmation.fence().leaseId().value()).stream()
@@ -436,7 +436,7 @@ public class JooqExecutionLifecycleBoundary implements ExecutionLifecycleBoundar
             DSLContext tx, PhysicalReleaseConfirmation confirmation) {
         tx.execute(
                 """
-                insert into wf_physical_release_confirmation (
+                insert into worker_fabric.wf_physical_release_confirmation (
                     confirmation_id, lease_id, confirmed_at)
                 values (?, ?, cast(? as timestamptz))
                 on conflict (confirmation_id) do nothing

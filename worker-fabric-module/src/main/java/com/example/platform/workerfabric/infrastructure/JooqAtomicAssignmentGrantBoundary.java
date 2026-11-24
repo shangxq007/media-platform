@@ -104,7 +104,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             Record stored = tx.fetchOne(
                     """
                     select request_context_fingerprint, result_kind, failure_reason, assignment_id
-                      from wf_request_work_resolution
+                      from worker_fabric.wf_request_work_resolution
                      where request_work_id = ?
                      for update
                     """,
@@ -159,7 +159,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             Terminal terminal = Terminal.from(authoritativeTerminal);
             int updated = tx.execute(
                     """
-                    update wf_request_work_resolution
+                    update worker_fabric.wf_request_work_resolution
                        set result_kind = ?, failure_reason = ?
                      where request_work_id = ? and result_kind = 'PENDING'
                     """,
@@ -186,7 +186,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record resolution = dsl.fetchOne(
                 """
                 select request_work_id
-                  from wf_request_work_resolution
+                  from worker_fabric.wf_request_work_resolution
                  where assignment_id = ? and result_kind = 'GRANTED'
                 """,
                 assignmentId.value());
@@ -211,25 +211,25 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record row = dsl.fetchOne(
                 """
                 select r.request_work_id, o.active_assignment_id
-                  from wf_task_ownership o
-                  join wf_request_work_resolution r
+                  from worker_fabric.wf_task_ownership o
+                  join worker_fabric.wf_request_work_resolution r
                     on r.assignment_id = o.active_assignment_id
-                  join wf_execution_assignment a
+                  join worker_fabric.wf_execution_assignment a
                     on a.assignment_id = o.active_assignment_id
                  where o.task_id = ? and not o.claimable and r.result_kind = 'GRANTED'
                    and exists (
-                       select 1 from wf_task_lease l
+                       select 1 from worker_fabric.wf_task_lease l
                         where l.assignment_id = a.assignment_id
                           and l.active
                           and l.expires_at > cast(? as timestamptz))
                    and exists (
-                       select 1 from wf_host_registration hr
+                       select 1 from worker_fabric.wf_host_registration hr
                         where hr.physical_host_id = a.physical_host_id
                           and hr.physical_host_incarnation_id = a.physical_host_incarnation_id
                           and hr.active
                           and hr.valid_until > cast(? as timestamptz))
                    and exists (
-                       select 1 from wf_runtime_registration rr
+                       select 1 from worker_fabric.wf_runtime_registration rr
                         where rr.worker_runtime_id = a.worker_runtime_id
                           and rr.worker_runtime_incarnation_id = a.worker_runtime_incarnation_id
                           and rr.physical_host_id = a.physical_host_id
@@ -237,7 +237,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                           and rr.active
                           and rr.valid_until > cast(? as timestamptz))
                    and exists (
-                       select 1 from wf_worker_runtime_connection c
+                       select 1 from worker_fabric.wf_worker_runtime_connection c
                         where c.worker_runtime_id = a.worker_runtime_id
                           and c.connected
                           and c.current_incarnation_id = a.worker_runtime_incarnation_id)
@@ -271,7 +271,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             Record attempt = tx.fetchOne(
                     """
                     select task_id, generation, state
-                      from wf_execution_attempt
+                      from worker_fabric.wf_execution_attempt
                      where attempt_id = ?
                     """,
                     attemptId.value());
@@ -282,7 +282,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             Record current = tx.fetchOne(
                     """
                     select current_generation, current_attempt_id
-                      from wf_task_ownership
+                      from worker_fabric.wf_task_ownership
                      where task_id = ?
                      for update
                     """,
@@ -308,11 +308,11 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             }
             int updated = tx.execute(
                     """
-                    update wf_execution_attempt a
+                    update worker_fabric.wf_execution_attempt a
                        set state = ?, updated_at = cast(? as timestamptz)
                      where a.attempt_id = ? and a.generation = ?
                        and exists (
-                           select 1 from wf_task_ownership o
+                           select 1 from worker_fabric.wf_task_ownership o
                             where o.task_id = a.task_id
                               and o.current_attempt_id = a.attempt_id
                               and o.current_generation = a.generation)
@@ -326,9 +326,9 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             if (nextState.terminal()) {
                 tx.execute(
                         """
-                        update wf_execution_backend_selection s
+                        update worker_fabric.wf_execution_backend_selection s
                            set active = false, terminal_at = cast(? as timestamptz)
-                          from wf_execution_attempt a
+                          from worker_fabric.wf_execution_attempt a
                          where a.backend_selection_id = s.selection_id
                            and a.attempt_id = ? and a.generation = ? and s.active
                         """,
@@ -363,7 +363,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         String taskId = command.executableTask().id().sha256Hex();
         tx.execute(
                 """
-                insert into wf_task_ownership (
+                insert into worker_fabric.wf_task_ownership (
                     task_id, current_generation, claimable, updated_at)
                 values (?, 0, true, cast(? as timestamptz))
                 on conflict (task_id) do nothing
@@ -372,7 +372,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record ownership = tx.fetchOne(
                 """
                 select current_generation, claimable
-                  from wf_task_ownership
+                  from worker_fabric.wf_task_ownership
                  where task_id = ?
                  for update
                 """,
@@ -414,13 +414,13 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
 
         tx.execute(
                 """
-                insert into wf_execution_ownership_generation (task_id, generation, created_at)
+                insert into worker_fabric.wf_execution_ownership_generation (task_id, generation, created_at)
                 values (?, ?, cast(? as timestamptz))
                 """,
                 taskId, generation.value(), databaseTime(grantedAt));
         tx.execute(
                 """
-                insert into wf_execution_attempt (
+                insert into worker_fabric.wf_execution_attempt (
                     attempt_id, task_id, generation, backend, state,
                     backend_selection_id, backend_local_handle_reference, created_at, updated_at)
                 values (?, ?, ?, ?, ?, ?, ?,
@@ -432,7 +432,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                 leaseId.value(), databaseTime(grantedAt), databaseTime(grantedAt));
         tx.execute(
                 """
-                insert into wf_execution_assignment (
+                insert into worker_fabric.wf_execution_assignment (
                     assignment_id, task_id, attempt_id, generation,
                     worker_runtime_id, worker_runtime_incarnation_id,
                     physical_host_id, physical_host_incarnation_id, created_at)
@@ -445,13 +445,13 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         command.resourceDemand().deviceDemands().keySet().stream()
                 .sorted(Comparator.comparing(DeviceId::value))
                 .forEach(deviceId -> tx.execute(
-                        "insert into wf_execution_assignment_device (assignment_id, device_id) values (?, ?)",
+                        "insert into worker_fabric.wf_execution_assignment_device (assignment_id, device_id) values (?, ?)",
                         assignmentId.value(), deviceId.value()));
 
         RuntimeResourceDemand demand = command.resourceDemand();
         tx.execute(
                 """
-                insert into wf_reservation (
+                insert into worker_fabric.wf_reservation (
                     reservation_id, assignment_id, task_id, physical_host_id,
                     physical_host_incarnation_id,
                     kind, state, cpu_millicores, memory_bytes,
@@ -468,7 +468,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                     RuntimeResourceDemand.DeviceDemand device = entry.getValue();
                     tx.execute(
                             """
-                            insert into wf_reservation_device (
+                            insert into worker_fabric.wf_reservation_device (
                                 reservation_id, device_id, vram_bytes, compute_units,
                                 encoder_engines, decoder_engines)
                             values (?, ?, ?, ?, ?, ?)
@@ -479,7 +479,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
 
         tx.execute(
                 """
-                insert into wf_task_lease (
+                insert into worker_fabric.wf_task_lease (
                     lease_id, task_id, assignment_id, attempt_id, generation,
                     worker_runtime_id, worker_runtime_incarnation_id,
                     expires_at, last_heartbeat_at, heartbeat_interval_millis,
@@ -496,13 +496,13 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                 databaseTime(grantedAt));
         tx.execute(
                 """
-                insert into wf_task_lease_reservation (lease_id, reservation_id, assignment_id)
+                insert into worker_fabric.wf_task_lease_reservation (lease_id, reservation_id, assignment_id)
                 values (?, ?, ?)
                 """,
                 leaseId.value(), reservationId.value(), assignmentId.value());
         int claimed = tx.execute(
                 """
-                update wf_task_ownership
+                update worker_fabric.wf_task_ownership
                    set current_generation = ?, current_attempt_id = ?,
                        active_assignment_id = ?, active_lease_id = ?,
                        claimable = false, updated_at = cast(? as timestamptz)
@@ -515,7 +515,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         }
         int resolved = tx.execute(
                 """
-                update wf_request_work_resolution
+                update worker_fabric.wf_request_work_resolution
                    set result_kind = 'GRANTED', assignment_id = ?, task_id = ?
                  where request_work_id = ? and result_kind = 'PENDING'
                 """,
@@ -533,7 +533,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             String fingerprint) {
         int inserted = tx.execute(
                 """
-                insert into wf_request_work_resolution (
+                insert into worker_fabric.wf_request_work_resolution (
                     request_work_id, request_context_fingerprint, result_kind, created_at)
                 values (?, ?, 'PENDING', cast(? as timestamptz))
                 on conflict (request_work_id) do nothing
@@ -545,7 +545,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record stored = tx.fetchOne(
                 """
                 select request_context_fingerprint, result_kind, failure_reason, assignment_id
-                  from wf_request_work_resolution
+                  from worker_fabric.wf_request_work_resolution
                  where request_work_id = ?
                  for update
                 """,
@@ -590,7 +590,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
     private static void finalizeNoWork(DSLContext tx, RequestWorkId requestWorkId) {
         int updated = tx.execute(
                 """
-                update wf_request_work_resolution
+                update worker_fabric.wf_request_work_resolution
                    set result_kind = 'NO_WORK'
                  where request_work_id = ? and result_kind = 'PENDING'
                 """,
@@ -606,7 +606,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             RequestWorkFailureReason reason) {
         int updated = tx.execute(
                 """
-                update wf_request_work_resolution
+                update worker_fabric.wf_request_work_resolution
                    set result_kind = 'REJECTED', failure_reason = ?
                  where request_work_id = ? and result_kind = 'PENDING'
                 """,
@@ -621,7 +621,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record hostRegistration = tx.fetchOne(
                 """
                 select valid_until
-                  from wf_host_registration
+                  from worker_fabric.wf_host_registration
                  where physical_host_id = ? and physical_host_incarnation_id = ? and active
                  for update
                 """,
@@ -645,14 +645,14 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record runtimeConnection = tx.fetchOne(
                 """
                 select current_incarnation_id, connected
-                  from wf_worker_runtime_connection
+                  from worker_fabric.wf_worker_runtime_connection
                  where worker_runtime_id = ? for update
                 """,
                 request.workerRuntimeId().value());
         Record runtimeRegistration = tx.fetchOne(
                 """
                 select physical_host_id, physical_host_incarnation_id, valid_until
-                  from wf_runtime_registration
+                  from worker_fabric.wf_runtime_registration
                  where worker_runtime_id = ? and worker_runtime_incarnation_id = ? and active
                  for update
                 """,
@@ -693,7 +693,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record hostConnection = tx.fetchOne(
                 """
                 select current_incarnation_id, connected
-                  from wf_physical_host_connection
+                  from worker_fabric.wf_physical_host_connection
                  where physical_host_id = ? for update
                 """,
                 request.physicalHostId().value());
@@ -711,8 +711,8 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record snapshot = tx.fetchOne(
                 """
                 select s.snapshot_fingerprint
-                  from wf_host_resource_snapshot s
-                  join wf_host_snapshot_generation_authority a
+                  from worker_fabric.wf_host_resource_snapshot s
+                  join worker_fabric.wf_host_snapshot_generation_authority a
                     on a.physical_host_id = s.physical_host_id
                    and a.physical_host_incarnation_id = s.physical_host_incarnation_id
                    and a.current_generation = s.snapshot_generation
@@ -740,8 +740,8 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                 select s.cpu_millicores, s.memory_bytes, s.temporary_storage_bytes,
                        s.safety_headroom_cpu_millicores, s.safety_headroom_memory_bytes,
                        s.safety_headroom_temporary_storage_bytes
-                  from wf_host_resource_snapshot s
-                  join wf_host_snapshot_generation_authority a
+                  from worker_fabric.wf_host_resource_snapshot s
+                  join worker_fabric.wf_host_snapshot_generation_authority a
                     on a.physical_host_id = s.physical_host_id
                    and a.physical_host_incarnation_id = s.physical_host_incarnation_id
                    and a.current_generation = s.snapshot_generation
@@ -760,7 +760,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                 select coalesce(sum(cpu_millicores), 0)::bigint as cpu_millicores,
                        coalesce(sum(memory_bytes), 0)::bigint as memory_bytes,
                        coalesce(sum(temporary_storage_bytes), 0)::bigint as temporary_storage_bytes
-                  from wf_reservation
+                  from worker_fabric.wf_reservation
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                    and state in ('ACTIVE', 'RECOVERY_HOLD')
                 """,
@@ -799,7 +799,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                     select vram_bytes, compute_units, encoder_engines, decoder_engines,
                            safety_headroom_vram_bytes, safety_headroom_compute_units,
                            safety_headroom_encoder_engines, safety_headroom_decoder_engines
-                      from wf_host_resource_snapshot_device
+                      from worker_fabric.wf_host_resource_snapshot_device
                      where physical_host_id = ? and physical_host_incarnation_id = ?
                        and snapshot_generation = ? and device_id = ?
                      for update
@@ -817,8 +817,8 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                            coalesce(sum(rd.compute_units), 0)::bigint as compute_units,
                            coalesce(sum(rd.encoder_engines), 0)::bigint as encoder_engines,
                            coalesce(sum(rd.decoder_engines), 0)::bigint as decoder_engines
-                      from wf_reservation_device rd
-                      join wf_reservation r on r.reservation_id = rd.reservation_id
+                      from worker_fabric.wf_reservation_device rd
+                      join worker_fabric.wf_reservation r on r.reservation_id = rd.reservation_id
                      where r.physical_host_id = ? and r.physical_host_incarnation_id = ?
                        and r.state in ('ACTIVE', 'RECOVERY_HOLD') and rd.device_id = ?
                     """,
@@ -870,7 +870,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             RequestWorkId requestWorkId,
             ExecutionAssignmentId assignmentId) {
         Record assignmentRow = tx.fetchOne(
-                "select * from wf_execution_assignment where assignment_id = ?",
+                "select * from worker_fabric.wf_execution_assignment where assignment_id = ?",
                 assignmentId.value());
         if (assignmentRow == null) {
             throw new IllegalStateException("granted assignment row is missing: " + assignmentId);
@@ -883,7 +883,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
                 assignmentRow.get("generation", Long.class));
         Set<DeviceId> deviceIds = tx.fetch(
                         """
-                        select device_id from wf_execution_assignment_device
+                        select device_id from worker_fabric.wf_execution_assignment_device
                          where assignment_id = ? order by device_id
                         """,
                         assignmentId.value()).stream()
@@ -912,8 +912,8 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         Record leaseRow = tx.fetchOne(
                 """
                 select l.*
-                  from wf_task_ownership o
-                  join wf_task_lease l on l.lease_id = o.active_lease_id
+                  from worker_fabric.wf_task_ownership o
+                  join worker_fabric.wf_task_lease l on l.lease_id = o.active_lease_id
                  where o.task_id = ? and o.active_assignment_id = ? and not o.claimable
                 """,
                 taskIdValue, assignmentId.value());
@@ -922,7 +922,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         }
         Set<ReservationId> leaseReservations = tx.fetch(
                         """
-                        select reservation_id from wf_task_lease_reservation
+                        select reservation_id from worker_fabric.wf_task_lease_reservation
                          where lease_id = ? order by reservation_id
                         """,
                         leaseRow.get("lease_id", String.class)).stream()
@@ -955,7 +955,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         List<Reservation> result = new ArrayList<>();
         for (Record reservation : tx.fetch(
                 """
-                select * from wf_reservation
+                select * from worker_fabric.wf_reservation
                  where assignment_id = ? order by reservation_id
                 """,
                 assignmentId.value())) {
@@ -963,7 +963,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
             Map<DeviceId, DeviceResourceReservation> devices = new LinkedHashMap<>();
             for (Record device : tx.fetch(
                     """
-                    select * from wf_reservation_device
+                    select * from worker_fabric.wf_reservation_device
                      where reservation_id = ? order by device_id
                     """,
                     id.value())) {
@@ -991,7 +991,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
 
     private static ExecutionAttempt loadAttempt(DSLContext tx, ExecutionAttemptId attemptId) {
         Record row = tx.fetchOne(
-                "select * from wf_execution_attempt where attempt_id = ?",
+                "select * from worker_fabric.wf_execution_attempt where attempt_id = ?",
                 attemptId.value());
         if (row == null) {
             throw new IllegalStateException("execution attempt row is missing: " + attemptId);

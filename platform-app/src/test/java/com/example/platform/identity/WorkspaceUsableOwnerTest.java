@@ -12,21 +12,21 @@ class WorkspaceUsableOwnerTest extends WorkspaceAuthorityHttpTest {
         String ws=create();
         var pool=context.getBean(com.example.platform.entitlement.app.WorkspaceEntitlementPoolService.class)
                 .createPool(ws,"review.feature",100,"MONTHLY",creator);
-        jdbc.update("update workspace_entitlement_pool set used_quota=40 where id=?",pool.id());
+        jdbc.update("update entitlement.workspace_entitlement_pool set used_quota=40 where id=?",pool.id());
         String endpoint="/api/workspaces/"+ws+"/entitlements/pool";
         assertEquals(200,call("GET",endpoint,null,creator).statusCode());
         var read=call("GET",endpoint,null,outsider);
         var reclaim=call("POST",endpoint+"/reclaim",Map.of("memberId",creator,"featureKey","review.feature","quotaAmount",10),outsider);
-        long usage=count("select used_quota from workspace_entitlement_pool where id=?",pool.id());
+        long usage=count("select used_quota from entitlement.workspace_entitlement_pool where id=?",pool.id());
         System.out.println("POOL_PROBE outsider read="+read.statusCode()+" reclaim="+reclaim.statusCode()+" persistedUsage="+usage);
         assertAll(()->assertEquals(403,read.statusCode()),()->assertEquals(403,reclaim.statusCode()),()->assertEquals(40,usage));
     }
     @Test void independentLegacyForeignOwnerMustNotPermitLastUsableOwnerRemoval() throws Exception {
         String ws=create();
         // Baseline addMember accepted arbitrary user IDs; schema has no tenant FK constraint.
-        jdbc.update("insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'OWNER','ACTIVE',now(),now())","legacy-"+UUID.randomUUID(),ws,foreign);
+        jdbc.update("insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'OWNER','ACTIVE',now(),now())","legacy-"+UUID.randomUUID(),ws,foreign);
         var result=call("DELETE",path(ws)+"/members/"+creator,null,creator);
-        long usable=count("select count(*) from workspace_member m join workspace w on w.id=m.workspace_id join \"user\" u on u.id=m.user_id where w.id=? and m.role='OWNER' and m.status='ACTIVE' and u.status='ACTIVE' and u.tenant_id=w.tenant_id",ws);
+        long usable=count("select count(*) from identity.workspace_member m join identity.workspace w on w.id=m.workspace_id join identity.\"user\" u on u.id=m.user_id where w.id=? and m.role='OWNER' and m.status='ACTIVE' and u.status='ACTIVE' and u.tenant_id=w.tenant_id",ws);
         System.out.println("OWNER_PROBE removal="+result.statusCode()+" usableOwners="+usable);
         assertAll(()->assertEquals(409,result.statusCode()),()->assertEquals(1,usable));
     }
@@ -59,12 +59,12 @@ class WorkspaceUsableOwnerTest extends WorkspaceAuthorityHttpTest {
     @Test void missingAndInactiveHistoricalOwnersCannotJustifyRemovingTheUsableOwner() throws Exception {
         for(String kind:List.of("missing","inactive")) {
             String ws=create(),bad=kind.equals("missing")?"missing-"+UUID.randomUUID():user(tenant);
-            if(kind.equals("inactive")) jdbc.update("update \"user\" set status='INACTIVE' where id=?",bad);
-            jdbc.update("insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'OWNER','ACTIVE',now(),now())","legacy-"+UUID.randomUUID(),ws,bad);
+            if(kind.equals("inactive")) jdbc.update("update identity.\"user\" set status='INACTIVE' where id=?",bad);
+            jdbc.update("insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'OWNER','ACTIVE',now(),now())","legacy-"+UUID.randomUUID(),ws,bad);
             long before=ownerAudits();
             assertEquals(409,call("DELETE",path(ws)+"/members/"+creator,null,creator).statusCode());
-            assertEquals(1,count("select count(*) from workspace_member where workspace_id=? and user_id=? and status='ACTIVE'",ws,creator));
-            assertEquals(1,count("select count(*) from workspace_member where workspace_id=? and user_id=? and status='ACTIVE'",ws,bad));
+            assertEquals(1,count("select count(*) from identity.workspace_member where workspace_id=? and user_id=? and status='ACTIVE'",ws,creator));
+            assertEquals(1,count("select count(*) from identity.workspace_member where workspace_id=? and user_id=? and status='ACTIVE'",ws,bad));
             assertEquals(before,ownerAudits());assertEquals(200,call("GET",path(ws),null,creator).statusCode());
         }
     }

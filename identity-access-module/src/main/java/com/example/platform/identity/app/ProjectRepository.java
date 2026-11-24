@@ -11,7 +11,7 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.Project.PROJECT;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.Project.PROJECT;
 
 
 @Repository

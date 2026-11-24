@@ -49,7 +49,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
         repository = context.getBean(CreditWalletJdbcRepository.class);
         jdbc.execute("DROP TABLE IF EXISTS credit_wallet_command, credit_transaction, credit_reservation, credit_wallet CASCADE");
         jdbc.execute("""
-                CREATE TABLE credit_wallet (
+                CREATE TABLE billing.credit_wallet (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     workspace_id varchar(64), balance_minor bigint not null,
@@ -65,19 +65,19 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
                     tenant_id, principal_type, principal_id, coalesce(workspace_id, ''), currency_code)
                 """);
         jdbc.execute("""
-                CREATE TABLE credit_reservation (
+                CREATE TABLE billing.credit_reservation (
                     id varchar(64) not null, tenant_id varchar(64) not null,
                     wallet_id varchar(64) not null, amount_minor bigint not null,
                     currency_code varchar(3) not null, status varchar(32) not null,
                     version bigint not null, reference_type varchar(64) not null,
                     reference_id varchar(128) not null, created_at timestamptz not null,
                     updated_at timestamptz not null, primary key (tenant_id, id),
-                    foreign key (tenant_id, wallet_id) references credit_wallet(tenant_id, id),
+                    foreign key (tenant_id, wallet_id) references billing.credit_wallet(tenant_id, id),
                     check (amount_minor > 0), check (version > 0)
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE credit_transaction (
+                CREATE TABLE billing.credit_transaction (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     wallet_id varchar(64) not null, reservation_id varchar(64),
                     transaction_type varchar(32) not null, amount_minor bigint not null,
@@ -89,7 +89,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE credit_wallet_command (
+                CREATE TABLE billing.credit_wallet_command (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     wallet_id varchar(64) not null, idempotency_key varchar(255) not null,
                     command_type varchar(32) not null, payload_fingerprint varchar(64) not null,
@@ -114,7 +114,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
         jdbc.execute("DROP FUNCTION IF EXISTS fail_credit_transaction_for_test()");
         jdbc.execute("DROP TRIGGER IF EXISTS fail_credit_command ON credit_wallet_command");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_credit_command_for_test()");
-        jdbc.execute("TRUNCATE credit_wallet_command, credit_transaction, credit_reservation, credit_wallet");
+        jdbc.execute("TRUNCATE billing.credit_wallet_command, credit_transaction, credit_reservation, credit_wallet");
     }
 
     @Test

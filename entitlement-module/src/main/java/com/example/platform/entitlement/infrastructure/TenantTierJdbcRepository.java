@@ -21,7 +21,7 @@ public class TenantTierJdbcRepository {
 
     public void upsert(String tenantId, String tier) {
         int updated = jdbc.update("""
-                UPDATE tenant_entitlement_tier SET tier = ?, updated_at = ?
+                UPDATE entitlement.tenant_entitlement_tier SET tier = ?, updated_at = ?
                 WHERE tenant_id = ?
                 """,
                 tier,
@@ -29,7 +29,7 @@ public class TenantTierJdbcRepository {
                 tenantId);
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO tenant_entitlement_tier (tenant_id, tier, updated_at)
+                    INSERT INTO entitlement.tenant_entitlement_tier (tenant_id, tier, updated_at)
                     VALUES (?, ?, ?)
                     """,
                     tenantId,
@@ -40,7 +40,7 @@ public class TenantTierJdbcRepository {
 
     public Optional<String> findTier(String tenantId) {
         List<String> rows = jdbc.query(
-                "SELECT tier FROM tenant_entitlement_tier WHERE tenant_id = ?",
+                "SELECT tier FROM entitlement.tenant_entitlement_tier WHERE tenant_id = ?",
                 (rs, rowNum) -> rs.getString("tier"),
                 tenantId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
@@ -48,7 +48,7 @@ public class TenantTierJdbcRepository {
 
     public List<Map.Entry<String, String>> loadAll() {
         return jdbc.query(
-                "SELECT tenant_id, tier FROM tenant_entitlement_tier",
+                "SELECT tenant_id, tier FROM entitlement.tenant_entitlement_tier",
                 (rs, rowNum) -> Map.entry(rs.getString("tenant_id"), rs.getString("tier")));
     }
 }

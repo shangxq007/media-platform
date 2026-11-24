@@ -46,9 +46,9 @@ class Roadmap20SnapshotOwnershipAndCorruptionTest extends PostgresTestContainerS
     @BeforeEach
     void setUp() {
         com.example.platform.render.testsupport.RenderTestSchemaFixture.truncate(dsl);
-        dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
+        dsl.execute("insert into identity.project (id, tenant_id, name, status, created_at) "
                 + "values ('proj-a', 'tenant-a', 'a', 'ACTIVE', now()) on conflict (id) do nothing");
-        dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
+        dsl.execute("insert into identity.project (id, tenant_id, name, status, created_at) "
                 + "values ('proj-b', 'tenant-b', 'b', 'ACTIVE', now()) on conflict (id) do nothing");
     }
 
@@ -144,7 +144,7 @@ class Roadmap20SnapshotOwnershipAndCorruptionTest extends PostgresTestContainerS
     // ---- SC1-SC7 ----
 
     private void corruptRow(String id, String payload) {
-        dsl.execute("update timeline_snapshot set payload_json = ? where id = ?", payload, id);
+        dsl.execute("update timeline.timeline_snapshot set payload_json = ? where id = ?", payload, id);
     }
 
     @Test
@@ -279,7 +279,7 @@ class Roadmap20SnapshotOwnershipAndCorruptionTest extends PostgresTestContainerS
                 .EffectSemanticSnapshotJsonCodec.serialize(differentSnap)
                 .replaceFirst("\"snapshotId\":\"[^\"]*\"",
                         "\"snapshotId\":\"" + snap.id().value() + "\"");
-        dsl.execute("update timeline_snapshot set payload_json = ? where id = ?",
+        dsl.execute("update timeline.timeline_snapshot set payload_json = ? where id = ?",
                 differentPayload, snap.id().value());
         assertThrows(IllegalArgumentException.class,
                 () -> store.storeTx(dsl, "proj-a", "tenant-a", snap),

@@ -34,7 +34,7 @@ class LocalNotificationProviderTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS notification_record ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS notification.notification_record ("
                 + "id varchar(64) primary key,"
                 + "event_id varchar(64) not null,"
                 + "channel varchar(32) not null,"
@@ -57,7 +57,7 @@ class LocalNotificationProviderTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE notification_record CASCADE");
+        dsl.execute("TRUNCATE TABLE notification.notification_record CASCADE");
         repository = new NotificationDeliveryRepository(dsl);
         mockProvider = new MockNotificationProvider(repository);
     }

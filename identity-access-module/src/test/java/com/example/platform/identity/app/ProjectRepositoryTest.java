@@ -29,7 +29,7 @@ class ProjectRepositoryTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS project ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.project ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64) not null,"
                 + "name varchar(255) not null,"
@@ -48,7 +48,7 @@ class ProjectRepositoryTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE project CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.project CASCADE");
         repository = new ProjectRepository(dsl);
     }
 

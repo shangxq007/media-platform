@@ -1,6 +1,6 @@
 package com.example.platform.artifact.infrastructure;
 
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN;
 
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.artifact.app.ArtifactPinIdentity;

@@ -54,8 +54,8 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
     private String projectId;
     @org.junit.jupiter.api.BeforeEach void authenticatedAuthor() {
         String user="author-"+java.util.UUID.randomUUID();
-        jdbcTemplate.update("insert into tenant(id,name,status,created_at) values ('tenant-a','Workflow','ACTIVE',now()) on conflict do nothing");
-        jdbcTemplate.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,'tenant-a',?,?,'MEMBER','ACTIVE',now())",user,user,user+"@test.invalid");
+        jdbcTemplate.update("insert into identity.tenant(id,name,status,created_at) values ('tenant-a','Workflow','ACTIVE',now()) on conflict do nothing");
+        jdbcTemplate.update("insert into identity.\"user\"(id,tenant_id,username,email,role,status,created_at) values (?,'tenant-a',?,?,'MEMBER','ACTIVE',now())",user,user,user+"@test.invalid");
         var accounts=context.getBean(com.example.platform.identity.app.AccountMembershipService.class);
         var operator=com.example.platform.shared.authorization.CanonicalActor.system("system:identity-provisioning","tenant-a");
         var account=accounts.provisionVerifiedAccount(operator,"urn:media-platform:local-hmac",user);accounts.linkMembership(operator,account,"tenant-a",user);
@@ -69,9 +69,9 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
         roles.saveUserRoleAssignment(new com.example.platform.identity.domain.UserRoleAssignment(java.util.UUID.randomUUID().toString(),"tenant-a",null,user,role.id(),user,java.time.Instant.now()));
         this.workspaceId="ws-"+java.util.UUID.randomUUID();
         this.projectId="proj-"+java.util.UUID.randomUUID();
-        jdbcTemplate.update("insert into workspace(id,tenant_id,name,plan_tier,status,created_at,updated_at) values (?,?,?,'FREE','ACTIVE',now(),now())",workspaceId,"tenant-a","wf-ws");
-        jdbcTemplate.update("insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'MEMBER','ACTIVE',now(),now())","wm-"+java.util.UUID.randomUUID(),workspaceId,user);
-        jdbcTemplate.update("insert into project(id,tenant_id,name,status,created_at,workspace_id) values (?,?,?,'ACTIVE',now(),?)",projectId,"tenant-a","wf-project",workspaceId);
+        jdbcTemplate.update("insert into identity.workspace(id,tenant_id,name,plan_tier,status,created_at,updated_at) values (?,?,?,'FREE','ACTIVE',now(),now())",workspaceId,"tenant-a","wf-ws");
+        jdbcTemplate.update("insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'MEMBER','ACTIVE',now(),now())","wm-"+java.util.UUID.randomUUID(),workspaceId,user);
+        jdbcTemplate.update("insert into identity.project(id,tenant_id,name,status,created_at,workspace_id) values (?,?,?,'ACTIVE',now(),?)",projectId,"tenant-a","wf-project",workspaceId);
         roles.saveUserRoleAssignment(new com.example.platform.identity.domain.UserRoleAssignment(java.util.UUID.randomUUID().toString(),"tenant-a",workspaceId,user,role.id(),user,java.time.Instant.now()));
         token=io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId","tenant-a").expiration(new java.util.Date(System.currentTimeMillis()+600000))
                 .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("ep07-definition-contract-key-at-least-256-bits".getBytes(java.nio.charset.StandardCharsets.UTF_8))).compact();

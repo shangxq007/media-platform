@@ -70,7 +70,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
         rules = context.getBean(MeteringRuleRegistry.class);
         audit = context.getBean(TestAudit.class);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS observed_runtime_usage (
+                CREATE TABLE IF NOT EXISTS billing.observed_runtime_usage (
                     observed_usage_id varchar(64) primary key,
                     tenant_id varchar(64) not null,
                     project_id varchar(64), principal_type varchar(32) not null,
@@ -87,7 +87,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS billable_usage (
+                CREATE TABLE IF NOT EXISTS billing.billable_usage (
                     billable_usage_id varchar(64) primary key,
                     tenant_id varchar(64) not null,
                     principal_type varchar(32) not null,
@@ -127,7 +127,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
     void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_billable_insert ON billable_usage");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_billable_insert_for_test()");
-        jdbc.execute("TRUNCATE TABLE billable_usage, observed_runtime_usage");
+        jdbc.execute("TRUNCATE TABLE billing.billable_usage, observed_runtime_usage");
         rules.clear();
         rules.register(millisecondsToSeconds("runtime-duration", "v1"));
         audit.reset();
@@ -322,7 +322,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
     }
 
     private static long billableCount() {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM billable_usage", Long.class);
+        return jdbc.queryForObject("SELECT COUNT(*) FROM billing.billable_usage", Long.class);
     }
 
     private static <T> List<T> concurrently(int count, ThrowingSupplier<T> supplier)

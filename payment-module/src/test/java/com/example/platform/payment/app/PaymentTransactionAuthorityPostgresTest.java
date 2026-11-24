@@ -61,7 +61,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         provider = context.getBean(RecordingProvider.class);
         jdbc.execute("DROP TABLE IF EXISTS payment_refund, payment_outbox, provider_webhook_receipt, payment_command, payment_transaction CASCADE");
         jdbc.execute("""
-                CREATE TABLE payment_transaction (
+                CREATE TABLE payment.payment_transaction (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     workspace_id varchar(64) not null default '', organization_id varchar(64) not null default '',
@@ -80,7 +80,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE payment_command (
+                CREATE TABLE payment.payment_command (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     workspace_id varchar(64) not null default '', organization_id varchar(64) not null default '',
@@ -93,7 +93,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE provider_webhook_receipt (
+                CREATE TABLE payment.provider_webhook_receipt (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     provider_code varchar(64) not null,
                     event_id varchar(255) not null, payload_sha256 varchar(64) not null,
@@ -105,7 +105,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE payment_outbox (
+                CREATE TABLE payment.payment_outbox (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     event_type varchar(64) not null, aggregate_id varchar(64) not null,
                     dedupe_key varchar(255) not null, provider_code varchar(64) not null,
@@ -115,7 +115,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE payment_refund (
+                CREATE TABLE payment.payment_refund (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     transaction_id varchar(64) not null, provider_refund_reference varchar(255),
                     original_capture_reference varchar(255) not null,
@@ -142,7 +142,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_outbox ON payment_outbox");
         jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_refund_projection ON payment_transaction");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_payment_test()");
-        jdbc.execute("TRUNCATE payment_refund, payment_outbox, provider_webhook_receipt, payment_command, payment_transaction");
+        jdbc.execute("TRUNCATE payment.payment_refund, payment_outbox, provider_webhook_receipt, payment_command, payment_transaction");
         provider.reset();
     }
 
@@ -234,7 +234,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         assertEquals(1, count("provider_webhook_receipt"));
         assertEquals(1, count("payment_outbox"));
         assertEquals(pending.version() + 1,
-                jdbc.queryForObject("SELECT version FROM payment_transaction WHERE id='txn-webhook'", Long.class));
+                jdbc.queryForObject("SELECT version FROM payment.payment_transaction WHERE id='txn-webhook'", Long.class));
         assertThrows(IllegalStateException.class, () -> authority.applyWebhook(webhook(
                 pending, "evt-concurrent", 1, PaymentState.FAILED, "different-digest", pending.version())));
     }
@@ -331,7 +331,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         assertEquals(0, authority.find(principal("tenant-a"), "txn-refund-rollback")
                 .orElseThrow().refundedAmount().amountMinor());
         assertEquals("FAILED", jdbc.queryForObject(
-                "SELECT refund_state FROM payment_refund WHERE idempotency_key='refund-rollback'", String.class));
+                "SELECT refund_state FROM payment.payment_refund WHERE idempotency_key='refund-rollback'", String.class));
 
         jdbc.execute("DROP TRIGGER fail_payment_refund_projection ON payment_transaction");
         assertEquals(200, authority.refund(command).refundedAmount().amountMinor());

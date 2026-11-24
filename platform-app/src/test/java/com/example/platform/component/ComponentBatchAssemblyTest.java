@@ -49,9 +49,9 @@ class ComponentBatchAssemblyTest extends PostgresTestContainerSupport {
         assertThat(context.getBeansOfType(PlatformTraceCorrelationFilter.class)).hasSize(1);
         assertThat(context.getBeansOfType(BuiltinDataBootstrapRunner.class)).isEmpty();
         assertThat(context.getBeansOfType(BillingCatalogBootstrap.class)).isEmpty();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM usage_meter", Long.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM role", Long.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_behavior_event", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM billing.usage_meter", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM identity.role", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics.user_behavior_event", Long.class)).isZero();
         var client = HttpClient.newHttpClient();
         var response = client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/cloud-resources/providers"))
                 .header("X-Request-Id", "batch-request").GET().build(), HttpResponse.BodyHandlers.ofString());
@@ -68,8 +68,8 @@ class ComponentBatchAssemblyTest extends PostgresTestContainerSupport {
         assertThat(selected).as("Registered tasks: %s", tasks).hasSize(3);
         selected.forEach(task -> task.getTask().getRunnable().run());
         assertThat(profiles.getOrCreateProfile("batch-tenant", "actor").totalActions()).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_segment WHERE tenant_id='batch-tenant'", Integer.class)).isEqualTo(6);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM social_post", Long.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM usage_meter", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics.user_segment WHERE tenant_id='batch-tenant'", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM publication.social_post", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM billing.usage_meter", Long.class)).isZero();
     }
 }

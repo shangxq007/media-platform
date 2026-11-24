@@ -34,14 +34,14 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
         authority = context.getBean(ProductCatalogAuthority.class);
         jdbc.execute("DROP TABLE IF EXISTS provider_product_mapping, product_catalog_command, commercial_offering, commerce_product CASCADE");
         jdbc.execute("""
-                CREATE TABLE commerce_product (
+                CREATE TABLE commerce.commerce_product (
                   id varchar(64) primary key, product_code varchar(128) not null unique,
                   product_line_type varchar(64) not null, display_name varchar(255) not null,
                   lifecycle_state varchar(16) not null, version bigint not null,
                   created_at timestamptz not null, updated_at timestamptz not null)
                 """);
         jdbc.execute("""
-                CREATE TABLE commercial_offering (
+                CREATE TABLE commerce.commercial_offering (
                   id varchar(64) primary key, product_id varchar(64) not null,
                   offering_key varchar(128) not null, offering_version bigint not null,
                   lifecycle_state varchar(16) not null, row_version bigint not null,
@@ -57,7 +57,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
                   unique(product_id, offering_key, offering_version))
                 """);
         jdbc.execute("""
-                CREATE TABLE product_catalog_command (
+                CREATE TABLE commerce.product_catalog_command (
                   id varchar(64) primary key, catalog_scope varchar(64) not null,
                   actor_tenant_id varchar(64) not null, actor_principal_type varchar(32) not null,
                   actor_principal_id varchar(128) not null, command_type varchar(32) not null,
@@ -68,7 +68,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
                   created_at timestamptz not null, unique(catalog_scope,idempotency_key))
                 """);
         jdbc.execute("""
-                CREATE TABLE provider_product_mapping (
+                CREATE TABLE commerce.provider_product_mapping (
                   id varchar(64) primary key, provider_code varchar(64) not null,
                   external_product_ref varchar(255) not null, external_price_ref varchar(255),
                   product_id varchar(64) not null, offering_id varchar(64) not null,
@@ -84,7 +84,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
     @BeforeEach void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_offering ON commercial_offering");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_catalog_test()");
-        jdbc.execute("TRUNCATE provider_product_mapping, product_catalog_command, commercial_offering, commerce_product");
+        jdbc.execute("TRUNCATE commerce.provider_product_mapping, product_catalog_command, commercial_offering, commerce_product");
     }
 
     @Test void createExactReplayAndMismatch() {

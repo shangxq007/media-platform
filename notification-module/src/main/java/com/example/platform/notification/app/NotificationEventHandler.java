@@ -1,8 +1,8 @@
 package com.example.platform.notification.app;
 import com.example.platform.marketplace.api.event.*;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationEvent.NOTIFICATION_EVENT;
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.api.ingress.NotificationInboundEvent;

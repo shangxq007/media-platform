@@ -1,6 +1,6 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationRecord.NOTIFICATION_RECORD;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationRecord.NOTIFICATION_RECORD;
 
 import com.example.platform.notification.infrastructure.MockNotificationProvider.SentNotification;
 import java.time.LocalDateTime;

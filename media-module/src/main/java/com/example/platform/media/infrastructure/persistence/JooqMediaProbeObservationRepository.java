@@ -1,6 +1,6 @@
 package com.example.platform.media.infrastructure.persistence;
 
-import static com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation.MEDIA_PROBE_OBSERVATION;
+import static com.example.platform.typedschema.jooq.generated.media.tables.MediaProbeObservation.MEDIA_PROBE_OBSERVATION;
 
 import com.example.platform.media.app.MediaProbeObservationRepository;
 import com.example.platform.media.domain.probe.MediaProbeObservation;

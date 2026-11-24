@@ -8,7 +8,7 @@ public final class StorageTestSchemaFixture {
 
     public static void createSchema(DSLContext dsl) {
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS artifact (
+            CREATE TABLE IF NOT EXISTS artifacts.artifact (
                 id varchar(64) primary key,
                 render_job_id varchar(64) not null,
                 project_id varchar(64) not null,
@@ -24,6 +24,6 @@ public final class StorageTestSchemaFixture {
     }
 
     public static void truncate(DSLContext dsl) {
-        dsl.execute("TRUNCATE TABLE artifact RESTART IDENTITY CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact RESTART IDENTITY CASCADE");
     }
 }

@@ -1,6 +1,6 @@
 package com.example.platform.config.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.ConfigItem.CONFIG_ITEM;
+import static com.example.platform.typedschema.jooq.generated.infrastructure.tables.ConfigItem.CONFIG_ITEM;
 
 import java.time.LocalDateTime;
 import java.util.List;

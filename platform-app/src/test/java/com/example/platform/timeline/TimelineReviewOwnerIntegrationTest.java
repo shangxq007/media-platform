@@ -54,11 +54,11 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   context.registerBean(com.example.platform.notification.app.NotificationEventHandler.class,()->new com.example.platform.notification.app.NotificationEventHandler(context.getBean(DSLContext.class),List.of(),context.getBean(com.example.platform.notification.app.NotificationRenderingService.class),null));
   context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
   context.refresh();
-  jdbc.update("insert into tenant(id,name,created_at) values ('tenant','test',now())");
+  jdbc.update("insert into identity.tenant(id,name,created_at) values ('tenant','test',now())");
   for(String project:List.of("project","other")){
-   jdbc.update("insert into project(id,tenant_id,name,created_at) values (?,'tenant','test',now())",project);
-   jdbc.update("insert into timeline_snapshot(id,project_id,tenant_id,payload_json) values (?,?,'tenant','{}')",project+"-snapshot",project);
-   jdbc.update("insert into timeline_revision(id,project_id,tenant_id,revision_number,snapshot_id,content_hash,source,created_at) values (?,?,'tenant',1,?,'fixture','TEST',now())",project+"-revision",project,project+"-snapshot");
+   jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values (?,'tenant','test',now())",project);
+   jdbc.update("insert into timeline.timeline_snapshot(id,project_id,tenant_id,payload_json) values (?,?,'tenant','{}')",project+"-snapshot",project);
+   jdbc.update("insert into timeline.timeline_revision(id,project_id,tenant_id,revision_number,snapshot_id,content_hash,source,created_at) values (?,?,'tenant',1,?,'fixture','TEST',now())",project+"-revision",project,project+"-snapshot");
   }
  }
  @AfterAll static void close(){if(context!=null)context.close();if(admin!=null){new JdbcTemplate(admin).execute("drop schema "+SCHEMA+" cascade");closeDataSource(admin);}}
@@ -67,18 +67,18 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
  long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
  String create(){return context.getBean(TimelineReviewController.class).createReview("project",new TimelineReviewController.CreateReviewRequest("project-revision","review","description")).getBody().reviewId();}
  @Test void externalEntryUsesAuthenticatedOwnerAndDurableDispatch(){
-  String id=create();assertEquals("server-actor",jdbc.queryForObject("select author_user_id from timeline_review where id=?",String.class,id));
-  String event=jdbc.queryForObject("select id from outbox_events where aggregate_id=?",String.class,id);
+  String id=create();assertEquals("server-actor",jdbc.queryForObject("select author_user_id from timeline.timeline_review where id=?",String.class,id));
+  String event=jdbc.queryForObject("select id from infrastructure.outbox_events where aggregate_id=?",String.class,id);
   assertTrue(context.getBean(OutboxEventDispatcher.class).processOnce(event));assertFalse(context.getBean(OutboxEventDispatcher.class).processOnce(event));
-  assertEquals(0L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,id));
+  assertEquals(0L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,id));
   context.getBean(TimelineReviews.class).approve(id,"server-actor");
-  String approved=jdbc.queryForObject("select id from outbox_events where aggregate_id=? and event_type='timeline.review.approved'",String.class,id);
+  String approved=jdbc.queryForObject("select id from infrastructure.outbox_events where aggregate_id=? and event_type='timeline.review.approved'",String.class,id);
   assertTrue(context.getBean(OutboxEventDispatcher.class).processOnce(approved));
-  var row=jdbc.queryForMap("select * from outbox_events where id=?",approved);
+  var row=jdbc.queryForMap("select * from infrastructure.outbox_events where id=?",approved);
   var decoded=context.getBean(OutboxEventRouter.class).decode((String)row.get("event_type"),((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),(String)row.get("aggregate_id"),(String)row.get("payload"));
   context.publishEvent(decoded.payload());context.publishEvent(decoded.payload());
-  assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,id));
-  assertEquals(1L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,id));
+  assertEquals(1L,jdbc.queryForObject("select count(*) from notification.notification_event where subject_id=?",Long.class,id));
+  assertEquals(1L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,id));
  }
  @Test void deniedWrongRevisionAndForgedAuthorCannotWrite(){
   long before=count("timeline_review");denied=true;assertThrows(RuntimeException.class,this::create);denied=false;
@@ -90,7 +90,7 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
  @Test void appendFailureRollsBackReviewAndDecision(){
   long before=count("timeline_review");doThrow(new IllegalStateException("append failed")).when(outbox).append(any());assertThrows(IllegalStateException.class,this::create);assertEquals(before,count("timeline_review"));reset(outbox);
   String id=create();long decisions=count("review_decision");doThrow(new IllegalStateException("append failed")).when(outbox).append(any());
-  assertThrows(IllegalStateException.class,()->context.getBean(TimelineReviews.class).approve(id,"server-actor"));assertEquals("OPEN",jdbc.queryForObject("select status from timeline_review where id=?",String.class,id));assertEquals(decisions,count("review_decision"));
+  assertThrows(IllegalStateException.class,()->context.getBean(TimelineReviews.class).approve(id,"server-actor"));assertEquals("OPEN",jdbc.queryForObject("select status from timeline.timeline_review where id=?",String.class,id));assertEquals(decisions,count("review_decision"));
  }
  @Test void scopeThreadsAndClosedTransitionsAreCheckedByOwner(){
   String id=create();var reviews=context.getBean(TimelineReviews.class);assertTrue(reviews.getReview("other","tenant",id).isEmpty());
@@ -120,17 +120,17 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   for(String name:TimelineEventBoundaryTest.OLD)old.add("com.example.platform.shared.events."+name);
   for(String type:old){
    String id="retired-timeline-"+n++;
-   jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'old','old',?,1,'{}','PENDING',0,3,now())",id,type);
+   jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'old','old',?,1,'{}','PENDING',0,3,now())",id,type);
    assertFalse(context.getBean(OutboxEventDispatcher.class).processOnce(id));
-   assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from outbox_events where id=?",String.class,id));
-   assertEquals("UNSUPPORTED_EVENT_VERSION",jdbc.queryForObject("select last_error_code from outbox_events where id=?",String.class,id));
+   assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,id));
+   assertEquals("UNSUPPORTED_EVENT_VERSION",jdbc.queryForObject("select last_error_code from infrastructure.outbox_events where id=?",String.class,id));
   }
-  String payload=jdbc.queryForObject("select payload from outbox_events where aggregate_id=? and event_type='timeline.review.approved'",String.class,review);
+  String payload=jdbc.queryForObject("select payload from infrastructure.outbox_events where aggregate_id=? and event_type='timeline.review.approved'",String.class,review);
   var tree=new com.fasterxml.jackson.databind.ObjectMapper().readTree(payload);
   ((com.fasterxml.jackson.databind.node.ObjectNode)tree.get("payload")).put("targetType","ASSET");
-  jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values ('malformed-timeline','timeline_review',?,'timeline.review.approved',1,?,'PENDING',0,3,now())",review,tree.toString());
+  jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values ('malformed-timeline','timeline_review',?,'timeline.review.approved',1,?,'PENDING',0,3,now())",review,tree.toString());
   assertFalse(context.getBean(OutboxEventDispatcher.class).processOnce("malformed-timeline"));
-  assertEquals("MALFORMED_EVENT_PAYLOAD",jdbc.queryForObject("select last_error_code from outbox_events where id='malformed-timeline'",String.class));
+  assertEquals("MALFORMED_EVENT_PAYLOAD",jdbc.queryForObject("select last_error_code from infrastructure.outbox_events where id='malformed-timeline'",String.class));
   assertEquals(audits,count("audit_records"));assertEquals(notifications,count("notification_event"));
  }
 
@@ -143,32 +143,32 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   assertEquals(beforeComments,count("timeline_comment"));assertEquals(beforeThreads,count("review_thread"));reset(outbox);
   var comment=comments.addComment(review,"project-revision",null,anchor,"server-actor","text");
   dispatchSubject(comment.commentId());
-  assertEquals(1L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,comment.commentId()));
+  assertEquals(1L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,comment.commentId()));
   assertTrue(comments.resolveThread(review,comment.threadId()));assertTrue(comments.resolveThread(review,comment.threadId()));
-  assertEquals(1L,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Long.class,comment.threadId()));
+  assertEquals(1L,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?",Long.class,comment.threadId()));
   assertTrue(comments.reopenThread(review,comment.threadId()));assertTrue(comments.resolveThread(review,comment.threadId()));
-  assertEquals(2L,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Long.class,comment.threadId()));
+  assertEquals(2L,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?",Long.class,comment.threadId()));
   dispatchSubject(comment.threadId());
-  assertEquals(2L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,comment.threadId()));
-  assertEquals(2L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,comment.threadId()));
+  assertEquals(2L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,comment.threadId()));
+  assertEquals(2L,jdbc.queryForObject("select count(*) from notification.notification_event where subject_id=?",Long.class,comment.threadId()));
  }
  @Test void allDecisionFactsAreBoundToPersistedDecisionAndTenant() {
   String review=create();var reviews=context.getBean(TimelineReviews.class);
   reviews.approve(review,"server-actor");reviews.requestChanges(review,"server-actor");reviews.reject(review);
-  for(var row:jdbc.queryForList("select * from outbox_events where aggregate_id=? and event_type<>'timeline.review.created'",review)) {
+  for(var row:jdbc.queryForList("select * from infrastructure.outbox_events where aggregate_id=? and event_type<>'timeline.review.created'",review)) {
    var event=context.getBean(OutboxEventRouter.class).decode((String)row.get("event_type"),1,"timeline_review",review,(String)row.get("payload"));
    assertEquals("tenant",event.tenantId());
    String decision=event.payload() instanceof com.example.platform.timeline.api.event.TimelineReviewApprovedEvent x?x.decisionId():
       event.payload() instanceof com.example.platform.timeline.api.event.TimelineReviewRejectedEvent x?x.decisionId():
       ((com.example.platform.timeline.api.event.TimelineReviewChangesRequestedEvent)event.payload()).decisionId();
-   assertEquals(review,jdbc.queryForObject("select review_id from review_decision where id=?",String.class,decision));
+   assertEquals(review,jdbc.queryForObject("select review_id from timeline.review_decision where id=?",String.class,decision));
   }
   dispatchSubject(review);
-  assertEquals(3L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,review));
-  assertEquals(3L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,review));
+  assertEquals(3L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,review));
+  assertEquals(3L,jdbc.queryForObject("select count(*) from notification.notification_event where subject_id=?",Long.class,review));
  }
  private void dispatchSubject(String subject) {
-  for(var row:jdbc.queryForList("select * from outbox_events where aggregate_id=? order by created_at",subject)) {
+  for(var row:jdbc.queryForList("select * from infrastructure.outbox_events where aggregate_id=? order by created_at",subject)) {
    var event=context.getBean(OutboxEventRouter.class).decode((String)row.get("event_type"),((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),subject,(String)row.get("payload"));
    assertTrue(context.getBean(OutboxEventDispatcher.class).processOnce((String)row.get("id")));
    context.publishEvent(event.payload());context.publishEvent(event.payload());
@@ -179,15 +179,15 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   String id=create();var controller=context.getBean(TimelineReviewController.class);
   actor.set("reviewer-A");assertEquals(200,controller.approve("project",id).getStatusCode().value());
   actor.set("reviewer-B");assertEquals(200,controller.approve("project",id).getStatusCode().value());
-  assertEquals(Set.of("reviewer-A","reviewer-B"),new HashSet<>(jdbc.queryForList("select reviewer_user_id from review_decision where review_id=?",String.class,id)));
-  assertEquals(2,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=? and event_type='timeline.review.approved'",Integer.class,id));
+  assertEquals(Set.of("reviewer-A","reviewer-B"),new HashSet<>(jdbc.queryForList("select reviewer_user_id from timeline.review_decision where review_id=?",String.class,id)));
+  assertEquals(2,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=? and event_type='timeline.review.approved'",Integer.class,id));
  }
  @Test void distinctReviewersRequestChangesKeepBothDecisions() {
   String id=create();var controller=context.getBean(TimelineReviewController.class);
   actor.set("reviewer-A");assertEquals(200,controller.requestChanges("project",id).getStatusCode().value());
   actor.set("reviewer-B");assertEquals(200,controller.requestChanges("project",id).getStatusCode().value());
-  assertEquals(2,jdbc.queryForObject("select count(*) from review_decision where review_id=? and decision='REQUEST_CHANGES'",Integer.class,id));
-  assertEquals(2,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=? and event_type='timeline.review.changes_requested'",Integer.class,id));
+  assertEquals(2,jdbc.queryForObject("select count(*) from timeline.review_decision where review_id=? and decision='REQUEST_CHANGES'",Integer.class,id));
+  assertEquals(2,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=? and event_type='timeline.review.changes_requested'",Integer.class,id));
  }
  @Test void currentActorDecisionRetriesAreNoopsButReaffirmationAndChangedDecisionsPersist() {
   String id=create();var reviews=context.getBean(TimelineReviews.class);
@@ -198,29 +198,29 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   actor.set("A");reviews.approve(id,"A");assertEquals(4,decisionCount(id));
   reviews.requestChanges(id,"A");actor.set("B");reviews.approve(id,"B");
   actor.set("A");reviews.approve(id,"A");assertEquals(7,decisionCount(id));
-  assertEquals(7,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=? and event_type<>'timeline.review.created'",Integer.class,id));
+  assertEquals(7,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=? and event_type<>'timeline.review.created'",Integer.class,id));
  }
- int decisionCount(String id){return jdbc.queryForObject("select count(*) from review_decision where review_id=?",Integer.class,id);}
+ int decisionCount(String id){return jdbc.queryForObject("select count(*) from timeline.review_decision where review_id=?",Integer.class,id);}
  @Test void secondReviewerChangesNoAggregateTimestampAndConsumersDeduplicateEachDecision() {
   String id=create();var controller=context.getBean(TimelineReviewController.class);
-  actor.set("A");controller.approve("project",id);var updated=jdbc.queryForObject("select updated_at from timeline_review where id=?",java.sql.Timestamp.class,id);
+  actor.set("A");controller.approve("project",id);var updated=jdbc.queryForObject("select updated_at from timeline.timeline_review where id=?",java.sql.Timestamp.class,id);
   actor.set("B");controller.approve("project",id);
-  assertEquals(updated,jdbc.queryForObject("select updated_at from timeline_review where id=?",java.sql.Timestamp.class,id));
+  assertEquals(updated,jdbc.queryForObject("select updated_at from timeline.timeline_review where id=?",java.sql.Timestamp.class,id));
   var workspace=context.getBean(ReviewWorkspaceController.class).workspace("project",id).getBody();assertEquals(2,workspace.approvals());
   dispatchSubject(id);
-  for(String event:jdbc.queryForList("select id from outbox_events where aggregate_id=?",String.class,id))
+  for(String event:jdbc.queryForList("select id from infrastructure.outbox_events where aggregate_id=?",String.class,id))
    assertFalse(context.getBean(OutboxEventDispatcher.class).processOnce(event));
-  assertEquals(2L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,id));
-  assertEquals(2L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,id));
+  assertEquals(2L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,id));
+  assertEquals(2L,jdbc.queryForObject("select count(*) from notification.notification_event where subject_id=?",Long.class,id));
  }
  @Test void decisionRollbackAfterActualOutboxInsertLeavesNoPartialResultAndCanRetry() {
   String id=create();var reviews=context.getBean(TimelineReviews.class);var written=new java.util.concurrent.atomic.AtomicReference<String>();
   actor.set("A");doAnswer(call->{String event=(String)call.callRealMethod();written.set(event);
-   assertEquals(1,jdbc.queryForObject("select count(*) from outbox_events where id=?",Integer.class,event));
+   assertEquals(1,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where id=?",Integer.class,event));
    throw new IllegalStateException("after real event insert");}).when(outbox).append(any());
   assertThrows(IllegalStateException.class,()->reviews.approve(id,"A"));assertEquals(0,decisionCount(id));
-  assertEquals("OPEN",jdbc.queryForObject("select status from timeline_review where id=?",String.class,id));
-  assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events where id=?",Integer.class,written.get()));
+  assertEquals("OPEN",jdbc.queryForObject("select status from timeline.timeline_review where id=?",String.class,id));
+  assertEquals(0,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where id=?",Integer.class,written.get()));
   reset(outbox);reviews.approve(id,"A");assertEquals(1,decisionCount(id));
  }
  @Test void terminalReviewsAndSpoofedOrForeignActionsNeverAddDecisions() {
@@ -230,7 +230,7 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   TenantContext.set("foreign");assertThrows(RuntimeException.class,()->reviews.approve(id,"A"));TenantContext.set("tenant");
   assertEquals(0,decisionCount(id));reviews.reject(id);assertEquals(1,decisionCount(id));
   assertThrows(ReviewConflictException.class,()->reviews.reject(id));assertThrows(ReviewConflictException.class,()->reviews.approve(id,"A"));
-  jdbc.update("update timeline_review set status='MERGED' where id=?",id);
+  jdbc.update("update timeline.timeline_review set status='MERGED' where id=?",id);
   assertThrows(ReviewConflictException.class,()->reviews.requestChanges(id,"A"));assertEquals(1,decisionCount(id));
  }
  @Test void concurrentReviewersAndConcurrentSameActorRetriesAreSerializedByOwner() throws Exception {
@@ -249,11 +249,11 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
  }
  @Test void historicalAssetReviewsRemainEvidenceButAreNotTimelineAuthority() {
   String id="legacy-asset-review";
-  jdbc.update("insert into timeline_review(id,project_id,tenant_id,revision_id,target_type,author_user_id,title,status,created_at,updated_at) values (?,'project','tenant','media-id','ASSET','server-actor','legacy','OPEN',now(),now())",id);
+  jdbc.update("insert into timeline.timeline_review(id,project_id,tenant_id,revision_id,target_type,author_user_id,title,status,created_at,updated_at) values (?,'project','tenant','media-id','ASSET','server-actor','legacy','OPEN',now(),now())",id);
   assertTrue(context.getBean(com.example.platform.timeline.api.review.ReviewQueries.class).findOwnedById(id,"project","tenant").isEmpty());
   assertThrows(RuntimeException.class,()->context.getBean(TimelineReviews.class).approve(id,"server-actor"));
   assertEquals(0,decisionCount(id));
-  assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Integer.class,id));
-  assertEquals("OPEN",jdbc.queryForObject("select status from timeline_review where id=?",String.class,id));
+  assertEquals(0,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?",Integer.class,id));
+  assertEquals("OPEN",jdbc.queryForObject("select status from timeline.timeline_review where id=?",String.class,id));
  }
 }

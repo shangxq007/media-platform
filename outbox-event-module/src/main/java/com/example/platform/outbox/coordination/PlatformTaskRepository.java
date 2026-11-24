@@ -10,7 +10,7 @@ import java.util.List;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.PlatformTask.PLATFORM_TASK;
+import static com.example.platform.typedschema.jooq.generated.execution.tables.PlatformTask.PLATFORM_TASK;
 
 
 @Repository

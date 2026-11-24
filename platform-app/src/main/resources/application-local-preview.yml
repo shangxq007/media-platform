@@ -17,10 +17,7 @@ spring:
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
-    url: ${SPRING_FLYWAY_URL}
-    user: ${SPRING_FLYWAY_USER}
-    password: ${SPRING_FLYWAY_PASSWORD}
+    baseline-on-migrate: false
 
 app:
   security:

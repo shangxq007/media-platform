@@ -27,7 +27,7 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
 
     public Optional<FeatureFlagDefinition> findByKey(String flagKey) {
         List<FeatureFlagDefinition> rows = jdbc.query(
-                "SELECT * FROM feature_flag_definition WHERE flag_key = ?",
+                "SELECT * FROM policy.feature_flag_definition WHERE flag_key = ?",
                 this::mapDefinition,
                 flagKey);
         if (rows.isEmpty()) {
@@ -40,7 +40,7 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
 
     public List<FeatureFlagDefinition> findAll() {
         return jdbc.query(
-                "SELECT * FROM feature_flag_definition ORDER BY flag_key",
+                "SELECT * FROM policy.feature_flag_definition ORDER BY flag_key",
                 this::mapDefinition).stream()
                 .map(def -> copyWithRules(def, findRules(def.flagKey())))
                 .toList();
@@ -48,13 +48,13 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
 
     public FeatureFlagDefinition save(FeatureFlagDefinition definition) {
         String id = jdbc.query(
-                "SELECT id FROM feature_flag_definition WHERE flag_key = ?",
+                "SELECT id FROM policy.feature_flag_definition WHERE flag_key = ?",
                 rs -> rs.next() ? rs.getString("id") : null,
                 definition.flagKey());
         if (id == null) {
             id = ("ffd_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             jdbc.update("""
-                    INSERT INTO feature_flag_definition
+                    INSERT INTO policy.feature_flag_definition
                     (id, flag_key, name, description, flag_type, enabled, default_value_json,
                      variants_json, tags_json, owner, archived, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -74,7 +74,7 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
                     Timestamp.from(definition.updatedAt() != null ? definition.updatedAt() : Instant.now()));
         } else {
             jdbc.update("""
-                    UPDATE feature_flag_definition SET
+                    UPDATE policy.feature_flag_definition SET
                     name = ?, description = ?, flag_type = ?, enabled = ?, default_value_json = ?,
                     variants_json = ?, tags_json = ?, owner = ?, archived = ?, updated_at = ?
                     WHERE flag_key = ?
@@ -100,13 +100,13 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
 
     public boolean delete(String flagKey) {
         clearRules(flagKey);
-        return jdbc.update("DELETE FROM feature_flag_definition WHERE flag_key = ?", flagKey) > 0;
+        return jdbc.update("DELETE FROM policy.feature_flag_definition WHERE flag_key = ?", flagKey) > 0;
     }
 
     public void saveRule(String flagKey, FeatureFlagTargetingRule rule) {
         String ruleId = rule.ruleId() != null ? rule.ruleId() : ("ffr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         jdbc.update("""
-                INSERT INTO feature_flag_targeting_rule
+                INSERT INTO policy.feature_flag_targeting_rule
                 (id, flag_key, rule_id, tenant_id, workspace_id, user_id, role, tier, percentage, priority, enabled, rule_json, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -127,13 +127,13 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
 
     public List<FeatureFlagTargetingRule> findRules(String flagKey) {
         return jdbc.query(
-                "SELECT rule_json FROM feature_flag_targeting_rule WHERE flag_key = ? ORDER BY priority",
+                "SELECT rule_json FROM policy.feature_flag_targeting_rule WHERE flag_key = ? ORDER BY priority",
                 (rs, rowNum) -> FeatureFlagPersistenceJson.fromJson(rs.getString("rule_json"), FeatureFlagTargetingRule.class),
                 flagKey);
     }
 
     public void clearRules(String flagKey) {
-        jdbc.update("DELETE FROM feature_flag_targeting_rule WHERE flag_key = ?", flagKey);
+        jdbc.update("DELETE FROM policy.feature_flag_targeting_rule WHERE flag_key = ?", flagKey);
     }
 
     private FeatureFlagDefinition mapDefinition(ResultSet rs, int rowNum) throws SQLException {

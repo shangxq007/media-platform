@@ -4,8 +4,8 @@ import java.util.Map;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Component;
-import static com.example.platform.typedschema.jooq.generated.tables.ClientExportSession.CLIENT_EXPORT_SESSION;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.render.tables.ClientExportSession.CLIENT_EXPORT_SESSION;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
 @Component
 public class JdbcRenderOperationalQuery implements RenderOperationalQuery {
     private final DSLContext dsl;

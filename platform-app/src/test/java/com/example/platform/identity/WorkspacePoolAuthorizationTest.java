@@ -20,8 +20,8 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
         var valid=new HashMap<>(body);valid.put("memberId",member);valid.put("sourceRef","valid-"+UUID.randomUUID());valid.put("idempotencyKey","valid-"+UUID.randomUUID());
         assertEquals(200,call("POST","/api/workspaces/"+ws+"/entitlements/grants",valid,creator).statusCode(),"positive canonical allocation");
         var allocation=call("POST","/api/workspaces/"+ws+"/entitlements/pool/allocate",body,outsider);
-        long illicit=count("select count(*) from workspace_member_entitlement_grant where workspace_id=? and member_id=? and granted_by=?",ws,outsider,creator);
-        String other=jdbc.queryForObject("select tenant_id from \"user\" where id=?",String.class,foreign);
+        long illicit=count("select count(*) from entitlement.workspace_member_entitlement_grant where workspace_id=? and member_id=? and granted_by=?",ws,outsider,creator);
+        String other=jdbc.queryForObject("select tenant_id from identity.\"user\" where id=?",String.class,foreign);
         var foreignRead=http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/workspaces/"+ws+"/entitlements/pool"))
                 .header("Authorization","Bearer "+token(foreign,other)).GET().build(),HttpResponse.BodyHandlers.ofString());
         System.out.println("POOL_BOUNDARY_PROBE ordinaryNonmemberAllocation="+allocation.statusCode()+" forgedActorGrants="+illicit+" foreignTenantRead="+foreignRead.statusCode());
@@ -41,26 +41,26 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
                 "sourceRef","ir-"+UUID.randomUUID(),"idempotencyKey","ir-"+UUID.randomUUID(),"reason","regression","traceId","ir");
     }
     java.util.List<?> state(String ws) {
-        return List.of(jdbc.queryForList("select * from workspace_entitlement_pool where workspace_id=? order by id",ws),
-                jdbc.queryForList("select * from workspace_member_entitlement_grant where workspace_id=? order by id",ws),
-                jdbc.queryForList("select * from entitlement_command_audit where tenant_id=? order by id",tenant),
-                jdbc.queryForList("select * from audit_records where resource_type='WORKSPACE_POOL' and resource_id=? order by id",ws));
+        return List.of(jdbc.queryForList("select * from entitlement.workspace_entitlement_pool where workspace_id=? order by id",ws),
+                jdbc.queryForList("select * from entitlement.workspace_member_entitlement_grant where workspace_id=? order by id",ws),
+                jdbc.queryForList("select * from entitlement.entitlement_command_audit where tenant_id=? order by id",tenant),
+                jdbc.queryForList("select * from policy.audit_records where resource_type='WORKSPACE_POOL' and resource_id=? order by id",ws));
     }
     @Test void managerAllocationIgnoresForgedOwnerHeaderAndMemberReadsRemainAvailable() throws Exception {
         String ws=setupPool();assertEquals(200,add(ws,outsider,"ADMIN",creator).statusCode());
         var result=call("POST",poolPath(ws)+"/allocate",allocation(member),outsider);
         assertEquals(200,result.statusCode(),result.body());
         assertEquals(outsider,json.readTree(result.body()).get("grantedBy").asText());
-        assertEquals(1,count("select count(*) from workspace_member_entitlement_grant where workspace_id=? and granted_by=?",ws,outsider));
-        assertEquals(1,count("select count(*) from entitlement_command_audit where tenant_id=? and actor=?",tenant,outsider));
-        assertEquals(1,count("select count(*) from audit_records where resource_id=? and action='workspace.pool.allocated' and actor_id=?",ws,outsider));
-        assertEquals(10,count("select used_quota from workspace_entitlement_pool where workspace_id=?",ws));
+        assertEquals(1,count("select count(*) from entitlement.workspace_member_entitlement_grant where workspace_id=? and granted_by=?",ws,outsider));
+        assertEquals(1,count("select count(*) from entitlement.entitlement_command_audit where tenant_id=? and actor=?",tenant,outsider));
+        assertEquals(1,count("select count(*) from policy.audit_records where resource_id=? and action='workspace.pool.allocated' and actor_id=?",ws,outsider));
+        assertEquals(10,count("select used_quota from entitlement.workspace_entitlement_pool where workspace_id=?",ws));
         assertEquals(200,call("GET",poolPath(ws),null,member).statusCode());
         assertEquals(200,call("POST","/api/workspaces/"+ws+"/entitlements/preview",Map.of("userId",member,"preset","default_720p"),member).statusCode());
         var reclaim=Map.of("memberId",member,"featureKey","review.feature","quotaAmount",5);
         assertEquals(200,call("POST",poolPath(ws)+"/reclaim",reclaim,outsider).statusCode());
-        assertEquals(5,count("select used_quota from workspace_entitlement_pool where workspace_id=?",ws));
-        assertEquals(1,count("select count(*) from audit_records where resource_id=? and action='workspace.pool.reclaimed' and actor_id=?",ws,outsider));
+        assertEquals(5,count("select used_quota from entitlement.workspace_entitlement_pool where workspace_id=?",ws));
+        assertEquals(1,count("select count(*) from policy.audit_records where resource_id=? and action='workspace.pool.reclaimed' and actor_id=?",ws,outsider));
     }
     @Test void allNativeResourceEntrypointsRejectNonmembersAndForeignTenantsWithoutMutation() throws Exception {
         String ws=setupPool();var allowed=call("POST",poolPath(ws)+"/allocate",allocation(member),creator);
@@ -68,7 +68,7 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
         var before=state(ws);
         String base="/api/workspaces/"+ws+"/entitlements";
         for(String actor:List.of(outsider,foreign)) {
-            String scope=actor.equals(foreign)?jdbc.queryForObject("select tenant_id from \"user\" where id=?",String.class,foreign):tenant;
+            String scope=actor.equals(foreign)?jdbc.queryForObject("select tenant_id from identity.\"user\" where id=?",String.class,foreign):tenant;
             for(String suffix:List.of("/pool","/grants","/pool/allocate","/pool/reclaim","/grants/"+grant+"/revoke","/preview")) {
                 boolean read=suffix.equals("/pool")||suffix.equals("/grants");
                 Object body=suffix.equals("/preview")?Map.of("userId",member,"preset","default_720p"):
@@ -84,7 +84,7 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
     @Test void invalidTargetMembershipRejectsAndRemovedLocalTargetsCanBeReclaimedOrRevoked() throws Exception {
         String ws=setupPool();var before=state(ws);
         // Historical foreign member is representable without disabling any constraint.
-        jdbc.update("insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'VIEWER','ACTIVE',now(),now())","ir-"+UUID.randomUUID(),ws,foreign);
+        jdbc.update("insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'VIEWER','ACTIVE',now(),now())","ir-"+UUID.randomUUID(),ws,foreign);
         for(String target:List.of(outsider,foreign,"missing-"+UUID.randomUUID())) {
             for(String suffix:List.of("/allocate","/reclaim")) {
                 assertEquals(403,call("POST",poolPath(ws)+suffix,allocation(target),creator).statusCode());assertEquals(before,state(ws));
@@ -95,17 +95,17 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
         assertEquals(204,call("DELETE",path(ws)+"/members/"+member,null,creator).statusCode());
         before=state(ws);assertEquals(403,call("POST",poolPath(ws)+"/allocate",allocation(member),creator).statusCode());assertEquals(before,state(ws));
         assertEquals(200,call("POST",poolPath(ws)+"/reclaim",allocation(member),creator).statusCode());
-        assertEquals(0,count("select used_quota from workspace_entitlement_pool where workspace_id=?",ws));
+        assertEquals(0,count("select used_quota from entitlement.workspace_entitlement_pool where workspace_id=?",ws));
         assertEquals(200,call("POST","/api/workspaces/"+ws+"/entitlements/grants/"+grant+"/revoke",Map.of("memberId",member,"expectedVersion",0,"sourceRef","ir","idempotencyKey",UUID.randomUUID().toString(),"reason","ir","traceId","ir"),creator).statusCode());
-        assertEquals(1,count("select count(*) from workspace_member_entitlement_grant where id=? and status='REVOKED'",grant));
+        assertEquals(1,count("select count(*) from entitlement.workspace_member_entitlement_grant where id=? and status='REVOKED'",grant));
     }
     @Test void failedAllocationRollsBackGrantQuotaCommandAuditAndPoolAudit() throws Exception {
         String ws=setupPool();var before=state(ws);
         var controller=context.getBean(com.example.platform.identity.api.WorkspaceController.class);
         asActor(creator,()->assertThrows(IllegalStateException.class,()->new org.springframework.transaction.support.TransactionTemplate(transactions).execute(t->{
             controller.createWorkspaceGrant(ws,new com.example.platform.identity.api.WorkspaceController.CreateWorkspaceGrantRequest(member,"review.feature",10,null,null,"ir",UUID.randomUUID().toString(),"ir","ir"),outsider);
-            assertEquals(10,count("select used_quota from workspace_entitlement_pool where workspace_id=?",ws));
-            assertEquals(1,count("select count(*) from workspace_member_entitlement_grant where workspace_id=?",ws));
+            assertEquals(10,count("select used_quota from entitlement.workspace_entitlement_pool where workspace_id=?",ws));
+            assertEquals(1,count("select count(*) from entitlement.workspace_member_entitlement_grant where workspace_id=?",ws));
             throw new IllegalStateException("failure after all owner writes");
         })));
         assertEquals(before,state(ws));assertEquals(200,call("POST",poolPath(ws)+"/allocate",allocation(member),creator).statusCode());
@@ -161,7 +161,7 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
     }
 
     @Test void inactiveMemberCannotReceiveAllocationOrPreview() throws Exception {
-        String ws=setupPool();jdbc.update("update \"user\" set status='INACTIVE' where id=?",member);var before=state(ws);
+        String ws=setupPool();jdbc.update("update identity.\"user\" set status='INACTIVE' where id=?",member);var before=state(ws);
         assertEquals(403,call("POST",poolPath(ws)+"/allocate",allocation(member),creator).statusCode());
         assertEquals(403,call("POST","/api/workspaces/"+ws+"/entitlements/preview",Map.of("userId",member,"preset","default_720p"),creator).statusCode());
         assertEquals(before,state(ws));
@@ -177,12 +177,12 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
             try {
                 assertTrue(held.await(20,java.util.concurrent.TimeUnit.SECONDS));
                 var second=threads.submit(()->call("DELETE",path(ws)+"/members/"+member,null,creator));
-                awaitWorkspaceLock(second);assertEquals(0,count("select used_quota from workspace_entitlement_pool where workspace_id=?",ws));
+                awaitWorkspaceLock(second);assertEquals(0,count("select used_quota from entitlement.workspace_entitlement_pool where workspace_id=?",ws));
                 release.countDown();first.get(20,java.util.concurrent.TimeUnit.SECONDS);assertEquals(204,second.get(20,java.util.concurrent.TimeUnit.SECONDS).statusCode());
             } finally {release.countDown();}
         }
-        assertEquals(10,count("select used_quota from workspace_entitlement_pool where workspace_id=?",ws));
-        assertEquals(1,count("select count(*) from workspace_member_entitlement_grant where workspace_id=? and member_id=? and granted_by=?",ws,member,creator));
+        assertEquals(10,count("select used_quota from entitlement.workspace_entitlement_pool where workspace_id=?",ws));
+        assertEquals(1,count("select count(*) from entitlement.workspace_member_entitlement_grant where workspace_id=? and member_id=? and granted_by=?",ws,member,creator));
         assertEquals(403,call("POST",poolPath(ws)+"/allocate",allocation(member),creator).statusCode());
     }
 }

@@ -46,7 +46,7 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
         var facts=json.createObjectNode().put("format","artifact-capability-v1")
                 .put("graph",Base64.getEncoder().encodeToString(encoded)).put("userKey",plan.idempotencyKey());
         int inserted=db.execute("""
-                insert into platform_execution_admission(execution_id,tenant_id,workspace_id,actor_id,project_id,
+                insert into execution.platform_execution_admission(execution_id,tenant_id,workspace_id,actor_id,project_id,
                     source_domain,source_id,source_revision,plan_id,idempotency_key,request_hash,plan_fingerprint,
                     plan_facts,ownership_generation,state,quota_units,quota_unit,created_at,updated_at)
                 values(?,?,?,?,?,?,?,1,?,?,?,?,cast(? as jsonb),1,'ADMITTED',?,'operation',clock_timestamp(),clock_timestamp())
@@ -63,7 +63,7 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
     @Override
     public Optional<CapabilityExecution> find(String tenant,String project,String execution) {
         TenantGuard.assertSameTenant(tenant);
-        return db.fetchOptional("select * from platform_execution_admission where tenant_id=? and project_id=? and execution_id=? and source_domain=?",
+        return db.fetchOptional("select * from execution.platform_execution_admission where tenant_id=? and project_id=? and execution_id=? and source_domain=?",
                 tenant,project,execution,SOURCE).map(row->view(row,false));
     }
     @Override @Transactional
@@ -86,7 +86,7 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
         if(row.get("retry_blocked",Boolean.class))throw new com.example.platform.shared.web.PlatformException(com.example.platform.shared.web.CommonErrorCode.CONFLICT,"execution requires physical reconciliation before retry");
         if(state(row)!=PlatformExecutionState.FAILED)throw new com.example.platform.shared.web.PlatformException(com.example.platform.shared.web.CommonErrorCode.CONFLICT,"only a failed execution can be retried");
         transition(row,PlatformExecutionState.RETRYING);
-        db.execute("update platform_execution_admission set ownership_generation=ownership_generation+1,failure_code=null where execution_id=?",execution);
+        db.execute("update execution.platform_execution_admission set ownership_generation=ownership_generation+1,failure_code=null where execution_id=?",execution);
         row=locked(tenant,project,execution);enqueue(row);
         return view(row,false);
     }
@@ -97,7 +97,7 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
         if(row.get("ownership_generation",Long.class)!=generation)return;
         if(state(row)==PlatformExecutionState.RUNNING || state(row)==PlatformExecutionState.ADMITTED || state(row)==PlatformExecutionState.RETRYING) {
             transition(row,PlatformExecutionState.FAILED);
-            db.execute("update platform_execution_admission set failure_code=?,retry_blocked=? where execution_id=?",code,uncertain,execution);
+            db.execute("update execution.platform_execution_admission set failure_code=?,retry_blocked=? where execution_id=?",code,uncertain,execution);
         }
     }
     /** A native output is committed only while holding the logical execution's cancellation fence. */
@@ -138,14 +138,14 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
             if(decision==null||!decision.allowed())throw new IllegalStateException("execution quota settlement rejected");
         }
         db.execute("""
-                insert into platform_execution_result(execution_id,attempt_id,ownership_generation,native_task_id,native_generation,
+                insert into execution.platform_execution_result(execution_id,attempt_id,ownership_generation,native_task_id,native_generation,
                     result_id,storage_receipt,artifact_id,output_digest,output_length,materialization_state,reconciliation_state,created_at,updated_at)
                 values(?,?,?,?,?,?,?,?,?,?,'ARTIFACT_COMMITTED','NONE',clock_timestamp(),clock_timestamp())
                 """,execution,proof.attemptId(),generation,task.sha256Hex(),proof.generation(),
                 "execution-result:"+execution+":"+generation,result.durableArtifactCommit().storagePublication().objectId().value(),
                 artifact.artifactId().value(),artifact.contentDigest().canonicalValue(),artifact.byteLength());
         transition(row,PlatformExecutionState.COMPLETED);
-        db.execute("update platform_execution_admission set quota_charged=true,quota_claimed=true,quota_charged_units=quota_units where execution_id=?",execution);
+        db.execute("update execution.platform_execution_admission set quota_charged=true,quota_claimed=true,quota_charged_units=quota_units where execution_id=?",execution);
         return result;
     }
     /** Expected control-flow for a duplicate activity; it never executes the publication callback. */
@@ -153,14 +153,14 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
 
     private Record locked(String tenant,String project,String execution) {
         TenantGuard.assertSameTenant(tenant);
-        return db.fetchOptional("select * from platform_execution_admission where tenant_id=? and project_id=? and execution_id=? and source_domain=? for update",
+        return db.fetchOptional("select * from execution.platform_execution_admission where tenant_id=? and project_id=? and execution_id=? and source_domain=? for update",
                 tenant,project,execution,SOURCE).orElseThrow(()->new IllegalArgumentException("execution not found"));
     }
     private static PlatformExecutionState state(Record row){return PlatformExecutionState.valueOf(row.get("state",String.class));}
     private static void requireGeneration(Record row,long generation){if(row.get("ownership_generation",Long.class)!=generation)throw new com.example.platform.shared.web.PlatformException(com.example.platform.shared.web.CommonErrorCode.CONFLICT,"stale execution generation");}
     private void transition(Record row,PlatformExecutionState next) {
         if(!state(row).canTransitionTo(next))throw new IllegalStateException("invalid platform execution transition");
-        if(db.execute("update platform_execution_admission set state=?,updated_at=clock_timestamp() where execution_id=? and ownership_generation=? and state=?",
+        if(db.execute("update execution.platform_execution_admission set state=?,updated_at=clock_timestamp() where execution_id=? and ownership_generation=? and state=?",
                 next.name(),row.get("execution_id"),row.get("ownership_generation"),row.get("state"))!=1)throw new IllegalStateException("execution changed during transition");
     }
     private void enqueue(Record row) {
@@ -180,7 +180,7 @@ public class PlatformCapabilityExecutionService implements PlatformExecutionAdmi
             }
             String artifact=null;
             if(state(row)==PlatformExecutionState.COMPLETED) {
-                var result=db.fetchOne("select artifact_id from platform_execution_result where execution_id=? and ownership_generation=? and materialization_state='ARTIFACT_COMMITTED'",
+                var result=db.fetchOne("select artifact_id from execution.platform_execution_result where execution_id=? and ownership_generation=? and materialization_state='ARTIFACT_COMMITTED'",
                         plan.executionId(),row.get("ownership_generation"));
                 if(result==null)throw new IllegalStateException("completed execution lacks committed output");
                 artifact=result.get("artifact_id",String.class);

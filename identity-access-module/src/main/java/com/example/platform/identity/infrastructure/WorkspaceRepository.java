@@ -11,7 +11,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.Workspace.WORKSPACE;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.Workspace.WORKSPACE;
 
 
 @Repository

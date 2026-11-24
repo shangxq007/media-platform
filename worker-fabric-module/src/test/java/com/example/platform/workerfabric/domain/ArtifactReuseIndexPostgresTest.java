@@ -67,10 +67,10 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
     @BeforeEach
     void resetAuthority() {
         AssignmentGrantPostgresFixture.truncate(dsl);
-        dsl.execute("truncate table wf_artifact_reuse_index, artifact cascade");
+        dsl.execute("truncate table worker_fabric.wf_artifact_reuse_index, artifact cascade");
         dsl.execute(
                 """
-                insert into artifact (
+                insert into artifacts.artifact (
                     id, tenant_id, content_digest, byte_length, media_type,
                     artifact_kind, state, schema_version, created_at, workspace_id)
                 values (?, ?, ?, 14, 'VIDEO', 'RENDER_MASTER', 'AVAILABLE', 1,
@@ -166,7 +166,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                             ReusePublicationResult.PENDING_IDEMPOTENT);
             assertThat(dsl.fetchOne(
                     """
-                    select count(*) from wf_artifact_reuse_index
+                    select count(*) from worker_fabric.wf_artifact_reuse_index
                      where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
                     """,
                     TENANT, REUSE_KEY.version(), REUSE_KEY.stableDigest()).get(0, Long.class))
@@ -231,7 +231,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                 "completion-" + grant.attempt().id().value());
         dsl.execute(
                 """
-                insert into wf_completion_event (
+                insert into worker_fabric.wf_completion_event (
                     completion_event_id, task_id, attempt_id, generation,
                     artifact_id, completed_at)
                 values (?, ?, ?, ?, ?, cast(? as timestamptz))
@@ -243,7 +243,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                 ARTIFACT_ID.value(),
                 OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
         dsl.execute(
-                "update wf_execution_attempt set state = 'SUCCEEDED' where attempt_id = ?",
+                "update worker_fabric.wf_execution_attempt set state = 'SUCCEEDED' where attempt_id = ?",
                 grant.attempt().id().value());
         return new CompletionEvidence(
                 eventId,

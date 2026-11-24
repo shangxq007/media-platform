@@ -9,7 +9,7 @@ import java.util.*;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
 import org.jooq.impl.DSL;
 
 

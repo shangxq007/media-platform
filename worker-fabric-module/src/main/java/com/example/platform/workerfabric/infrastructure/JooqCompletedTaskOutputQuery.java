@@ -12,9 +12,9 @@ public class JooqCompletedTaskOutputQuery implements CompletedTaskOutputQuery {
     public Optional<Output> find(String task) {
         var rows=db.fetch("""
             select e.task_id,e.attempt_id,e.generation,e.artifact_id
-              from wf_completion_event e join wf_execution_attempt a
+              from worker_fabric.wf_completion_event e join worker_fabric.wf_execution_attempt a
                 on a.attempt_id=e.attempt_id and a.task_id=e.task_id and a.generation=e.generation
-              join wf_task_ownership o on o.task_id=e.task_id and o.current_generation=e.generation
+              join worker_fabric.wf_task_ownership o on o.task_id=e.task_id and o.current_generation=e.generation
              where e.task_id=? and a.state='SUCCEEDED' for share of a,o
             """,task);
         if(rows.size()>1)throw new IllegalStateException("ambiguous current task output");

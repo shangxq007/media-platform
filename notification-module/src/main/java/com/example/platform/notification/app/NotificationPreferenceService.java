@@ -1,6 +1,6 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationPreference.NOTIFICATION_PREFERENCE;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationPreference.NOTIFICATION_PREFERENCE;
 
 import com.example.platform.notification.domain.NotificationPreference;
 import com.example.platform.auditcontract.api.AuditPort;

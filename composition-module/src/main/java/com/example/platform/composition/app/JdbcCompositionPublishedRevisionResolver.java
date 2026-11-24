@@ -18,7 +18,7 @@ public class JdbcCompositionPublishedRevisionResolver implements CompositionPubl
     }
     @Override public Optional<PublishedRevision> resolve(String tenantId, String workspaceId,
             String compositionId, String version) {
-        return jdbc.query("select definition::text from composition_version where tenant_id=? and workspace_id=? and kind='WORKFLOW' and composition_id=? and version=?",
+        return jdbc.query("select definition::text from composition.composition_version where tenant_id=? and workspace_id=? and kind='WORKFLOW' and composition_id=? and version=?",
                 rs -> rs.next() ? Optional.of(toRevision(rs.getString(1))) : Optional.empty(), tenantId, workspaceId, compositionId, version);
     }
     private PublishedRevision toRevision(String definition) {

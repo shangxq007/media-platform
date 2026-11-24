@@ -33,8 +33,8 @@ class PlatformCapabilityExecutionPostgresTest {
         final GraphRenderLifecycleIT.World fixture=new GraphRenderLifecycleIT.World();
         final DSLContext db=fixture.db;
         World() throws Exception {
-            db.execute("insert into workspace(id,tenant_id,name,created_at,updated_at) values('workspace-a','tenant-a','capability-test',now(),now())");
-            db.execute("update project set workspace_id='workspace-a' where id='project-a' and tenant_id='tenant-a'");
+            db.execute("insert into identity.workspace(id,tenant_id,name,created_at,updated_at) values('workspace-a','tenant-a','capability-test',now(),now())");
+            db.execute("update identity.project set workspace_id='workspace-a' where id='project-a' and tenant_id='tenant-a'");
         }
         PlatformCapabilityExecutionService owner(DSLContext connection) { return owner(connection, fixture.schema.connection()); }
         PlatformCapabilityExecutionService owner(DSLContext connection, java.sql.Connection sql) {
@@ -167,7 +167,7 @@ class PlatformCapabilityExecutionPostgresTest {
             for(boolean wrongTask:List.of(false,true)) {
                 var failure=assertThrows(org.jooq.exception.IntegrityConstraintViolationException.class,()->w.tx(()-> {
                     w.db.execute("""
-                        insert into platform_execution_result(execution_id,attempt_id,ownership_generation,native_task_id,native_generation,
+                        insert into execution.platform_execution_result(execution_id,attempt_id,ownership_generation,native_task_id,native_generation,
                             result_id,storage_receipt,artifact_id,materialization_state,reconciliation_state,created_at,updated_at)
                         values(?,'task-attempt-1',1,?,?,?,'receipt','not-an-output','ARTIFACT_COMMITTED','NONE',now(),now())
                         """,plan.executionId(),wrongTask?"d".repeat(64):GraphRenderLifecycleIT.TASK,wrongTask?1:2,"invalid-pair-"+wrongTask);

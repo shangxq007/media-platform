@@ -71,9 +71,9 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
         assertEquals(saved, emission.emit(observation));
         assertEquals(saved, repository.findByTenantAndId("ep32-tenant", saved.observedUsageId()).orElseThrow());
         assertTrue(repository.findByTenantAndId("other-tenant", saved.observedUsageId()).isEmpty());
-        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM observed_runtime_usage WHERE tenant_id = ? AND idempotency_key = ?",
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM billing.observed_runtime_usage WHERE tenant_id = ? AND idempotency_key = ?",
                 Integer.class, "ep32-tenant", "ep32-idempotency"));
-        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM outbox_events WHERE aggregate_id = ? AND event_type = 'RUNTIME_USAGE_OBSERVED'",
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM infrastructure.outbox_events WHERE aggregate_id = ? AND event_type = 'RUNTIME_USAGE_OBSERVED'",
                 Integer.class, saved.observedUsageId()));
     }
 
@@ -89,7 +89,7 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
         assertEquals(java.util.Set.of(UsageDimension.REQUEST, UsageDimension.DURATION),
                 observations.stream().map(ObservedRuntimeUsage::dimension).collect(java.util.stream.Collectors.toSet()));
         for (var observation : observations) assertEquals(1, jdbc.queryForObject(
-                "SELECT count(*) FROM outbox_events WHERE aggregate_id = ? AND event_type = 'RUNTIME_USAGE_OBSERVED'",
+                "SELECT count(*) FROM infrastructure.outbox_events WHERE aggregate_id = ? AND event_type = 'RUNTIME_USAGE_OBSERVED'",
                 Integer.class, observation.observedUsageId()));
     }
 
@@ -135,20 +135,20 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
         org.springframework.context.ApplicationEventPublisher listener = event -> fail("Invalid event must not be published");
         var dispatcher = new com.example.platform.outbox.app.OutboxEventDispatcher(outbox, listener, outboxRouter, 3, new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         String unknown = outbox.append(type.append("ep08-tenant", payload, null));
-        jdbc.update("update outbox_events set event_version=99 where id=?", unknown);
+        jdbc.update("update infrastructure.outbox_events set event_version=99 where id=?", unknown);
         assertFalse(dispatcher.processOnce(unknown));
-        assertEquals("UNSUPPORTED_EVENT_VERSION", jdbc.queryForObject("select last_error_code from outbox_events where id=?", String.class, unknown));
+        assertEquals("UNSUPPORTED_EVENT_VERSION", jdbc.queryForObject("select last_error_code from infrastructure.outbox_events where id=?", String.class, unknown));
         String malformed = outbox.append(type.append("ep08-tenant", payload, null));
-        jdbc.update("update outbox_events set payload='{}' where id=?", malformed);
+        jdbc.update("update infrastructure.outbox_events set payload='{}' where id=?", malformed);
         assertFalse(dispatcher.processOnce(malformed));
-        assertEquals("DEAD_LETTER", jdbc.queryForObject("select status from outbox_events where id=?", String.class, malformed));
+        assertEquals("DEAD_LETTER", jdbc.queryForObject("select status from infrastructure.outbox_events where id=?", String.class, malformed));
         String badPolicy = outbox.append(type.append("ep08-tenant", payload, null));
         assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
-                () -> jdbc.update("update outbox_events set max_retries=null where id=?", badPolicy));
-        jdbc.update("update outbox_events set max_retries=0 where id=?", badPolicy);
+                () -> jdbc.update("update infrastructure.outbox_events set max_retries=null where id=?", badPolicy));
+        jdbc.update("update infrastructure.outbox_events set max_retries=0 where id=?", badPolicy);
         outbox.markFailedWithDetails(outbox.claimForProcessing(badPolicy,"fixture").orElseThrow(), "TEST", "failure");
-        assertEquals("INVALID_RETRY_POLICY", jdbc.queryForObject("select last_error_code from outbox_events where id=?", String.class, badPolicy));
-        assertEquals("DEAD_LETTER", jdbc.queryForObject("select status from outbox_events where id=?", String.class, badPolicy));
+        assertEquals("INVALID_RETRY_POLICY", jdbc.queryForObject("select last_error_code from infrastructure.outbox_events where id=?", String.class, badPolicy));
+        assertEquals("DEAD_LETTER", jdbc.queryForObject("select status from infrastructure.outbox_events where id=?", String.class, badPolicy));
     }
 
     @Test void sameKeyConcurrentTransactionsPersistOneScopedEvent() throws Exception {
@@ -157,7 +157,7 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
         var first = java.util.concurrent.CompletableFuture.supplyAsync(() -> outbox.append(type.append("ep08-tenant", payload, "ep08-concurrent")));
         var second = java.util.concurrent.CompletableFuture.supplyAsync(() -> outbox.append(type.append("ep08-tenant", payload, "ep08-concurrent")));
         assertEquals(first.get(15, java.util.concurrent.TimeUnit.SECONDS), second.get(15, java.util.concurrent.TimeUnit.SECONDS));
-        assertEquals(1, jdbc.queryForObject("select count(*) from outbox_events where idempotency_key='ep08-concurrent'", Integer.class));
+        assertEquals(1, jdbc.queryForObject("select count(*) from infrastructure.outbox_events where idempotency_key='ep08-concurrent'", Integer.class));
         var foreign = new com.example.platform.usage.api.ObservedUsageEvents.RuntimeUsageObserved("concurrent-observation", "foreign-tenant", "operation", null, UsageDimension.REQUEST);
         assertThrows(IllegalArgumentException.class, () -> outbox.append(type.append("foreign-tenant", foreign, "ep08-concurrent")));
     }
@@ -173,8 +173,8 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
             emission.emit(observation);
             throw new IllegalStateException("domain transaction rejected");
         }));
-        assertEquals(0, jdbc.queryForObject("select count(*) from observed_runtime_usage where tenant_id='ep08-rollback'", Integer.class));
-        assertEquals(0, jdbc.queryForObject("select count(*) from outbox_events where idempotency_key='observed-usage:ep08-rollback:ep08-rollback'", Integer.class));
+        assertEquals(0, jdbc.queryForObject("select count(*) from billing.observed_runtime_usage where tenant_id='ep08-rollback'", Integer.class));
+        assertEquals(0, jdbc.queryForObject("select count(*) from infrastructure.outbox_events where idempotency_key='observed-usage:ep08-rollback:ep08-rollback'", Integer.class));
     }
 
     @Autowired com.example.platform.billing.usage.CostObservationEmissionService costEmission;
@@ -184,7 +184,7 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
                 new java.math.BigDecimal("1999"), "USD", com.example.platform.billing.usage.CostType.REPORTED, "test-report", Instant.now(), null, "ep08-cost-key");
         var saved = costEmission.persistCostWithOutbox(cost);
         assertEquals(saved.observationId(), costEmission.persistCostWithOutbox(cost).observationId());
-        var row = jdbc.queryForMap("select * from outbox_events where event_type='COST_OBSERVED' and aggregate_id=?", saved.observationId());
+        var row = jdbc.queryForMap("select * from infrastructure.outbox_events where event_type='COST_OBSERVED' and aggregate_id=?", saved.observationId());
         var payload = (com.example.platform.billing.usage.BillingOutboxEvents.CostObserved) outboxRouter.decode("COST_OBSERVED", 1, "PROVIDER_COST", saved.observationId(), (String) row.get("payload")).payload();
         assertEquals(saved.observationId(), payload.costObservationId());
         assertEquals(saved.amountMinor(), payload.amountMinor());

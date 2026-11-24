@@ -27,8 +27,8 @@ class FederationOwnerReadsHttpTest extends PostgresTestContainerSupport {
  final HttpClient client=HttpClient.newHttpClient();final com.fasterxml.jackson.databind.ObjectMapper json=new com.fasterxml.jackson.databind.ObjectMapper();
  record Actor(String id,String tenant,String token){}
  Actor actor(){String id=UUID.randomUUID().toString(),tenant="t-"+id;
-  db.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,tenant);
-  db.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,tenant,id,id+"@test.invalid");
+  db.update("insert into identity.tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,tenant);
+  db.update("insert into identity.\"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,tenant,id,id+"@test.invalid");
   var op=CanonicalActor.system("system:identity-provisioning",tenant);String account=accounts.provisionVerifiedAccount(op,"urn:media-platform:local-hmac",id);accounts.linkMembership(op,account,tenant,id);
   String token=io.jsonwebtoken.Jwts.builder().subject(id).claim("tenantId",tenant).claim("roles",List.of("ADMIN")).expiration(new Date(System.currentTimeMillis()+600000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("ep22-graphql-http-key-at-least-256-bits".getBytes(StandardCharsets.UTF_8))).compact();return new Actor(id,tenant,token);
  }
@@ -54,15 +54,15 @@ class FederationOwnerReadsHttpTest extends PostgresTestContainerSupport {
  }
  @Test void foreignProjectAndWorkspaceSelectorsFailWithoutOwnerWrites() throws Exception {
   var a=actor();var b=actor();String project="p-"+UUID.randomUUID();
-  db.update("insert into project(id,tenant_id,name,status,created_at) values (?,?,?,'ACTIVE',now())",project,b.tenant(),"Foreign");
-  long before=db.queryForObject("select count(*) from render_job",Long.class);
+  db.update("insert into identity.project(id,tenant_id,name,status,created_at) values (?,?,?,'ACTIVE',now())",project,b.tenant(),"Foreign");
+  long before=db.queryForObject("select count(*) from render.render_job",Long.class);
   var denied=query(a,"{ exportPanelState(projectId: \""+project+"\") { project { id } } }");
   assertTrue(json.readTree(denied.body()).has("errors"),denied.body());
   var req=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/graphql")).header("Content-Type","application/json").header("Authorization","Bearer "+a.token()).header("X-Workspace-Id","foreign-workspace")
    .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of("query","{ meOverview { id } }")))).build();
   var response=client.send(req,HttpResponse.BodyHandlers.ofString());
   assertTrue(response.statusCode()>=400 || json.readTree(response.body()).has("errors"),response.body());
-  assertEquals(before,db.queryForObject("select count(*) from render_job",Long.class));
+  assertEquals(before,db.queryForObject("select count(*) from render.render_job",Long.class));
   var retry=query(a,"{ meOverview { id } }");assertFalse(json.readTree(retry.body()).has("errors"),retry.body());
  }
  @Test void sourceBoundaryHasNoPrivateOwnerImports() throws Exception {

@@ -48,10 +48,10 @@ class CheckpointAPostFinalReviewHeadCasIT extends PostgresTestContainerSupport {
                 dsl, TENANT, projectId);
         int number = 1;
         for (String revisionId : new String[] {"R100", "RA", "RB"}) {
-            dsl.execute("insert into timeline_snapshot "
+            dsl.execute("insert into timeline.timeline_snapshot "
                             + "(id, project_id, tenant_id, payload_json) values (?, ?, ?, '{}')",
                     projectId + "-snap-" + revisionId, projectId, TENANT);
-            dsl.execute("insert into timeline_revision "
+            dsl.execute("insert into timeline.timeline_revision "
                             + "(id, project_id, tenant_id, revision_number, snapshot_id, "
                             + "internal_revision, content_hash, source, created_at) "
                             + "values (?, ?, ?, ?, ?, ?, ?, 'test', current_timestamp)",

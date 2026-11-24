@@ -1,6 +1,6 @@
 package com.example.platform.audit.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.AuditRecords.AUDIT_RECORDS;
+import static com.example.platform.typedschema.jooq.generated.policy.tables.AuditRecords.AUDIT_RECORDS;
 
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;

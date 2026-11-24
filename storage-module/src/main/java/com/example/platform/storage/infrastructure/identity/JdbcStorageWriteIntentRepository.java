@@ -77,7 +77,7 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
     public void create(StorageWriteIntent intent) {
         OffsetDateTime createdAt = utc(intent.createdAt());
         jdbc.update("""
-                insert into storage_logical_object (
+                insert into storage.storage_logical_object (
                     object_id, tenant_id, project_id, issuance_idempotency_key,
                     semantic_fingerprint, created_at
                 ) values (?, ?, ?, ?, ?, ?)
@@ -85,7 +85,7 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
                 intent.objectId().value(), intent.owner().tenantId(), intent.owner().projectId(),
                 intent.idempotencyKey().value(), intent.semanticFingerprint(), createdAt);
         jdbc.update("""
-                insert into storage_write_intent (
+                insert into storage.storage_write_intent (
                     write_intent_id, object_id, tenant_id, project_id,
                     issuance_idempotency_key, semantic_fingerprint, provider_request_id,
                     provider_correlation_id, provider_completion_fingerprint,
@@ -122,7 +122,7 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
                     "write intent is not eligible for provider completion");
         }
         jdbc.update("""
-                update storage_write_intent
+                update storage.storage_write_intent
                    set provider_correlation_id = ?, intent_state = 'PROVIDER_COMPLETED',
                        provider_completion_fingerprint = ?, updated_at = ?
                  where write_intent_id = ? and intent_state = 'PENDING_PROVIDER'
@@ -135,7 +135,7 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
     public StorageWriteIntent recordCanonicalCommitted(
             String writeIntentId, Instant completedAt) {
         int changed = jdbc.update("""
-                update storage_write_intent
+                update storage.storage_write_intent
                    set intent_state = 'CANONICAL_COMMITTED', updated_at = ?, completed_at = ?
                  where write_intent_id = ? and intent_state = 'PROVIDER_COMPLETED'
                 """, utc(completedAt), utc(completedAt), writeIntentId);
@@ -158,7 +158,7 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
                        provider_correlation_id, provider_completion_fingerprint,
                        intent_state, last_error_code,
                        reconciliation_detail, created_at, updated_at, completed_at
-                  from storage_write_intent
+                  from storage.storage_write_intent
                 """ + predicate, (rs, rowNumber) -> {
             OffsetDateTime completed = rs.getObject("completed_at", OffsetDateTime.class);
             return new StorageWriteIntent(

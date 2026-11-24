@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 
 /**
  * CFRH-I2 ownership-scoped query authority tests (replaces the retired
@@ -171,10 +171,10 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     private String saveRevision(
             String projectId, String tenantId, String source,
             String authorUserId, String editSessionId, String message) {
-        dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
+        dsl.execute("insert into identity.project (id, tenant_id, name, status, created_at) "
                         + "values (?, ?, ?, 'ACTIVE', now()) on conflict (id) do nothing",
                 projectId, tenantId, projectId);
-        dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, "
+        dsl.execute("insert into render.product (product_id, tenant_id, project_id, product_type, "
                         + "representation_kind, status, created_at, updated_at) "
                         + "values (?, ?, ?, 'video', 'master', 'REGISTERED', now(), now()) "
                         + "on conflict (product_id) do nothing",

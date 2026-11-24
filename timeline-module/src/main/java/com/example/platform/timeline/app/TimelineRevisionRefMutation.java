@@ -6,7 +6,7 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef.TIMELINE_REVISION_REF;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevisionRef.TIMELINE_REVISION_REF;
 
 /**
  * Shared typed mutation authority for the canonical mutable Timeline ref.

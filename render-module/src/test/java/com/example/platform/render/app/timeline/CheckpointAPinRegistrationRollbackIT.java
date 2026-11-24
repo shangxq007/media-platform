@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -84,15 +84,15 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
     private void insertProduct(String productId) {
         RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
-        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID, productId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.STATUS, "REGISTERED")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.TENANT_ID, TENANT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PROJECT_ID, productId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
+        dsl.insertInto(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.PRODUCT_ID, productId)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.STATUS, "REGISTERED")
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.PROJECT_ID, productId)
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
+                .set(com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
     }
 
@@ -151,8 +151,8 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         // no partial pin rows for the product
         int pinRows = dsl.fetchCount(DSL.selectFrom(
-                        com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN)
-                .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId)));
+                        com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN)
+                .where(com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId)));
         assertEquals(0, pinRows, "no partial pin rows after rollback");
     }
 

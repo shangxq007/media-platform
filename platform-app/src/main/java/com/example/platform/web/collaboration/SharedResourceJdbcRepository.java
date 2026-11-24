@@ -22,7 +22,7 @@ public class SharedResourceJdbcRepository {
 
     public void save(SharedResourceGrant grant) {
         int updated = jdbc.update("""
-                UPDATE shared_resource_grant SET
+                UPDATE entitlement.shared_resource_grant SET
                 resource_name = ?, resource_description = ?, resource_status = ?,
                 shared_by_user_id = ?, permission = ?, status = ?, expires_at = ?
                 WHERE grant_id = ?
@@ -37,7 +37,7 @@ public class SharedResourceJdbcRepository {
                 grant.grantId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO shared_resource_grant
+                    INSERT INTO entitlement.shared_resource_grant
                     (grant_id, tenant_id, resource_type, resource_id, resource_name, resource_description,
                      resource_status, shared_by_user_id, shared_with_user_id, permission, status, created_at, expires_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -60,7 +60,7 @@ public class SharedResourceJdbcRepository {
 
     public List<SharedResourceGrant> findActiveForRecipient(String tenantId, String userId) {
         return jdbc.query("""
-                SELECT * FROM shared_resource_grant
+                SELECT * FROM entitlement.shared_resource_grant
                 WHERE tenant_id = ? AND shared_with_user_id = ? AND status = 'ACTIVE'
                 ORDER BY created_at DESC
                 """,
@@ -71,7 +71,7 @@ public class SharedResourceJdbcRepository {
 
     public List<SharedResourceGrant> findActiveByTenant(String tenantId) {
         return jdbc.query("""
-                SELECT * FROM shared_resource_grant
+                SELECT * FROM entitlement.shared_resource_grant
                 WHERE tenant_id = ? AND status = 'ACTIVE'
                 ORDER BY created_at DESC
                 """,
@@ -81,7 +81,7 @@ public class SharedResourceJdbcRepository {
 
     public Optional<SharedResourceGrant> findByGrantId(String grantId) {
         List<SharedResourceGrant> rows = jdbc.query(
-                "SELECT * FROM shared_resource_grant WHERE grant_id = ?",
+                "SELECT * FROM entitlement.shared_resource_grant WHERE grant_id = ?",
                 this::map,
                 grantId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
@@ -90,7 +90,7 @@ public class SharedResourceJdbcRepository {
     public List<SharedResourceGrant> findByTenant(String tenantId, boolean includeRevoked) {
         if (includeRevoked) {
             return jdbc.query(
-                    "SELECT * FROM shared_resource_grant WHERE tenant_id = ? ORDER BY created_at DESC",
+                    "SELECT * FROM entitlement.shared_resource_grant WHERE tenant_id = ? ORDER BY created_at DESC",
                     this::map,
                     tenantId);
         }
@@ -99,14 +99,14 @@ public class SharedResourceJdbcRepository {
 
     public boolean revoke(String grantId) {
         return jdbc.update(
-                "UPDATE shared_resource_grant SET status = 'REVOKED' WHERE grant_id = ? AND status = 'ACTIVE'",
+                "UPDATE entitlement.shared_resource_grant SET status = 'REVOKED' WHERE grant_id = ? AND status = 'ACTIVE'",
                 grantId) > 0;
     }
 
     public boolean hasActiveGrant(String tenantId, String userId, String resourceType,
                                   String resourceId, String requiredPermission) {
         List<SharedResourceGrant> grants = jdbc.query("""
-                SELECT * FROM shared_resource_grant
+                SELECT * FROM entitlement.shared_resource_grant
                 WHERE tenant_id = ? AND shared_with_user_id = ? AND resource_type = ?
                   AND resource_id = ? AND status = 'ACTIVE'
                 """,

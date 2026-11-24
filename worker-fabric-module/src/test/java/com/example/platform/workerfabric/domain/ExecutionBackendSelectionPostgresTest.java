@@ -121,7 +121,7 @@ class ExecutionBackendSelectionPostgresTest extends PostgresTestContainerSupport
 
     private static int activeCount(String taskId) {
         return dsl.fetchOne(
-                "select count(*) from wf_execution_backend_selection where task_id = ? and active",
+                "select count(*) from worker_fabric.wf_execution_backend_selection where task_id = ? and active",
                 taskId).get(0, Integer.class);
     }
 }

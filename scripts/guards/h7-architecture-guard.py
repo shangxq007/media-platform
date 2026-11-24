@@ -458,7 +458,7 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
 
     ref_mutation_patterns = (
         r"(?:update|insertInto|deleteFrom|mergeInto)\s*\(\s*TIMELINE_REVISION_REF\s*\)",
-        r"(?:update|insert\s+into|delete\s+from)\s+timeline_revision_ref\b",
+        r"(?:update|insert\s+into|delete\s+from)\s+(?:timeline\.)?timeline_revision_ref\b",
     )
     direct_ref_mutation = 0
     for path, source in handwritten.items():
@@ -469,7 +469,7 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
     db_write_patterns = (
         r"\.\s*(?:insertInto|update|deleteFrom|mergeInto)\s*\(",
         r"\.\s*execute\s*\(",
-        r"(?:insert\s+into|update|delete\s+from)\s+(?:timeline_|product\b|apply_command\b)",
+        r"(?:insert\s+into|update|delete\s+from)\s+(?:(?:timeline\.)?(?:timeline_|apply_command\b)|(?:render\.)?product\b)",
     )
     h7_direct_db_write = sum(occurrences(pattern, render_h7_text)
                              for pattern in db_write_patterns)

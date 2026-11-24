@@ -59,7 +59,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         jdbc = context.getBean(JdbcTemplate.class);
         authority = context.getBean(QuotaUsageAuthority.class);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS quota_usage (
+                CREATE TABLE IF NOT EXISTS entitlement.quota_usage (
                     id varchar(64) primary key,
                     tenant_id varchar(64) not null,
                     principal_type varchar(32) not null,
@@ -77,7 +77,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                 )
                 """);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS quota_usage_operation (
+                CREATE TABLE IF NOT EXISTS entitlement.quota_usage_operation (
                     id varchar(64) primary key,
                     tenant_id varchar(64) not null,
                     principal_type varchar(32) not null,
@@ -118,7 +118,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
     void resetTables() {
         jdbc.execute("DROP TRIGGER IF EXISTS quota_audit_forced_failure ON quota_usage_operation");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_quota_audit_for_test()");
-        jdbc.execute("TRUNCATE TABLE quota_usage_operation, quota_usage");
+        jdbc.execute("TRUNCATE TABLE entitlement.quota_usage_operation, quota_usage");
     }
 
     @Test
@@ -251,7 +251,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         assertEquals(reversal, replay);
         assertTrue(new BigDecimal("17").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         List<String> operationKinds = jdbc.queryForList(
-                "SELECT operation_kind FROM quota_usage_operation", String.class);
+                "SELECT operation_kind FROM entitlement.quota_usage_operation", String.class);
         assertEquals(3, operationKinds.size());
         assertTrue(operationKinds.containsAll(
                 List.of("CONSUMPTION", "ADJUSTMENT", "REVERSAL")));
@@ -276,7 +276,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         assertTrue(new BigDecimal("2").compareTo(usage(tenantAUserB, PERIOD_START, PERIOD_END)) == 0);
         assertTrue(new BigDecimal("3").compareTo(usage(tenantBUserA, PERIOD_START, PERIOD_END)) == 0);
         assertTrue(new BigDecimal("4").compareTo(usage(tenantAUserA, nextStart, nextEnd)) == 0);
-        assertEquals(4, jdbc.queryForObject("SELECT COUNT(*) FROM quota_usage", Long.class));
+        assertEquals(4, jdbc.queryForObject("SELECT COUNT(*) FROM entitlement.quota_usage", Long.class));
     }
 
     @Test
@@ -357,7 +357,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
     }
 
     private static long auditCount() {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM quota_usage_operation", Long.class);
+        return jdbc.queryForObject("SELECT COUNT(*) FROM entitlement.quota_usage_operation", Long.class);
     }
 
     private static List<QuotaUsageResult> concurrently(

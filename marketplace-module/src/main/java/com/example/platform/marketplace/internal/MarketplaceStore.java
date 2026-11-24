@@ -14,32 +14,32 @@ public class MarketplaceStore {
     private final JdbcTemplate jdbc;
     public MarketplaceStore(JdbcTemplate jdbc) {this.jdbc=jdbc;}
     Optional<Listing> listing(String tenant,String project,String id,boolean lock) {
-        return jdbc.query("select * from marketplace_listing where tenant_id=? and project_id=? and id=? and admitted_at is not null"+(lock?" for update":""),this::map,tenant,project,id).stream().findFirst();
+        return jdbc.query("select * from marketplace.marketplace_listing where tenant_id=? and project_id=? and id=? and admitted_at is not null"+(lock?" for update":""),this::map,tenant,project,id).stream().findFirst();
     }
     Optional<Listing> admittedArtifact(String tenant,String artifact) {
-        return jdbc.query("select * from marketplace_listing where tenant_id=? and artifact_id=? and admitted_at is not null",this::map,tenant,artifact).stream().findFirst();
+        return jdbc.query("select * from marketplace.marketplace_listing where tenant_id=? and artifact_id=? and admitted_at is not null",this::map,tenant,artifact).stream().findFirst();
     }
     Optional<Listing> publicListing(String id) {
-        return jdbc.query("select * from marketplace_listing where id=? and admitted_at is not null and status='PUBLISHED'",this::map,id).stream().findFirst();
+        return jdbc.query("select * from marketplace.marketplace_listing where id=? and admitted_at is not null and status='PUBLISHED'",this::map,id).stream().findFirst();
     }
     List<Listing> published(String query,String workspace) {
-        return jdbc.query("select * from marketplace_listing where admitted_at is not null and status='PUBLISHED' and (?::text is null or workspace_id=?) and (?::text is null or search_vector @@ plainto_tsquery('english',?)) order by updated_at desc,id",this::map,workspace,workspace,query,query);
+        return jdbc.query("select * from marketplace.marketplace_listing where admitted_at is not null and status='PUBLISHED' and (?::text is null or workspace_id=?) and (?::text is null or search_vector @@ plainto_tsquery('english',?)) order by updated_at desc,id",this::map,workspace,workspace,query,query);
     }
     List<Listing> project(String tenant,String project,int limit) {
-        return jdbc.query("select * from marketplace_listing where tenant_id=? and project_id=? and admitted_at is not null order by updated_at desc,id limit ?",this::map,tenant,project,limit);
+        return jdbc.query("select * from marketplace.marketplace_listing where tenant_id=? and project_id=? and admitted_at is not null order by updated_at desc,id limit ?",this::map,tenant,project,limit);
     }
     void lockCommand(String tenant,String command) {
         jdbc.queryForObject("select pg_advisory_xact_lock(hashtextextended(?,0))",Object.class,"marketplace-command:"+tenant+":"+command);
     }
     Optional<Map<String,Object>> command(String tenant,String command) {
-        return jdbc.queryForList("select * from marketplace_command where tenant_id=? and command_id=?",tenant,command).stream().findFirst();
+        return jdbc.queryForList("select * from marketplace.marketplace_command where tenant_id=? and command_id=?",tenant,command).stream().findFirst();
     }
     void recordCommand(String tenant,String command,String digest,String actor,Object result) {
-        jdbc.update("insert into marketplace_command(tenant_id,command_id,request_digest,actor_json,result_json) values (?,?,?,?,?)",tenant,command,digest,actor,MarketplaceJson.write(result));
+        jdbc.update("insert into marketplace.marketplace_command(tenant_id,command_id,request_digest,actor_json,result_json) values (?,?,?,?,?)",tenant,command,digest,actor,MarketplaceJson.write(result));
     }
     String create(String tenant,String workspace,String project,String artifact,String version,String actor,String title,String summary,String description) {
         jdbc.queryForObject("select pg_advisory_xact_lock(hashtextextended(?,0))",Object.class,"marketplace-subject:"+artifact);
-        var prior=jdbc.queryForList("select * from marketplace_listing where artifact_id=? for update",artifact);
+        var prior=jdbc.queryForList("select * from marketplace.marketplace_listing where artifact_id=? for update",artifact);
         String id="mlst_"+UUID.randomUUID().toString().replace("-", "");
         if(!prior.isEmpty()) {
             var old=prior.getFirst();
@@ -47,50 +47,50 @@ public class MarketplaceStore {
             if(old.get("tenant_id")!=null&&!tenant.equals(old.get("tenant_id")) || old.get("project_id")!=null&&!project.equals(old.get("project_id")))
                 throw MarketplaceService.conflict("Historical listing scope needs explicit owner reconciliation");
             id=(String)old.get("id");
-            jdbc.update("update marketplace_listing set tenant_id=?,workspace_id=?,project_id=?,subject_version=?,created_by=?,updated_by=?,title=?,summary=?,description=?,listing_type='MEDIA',status='DRAFT',version=?,aggregate_version=1,review_id=null,preview_url=null,cover_url=null,search_text=?,search_vector=to_tsvector('english',?),admitted_at=now(),updated_at=now() where id=?",tenant,workspace,project,version,actor,actor,title,summary,description,version,title+" "+summary,title+" "+summary,id);
-        } else jdbc.update("insert into marketplace_listing(id,artifact_id,tenant_id,workspace_id,project_id,subject_version,created_by,updated_by,title,summary,description,listing_type,status,version,aggregate_version,search_text,search_vector,admitted_at,created_at,updated_at) values (?,?,?,?,?,?,?,?,?,?,?,'MEDIA','DRAFT',?,1,?,to_tsvector('english',?),now(),now(),now())",id,artifact,tenant,workspace,project,version,actor,actor,title,summary,description,version,title+" "+summary,title+" "+summary);
+            jdbc.update("update marketplace.marketplace_listing set tenant_id=?,workspace_id=?,project_id=?,subject_version=?,created_by=?,updated_by=?,title=?,summary=?,description=?,listing_type='MEDIA',status='DRAFT',version=?,aggregate_version=1,review_id=null,preview_url=null,cover_url=null,search_text=?,search_vector=to_tsvector('english',?),admitted_at=now(),updated_at=now() where id=?",tenant,workspace,project,version,actor,actor,title,summary,description,version,title+" "+summary,title+" "+summary,id);
+        } else jdbc.update("insert into marketplace.marketplace_listing(id,artifact_id,tenant_id,workspace_id,project_id,subject_version,created_by,updated_by,title,summary,description,listing_type,status,version,aggregate_version,search_text,search_vector,admitted_at,created_at,updated_at) values (?,?,?,?,?,?,?,?,?,?,?,'MEDIA','DRAFT',?,1,?,to_tsvector('english',?),now(),now(),now())",id,artifact,tenant,workspace,project,version,actor,actor,title,summary,description,version,title+" "+summary,title+" "+summary);
         return id;
     }
     void edit(Listing row,String title,String summary,String description,String actor) {
-        jdbc.update("update marketplace_listing set title=?,summary=?,description=?,review_id=null,status='DRAFT',search_text=?,search_vector=to_tsvector('english',?),aggregate_version=aggregate_version+1,updated_by=?,updated_at=now() where id=?",title,summary,description,title+" "+summary,title+" "+summary,actor,row.id());
+        jdbc.update("update marketplace.marketplace_listing set title=?,summary=?,description=?,review_id=null,status='DRAFT',search_text=?,search_vector=to_tsvector('english',?),aggregate_version=aggregate_version+1,updated_by=?,updated_at=now() where id=?",title,summary,description,title+" "+summary,title+" "+summary,actor,row.id());
     }
     void change(Listing row,Status state,String reviewId,String actor) {
-        jdbc.update("update marketplace_listing set status=?,review_id=?,aggregate_version=aggregate_version+1,updated_by=?,updated_at=now(),published_at=case when ?='PUBLISHED' then now() else published_at end where id=?",state.name(),reviewId,actor,state.name(),row.id());
+        jdbc.update("update marketplace.marketplace_listing set status=?,review_id=?,aggregate_version=aggregate_version+1,updated_by=?,updated_at=now(),published_at=case when ?='PUBLISHED' then now() else published_at end where id=?",state.name(),reviewId,actor,state.name(),row.id());
     }
     Map<String,Object> reviewRow(String tenant,String project,String id) {
-        return jdbc.queryForList("select * from marketplace_review where tenant_id=? and project_id=? and id=?",tenant,project,id).stream().findFirst().orElseThrow(()->MarketplaceService.missing("Review not found"));
+        return jdbc.queryForList("select * from marketplace.marketplace_review where tenant_id=? and project_id=? and id=?",tenant,project,id).stream().findFirst().orElseThrow(()->MarketplaceService.missing("Review not found"));
     }
     void insertReview(String id,Listing row,String actor,String title,String description) {
         // subject_version now records the pinned Artifact content digest (was the Media version).
-        jdbc.update("insert into marketplace_review(id,listing_id,tenant_id,workspace_id,project_id,subject_version,author_id,title,description,status,aggregate_version) values (?,?,?,?,?,?,?,?,?,'OPEN',?)",id,row.id(),row.tenantId(),row.workspaceId(),row.projectId(),((ArtifactSubject)row.subject()).version(),actor,title,description,row.version()+1);
+        jdbc.update("insert into marketplace.marketplace_review(id,listing_id,tenant_id,workspace_id,project_id,subject_version,author_id,title,description,status,aggregate_version) values (?,?,?,?,?,?,?,?,?,'OPEN',?)",id,row.id(),row.tenantId(),row.workspaceId(),row.projectId(),((ArtifactSubject)row.subject()).version(),actor,title,description,row.version()+1);
     }
     void reviewStatus(String id,ReviewStatus status,long version) {
-        jdbc.update("update marketplace_review set status=?,aggregate_version=? where id=?",status.name(),version,id);
+        jdbc.update("update marketplace.marketplace_review set status=?,aggregate_version=? where id=?",status.name(),version,id);
     }
     List<ReviewComment> comments(String reviewId) {
-        return jdbc.query("select c.*,t.resolved from marketplace_review_comment c join marketplace_review_thread t on t.id=c.thread_id where c.review_id=? order by c.created_at,c.id",(r,i)->new ReviewComment(r.getString("id"),r.getString("thread_id"),r.getString("author_id"),r.getString("content"),r.getBoolean("resolved"),r.getTimestamp("created_at").toInstant()),reviewId);
+        return jdbc.query("select c.*,t.resolved from marketplace.marketplace_review_comment c join marketplace.marketplace_review_thread t on t.id=c.thread_id where c.review_id=? order by c.created_at,c.id",(r,i)->new ReviewComment(r.getString("id"),r.getString("thread_id"),r.getString("author_id"),r.getString("content"),r.getBoolean("resolved"),r.getTimestamp("created_at").toInstant()),reviewId);
     }
-    boolean unresolved(String review) {return jdbc.queryForObject("select exists(select 1 from marketplace_review_thread where review_id=? and not resolved)",Boolean.class,review);}
+    boolean unresolved(String review) {return jdbc.queryForObject("select exists(select 1 from marketplace.marketplace_review_thread where review_id=? and not resolved)",Boolean.class,review);}
     Optional<String> latestDecision(String review,String actor) {
-        return jdbc.queryForList("select decision from marketplace_review_decision where review_id=? and actor_json::jsonb->>'actorId'=? order by aggregate_version desc limit 1",review,actor)
+        return jdbc.queryForList("select decision from marketplace.marketplace_review_decision where review_id=? and actor_json::jsonb->>'actorId'=? order by aggregate_version desc limit 1",review,actor)
                 .stream().findFirst().map(row->(String)row.get("decision"));
     }
     void insertDecision(String id,String review,String actorJson,String decision,long version) {
-        jdbc.update("insert into marketplace_review_decision(id,review_id,actor_json,decision,aggregate_version) values (?,?,?,?,?)",id,review,actorJson,decision,version);
+        jdbc.update("insert into marketplace.marketplace_review_decision(id,review_id,actor_json,decision,aggregate_version) values (?,?,?,?,?)",id,review,actorJson,decision,version);
     }
     record AddedComment(String id,String thread) {}
     AddedComment addComment(String review,String requestedThread,String actor,String content) {
         String thread=requestedThread;
-        if(thread==null) {thread="mthr_"+UUID.randomUUID();jdbc.update("insert into marketplace_review_thread(id,review_id) values (?,?)",thread,review);}
-        else if(!Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from marketplace_review_thread where id=? and review_id=? and not resolved)",Boolean.class,thread,review)))throw MarketplaceService.conflict("Thread not open in this review");
-        String id="mcom_"+UUID.randomUUID();jdbc.update("insert into marketplace_review_comment(id,review_id,thread_id,author_id,content) values (?,?,?,?,?)",id,review,thread,actor,content);
+        if(thread==null) {thread="mthr_"+UUID.randomUUID();jdbc.update("insert into marketplace.marketplace_review_thread(id,review_id) values (?,?)",thread,review);}
+        else if(!Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from marketplace.marketplace_review_thread where id=? and review_id=? and not resolved)",Boolean.class,thread,review)))throw MarketplaceService.conflict("Thread not open in this review");
+        String id="mcom_"+UUID.randomUUID();jdbc.update("insert into marketplace.marketplace_review_comment(id,review_id,thread_id,author_id,content) values (?,?,?,?,?)",id,review,thread,actor,content);
         return new AddedComment(id,thread);
     }
     void resolveThread(String review,String thread,String actor) {
-        if(jdbc.update("update marketplace_review_thread set resolved=true,resolved_by=? where id=? and review_id=? and not resolved",actor,thread,review)!=1)throw MarketplaceService.conflict("Thread not open in this review");
+        if(jdbc.update("update marketplace.marketplace_review_thread set resolved=true,resolved_by=? where id=? and review_id=? and not resolved",actor,thread,review)!=1)throw MarketplaceService.conflict("Thread not open in this review");
     }
     ProjectSummary summary(String tenant,String project,String workspace) {
-        return jdbc.queryForObject("select count(*) as total,count(*) filter(where status='PUBLISHED') as published from marketplace_listing where tenant_id=? and project_id=? and workspace_id=? and admitted_at is not null",
+        return jdbc.queryForObject("select count(*) as total,count(*) filter(where status='PUBLISHED') as published from marketplace.marketplace_listing where tenant_id=? and project_id=? and workspace_id=? and admitted_at is not null",
                 (r,i)->new ProjectSummary(r.getInt("total"),r.getInt("published")),tenant,project,workspace);
     }
     Listing map(ResultSet r,int i)throws SQLException {

@@ -223,7 +223,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
                 GRANTED_AT.plusSeconds(3500)));
 
         assertThat(dsl.fetchOne(
-                        "select worker_runtime_incarnation_id from wf_runtime_registration "
+                        "select worker_runtime_incarnation_id from worker_fabric.wf_runtime_registration "
                                 + "where worker_runtime_id = ? and active",
                         grant.assignment().workerRuntimeId().value())
                 .get(0, String.class))
@@ -300,7 +300,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(taskClaimable(grant.executableTaskId().sha256Hex())).isTrue();
         assertThat(activeLeaseCount(grant.executableTaskId().sha256Hex())).isZero();
         assertThat(dsl.fetchOne(
-                        "select count(*) from wf_runtime_registration where worker_runtime_id = ? and active",
+                        "select count(*) from worker_fabric.wf_runtime_registration where worker_runtime_id = ? and active",
                         grant.assignment().workerRuntimeId().value())
                 .get(0, Integer.class))
                 .isZero();
@@ -348,7 +348,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(activeLeaseCount(grant.executableTaskId().sha256Hex())).isOne();
         assertThat(attemptState(grant.attempt().id())).isEqualTo(ExecutionAttemptState.CREATED);
         assertThat(dsl.fetchOne(
-                        "select worker_runtime_incarnation_id from wf_runtime_registration "
+                        "select worker_runtime_incarnation_id from worker_fabric.wf_runtime_registration "
                                 + "where worker_runtime_id = ? and active",
                         grant.assignment().workerRuntimeId().value())
                 .get(0, String.class))
@@ -380,7 +380,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
                 ObservedExecutionState.SUCCEEDED,
                 new ExpectedOutputValidation(
                         "output-r2-current", ExpectedOutputValidation.Status.VALID));
-        dsl.execute("insert into artifact(id,tenant_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('artifact-r2-current','lifecycle-test','legacy',?,0,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())", "a".repeat(64));
+        dsl.execute("insert into artifacts.artifact(id,tenant_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('artifact-r2-current','lifecycle-test','legacy',?,0,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())", "a".repeat(64));
         ArtifactCommitEvidence commit =
                 new ArtifactCommitEvidence(new com.example.platform.shared.identity.ArtifactId("artifact-r2-current"));
 
@@ -654,27 +654,27 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
 
     private static ReservationState reservationState(AssignmentGrant grant) {
         return ReservationState.valueOf(dsl.fetchOne(
-                        "select state from wf_reservation where reservation_id = ?",
+                        "select state from worker_fabric.wf_reservation where reservation_id = ?",
                         grant.reservations().getFirst().id().value())
                 .get("state", String.class));
     }
 
     private static ExecutionAttemptState attemptState(ExecutionAttemptId attemptId) {
         return ExecutionAttemptState.valueOf(dsl.fetchOne(
-                        "select state from wf_execution_attempt where attempt_id = ?",
+                        "select state from worker_fabric.wf_execution_attempt where attempt_id = ?",
                         attemptId.value())
                 .get("state", String.class));
     }
 
     private static boolean taskClaimable(String taskId) {
         return dsl.fetchOne(
-                        "select claimable from wf_task_ownership where task_id = ?", taskId)
+                        "select claimable from worker_fabric.wf_task_ownership where task_id = ?", taskId)
                 .get("claimable", Boolean.class);
     }
 
     private static int activeLeaseCount(String taskId) {
         return dsl.fetchOne(
-                        "select count(*) from wf_task_lease where task_id = ? and active", taskId)
+                        "select count(*) from worker_fabric.wf_task_lease where task_id = ? and active", taskId)
                 .get(0, Integer.class);
     }
 

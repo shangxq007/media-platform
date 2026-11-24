@@ -30,7 +30,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
     @Override
     public UserProfile save(UserProfile profile) {
         int updated = jdbc.update("""
-                UPDATE user_profile SET
+                UPDATE analytics.user_profile SET
                 display_name = ?, preferred_languages_json = ?, feature_usage_counts_json = ?,
                 action_counts_json = ?, total_sessions = ?, total_actions = ?,
                 first_seen_at = ?, last_active_at = ?, updated_at = ?
@@ -49,7 +49,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
                 profile.userId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO user_profile
+                    INSERT INTO analytics.user_profile
                     (profile_id, tenant_id, user_id, display_name, preferred_languages_json,
                      feature_usage_counts_json, action_counts_json, total_sessions, total_actions,
                      first_seen_at, last_active_at, updated_at)
@@ -74,7 +74,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
     @Override
     public Optional<UserProfile> findByTenantIdAndUserId(String tenantId, String userId) {
         List<UserProfile> rows = jdbc.query(
-                "SELECT * FROM user_profile WHERE tenant_id = ? AND user_id = ?",
+                "SELECT * FROM analytics.user_profile WHERE tenant_id = ? AND user_id = ?",
                 this::map,
                 tenantId,
                 userId);
@@ -84,7 +84,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
     @Override
     public List<UserProfile> findByTenantId(String tenantId, int limit) {
         return jdbc.query(
-                "SELECT * FROM user_profile WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?",
+                "SELECT * FROM analytics.user_profile WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?",
                 this::map,
                 tenantId,
                 limit);
@@ -93,7 +93,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
     @Override
     public long countByTenantId(String tenantId) {
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM user_profile WHERE tenant_id = ?",
+                "SELECT COUNT(*) FROM analytics.user_profile WHERE tenant_id = ?",
                 Long.class,
                 tenantId);
         return count != null ? count : 0L;
@@ -102,7 +102,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
     @Override
     public List<String> findAllDistinctTenantIds() {
         return jdbc.queryForList(
-                "SELECT DISTINCT tenant_id FROM user_profile",
+                "SELECT DISTINCT tenant_id FROM analytics.user_profile",
                 String.class);
     }
 

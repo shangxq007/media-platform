@@ -24,7 +24,7 @@ spring:
     allow-circular-references: true
   flyway:
     enabled: true
-    baseline-on-migrate: true
+    baseline-on-migrate: false
   config:
     activate:
       on-profile: dev

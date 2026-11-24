@@ -285,7 +285,7 @@ def main() -> int:
         if path.endswith("DefaultTimelineRevisionPersistence.java"):
             continue
         revision_writer_occurrences += count(
-            r"insertInto\s*\(\s*TIMELINE_REVISION\s*\)|insert\s+into\s+timeline_revision\b",
+            r"insertInto\s*\(\s*TIMELINE_REVISION\s*\)|insert\s+into\s+(?:timeline\.)?timeline_revision\b",
             source)
 
     mutation_threadlocal = 0
@@ -303,7 +303,7 @@ def main() -> int:
     for source in sources.values():
         internal_persistence += count(
             r"(?:saveTx|save|insertRevisionTx|insertTx)\s*\([^;]*?['\"]internal-1\.0['\"]|"
-            r"insert\s+into\s+timeline_(?:snapshot|revision)[^;]*?internal-1\.0",
+            r"insert\s+into\s+(?:timeline\.)?timeline_(?:snapshot|revision)[^;]*?internal-1\.0",
             source)
 
     save_source = next((s for p, s in sources.items()

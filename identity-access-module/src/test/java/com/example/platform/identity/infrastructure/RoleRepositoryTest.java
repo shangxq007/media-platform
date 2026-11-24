@@ -29,7 +29,7 @@ class RoleRepositoryTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS role ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.role ("
                 + "id varchar(64) primary key,"
                 + "role_key varchar(128) not null unique,"
                 + "name varchar(255) not null,"
@@ -37,7 +37,7 @@ class RoleRepositoryTest extends PostgresTestContainerSupport {
                 + "scope varchar(32) not null,"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS permission ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.permission ("
                 + "id varchar(64) primary key,"
                 + "permission_key varchar(128) not null unique,"
                 + "name varchar(255) not null,"
@@ -45,13 +45,13 @@ class RoleRepositoryTest extends PostgresTestContainerSupport {
                 + "resource_type varchar(128),"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS role_permission ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.role_permission ("
                 + "id varchar(64) primary key,"
                 + "role_id varchar(64) not null,"
                 + "permission_id varchar(64) not null,"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS user_role_assignment ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.user_role_assignment ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64),"
                 + "workspace_id varchar(64),"
@@ -60,7 +60,7 @@ class RoleRepositoryTest extends PostgresTestContainerSupport {
                 + "assigned_by varchar(64),"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS group_role_assignment ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.group_role_assignment ("
                 + "id varchar(64) primary key,"
                 + "workspace_id varchar(64) not null,"
                 + "group_id varchar(64) not null,"
@@ -78,11 +78,11 @@ class RoleRepositoryTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE group_role_assignment CASCADE");
-        dsl.execute("TRUNCATE TABLE user_role_assignment CASCADE");
-        dsl.execute("TRUNCATE TABLE role_permission CASCADE");
-        dsl.execute("TRUNCATE TABLE permission CASCADE");
-        dsl.execute("TRUNCATE TABLE role CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.group_role_assignment CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.user_role_assignment CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.role_permission CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.permission CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.role CASCADE");
         repository = new RoleRepository(dsl);
     }
 

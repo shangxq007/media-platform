@@ -33,7 +33,7 @@ public class PromptJdbcRepository {
                 ? null
                 : String.join(",", template.tags());
         int updated = jdbc.update("""
-                UPDATE prompt_template SET
+                UPDATE prompt.prompt_template SET
                 name = ?, description = ?, category = ?, tags = ?, owner = ?, status = ?,
                 schema_version = ?, current_prompt_version = ?, updated_at = ?
                 WHERE template_id = ?
@@ -50,7 +50,7 @@ public class PromptJdbcRepository {
                 template.templateId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO prompt_template
+                    INSERT INTO prompt.prompt_template
                     (template_id, name, description, category, tags, owner, status,
                      schema_version, current_prompt_version, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -71,7 +71,7 @@ public class PromptJdbcRepository {
 
     public void saveVersion(PromptTemplateVersion version) {
         int updated = jdbc.update("""
-                UPDATE prompt_template_version SET
+                UPDATE prompt.prompt_template_version SET
                 template_body = ?, variable_schema_json = ?, changelog = ?, created_by = ?,
                 checksum = ?, previous_version = ?, deprecated = ?
                 WHERE version_id = ?
@@ -86,7 +86,7 @@ public class PromptJdbcRepository {
                 version.versionId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO prompt_template_version
+                    INSERT INTO prompt.prompt_template_version
                     (version_id, template_id, prompt_version, template_body, variable_schema_json,
                      changelog, created_by, created_at, checksum, previous_version, deprecated)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -107,7 +107,7 @@ public class PromptJdbcRepository {
 
     public void saveExecution(PromptExecutionRun run) {
         int updated = jdbc.update("""
-                UPDATE prompt_execution_run SET
+                UPDATE prompt.prompt_execution_run SET
                 status = ?, risk_level = ?, token_estimate = ?, cost_estimate = ?,
                 output_summary = ?, finished_at = ?, error_code = ?, error_details_json = ?
                 WHERE execution_id = ?
@@ -123,7 +123,7 @@ public class PromptJdbcRepository {
                 run.executionId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO prompt_execution_run
+                    INSERT INTO prompt.prompt_execution_run
                     (execution_id, template_id, prompt_version, tenant_id, user_id,
                      model_provider, model_name, rendered_prompt_hash, redacted_prompt_preview,
                      input_variables_redacted_json, output_summary, status, risk_level,
@@ -161,23 +161,23 @@ public class PromptJdbcRepository {
     }
 
     public List<PromptTemplate> loadAllTemplates() {
-        return jdbc.query("SELECT * FROM prompt_template ORDER BY created_at", this::mapTemplate);
+        return jdbc.query("SELECT * FROM prompt.prompt_template ORDER BY created_at", this::mapTemplate);
     }
 
     public List<PromptTemplateVersion> loadVersionsForTemplate(String templateId) {
         return jdbc.query(
-                "SELECT * FROM prompt_template_version WHERE template_id = ? ORDER BY created_at",
+                "SELECT * FROM prompt.prompt_template_version WHERE template_id = ? ORDER BY created_at",
                 this::mapVersion,
                 templateId);
     }
 
     public List<PromptExecutionRun> loadAllExecutions() {
-        return jdbc.query("SELECT * FROM prompt_execution_run ORDER BY started_at", this::mapExecution);
+        return jdbc.query("SELECT * FROM prompt.prompt_execution_run ORDER BY started_at", this::mapExecution);
     }
 
     public Optional<PromptTemplate> findTemplateById(String templateId) {
         List<PromptTemplate> rows = jdbc.query(
-                "SELECT * FROM prompt_template WHERE template_id = ?",
+                "SELECT * FROM prompt.prompt_template WHERE template_id = ?",
                 this::mapTemplate,
                 templateId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));

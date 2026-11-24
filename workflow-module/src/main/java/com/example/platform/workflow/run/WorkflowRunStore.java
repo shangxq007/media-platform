@@ -54,19 +54,19 @@ public class WorkflowRunStore {
 
     public Optional<Run> find(String tenant, String id) {
         return jdbc
-                .query("select * from workflow_run where tenant_id=? and id=?", ROW, tenant, id)
+                .query("select * from workflow.workflow_run where tenant_id=? and id=?", ROW, tenant, id)
                 .stream()
                 .findFirst();
     }
 
     public Run require(String id) {
-        return jdbc.query("select * from workflow_run where id=?", ROW, id).stream()
+        return jdbc.query("select * from workflow.workflow_run where id=?", ROW, id).stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Run not found"));
     }
 
     public Run lock(String id) {
-        return jdbc.query("select * from workflow_run where id=? for update", ROW, id).stream()
+        return jdbc.query("select * from workflow.workflow_run where id=? for update", ROW, id).stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Run not found"));
     }
@@ -78,7 +78,7 @@ public class WorkflowRunStore {
                 "workflow:" + tenant + ":" + key);
         return jdbc
                 .query(
-                        "select * from workflow_run where tenant_id=? and request_key=?",
+                        "select * from workflow.workflow_run where tenant_id=? and request_key=?",
                         ROW,
                         tenant,
                         key)
@@ -109,7 +109,7 @@ public class WorkflowRunStore {
 
     public List<Map<String, Object>> receipt(String id, String step) {
         return jdbc.queryForList(
-                "select request_digest,result_json from workflow_operation_receipt where run_id=?"
+                "select request_digest,result_json from workflow.workflow_operation_receipt where run_id=?"
                         + " and step_id=?",
                 id,
                 step);
@@ -117,7 +117,7 @@ public class WorkflowRunStore {
 
     public void receipt(String id, String step, String digest, String result) {
         jdbc.update(
-                "insert into workflow_operation_receipt(run_id,step_id,request_digest,result_json)"
+                "insert into workflow.workflow_operation_receipt(run_id,step_id,request_digest,result_json)"
                         + " values (?,?,?,?)",
                 id,
                 step,
@@ -127,12 +127,12 @@ public class WorkflowRunStore {
 
     public void running(String id) {
         jdbc.update(
-                "update workflow_run set status='RUNNING' where id=? and status='ACCEPTED'", id);
+                "update workflow.workflow_run set status='RUNNING' where id=? and status='ACCEPTED'", id);
     }
 
     public void waiting(String id, String step, String kind, long deadline) {
         jdbc.update(
-                "insert into workflow_run_step(run_id,step_id,status,wait_kind,deadline_at) values"
+                "insert into workflow.workflow_run_step(run_id,step_id,status,wait_kind,deadline_at) values"
                         + " (?,?,'WAITING',?,?) on conflict (run_id,step_id) do nothing",
                 id,
                 step,
@@ -142,7 +142,7 @@ public class WorkflowRunStore {
 
     public void completed(String id, String step, String result) {
         jdbc.update(
-                "insert into workflow_run_step(run_id,step_id,status,result_json) values"
+                "insert into workflow.workflow_run_step(run_id,step_id,status,result_json) values"
                         + " (?,?,'COMPLETED',?) on conflict (run_id,step_id) do update set"
                         + " status='COMPLETED',result_json=excluded.result_json",
                 id,
@@ -152,7 +152,7 @@ public class WorkflowRunStore {
 
     public void terminal(String id, String status, String failure) {
         jdbc.update(
-                "update workflow_run set status=?,failure_code=?,completed_at=now() where id=?",
+                "update workflow.workflow_run set status=?,failure_code=?,completed_at=now() where id=?",
                 status,
                 failure,
                 id);
@@ -160,26 +160,26 @@ public class WorkflowRunStore {
 
     public void requestCancel(String id, String actor) {
         jdbc.update(
-                "update workflow_run set cancel_requested=true,cancelled_by_json=? where id=?",
+                "update workflow.workflow_run set cancel_requested=true,cancelled_by_json=? where id=?",
                 actor,
                 id);
     }
 
     public List<Map<String, Object>> waitProjection(String id, String step) {
         return jdbc.queryForList(
-                "select * from workflow_run_step where run_id=? and step_id=?", id, step);
+                "select * from workflow.workflow_run_step where run_id=? and step_id=?", id, step);
     }
 
     public List<Map<String, Object>> lockWait(String id, String step) {
         return jdbc.queryForList(
-                "select * from workflow_run_step where run_id=? and step_id=? for update",
+                "select * from workflow.workflow_run_step where run_id=? and step_id=? for update",
                 id,
                 step);
     }
 
     public int release(String id, String step, String release, boolean approved, String actor) {
         return jdbc.update(
-                "update workflow_run_step set release_id=?,approved=?,released_by_json=? where"
+                "update workflow.workflow_run_step set release_id=?,approved=?,released_by_json=? where"
                         + " run_id=? and step_id=? and deadline_at>now()",
                 release,
                 approved,
@@ -191,7 +191,7 @@ public class WorkflowRunStore {
     public boolean completed(String id, String step) {
         return Boolean.TRUE.equals(
                 jdbc.queryForObject(
-                        "select exists(select 1 from workflow_run_step where run_id=? and step_id=?"
+                        "select exists(select 1 from workflow.workflow_run_step where run_id=? and step_id=?"
                                 + " and status='COMPLETED')",
                         Boolean.class,
                         id,
@@ -201,7 +201,7 @@ public class WorkflowRunStore {
     public void failedStep(String id, String step, String status, String failure) {
         if (step != null)
             jdbc.update(
-                    "insert into workflow_run_step(run_id,step_id,status,failure_code) values"
+                    "insert into workflow.workflow_run_step(run_id,step_id,status,failure_code) values"
                             + " (?,?,?,?) on conflict (run_id,step_id) do update set"
                             + " status=excluded.status,failure_code=excluded.failure_code where"
                             + " workflow_run_step.status<>'COMPLETED'",
@@ -210,7 +210,7 @@ public class WorkflowRunStore {
                     status,
                     failure);
         jdbc.update(
-                "update workflow_run_step set status=?,failure_code=? where run_id=? and"
+                "update workflow.workflow_run_step set status=?,failure_code=? where run_id=? and"
                         + " status='WAITING'",
                 status,
                 failure,
@@ -225,7 +225,7 @@ public class WorkflowRunStore {
         return jdbc.queryForList(
                 "select"
                     + " step_id,status,failure_code,wait_kind,deadline_at,release_id,approved,result_json"
-                    + " from workflow_run_step where run_id=? order by step_id",
+                    + " from workflow.workflow_run_step where run_id=? order by step_id",
                 id);
     }
 }

@@ -26,9 +26,9 @@ class CommercePublicBoundaryTest {
     @Test void negativeControlsDistinguishCommerceCatalogFromTechnicalRenderProducts() {
         assertTrue(violation("payment-module/src/main/java/X.java","import com.example.platform.commerce.app.CheckoutPaymentPort;"));
         assertTrue(violation("platform-app/src/main/java/com/example/platform/payment/X.java","com.example.platform.commerce.app.CheckoutOrchestrator"));
-        assertTrue(violation("render-module/src/main/java/X.java","jdbc.update(\"UPDATE commerce_product SET lifecycle_state=?\");"));
+        assertTrue(violation("render-module/src/main/java/X.java","jdbc.update(\"UPDATE commerce.commerce_product SET lifecycle_state=?\");"));
         assertTrue(violation("render-module/src/main/java/X.java","dsl.insertInto(COMMERCE_PRODUCT).execute();"));
         assertFalse(violation("render-module/src/main/java/X.java","dsl.insertInto(PRODUCT).execute();"));
-        assertFalse(violation("commerce-module/src/main/java/X.java","INSERT INTO commerce_product"));
+        assertFalse(violation("commerce-module/src/main/java/X.java","INSERT INTO commerce.commerce_product"));
     }
 }

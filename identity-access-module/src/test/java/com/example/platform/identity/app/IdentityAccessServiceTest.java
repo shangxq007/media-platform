@@ -35,7 +35,7 @@ class IdentityAccessServiceTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS api_key ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.api_key ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64),"
                 + "fingerprint varchar(32) not null,"
@@ -56,7 +56,7 @@ class IdentityAccessServiceTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE api_key CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.api_key CASCADE");
 
         ApiKeyRepository apiKeyRepository = new ApiKeyRepository(dsl);
 

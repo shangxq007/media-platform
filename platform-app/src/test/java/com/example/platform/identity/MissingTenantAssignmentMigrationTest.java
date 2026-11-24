@@ -30,14 +30,14 @@ class MissingTenantAssignmentMigrationTest extends AccountResourceExecutionAccep
                 .defaultSchema(schema).locations("classpath:db/migration");
         config.target("1").load().migrate();
         boolean missing = tenantState.equals("missing");
-        String role = jdbc.queryForObject("select role_id from user_role_assignment where user_id=? and workspace_id=? limit 1", String.class, member, wsA);
+        String role = jdbc.queryForObject("select role_id from identity.user_role_assignment where user_id=? and workspace_id=? limit 1", String.class, member, wsA);
         if (!missing) jdbc.update("insert into " + schema + ".tenant(id,name,status,created_at) values (?,'Historical',?,now())", tenant, tenantState);
         jdbc.update("insert into " + schema + ".\"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,'historical','historical@test.invalid','MEMBER','ACTIVE',now())", member, tenant);
-        jdbc.update("insert into " + schema + ".workspace select * from public.workspace where id=?", wsA);
+        jdbc.update("insert into " + schema + ".workspace select * from identity.workspace where id=?", wsA);
         if (!missing) jdbc.update("insert into " + schema + ".project(id,tenant_id,name,status,created_at) values (?,?,'Historical','ACTIVE',now())", projectA, tenant);
-        jdbc.update("insert into " + schema + ".role select * from public.role where id=?", role);
-        jdbc.update("insert into " + schema + ".permission select p.* from public.permission p join public.role_permission rp on p.id=rp.permission_id where rp.role_id=?", role);
-        jdbc.update("insert into " + schema + ".role_permission select * from public.role_permission where role_id=?", role);
+        jdbc.update("insert into " + schema + ".role select * from identity.role where id=?", role);
+        jdbc.update("insert into " + schema + ".permission select p.* from identity.permission p join identity.role_permission rp on p.id=rp.permission_id where rp.role_id=?", role);
+        jdbc.update("insert into " + schema + ".role_permission select * from identity.role_permission where role_id=?", role);
         String assignment = "missing-tenant-" + UUID.randomUUID();
         String legacyScope = scope.equals("tenant") ? null : scope.equals("project") ? projectA : wsA;
         jdbc.update("insert into " + schema + ".user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,assigned_by,created_at) values (?,?,?,?,?,'historical-owner',now())",
@@ -68,10 +68,10 @@ class MissingTenantAssignmentMigrationTest extends AccountResourceExecutionAccep
                 if (missing) {
                     assertExcluded(roles, permissions, assignment);
                     // Explicit fixture materialization, no role grant: same upgraded schema.
-                    jdbc.update("insert into " + schema + ".tenant select * from public.tenant where id=?", tenant);
-                    jdbc.update("insert into " + schema + ".account select * from public.account where id=?", account);
+                    jdbc.update("insert into " + schema + ".tenant select * from identity.tenant where id=?", tenant);
+                    jdbc.update("insert into " + schema + ".account select * from identity.account where id=?", account);
                     jdbc.update("update " + schema + ".\"user\" set account_id=? where id=?", account, member);
-                    jdbc.update("insert into " + schema + ".workspace_member select * from public.workspace_member where workspace_id=? and user_id=?", wsA, member);
+                    jdbc.update("insert into " + schema + ".workspace_member select * from identity.workspace_member where workspace_id=? and user_id=?", wsA, member);
                     jdbc.update("insert into " + schema + ".project(id,tenant_id,workspace_id,name,status,created_at) values (?,?,?,'Materialized','ACTIVE',now())", projectA, tenant, wsA);
                     assertExcluded(roles, permissions, assignment);
                     assertEquals(after, row(schema, assignment));
@@ -110,8 +110,8 @@ class MissingTenantAssignmentMigrationTest extends AccountResourceExecutionAccep
             com.fasterxml.jackson.databind.node.ObjectNode preserved) throws Exception {
         // Same migrated-row consumer technique as the retained independent probe: public
         // already has valid canonical Account/member/resource mappings, but no role grant.
-        jdbc.update("delete from user_role_assignment where user_id=? and workspace_id=?", member, wsA);
-        jdbc.update("insert into user_role_assignment select * from " + schema + ".user_role_assignment where id=?", assignment);
+        jdbc.update("delete from identity.user_role_assignment where user_id=? and workspace_id=?", member, wsA);
+        jdbc.update("insert into identity.user_role_assignment select * from " + schema + ".user_role_assignment where id=?", assignment);
         String other = readId(callScope(tenant, creator, "POST", "/api/identity/tenants/" + tenant + "/projects",
                 Map.of("name", "Another Project", "workspaceId", wsA)), "id");
         var roles = context.getBean(RoleRepository.class);
@@ -126,7 +126,7 @@ class MissingTenantAssignmentMigrationTest extends AccountResourceExecutionAccep
         String path = "/api/workspaces/" + wsA + "/members/" + memberId(wsA, member) + "/roles";
         assertEquals(403, callScope(tenant, member, "POST", path, Map.of("roleKey", roleKey, "assignedBy", creator)).statusCode());
         assertEquals(200, callScope(tenant, creator, "POST", path, Map.of("roleKey", roleKey, "assignedBy", creator)).statusCode());
-        assertEquals(1, count("select count(*) from user_role_assignment where user_id=? and role_id=? and not scope_unresolved and id<>?", member, role, assignment));
+        assertEquals(1, count("select count(*) from identity.user_role_assignment where user_id=? and role_id=? and not scope_unresolved and id<>?", member, role, assignment));
         assertEquals(preserved, row("public", assignment), "Canonical grant creates a separate assignment");
         assertEquals(200, callScope(tenant, member, "GET", "/api/identity/projects/" + projectA, null).statusCode());
     }

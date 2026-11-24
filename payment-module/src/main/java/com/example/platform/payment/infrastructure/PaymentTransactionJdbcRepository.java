@@ -38,7 +38,7 @@ public class PaymentTransactionJdbcRepository {
         return jdbc.query("""
                 SELECT transaction_id, payload_fingerprint, result_fingerprint,
                        result_state, result_version
-                FROM payment_command WHERE tenant_id = ? AND idempotency_key = ?
+                FROM payment.payment_command WHERE tenant_id = ? AND idempotency_key = ?
                   AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ?
                 """, (rs, row) -> new StoredCommand(rs.getString("transaction_id"),
@@ -53,7 +53,7 @@ public class PaymentTransactionJdbcRepository {
         String workspace = normalize(command.principal().workspaceId());
         String organization = normalize(command.principal().organizationId());
         jdbc.update("""
-                INSERT INTO payment_transaction
+                INSERT INTO payment.payment_transaction
                 (id, tenant_id, principal_type, principal_id, workspace_id, organization_id,
                  order_id, checkout_session_id, provider_code, provider_reference, redirect_url,
                  amount_minor, currency_code, transaction_state, provider_event_cursor,
@@ -89,7 +89,7 @@ public class PaymentTransactionJdbcRepository {
             throw new IllegalStateException("Provider result CAS or legal transition rejected");
         }
         int updated = jdbc.update("""
-                UPDATE payment_transaction
+                UPDATE payment.payment_transaction
                 SET provider_reference = ?, redirect_url = ?, transaction_state = ?,
                     provider_call_claimed_at = NULL, version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND version = ? AND transaction_state = 'INITIATED'
@@ -104,7 +104,7 @@ public class PaymentTransactionJdbcRepository {
                                                      long expectedVersion, Instant at) {
         requireForUpdate(principal, transactionId);
         int updated = jdbc.update("""
-                UPDATE payment_transaction SET transaction_state = 'FAILED', provider_call_claimed_at = NULL,
+                UPDATE payment.payment_transaction SET transaction_state = 'FAILED', provider_call_claimed_at = NULL,
                     version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND version = ? AND transaction_state = 'INITIATED'
                 """, Timestamp.from(at), principal.tenantId(), transactionId, expectedVersion);
@@ -115,7 +115,7 @@ public class PaymentTransactionJdbcRepository {
     public boolean claimCheckoutProviderCall(PrincipalRef principal, String transactionId,
                                              long expectedVersion, Instant at) {
         return jdbc.update("""
-                UPDATE payment_transaction SET provider_call_claimed_at = ?, updated_at = ?
+                UPDATE payment.payment_transaction SET provider_call_claimed_at = ?, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ?
                   AND version = ? AND transaction_state = 'INITIATED'
@@ -129,7 +129,7 @@ public class PaymentTransactionJdbcRepository {
     public void releaseCheckoutProviderCall(PrincipalRef principal, String transactionId,
                                             long expectedVersion, Instant at) {
         jdbc.update("""
-                UPDATE payment_transaction SET provider_call_claimed_at = NULL, updated_at = ?
+                UPDATE payment.payment_transaction SET provider_call_claimed_at = NULL, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ?
                   AND version = ? AND transaction_state = 'INITIATED'
@@ -157,7 +157,7 @@ public class PaymentTransactionJdbcRepository {
         long captured = verification.canonicalState() == PaymentState.SETTLED
                 ? current.amount().amountMinor() : current.capturedAmount().amountMinor();
         int updated = jdbc.update("""
-                UPDATE payment_transaction SET transaction_state = ?, captured_amount_minor = ?,
+                UPDATE payment.payment_transaction SET transaction_state = ?, captured_amount_minor = ?,
                     version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND version = ? AND transaction_state = ?
                 """, verification.canonicalState().name(), captured,
@@ -169,7 +169,7 @@ public class PaymentTransactionJdbcRepository {
 
     public WebhookReceipt findWebhookReceipt(String providerCode, String eventId) {
         return jdbc.query("""
-                SELECT * FROM provider_webhook_receipt WHERE provider_code = ? AND event_id = ?
+                SELECT * FROM payment.provider_webhook_receipt WHERE provider_code = ? AND event_id = ?
                 """, (rs, row) -> new WebhookReceipt(rs.getString("provider_code"),
                 rs.getString("event_id"), rs.getString("payload_sha256"),
                 rs.getString("event_type"), rs.getLong("event_cursor"),
@@ -199,7 +199,7 @@ public class PaymentTransactionJdbcRepository {
             long captured = command.state() == PaymentState.SETTLED
                     ? current.amount().amountMinor() : current.capturedAmount().amountMinor();
             int updated = jdbc.update("""
-                    UPDATE payment_transaction
+                    UPDATE payment.payment_transaction
                     SET transaction_state = ?, provider_event_cursor = ?, captured_amount_minor = ?,
                         version = version + 1, updated_at = ?
                     WHERE tenant_id = ? AND id = ? AND version = ? AND transaction_state = ?
@@ -217,7 +217,7 @@ public class PaymentTransactionJdbcRepository {
 
     private void insertWebhookReceipt(ApplyWebhookCommand command, String outcome) {
         jdbc.update("""
-                INSERT INTO provider_webhook_receipt
+                INSERT INTO payment.provider_webhook_receipt
                 (id, tenant_id, provider_code, event_id, payload_sha256, event_type, event_cursor,
                  provider_reference, canonical_state, processing_outcome, transaction_id,
                  occurred_at, received_at)
@@ -231,7 +231,7 @@ public class PaymentTransactionJdbcRepository {
 
     private void insertSettlementOutbox(PaymentTransaction transaction, ApplyWebhookCommand command) {
         jdbc.update("""
-                INSERT INTO payment_outbox
+                INSERT INTO payment.payment_outbox
                 (id, tenant_id, event_type, aggregate_id, dedupe_key, provider_code,
                  provider_reference, checkout_session_id, trace_id, created_at, dispatched_at)
                 VALUES (?, ?, 'PAYMENT_SETTLED', ?, ?, ?, ?, ?, ?, ?, NULL)
@@ -256,7 +256,7 @@ public class PaymentTransactionJdbcRepository {
             throw new IllegalStateException("Original capture reference mismatch");
         }
         Long reserved = jdbc.queryForObject("""
-                SELECT COALESCE(sum(amount_minor), 0) FROM payment_refund
+                SELECT COALESCE(sum(amount_minor), 0) FROM payment.payment_refund
                 WHERE tenant_id = ? AND transaction_id = ?
                   AND refund_state IN ('REQUESTED','PROVIDER_CALLING','SUCCEEDED')
                 """, Long.class, command.principal().tenantId(), command.transactionId());
@@ -266,7 +266,7 @@ public class PaymentTransactionJdbcRepository {
         String refundId = "prf_" + shortHash(
                 command.principal().tenantId() + ":" + command.idempotencyKey());
         jdbc.update("""
-                INSERT INTO payment_refund
+                INSERT INTO payment.payment_refund
                 (id, tenant_id, transaction_id, provider_refund_reference,
                  original_capture_reference, amount_minor, currency_code, refund_state,
                  idempotency_key, payload_fingerprint, source, reason, trace_id, created_at, updated_at)
@@ -285,7 +285,7 @@ public class PaymentTransactionJdbcRepository {
                                        String providerRefundReference) {
         PaymentTransaction current = requireForUpdate(command.principal(), command.transactionId());
         int refundUpdated = jdbc.update("""
-                UPDATE payment_refund SET refund_state = 'SUCCEEDED', provider_refund_reference = ?,
+                UPDATE payment.payment_refund SET refund_state = 'SUCCEEDED', provider_refund_reference = ?,
                     updated_at = ? WHERE tenant_id = ? AND id = ? AND refund_state = 'PROVIDER_CALLING'
                 """, providerRefundReference, Timestamp.from(command.occurredAt()),
                 command.principal().tenantId(), refundId);
@@ -295,7 +295,7 @@ public class PaymentTransactionJdbcRepository {
         PaymentState target = refunded == current.capturedAmount().amountMinor()
                 ? PaymentState.REFUNDED : PaymentState.PARTIALLY_REFUNDED;
         int transactionUpdated = jdbc.update("""
-                UPDATE payment_transaction SET refunded_amount_minor = ?, transaction_state = ?,
+                UPDATE payment.payment_transaction SET refunded_amount_minor = ?, transaction_state = ?,
                     version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND version = ?
                 """, refunded, target.name(), Timestamp.from(command.occurredAt()),
@@ -310,7 +310,7 @@ public class PaymentTransactionJdbcRepository {
 
     public void failRefund(RefundPaymentCommand command, String refundId) {
         jdbc.update("""
-                UPDATE payment_refund SET refund_state = 'FAILED', updated_at = ?
+                UPDATE payment.payment_refund SET refund_state = 'FAILED', updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND refund_state = 'PROVIDER_CALLING'
                 """, Timestamp.from(command.occurredAt()), command.principal().tenantId(), refundId);
     }
@@ -318,7 +318,7 @@ public class PaymentTransactionJdbcRepository {
     public Optional<RefundResult> findRefundResult(PrincipalRef principal, String idempotencyKey) {
         return jdbc.query("""
                 SELECT r.*, t.transaction_state, t.refunded_amount_minor, t.version
-                FROM payment_refund r JOIN payment_transaction t
+                FROM payment.payment_refund r JOIN payment.payment_transaction t
                   ON t.tenant_id = r.tenant_id AND t.id = r.transaction_id
                 WHERE r.tenant_id = ? AND r.idempotency_key = ?
                   AND t.principal_type = ? AND t.principal_id = ?
@@ -335,7 +335,7 @@ public class PaymentTransactionJdbcRepository {
     public Optional<RefundRecord> findRefund(PrincipalRef principal, String idempotencyKey) {
         return jdbc.query("""
                 SELECT r.id, r.transaction_id, r.refund_state, r.payload_fingerprint
-                FROM payment_refund r JOIN payment_transaction t
+                FROM payment.payment_refund r JOIN payment.payment_transaction t
                   ON t.tenant_id = r.tenant_id AND t.id = r.transaction_id
                 WHERE r.tenant_id = ? AND r.idempotency_key = ?
                   AND t.principal_type = ? AND t.principal_id = ?
@@ -350,7 +350,7 @@ public class PaymentTransactionJdbcRepository {
 
     public void resumeRefund(PrincipalRef principal, String refundId, Instant at) {
         jdbc.update("""
-                UPDATE payment_refund SET refund_state = 'REQUESTED', provider_call_claimed_at = NULL,
+                UPDATE payment.payment_refund SET refund_state = 'REQUESTED', provider_call_claimed_at = NULL,
                     updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND refund_state = 'FAILED'
                 """, Timestamp.from(at), principal.tenantId(), refundId);
@@ -358,7 +358,7 @@ public class PaymentTransactionJdbcRepository {
 
     public boolean claimRefundProviderCall(PrincipalRef principal, String refundId, Instant at) {
         return jdbc.update("""
-                UPDATE payment_refund SET refund_state = 'PROVIDER_CALLING',
+                UPDATE payment.payment_refund SET refund_state = 'PROVIDER_CALLING',
                     provider_call_claimed_at = ?, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND refund_state = 'REQUESTED'
                 """, Timestamp.from(at), Timestamp.from(at), principal.tenantId(), refundId) == 1;
@@ -369,7 +369,7 @@ public class PaymentTransactionJdbcRepository {
                             PaymentState resultState, long resultVersion, String source,
                             String reason, String traceId, Instant at) {
         jdbc.update("""
-                INSERT INTO payment_command
+                INSERT INTO payment.payment_command
                 (id, tenant_id, principal_type, principal_id, workspace_id, organization_id,
                  idempotency_key, command_type, transaction_id,
                  payload_fingerprint, result_fingerprint, result_state, result_version,
@@ -385,7 +385,7 @@ public class PaymentTransactionJdbcRepository {
     public void updateCommandResult(PrincipalRef principal, String idempotencyKey, String resultFingerprint,
                                     PaymentState state, long version) {
         jdbc.update("""
-                UPDATE payment_command SET result_fingerprint = ?, result_state = ?, result_version = ?
+                UPDATE payment.payment_command SET result_fingerprint = ?, result_state = ?, result_version = ?
                 WHERE tenant_id = ? AND idempotency_key = ?
                   AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ?
@@ -396,7 +396,7 @@ public class PaymentTransactionJdbcRepository {
 
     public Optional<PaymentTransaction> find(PrincipalRef principal, String transactionId) {
         return jdbc.query("""
-                SELECT * FROM payment_transaction
+                SELECT * FROM payment.payment_transaction
                 WHERE tenant_id = ? AND id = ? AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ?
                 """, this::mapTransaction, principal.tenantId(), transactionId,
@@ -407,7 +407,7 @@ public class PaymentTransactionJdbcRepository {
 
     public Optional<PaymentTransaction> findByCheckout(PrincipalRef principal, String checkoutSessionId) {
         return jdbc.query("""
-                SELECT * FROM payment_transaction
+                SELECT * FROM payment.payment_transaction
                 WHERE tenant_id = ? AND checkout_session_id = ?
                   AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ?
@@ -418,7 +418,7 @@ public class PaymentTransactionJdbcRepository {
     }
 
     public Optional<PaymentTransaction> findByProviderReference(String providerCode, String providerReference) {
-        return jdbc.query("SELECT * FROM payment_transaction WHERE provider_code = ? AND provider_reference = ?",
+        return jdbc.query("SELECT * FROM payment.payment_transaction WHERE provider_code = ? AND provider_reference = ?",
                 this::mapTransaction, providerCode, providerReference).stream().findFirst();
     }
 
@@ -426,7 +426,7 @@ public class PaymentTransactionJdbcRepository {
         return jdbc.query("""
                 SELECT id, aggregate_id, tenant_id, provider_code, provider_reference,
                        checkout_session_id, trace_id, created_at
-                FROM payment_outbox WHERE dispatched_at IS NULL
+                FROM payment.payment_outbox WHERE dispatched_at IS NULL
                 ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1
                 """, (rs, row) -> new PaymentOutboxEvent(rs.getString("id"),
                 rs.getString("aggregate_id"), rs.getString("tenant_id"),
@@ -437,7 +437,7 @@ public class PaymentTransactionJdbcRepository {
 
     public void markOutboxDispatched(String eventId) {
         int updated = jdbc.update("""
-                UPDATE payment_outbox SET dispatched_at = now()
+                UPDATE payment.payment_outbox SET dispatched_at = now()
                 WHERE id = ? AND dispatched_at IS NULL
                 """, eventId);
         if (updated != 1) throw new IllegalStateException("Payment outbox event was not pending");
@@ -445,7 +445,7 @@ public class PaymentTransactionJdbcRepository {
 
     private PaymentTransaction requireForUpdate(PrincipalRef principal, String transactionId) {
         return jdbc.query("""
-                SELECT * FROM payment_transaction
+                SELECT * FROM payment.payment_transaction
                 WHERE tenant_id = ? AND id = ? AND principal_type = ? AND principal_id = ?
                   AND workspace_id = ? AND organization_id = ? FOR UPDATE
                 """, this::mapTransaction, principal.tenantId(), transactionId,

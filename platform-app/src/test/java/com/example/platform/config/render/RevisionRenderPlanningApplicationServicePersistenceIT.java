@@ -1,6 +1,6 @@
 package com.example.platform.config.render;
 
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -89,9 +89,9 @@ class RevisionRenderPlanningApplicationServicePersistenceIT extends PostgresTest
         // render_job.project_id has an FK to project, and project.tenant_id has an FK to tenant.
         // Seed via raw SQL: the tracked jOOQ schema is a bounded identity subset (it does not
         // carry every canonical column such as project.name / created_at).
-        dsl.execute("insert into tenant(id, name, created_at) values (?, ?, now()) "
+        dsl.execute("insert into identity.tenant(id, name, created_at) values (?, ?, now()) "
                 + "on conflict (id) do nothing", TENANT, "P3B");
-        dsl.execute("insert into project(id, tenant_id, name, created_at) values (?, ?, ?, now()) "
+        dsl.execute("insert into identity.project(id, tenant_id, name, created_at) values (?, ?, ?, now()) "
                 + "on conflict (id) do nothing", PROJECT, TENANT, "P3B");
     }
 

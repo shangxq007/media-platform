@@ -28,7 +28,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
     @Override
     public UserHabits save(UserHabits habits) {
         int updated = jdbc.update("""
-                UPDATE user_habits SET habits_json = ?, computed_at = ?
+                UPDATE analytics.user_habits SET habits_json = ?, computed_at = ?
                 WHERE tenant_id = ? AND user_id = ?
                 """,
                 AnalyticsPersistenceJson.toJson(HabitsPayload.from(habits)),
@@ -37,7 +37,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
                 habits.userId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO user_habits (tenant_id, user_id, habits_json, computed_at)
+                    INSERT INTO analytics.user_habits (tenant_id, user_id, habits_json, computed_at)
                     VALUES (?, ?, ?, ?)
                     """,
                     habits.tenantId(),
@@ -51,7 +51,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
     @Override
     public Optional<UserHabits> findByTenantIdAndUserId(String tenantId, String userId) {
         List<UserHabits> rows = jdbc.query(
-                "SELECT * FROM user_habits WHERE tenant_id = ? AND user_id = ?",
+                "SELECT * FROM analytics.user_habits WHERE tenant_id = ? AND user_id = ?",
                 this::map,
                 tenantId,
                 userId);
@@ -61,7 +61,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
     @Override
     public List<UserHabits> findByTenantId(String tenantId, int limit) {
         return jdbc.query(
-                "SELECT * FROM user_habits WHERE tenant_id = ? ORDER BY computed_at DESC LIMIT ?",
+                "SELECT * FROM analytics.user_habits WHERE tenant_id = ? ORDER BY computed_at DESC LIMIT ?",
                 this::map,
                 tenantId,
                 limit);

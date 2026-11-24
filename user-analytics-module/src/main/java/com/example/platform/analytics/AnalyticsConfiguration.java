@@ -34,7 +34,7 @@ public class AnalyticsConfiguration {
                 JdbcTemplate jdbc = context.getBean(JdbcTemplate.class);
                 // All singletons (including the canonical migration initializer) are ready; no business writes.
                 for (String table : List.of("user_behavior_event", "user_profile", "user_habits", "user_segment")) {
-                    jdbc.queryForList("SELECT * FROM " + table + " WHERE 1=0");
+                    jdbc.queryForList("SELECT * FROM analytics." + table + " WHERE 1=0");
                 }
             }
         };

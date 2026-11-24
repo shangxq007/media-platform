@@ -14,6 +14,6 @@ public final class OutboxEventTestSchemaFixture {
     }
 
     public static void truncate(DSLContext dsl) {
-        dsl.execute("TRUNCATE TABLE outbox_events RESTART IDENTITY CASCADE");
+        dsl.execute("TRUNCATE TABLE infrastructure.outbox_events RESTART IDENTITY CASCADE");
     }
 }

@@ -50,7 +50,7 @@ class CompositionRepositoryTest extends PostgresTestContainerSupport {
         repository.publish(Kind.WORKFLOW,"t","w",id,"1.0",1,Map.of("published",true));
         assertEquals(true,repository.version(Kind.WORKFLOW,"t","w",id,"1.0",Map.class).orElseThrow().get("published"));
         assertThrows(CompositionService.OptimisticConcurrencyException.class,()->repository.save(Kind.WORKFLOW,"t","w",id,"1.0",2,Map.of()));
-        assertThrows(RuntimeException.class,()->db.update("UPDATE composition_version SET definition='{}'::jsonb WHERE composition_id=?",id));
+        assertThrows(RuntimeException.class,()->db.update("UPDATE composition.composition_version SET definition='{}'::jsonb WHERE composition_id=?",id));
     }
     @Test void outerRollbackLeavesNoDraft() {
         String id=UUID.randomUUID().toString();

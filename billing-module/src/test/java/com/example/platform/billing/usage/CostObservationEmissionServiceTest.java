@@ -64,7 +64,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
         var jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS provider_cost_observation (
+            CREATE TABLE IF NOT EXISTS billing.provider_cost_observation (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 project_id varchar(64),
@@ -85,7 +85,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
             )
         """);
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS outbox_events (
+            CREATE TABLE IF NOT EXISTS infrastructure.outbox_events (
                 id varchar(64) primary key,
                 aggregate_type varchar(100) not null,
                 aggregate_id varchar(100) not null,
@@ -114,8 +114,8 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE outbox_events CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE provider_cost_observation CASCADE");
+        dsl.execute("TRUNCATE TABLE infrastructure.outbox_events CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE billing.provider_cost_observation CASCADE");
     }
 
     private static ProviderCostObservation observation(String tenant, String idemKey,
@@ -185,7 +185,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
                 observation("tenant-1", "idem-cost-prov", CostType.ESTIMATED, "usg-456"));
 
         Map<String, Object> reloaded = jdbcTemplate.queryForMap(
-                "SELECT * FROM provider_cost_observation WHERE id = ?", saved.observationId());
+                "SELECT * FROM billing.provider_cost_observation WHERE id = ?", saved.observationId());
 
         assertEquals("ESTIMATED", reloaded.get("cost_type"));
         assertEquals("provider-report", reloaded.get("source"));
@@ -196,7 +196,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
     }
 
     private long countCost() {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM provider_cost_observation", Long.class);
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM billing.provider_cost_observation", Long.class);
     }
 
     private long countOutbox() {

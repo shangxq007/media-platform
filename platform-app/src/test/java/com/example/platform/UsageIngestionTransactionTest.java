@@ -31,9 +31,9 @@ class UsageIngestionTransactionTest extends PostgresTestContainerSupport {
                 RuntimeOutcome.FAILED,at,at,at,UsageProvenance.REPORTED,"ep28a-test","source-ref","trace",key);
     }
     private void counts(String tenant,int expected) {
-        assertEquals(expected,jdbc.queryForObject("select count(*) from observed_runtime_usage where tenant_id=?",Integer.class,tenant));
-        assertEquals(expected,jdbc.queryForObject("select count(*) from outbox_events where payload::jsonb->>'tenantId'=? and event_type='RUNTIME_USAGE_OBSERVED'",Integer.class,tenant));
-        assertEquals(0,jdbc.queryForObject("select count(*) from billable_usage where tenant_id=?",Integer.class,tenant),
+        assertEquals(expected,jdbc.queryForObject("select count(*) from billing.observed_runtime_usage where tenant_id=?",Integer.class,tenant));
+        assertEquals(expected,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where payload::jsonb->>'tenantId'=? and event_type='RUNTIME_USAGE_OBSERVED'",Integer.class,tenant));
+        assertEquals(0,jdbc.queryForObject("select count(*) from billing.billable_usage where tenant_id=?",Integer.class,tenant),
                 "ingestion must not invent accounting effects");
     }
     @Test void committedObservationReplayAndConflictingContentPreserveOriginalFact() {
@@ -42,7 +42,7 @@ class UsageIngestionTransactionTest extends PostgresTestContainerSupport {
         assertEquals(first,emission.emit(observation(tenant,"replay",0)));
         assertThrows(IllegalStateException.class,()->emission.emit(observation(tenant,"replay",1)));
         counts(tenant,1);
-        assertEquals(0L,jdbc.queryForObject("select quantity_base_units from observed_runtime_usage where tenant_id=?",Long.class,tenant));
+        assertEquals(0L,jdbc.queryForObject("select quantity_base_units from billing.observed_runtime_usage where tenant_id=?",Long.class,tenant));
     }
     @Test void conflictingTenantContextRejectsBeforeAnyDurableEffect() {
         String tenant="ep28a-"+UUID.randomUUID();

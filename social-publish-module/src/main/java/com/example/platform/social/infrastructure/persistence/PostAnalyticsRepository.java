@@ -23,7 +23,7 @@ public class PostAnalyticsRepository {
 
     public PostAnalytics save(PostAnalytics analytics) {
         String sql = """
-                INSERT INTO social_post_analytics (id, post_id, platform_type, impressions, reach, likes,
+                INSERT INTO publication.social_post_analytics (id, post_id, platform_type, impressions, reach, likes,
                     comments, shares, clicks, fetched_at, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
@@ -37,13 +37,13 @@ public class PostAnalyticsRepository {
 
     public Optional<PostAnalytics> findById(String id) {
         List<PostAnalytics> results = jdbc.query(
-                "SELECT * FROM social_post_analytics WHERE id = ?", rowMapper, id);
+                "SELECT * FROM publication.social_post_analytics WHERE id = ?", rowMapper, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public List<PostAnalytics> findByPostId(String postId) {
         return jdbc.query(
-                "SELECT * FROM social_post_analytics WHERE post_id = ? ORDER BY created_at DESC",
+                "SELECT * FROM publication.social_post_analytics WHERE post_id = ? ORDER BY created_at DESC",
                 rowMapper, postId);
     }
 

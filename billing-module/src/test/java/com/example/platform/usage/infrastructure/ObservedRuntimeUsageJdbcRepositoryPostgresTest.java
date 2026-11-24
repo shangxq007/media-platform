@@ -45,7 +45,7 @@ class ObservedRuntimeUsageJdbcRepositoryPostgresTest extends PostgresTestContain
         dataSource = createDataSource();
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS observed_runtime_usage (
+                CREATE TABLE IF NOT EXISTS billing.observed_runtime_usage (
                     observed_usage_id varchar(64) primary key,
                     tenant_id varchar(64) not null,
                     project_id varchar(64),
@@ -80,7 +80,7 @@ class ObservedRuntimeUsageJdbcRepositoryPostgresTest extends PostgresTestContain
 
     @BeforeEach
     void reset() {
-        jdbc.execute("TRUNCATE TABLE observed_runtime_usage");
+        jdbc.execute("TRUNCATE TABLE billing.observed_runtime_usage");
         repository = new ObservedRuntimeUsageJdbcRepository(jdbc);
     }
 
@@ -192,7 +192,7 @@ class ObservedRuntimeUsageJdbcRepositoryPostgresTest extends PostgresTestContain
     }
 
     private static long countRows() {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM observed_runtime_usage", Long.class);
+        return jdbc.queryForObject("SELECT COUNT(*) FROM billing.observed_runtime_usage", Long.class);
     }
 
     private static <T> List<T> concurrently(int count, ThrowingSupplier<T> supplier)

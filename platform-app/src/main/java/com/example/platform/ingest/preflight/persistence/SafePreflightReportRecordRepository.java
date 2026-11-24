@@ -8,7 +8,7 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords.INGEST_PREFLIGHT_SAFE_REPORT_RECORDS;
+import static com.example.platform.typedschema.jooq.generated.media.tables.IngestPreflightSafeReportRecords.INGEST_PREFLIGHT_SAFE_REPORT_RECORDS;
 
 
 @Repository

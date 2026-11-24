@@ -33,7 +33,7 @@ public class BillableUsageJdbcRepository {
     public AppendResult appendResult(BillableUsage usage) {
         Objects.requireNonNull(usage, "usage must not be null");
         int inserted = jdbc.update("""
-                INSERT INTO billable_usage (
+                INSERT INTO billing.billable_usage (
                     billable_usage_id, tenant_id, principal_type, principal_id,
                     observed_usage_id, observed_dimension, observed_quantity_base_units,
                     observed_quantity_unit, billable_meter, billable_dimension,
@@ -80,7 +80,7 @@ public class BillableUsageJdbcRepository {
 
     public Optional<BillableUsage> findByTenantAndId(String tenantId, String billableUsageId) {
         List<BillableUsage> rows = jdbc.query("""
-                SELECT * FROM billable_usage
+                SELECT * FROM billing.billable_usage
                 WHERE tenant_id = ? AND billable_usage_id = ?
                 """, this::mapRow, tenantId, billableUsageId);
         return rows.stream().findFirst();
@@ -89,7 +89,7 @@ public class BillableUsageJdbcRepository {
     public Optional<BillableUsage> findByTenantAndIdempotencyKey(
             String tenantId, String idempotencyKey) {
         List<BillableUsage> rows = jdbc.query("""
-                SELECT * FROM billable_usage
+                SELECT * FROM billing.billable_usage
                 WHERE tenant_id = ? AND idempotency_key = ?
                 """, this::mapRow, tenantId, idempotencyKey);
         return rows.stream().findFirst();
@@ -97,7 +97,7 @@ public class BillableUsageJdbcRepository {
 
     public List<BillableUsage> findByTenant(String tenantId) {
         return jdbc.query("""
-                SELECT * FROM billable_usage
+                SELECT * FROM billing.billable_usage
                 WHERE tenant_id = ? ORDER BY metered_at, billable_usage_id
                 """, this::mapRow, tenantId);
     }

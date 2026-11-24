@@ -30,7 +30,7 @@ public class RevisionGraphService {
     /** readParents(revisionId) -> ordered parents (parent_order asc) — graph authority only. */
     public List<String> readParents(String projectId, String revisionId) {
         return dsl.fetch(
-                        "select parent_revision_id from timeline_revision_parent "
+                        "select parent_revision_id from timeline.timeline_revision_parent "
                                 + "where project_id = ? and revision_id = ? order by parent_order",
                         projectId, revisionId)
                 .map(r -> r.get(0, String.class));

@@ -11,7 +11,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.WorkspaceQuotaAllocation.WORKSPACE_QUOTA_ALLOCATION;
+import static com.example.platform.typedschema.jooq.generated.entitlement.tables.WorkspaceQuotaAllocation.WORKSPACE_QUOTA_ALLOCATION;
 
 
 @Repository

@@ -58,7 +58,7 @@ class JooqArtifactQueryServiceTenantIsolationTest extends PostgresTestContainerS
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
         ArtifactSchemaFixture.createCanonicalTables(new JdbcTemplate(dataSource));
         // artifact_relation table with FK constraints matching canonical V1.
-        dsl.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
+        dsl.execute("CREATE TABLE IF NOT EXISTS artifacts.artifact_relation ("
                 + "id varchar(64) primary key,"
                 + "source_artifact_id varchar(64) not null,"
                 + "target_artifact_id varchar(64) not null,"
@@ -74,9 +74,9 @@ class JooqArtifactQueryServiceTenantIsolationTest extends PostgresTestContainerS
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE artifact_relation CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact_replica CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_relation CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_replica CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact CASCADE");
 
         artifactRepository = new ArtifactRepository(dsl);
         relationRepository = new ArtifactRelationRepository(dsl);

@@ -92,12 +92,7 @@ unreachable. Streaming larger objects is separate future work and is not validat
 
 ## Migration and deployment boundary
 
-The canonical greenfield migration is a single V1 containing the accepted graph-execution bindings and
-scope/native constraints previously validated as V1+V2. The historical accepted snapshot remains
-immutable outside this Git workspace. Later owner-approved schema changes require a fresh empty-PG18
-run, real jOOQ regeneration and the actual new generated file set; no generated-file count is
-permanent. Never point this baseline at a historical populated database, and never rewrite an applied
-database's Flyway history.
+First Render uses the application Flyway chain, including the immutable V1 and the domain schema migration. The API and Worker validate the applied chain using separate restricted logins.
 
 Schema policy: [Flyway development baseline](../database/flyway-migration-baseline.md). Development
 and regeneration: [canonical development baseline](../development/canonical-baseline.md).

@@ -26,7 +26,7 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
         TenantGuard.assertSameTenant(scope.tenantId());
         String value = encode(facts, true);
         int changed = dsl.execute("""
-                update artifact set audit_provenance=jsonb_set(audit_provenance,'{sourceProbeV1}',
+                update artifacts.artifact set audit_provenance=jsonb_set(audit_provenance,'{sourceProbeV1}',
                     coalesce(audit_provenance->'sourceProbeV1',cast(? as jsonb)),true)
                 where tenant_id=? and project_id=? and workspace_id=? and id=? and content_digest=?
                   and (audit_provenance->'sourceProbeV1' is null or audit_provenance->'sourceProbeV1'=cast(? as jsonb)
@@ -40,7 +40,7 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
     public Optional<ArtifactSourceFacts> find(String tenant, String project, ArtifactId id, ContentDigest digest) {
         TenantGuard.assertSameTenant(tenant);
         var row = dsl.fetchOne("""
-                select (audit_provenance->'sourceProbeV1')::text from artifact
+                select (audit_provenance->'sourceProbeV1')::text from artifacts.artifact
                 where tenant_id=? and project_id=? and id=? and content_digest=? and state='AVAILABLE'
                 """, tenant, project, id.value(), digest.canonicalValue());
         if (row == null || row.get(0) == null) return Optional.empty();
@@ -54,7 +54,7 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
             throw new IllegalArgumentException("bounded source display name required");
         }
         int changed = dsl.execute("""
-                update artifact set audit_provenance=jsonb_set(audit_provenance,'{sourceUploadV1}',
+                update artifacts.artifact set audit_provenance=jsonb_set(audit_provenance,'{sourceUploadV1}',
                     jsonb_build_object('name',cast(? as text)),true)
                 where tenant_id=? and project_id=? and id=? and content_digest=? and artifact_kind='SOURCE_MEDIA'
                   and (audit_provenance->'sourceUploadV1' is null
@@ -71,7 +71,7 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
                 select id,content_digest,byte_length,
                        coalesce(audit_provenance->'sourceUploadV1'->>'name',id) as display_name,
                        (audit_provenance->'sourceProbeV1')::text as source_facts
-                from artifact where tenant_id=? and project_id=? and artifact_kind='SOURCE_MEDIA'
+                from artifacts.artifact where tenant_id=? and project_id=? and artifact_kind='SOURCE_MEDIA'
                   and state='AVAILABLE' and jsonb_exists(audit_provenance,'sourceProbeV1')
                 order by created_at desc,id asc limit ?
                 """, tenant, project, bounded).map(row -> new SourceEntry(

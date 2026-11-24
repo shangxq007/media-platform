@@ -757,32 +757,63 @@ def verify_identity_parity(
         raise VerificationError("; ".join(errors))
 
 
-def verify(schema_path: Path, generated_root: Path) -> tuple[int, int, int, int]:
+def final_table_schemas(sql: str) -> dict[str, str]:
+    owners = dict.fromkeys(parse_canonical_table_identities(sql), "public")
+    for tokens, terminated in _sql_statements(sql):
+        words = [token.value.lower() for token in tokens]
+        if words[:2] != ["alter", "table"] or words[-3:-1] != ["set", "schema"]:
+            continue
+        if not terminated or len(tokens) != 8 or words[3] != ".":
+            raise VerificationError("Unrecognized ALTER TABLE SET SCHEMA")
+        source, table, target = (_sql_identifier(tokens[i], "table relocation") for i in (2, 4, 7))
+        if owners.get(table) != source:
+            raise VerificationError(f"Unexpected relocation source {source}.{table}")
+        owners[table] = target
+    return owners
+
+
+def verify(schema_path: Path, generated_root: Path, catalog: Path | None = None) -> tuple[int, int, int, int]:
     if not schema_path.is_file():
         raise VerificationError(f"CANONICAL_SCHEMA_MISSING path={schema_path}")
-    # The baseline anchors the Versioned migration directory; include subsequent
-    # versioned migrations from that same authority.
-    if schema_path.name == "V1__baseline.sql":
-        migrations = sorted(schema_path.parent.glob("V*__*.sql"),
-                            key=lambda p: tuple(int(n) for n in p.name.split("__", 1)[0][1:].split("_")))
-        sql = "\n".join(p.read_text(encoding="utf-8") for p in migrations)
-    else:
-        sql = schema_path.read_text(encoding="utf-8")
-    canonical = parse_canonical_table_identities(sql)
-    tables, records, java_files = load_generated_identities(generated_root)
+    migrations = sorted(schema_path.parent.glob("V*__*.sql"),
+                        key=lambda p: tuple(int(n) for n in p.name.split("__", 1)[0][1:].split("_")))
+    sql = "\n".join(p.read_text(encoding="utf-8") for p in migrations)
+    owners = final_table_schemas(sql)
+    canonical = [f"{schema}.{name}" for name, schema in owners.items()]
+    tables: list[str] = []
+    records: list[str] = []
+    for domain in sorted(p.parent for p in generated_root.glob("*/tables")):
+        schema = domain.name
+        class_name = "".join(part.capitalize() for part in schema.split("_"))
+        schema_source = (domain / (class_name + ".java")).read_text(encoding="utf-8")
+        if f'super(DSL.name("{schema}"),' not in schema_source:
+            raise VerificationError(f"Generated schema identity mismatch: {schema}")
+        domain_tables, domain_records, _ = load_generated_identities(domain)
+        for path in (domain / "tables").glob("*.java"):
+            source = path.read_text(encoding="utf-8")
+            expected = f"{class_name}.{schema.upper()};"
+            binding = _exactly_one(r"return aliased\(\) \? null : ([\w.]+;)", source,
+                                   "GENERATED_SCHEMA_BINDING_UNRECOGNIZED", path)
+            if binding[1].split(".")[-2:] != expected.split("."):
+                raise VerificationError(f"Wrong schema binding in {path}")
+        tables.extend(f"{schema}.{t}" for t in domain_tables)
+        records.extend(f"{schema}.{r}" for r in domain_records)
     verify_identity_parity(canonical, tables, records)
-    verify_owner_unique_key_parity(sql, generated_root / "Keys.java")
-    return len(canonical), len(tables), len(records), java_files
+    if catalog is not None:
+        verify_identity_parity(catalog.read_text().splitlines(), tables, records)
+    verify_owner_unique_key_parity(sql, generated_root / owners["storage_write_intent"] / "Keys.java")
+    return len(canonical), len(tables), len(records), sum(1 for _ in generated_root.rglob("*.java"))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--schema", required=True, type=Path)
     parser.add_argument("--generated", required=True, type=Path)
+    parser.add_argument("--catalog", type=Path, help="live PostgreSQL schema-qualified table identities")
     args = parser.parse_args(argv)
     try:
         canonical_count, table_count, record_count, java_file_count = verify(
-            args.schema, args.generated
+            args.schema, args.generated, args.catalog
         )
     except (OSError, UnicodeError, VerificationError) as error:
         print(f"FAIL: {error}", file=sys.stderr)

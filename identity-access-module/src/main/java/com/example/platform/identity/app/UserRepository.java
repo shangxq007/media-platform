@@ -11,7 +11,7 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.User.USER;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.User.USER;
 
 
 @Repository
@@ -43,8 +43,8 @@ public class UserRepository {
 
     /** One canonical persisted human-membership eligibility rule for authentication and ownership. */
     public boolean isUsableMembership(String id,String tenantId) {
-        var account=com.example.platform.typedschema.jooq.generated.tables.Account.ACCOUNT;
-        var tenant=com.example.platform.typedschema.jooq.generated.tables.Tenant.TENANT;
+        var account=com.example.platform.typedschema.jooq.generated.identity.tables.Account.ACCOUNT;
+        var tenant=com.example.platform.typedschema.jooq.generated.identity.tables.Tenant.TENANT;
         return dsl.fetchExists(dsl.selectOne().from(USER)
                 .join(account).on(USER.ACCOUNT_ID.eq(account.ID)).join(tenant).on(USER.TENANT_ID.eq(tenant.ID))
                 .where(USER.ID.eq(id)).and(USER.TENANT_ID.eq(tenantId)).and(USER.STATUS.eq("ACTIVE"))

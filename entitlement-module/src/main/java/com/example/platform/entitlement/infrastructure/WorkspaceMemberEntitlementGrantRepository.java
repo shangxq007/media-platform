@@ -23,7 +23,7 @@ public class WorkspaceMemberEntitlementGrantRepository {
 
     public EntitlementGrantView insert(EntitlementGrantCommand command, Instant now) {
         int inserted = jdbc.update("""
-                INSERT INTO workspace_member_entitlement_grant
+                INSERT INTO entitlement.workspace_member_entitlement_grant
                     (id, tenant_id, workspace_id, principal_type, member_id, feature_key,
                      quota_amount, source_type, source_ref, starts_at, expires_at, status,
                      version, granted_by, created_at, updated_at)
@@ -40,7 +40,7 @@ public class WorkspaceMemberEntitlementGrantRepository {
     public EntitlementGrantView transition(
             EntitlementGrantCommand command, String nextStatus, Instant nextExpiry) {
         int updated = jdbc.update("""
-                UPDATE workspace_member_entitlement_grant
+                UPDATE entitlement.workspace_member_entitlement_grant
                 SET status = ?, expires_at = ?, version = version + 1, updated_at = ?
                 WHERE id = ? AND tenant_id = ? AND workspace_id = ?
                   AND principal_type = ? AND member_id = ? AND status = 'ACTIVE' AND version = ?
@@ -59,7 +59,7 @@ public class WorkspaceMemberEntitlementGrantRepository {
 
     public Optional<EntitlementGrantView> find(PrincipalRef principal, String grantId) {
         List<EntitlementGrantView> rows = jdbc.query("""
-                SELECT * FROM workspace_member_entitlement_grant
+                SELECT * FROM entitlement.workspace_member_entitlement_grant
                 WHERE id = ? AND tenant_id = ? AND workspace_id = ?
                   AND principal_type = ? AND member_id = ?
                 """, this::mapView, grantId, principal.tenantId(), principal.workspaceId(),
@@ -70,7 +70,7 @@ public class WorkspaceMemberEntitlementGrantRepository {
     public List<EntitlementGrantView> findActive(PrincipalRef principal, Instant now) {
         if (principal.workspaceId() == null) return List.of();
         return jdbc.query("""
-                SELECT * FROM workspace_member_entitlement_grant
+                SELECT * FROM entitlement.workspace_member_entitlement_grant
                 WHERE tenant_id = ? AND workspace_id = ? AND principal_type = ? AND member_id = ?
                   AND status = 'ACTIVE' AND starts_at <= ? AND (expires_at IS NULL OR expires_at > ?)
                 ORDER BY created_at DESC
@@ -81,7 +81,7 @@ public class WorkspaceMemberEntitlementGrantRepository {
 
     public List<WorkspaceMemberEntitlementGrant> findByWorkspace(String tenantId, String workspaceId) {
         return jdbc.query("""
-                SELECT * FROM workspace_member_entitlement_grant
+                SELECT * FROM entitlement.workspace_member_entitlement_grant
                 WHERE tenant_id = ? AND workspace_id = ? ORDER BY created_at DESC
                 """, this::mapLegacy, tenantId, workspaceId);
     }

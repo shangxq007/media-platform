@@ -120,7 +120,7 @@ class JooqBoundGraphInputStoreIT {
         BoundGraphInputs inputs = inputsForBoundPlan("job-migration");
         store.save(inputs, "tenant-a", "job-migration");
         assertThrows(org.jooq.exception.DataAccessException.class, () -> dsl.execute(
-                "insert into render_binding_inputs"
+                "insert into render.render_binding_inputs"
                         + "(tenant_id,render_job_id,plan_ref,plan_digest,expected_etg_digest,plan_json,candidates_json,declarations_json)"
                         + " values ('tenant-a','job-migration','ref','"
                         + "a".repeat(64) + "','" + "b".repeat(64) + "','\\x00','\\x00','\\x00')"));
@@ -167,7 +167,7 @@ class JooqBoundGraphInputStoreIT {
         // longer matches the re-decoded plan, so load must fail closed.
         byte[] differentPlan = PhysicalExecutionPlanCanonicalCodec.encode(
                 inputsForBoundPlan("job-tamper-other").physicalPlan());
-        dsl.execute("update render_binding_inputs set plan_json = ? "
+        dsl.execute("update render.render_binding_inputs set plan_json = ? "
                 + "where tenant_id='tenant-a' and render_job_id='job-tamper'", differentPlan);
 
         assertThrows(BoundGraphDigestMismatchException.class, () -> store.load(reference));

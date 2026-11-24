@@ -56,20 +56,20 @@ class SourceVisualDescriptionSnapshotIT {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         dsl = database.dsl();
         dsl.execute("""
-                create table media_stream (
+                create table media.media_stream (
                     id varchar(64) primary key,
                     artifact_id varchar(64) not null,
                     stream_index int not null,
                     stream_kind varchar(16) not null
                 )""");
         dsl.execute("""
-                create table source_visual_description_snapshot (
+                create table media.source_visual_description_snapshot (
                     media_stream_id varchar(64) not null,
                     artifact_id      varchar(64) not null,
                     canonical_payload text not null,
                     created_at       timestamp not null default current_timestamp,
                     constraint fk_source_visual_snapshot_stream
-                        foreign key (media_stream_id) references media_stream(id)
+                        foreign key (media_stream_id) references media.media_stream(id)
                 )""");
         dsl.execute("alter table source_visual_description_snapshot "
                 + "add constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id)");
@@ -87,11 +87,11 @@ class SourceVisualDescriptionSnapshotIT {
         dsl.execute("create trigger trg_svd_snapshot_immutable before update on "
                 + "source_visual_description_snapshot for each row "
                 + "execute function trg_fn_svd_snapshot_immutable()");
-        dsl.execute("create table artifact (id varchar(64) primary key)");
-        dsl.execute("insert into artifact (id) values ('artifact-v1'), ('artifact-v2')");
-        dsl.execute("insert into media_stream (id, artifact_id, stream_index, stream_kind) "
+        dsl.execute("create table artifacts.artifact (id varchar(64) primary key)");
+        dsl.execute("insert into artifacts.artifact (id) values ('artifact-v1'), ('artifact-v2')");
+        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind) "
                 + "values ('stream-1', 'artifact-v1', 0, 'VIDEO')");
-        dsl.execute("insert into media_stream (id, artifact_id, stream_index, stream_kind) "
+        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind) "
                 + "values ('stream-audio', 'artifact-v1', 1, 'AUDIO')");
         repo = new JooqSourceVisualDescriptionSnapshotRepository(dsl);
     }
@@ -103,7 +103,7 @@ class SourceVisualDescriptionSnapshotIT {
 
     @BeforeEach
     void resetState() {
-        dsl.execute("delete from source_visual_description_snapshot");
+        dsl.execute("delete from media.source_visual_description_snapshot");
     }
 
     static SourceVisualDescription sample() {
@@ -253,12 +253,12 @@ class SourceVisualDescriptionSnapshotIT {
     void transactionRollbackLeavesNoOrphan() {
         MediaStreamId ghost = new MediaStreamId("stream-ghost");
         var failure=assertThrows(org.jooq.exception.DataAccessException.class, () -> dsl.transaction(tx -> {
-            tx.dsl().execute("insert into source_visual_description_snapshot "
+            tx.dsl().execute("insert into media.source_visual_description_snapshot "
                     + "(media_stream_id, artifact_id, canonical_payload) "
                     + "values (?, ?, ?)", ghost.value(), "artifact-v1", "x");
         }));
         assertEquals("23503",failure.sqlState(),"rollback must exercise the actual stream FK, not an obsolete-column error");
-        Long count = dsl.fetchOne("select count(*) from source_visual_description_snapshot "
+        Long count = dsl.fetchOne("select count(*) from media.source_visual_description_snapshot "
                 + "where media_stream_id = ?", ghost.value()).get(0, Long.class);
         assertEquals(0, count, "no orphan snapshot row after failed transaction");
     }

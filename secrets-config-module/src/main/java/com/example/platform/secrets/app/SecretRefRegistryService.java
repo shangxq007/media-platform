@@ -1,6 +1,6 @@
 package com.example.platform.secrets.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.SecretRef.SECRET_REF;
+import static com.example.platform.typedschema.jooq.generated.infrastructure.tables.SecretRef.SECRET_REF;
 
 import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import java.time.LocalDateTime;

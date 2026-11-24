@@ -59,7 +59,7 @@ class ArtifactCommitRecoveryIT {
     @Test void unknownOrChangedDurableReceiptFailsClosed() throws Exception {
         try(var db=database()) {
             var owner=service(db.dsl());owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW));
-            db.dsl().execute("update artifact set audit_provenance='{}'::jsonb where id='artifact-recovery'");
+            db.dsl().execute("update artifacts.artifact set audit_provenance='{}'::jsonb where id='artifact-recovery'");
             assertThrows(IllegalStateException.class,()->owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW)));
             assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
             assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_replica")));
@@ -72,7 +72,7 @@ class ArtifactCommitRecoveryIT {
             var forged=new ProvenanceEdge("forged","other-tenant",new ArtifactId("not-committed-parent"),
                     new ArtifactId("artifact-recovery"),ProvenanceRelationType.GENERATED_FROM,"forged-operation",1,
                     "forged-attempt","a".repeat(64),"b".repeat(64),NOW);
-            db.dsl().execute("update artifact set audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1,result,provenanceEdges}',cast(? as jsonb)) where id='artifact-recovery'",mapper.writeValueAsString(List.of(forged)));
+            db.dsl().execute("update artifacts.artifact set audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1,result,provenanceEdges}',cast(? as jsonb)) where id='artifact-recovery'",mapper.writeValueAsString(List.of(forged)));
             assertThrows(IllegalStateException.class,()->owner.findByIdempotencyKey("recovery-tenant","recovery-key"));
             assertThrows(IllegalStateException.class,()->owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW)));
             assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
@@ -92,7 +92,7 @@ class ArtifactCommitRecoveryIT {
                     base.providerId(),base.replicaRole(),base.region(),base.idempotencyKey(),List.of(declaration),NOW,NOW,null,null);
             var accepted=owner.commit(child);
             assertEquals(accepted,service(db.dsl()).findByIdempotencyKey("recovery-tenant","recovery-key").orElseThrow());
-            assertEquals(1,db.dsl().execute("delete from artifact_relation where source_artifact_id='artifact-recovery'"));
+            assertEquals(1,db.dsl().execute("delete from artifacts.artifact_relation where source_artifact_id='artifact-recovery'"));
             assertThrows(IllegalStateException.class,()->service(db.dsl()).commit(child));
             assertEquals(2,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
             assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_relation")));
@@ -102,7 +102,7 @@ class ArtifactCommitRecoveryIT {
     @Test void storedReceiptCreationTimeCannotDriftFromCanonicalArtifactTime() throws Exception {
         try(var db=database()) {
             var owner=service(db.dsl());owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW));
-            db.dsl().execute("update artifact set audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1,request,createdAt}',to_jsonb(cast(? as text))) where id='artifact-recovery'",NOW.plusSeconds(86400).toString());
+            db.dsl().execute("update artifacts.artifact set audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1,request,createdAt}',to_jsonb(cast(? as text))) where id='artifact-recovery'",NOW.plusSeconds(86400).toString());
             assertThrows(IllegalStateException.class,()->owner.findByIdempotencyKey("recovery-tenant","recovery-key"));
             assertThrows(IllegalStateException.class,()->owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW)));
             assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));

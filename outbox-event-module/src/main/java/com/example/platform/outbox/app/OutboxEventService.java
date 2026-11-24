@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS;
+import static com.example.platform.typedschema.jooq.generated.infrastructure.tables.OutboxEvents.OUTBOX_EVENTS;
 import org.jooq.impl.DSL;
 
 

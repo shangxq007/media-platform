@@ -53,7 +53,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
         com.example.platform.artifact.testutil.ArtifactSchemaFixture.createCanonicalTables(
                 new org.springframework.jdbc.core.JdbcTemplate(dataSource));
-        dsl.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
+        dsl.execute("CREATE TABLE IF NOT EXISTS artifacts.artifact_relation ("
                 + "id varchar(64) primary key,"
                 + "source_artifact_id varchar(64) not null,"
                 + "target_artifact_id varchar(64) not null,"
@@ -68,9 +68,9 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     }
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE artifact_pin CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact_replica CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_pin CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_replica CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact CASCADE");
 
         artifactRepository = new ArtifactRepository(dsl);
         pinRepository = new ArtifactPinRepository(dsl);

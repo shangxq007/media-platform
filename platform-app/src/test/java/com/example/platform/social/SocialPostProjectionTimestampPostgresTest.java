@@ -25,7 +25,7 @@ class SocialPostProjectionTimestampPostgresTest extends PostgresTestContainerSup
     }
     @Test void allEntityBindingsAndRawCounterexampleInDifferentTimezones() {
         inZone(repo -> {
-            assertThatThrownBy(() -> jdbc.queryForList("SELECT id FROM social_post WHERE scheduled_at <= ?", T))
+            assertThatThrownBy(() -> jdbc.queryForList("SELECT id FROM publication.social_post WHERE scheduled_at <= ?", T))
                     .isInstanceOf(org.springframework.dao.DataAccessException.class)
                     .hasStackTraceContaining("Can't infer the SQL type");
             // JDBC rejects Instant client-side, before sending a statement/aborting this transaction.
@@ -109,10 +109,10 @@ class SocialPostProjectionTimestampPostgresTest extends PostgresTestContainerSup
             assertRejected(repo, 2);
             assertThat(repo.findReadProjectionById("social-test", "actor", "review-project", "review-account", 1,
                     "scoped")).isPresent();
-            jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id='review-account'");
+            jdbc.update("UPDATE publication.social_connected_platform SET status='INACTIVE' WHERE id='review-account'");
             assertRejected(repo, 1);
             assertThat(repo.findById("scoped").orElseThrow().scheduledAt()).isEqualTo(T);
-            jdbc.update("UPDATE social_connected_platform SET status='ACTIVE' WHERE id='review-account'");
+            jdbc.update("UPDATE publication.social_connected_platform SET status='ACTIVE' WHERE id='review-account'");
             assertThat(repo.findReadProjection("social-test", "actor", "review-project", "review-account", 1,
                     T.minusSeconds(1), T.plusSeconds(1), 10)).extracting(p -> p.scheduledAt()).containsExactly(T);
         });
@@ -130,9 +130,9 @@ class SocialPostProjectionTimestampPostgresTest extends PostgresTestContainerSup
                 PlatformType.TWITTER,PostStatus.SCHEDULED,null,null,schedule,published,failed,null,null,0,T,T);
     }
     static void bound(SocialPostRepository repo,String id) {
-        jdbc.update("INSERT INTO tenant(id,name,created_at) VALUES ('social-test','review',localtimestamp)");
-        jdbc.update("INSERT INTO project(id,tenant_id,name,created_at) VALUES ('review-project','social-test','review',localtimestamp)");
-        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type) VALUES ('review-account','social-test','actor','TWITTER')");
+        jdbc.update("INSERT INTO identity.tenant(id,name,created_at) VALUES ('social-test','review',localtimestamp)");
+        jdbc.update("INSERT INTO identity.project(id,tenant_id,name,created_at) VALUES ('review-project','social-test','review',localtimestamp)");
+        jdbc.update("INSERT INTO publication.social_connected_platform(id,tenant_id,user_id,platform_type) VALUES ('review-account','social-test','actor','TWITTER')");
         repo.save(post(id,"review-project","review-account",1L,T,null,null));
     }
     static void inZone(java.util.function.Consumer<SocialPostRepository> probe) {

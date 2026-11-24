@@ -29,7 +29,7 @@ class WorkspaceMemberRepositoryTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS workspace_member ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.workspace_member ("
                 + "id varchar(64) primary key,"
                 + "workspace_id varchar(64) not null,"
                 + "user_id varchar(64) not null,"
@@ -49,7 +49,7 @@ class WorkspaceMemberRepositoryTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE workspace_member CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.workspace_member CASCADE");
         repository = new WorkspaceMemberRepository(dsl);
     }
 

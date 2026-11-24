@@ -38,7 +38,7 @@ Owner 决定、已采纳 ADR 和正式公开契约，不以本指南另建领域
 ## 专项补充与来源
 
 - [执行架构原则](../architecture/current/execution-architecture-principles.md)：规划、执行、存储适配和权威边界。
-- [数据库开发基线](../database/flyway-migration-baseline.md)：未上线单一 V1 与后续验证要求。
+- [数据库开发基线](../database/flyway-migration-baseline.md)：已应用 V1、后续迁移链与验证要求。
 - [当前开发指南](../development/canonical-baseline.md)：工程入口及已有验证方式；命令可用不等于当前任务获准执行。
 
 来源为 Owner 已采纳的功能驱动方向、现有公开契约/模块边界规则，以及

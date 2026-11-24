@@ -55,11 +55,11 @@ class CommercePaymentPortIntegrationTest extends PostgresTestContainerSupport {
         assertEquals(1,context.getBeansOfType(CheckoutOrderPort.class).size());
         var first=payment.createPaymentForCheckout(request);
         assertEquals(first,payment.createPaymentForCheckout(request));
-        assertEquals(1,jdbc.queryForObject("select count(*) from payment_transaction where checkout_session_id=?",Integer.class,id));
-        assertEquals("actor",jdbc.queryForObject("select principal_id from payment_transaction where checkout_session_id=?",String.class,id));
+        assertEquals(1,jdbc.queryForObject("select count(*) from payment.payment_transaction where checkout_session_id=?",Integer.class,id));
+        assertEquals("actor",jdbc.queryForObject("select principal_id from payment.payment_transaction where checkout_session_id=?",String.class,id));
         assertThrows(IllegalStateException.class,()->payment.createPaymentForCheckout(new CheckoutPaymentPort.CheckoutPaymentRequest(
                 id,"ep11","actor","pro_monthly",10000,"USD","https://test.invalid/success",null,null,id,id,at)));
-        assertEquals(9999,jdbc.queryForObject("select amount_minor from payment_transaction where checkout_session_id=?",Long.class,id));
+        assertEquals(9999,jdbc.queryForObject("select amount_minor from payment.payment_transaction where checkout_session_id=?",Long.class,id));
     }
 
     @Test void handoffCannotSelectAForeignCheckoutOrOverrideAnExistingTenantContext() {
@@ -72,15 +72,15 @@ class CommercePaymentPortIntegrationTest extends PostgresTestContainerSupport {
         TenantContext.clear();
         assertThrows(IllegalArgumentException.class,()->consumer.onPaymentSettled(wrong));
         assertNull(TenantContext.get());
-        assertEquals(0,jdbc.queryForObject("select count(*) from purchase_order where checkout_session_id=?",Integer.class,session.checkoutSessionId()));
-        assertEquals("owner",jdbc.queryForObject("select user_id from checkout_session where id=?",String.class,session.checkoutSessionId()));
+        assertEquals(0,jdbc.queryForObject("select count(*) from commerce.purchase_order where checkout_session_id=?",Integer.class,session.checkoutSessionId()));
+        assertEquals("owner",jdbc.queryForObject("select user_id from commerce.checkout_session where id=?",String.class,session.checkoutSessionId()));
         verifyNoInteractions(fulfillment);
     }
 
     @Test void durableSettlementRetriesThroughTheCommercePublicOrderPortWithoutPartialOrder() {
         String tenant="ep11-"+UUID.randomUUID();TenantContext.set(tenant);
         var session=checkout.createSession(new CreateCheckoutSessionRequest(tenant,"pro_monthly","persisted-actor","subscription","https://test.invalid/success",null));
-        var row=jdbc.queryForMap("select * from payment_transaction where checkout_session_id=?",session.checkoutSessionId());
+        var row=jdbc.queryForMap("select * from payment.payment_transaction where checkout_session_id=?",session.checkoutSessionId());
         Instant now=Instant.now();
         var command=new ApplyWebhookCommand(PrincipalRef.tenantScoped(tenant,PrincipalType.USER,"persisted-actor"),
                 (String)row.get("id"),"ep11-test","evt-"+UUID.randomUUID(),(String)row.get("provider_reference"),"settled",1,
@@ -90,15 +90,15 @@ class CommercePaymentPortIntegrationTest extends PostgresTestContainerSupport {
         doThrow(new IllegalStateException("controlled downstream rejection")).when(fulfillment).fulfill(any());
         assertThrows(IllegalStateException.class,dispatcher::dispatchNext);
         assertNull(TenantContext.get());
-        assertEquals(0,jdbc.queryForObject("select count(*) from purchase_order where checkout_session_id=?",Integer.class,session.checkoutSessionId()));
-        assertEquals(1,jdbc.queryForObject("select count(*) from payment_outbox where checkout_session_id=? and dispatched_at is null",Integer.class,session.checkoutSessionId()));
-        assertEquals("PENDING",jdbc.queryForObject("select session_status from checkout_session where id=?",String.class,session.checkoutSessionId()));
+        assertEquals(0,jdbc.queryForObject("select count(*) from commerce.purchase_order where checkout_session_id=?",Integer.class,session.checkoutSessionId()));
+        assertEquals(1,jdbc.queryForObject("select count(*) from payment.payment_outbox where checkout_session_id=? and dispatched_at is null",Integer.class,session.checkoutSessionId()));
+        assertEquals("PENDING",jdbc.queryForObject("select session_status from commerce.checkout_session where id=?",String.class,session.checkoutSessionId()));
         doNothing().when(fulfillment).fulfill(any());
         assertTrue(dispatcher.dispatchNext()); assertFalse(dispatcher.dispatchNext());
         assertNull(TenantContext.get());
-        assertEquals(1,jdbc.queryForObject("select count(*) from purchase_order where checkout_session_id=?",Integer.class,session.checkoutSessionId()));
-        assertEquals(0,jdbc.queryForObject("select count(*) from payment_outbox where checkout_session_id=? and dispatched_at is null",Integer.class,session.checkoutSessionId()));
-        assertEquals("COMPLETED",jdbc.queryForObject("select session_status from checkout_session where id=?",String.class,session.checkoutSessionId()));
+        assertEquals(1,jdbc.queryForObject("select count(*) from commerce.purchase_order where checkout_session_id=?",Integer.class,session.checkoutSessionId()));
+        assertEquals(0,jdbc.queryForObject("select count(*) from payment.payment_outbox where checkout_session_id=? and dispatched_at is null",Integer.class,session.checkoutSessionId()));
+        assertEquals("COMPLETED",jdbc.queryForObject("select session_status from commerce.checkout_session where id=?",String.class,session.checkoutSessionId()));
         verify(fulfillment,atLeastOnce()).fulfill(argThat(c->"persisted-actor".equals(c.userId())&&tenant.equals(c.tenantId())));
     }
 }

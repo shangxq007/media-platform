@@ -1,8 +1,8 @@
 package com.example.platform.artifact.infrastructure;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ARTIFACT_RELATION;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ARTIFACT_REPLICA;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactRelation.ARTIFACT_RELATION;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactReplica.ARTIFACT_REPLICA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.Mockito.mock;
@@ -67,7 +67,7 @@ class JooqArtifactCommitServiceProvenanceValidationTest extends PostgresTestCont
 
     @BeforeEach
     void cleanCanonicalTables() {
-        dsl.execute("TRUNCATE TABLE artifact_relation, artifact_replica, artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_relation, artifact_replica, artifact CASCADE");
     }
 
     @Test
@@ -176,8 +176,8 @@ class JooqArtifactCommitServiceProvenanceValidationTest extends PostgresTestCont
 
         assertThat(constraintDefinitions).contains(
                 "PRIMARY KEY (id)",
-                "FOREIGN KEY (source_artifact_id) REFERENCES artifact(id)",
-                "FOREIGN KEY (target_artifact_id) REFERENCES artifact(id)");
+                "FOREIGN KEY (source_artifact_id) REFERENCES artifacts.artifact(id)",
+                "FOREIGN KEY (target_artifact_id) REFERENCES artifacts.artifact(id)");
 
         commitService.commit(request("bounded-existing-child", TENANT, List.of()));
         commitService.commit(request("bounded-parent", TENANT, List.of()));

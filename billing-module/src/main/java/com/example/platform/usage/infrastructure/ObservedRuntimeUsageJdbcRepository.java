@@ -32,7 +32,7 @@ public class ObservedRuntimeUsageJdbcRepository {
     public ObservedRuntimeUsage append(ObservedRuntimeUsage observation) {
         Objects.requireNonNull(observation, "observation must not be null");
         int inserted = jdbc.update("""
-                INSERT INTO observed_runtime_usage (
+                INSERT INTO billing.observed_runtime_usage (
                     observed_usage_id, tenant_id, project_id, principal_type, principal_id,
                     operation_ref, attempt_ref, execution_ref, provider_ref, capability,
                     dimension, quantity_base_units, quantity_unit, operation_outcome,
@@ -78,7 +78,7 @@ public class ObservedRuntimeUsageJdbcRepository {
 
     public Optional<ObservedRuntimeUsage> findByTenantAndId(String tenantId, String observedUsageId) {
         List<ObservedRuntimeUsage> rows = jdbc.query("""
-                SELECT * FROM observed_runtime_usage
+                SELECT * FROM billing.observed_runtime_usage
                 WHERE tenant_id = ? AND observed_usage_id = ?
                 """, this::mapRow, tenantId, observedUsageId);
         return rows.stream().findFirst();
@@ -87,7 +87,7 @@ public class ObservedRuntimeUsageJdbcRepository {
     public Optional<ObservedRuntimeUsage> findByTenantAndIdempotencyKey(
             String tenantId, String idempotencyKey) {
         List<ObservedRuntimeUsage> rows = jdbc.query("""
-                SELECT * FROM observed_runtime_usage
+                SELECT * FROM billing.observed_runtime_usage
                 WHERE tenant_id = ? AND idempotency_key = ?
                 """, this::mapRow, tenantId, idempotencyKey);
         return rows.stream().findFirst();
@@ -95,7 +95,7 @@ public class ObservedRuntimeUsageJdbcRepository {
 
     public List<ObservedRuntimeUsage> findByTenant(String tenantId) {
         return jdbc.query("""
-                SELECT * FROM observed_runtime_usage
+                SELECT * FROM billing.observed_runtime_usage
                 WHERE tenant_id = ? ORDER BY recorded_at, observed_usage_id
                 """, this::mapRow, tenantId);
     }

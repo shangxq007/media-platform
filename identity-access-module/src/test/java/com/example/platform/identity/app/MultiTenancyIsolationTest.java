@@ -37,13 +37,13 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS tenant ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.tenant ("
                 + "id varchar(64) primary key,"
                 + "name varchar(255) not null,"
                 + "status varchar(32) not null,"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS project ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.project ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64) not null,"
                 + "workspace_id varchar(64),"
@@ -52,7 +52,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
                 + "status varchar(32) not null,"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS \"user\" ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.\"user\" ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64) not null,"
                 + "username varchar(128) not null,"
@@ -61,7 +61,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
                 + "status varchar(32) not null,"
                 + "created_at timestamp not null"
                 + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS api_key ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.api_key ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64),"
                 + "fingerprint varchar(32) not null,"
@@ -82,10 +82,10 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE api_key CASCADE");
-        dsl.execute("TRUNCATE TABLE \"user\" CASCADE");
-        dsl.execute("TRUNCATE TABLE project CASCADE");
-        dsl.execute("TRUNCATE TABLE tenant CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.api_key CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.\"user\" CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.project CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.tenant CASCADE");
         TenantContext.clear();
 
         ApiKeyRepository apiKeyRepository = new ApiKeyRepository(dsl);

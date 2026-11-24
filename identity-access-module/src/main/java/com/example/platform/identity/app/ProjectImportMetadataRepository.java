@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import static com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.PROJECT_IMPORT_METADATA;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.ProjectImportMetadata.PROJECT_IMPORT_METADATA;
 
 
 /**

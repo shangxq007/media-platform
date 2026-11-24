@@ -34,7 +34,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setup() {
-        jdbc.update("DELETE FROM social_post");
+        jdbc.update("DELETE FROM publication.social_post");
         repository = new SocialPostRepository(jdbc);
         TenantContext.set("social-test");
     }
@@ -45,7 +45,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
     }
 
     void insert(String id, Instant scheduled, String status) {
-        jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,platform_type,status,scheduled_at) VALUES (?,'social-test','actor','TWITTER',?,?)",
+        jdbc.update("INSERT INTO publication.social_post(id,tenant_id,user_id,platform_type,status,scheduled_at) VALUES (?,'social-test','actor','TWITTER',?,?)",
                 id, status, LocalDateTime.ofInstant(scheduled, ZoneOffset.UTC));
     }
 
@@ -77,7 +77,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
                                 .extracting(SocialPost::scheduledAt).isEqualTo(CUTOFF);
                         repository.schedule("social-test", "actor", "zone", CUTOFF, CUTOFF);
                         assertThat(repository.findById("zone").orElseThrow().updatedAt()).isEqualTo(CUTOFF);
-                        assertThat(jdbc.queryForObject("SELECT updated_at FROM social_post WHERE id='zone'", LocalDateTime.class))
+                        assertThat(jdbc.queryForObject("SELECT updated_at FROM publication.social_post WHERE id='zone'", LocalDateTime.class))
                                 .isEqualTo(LocalDateTime.ofInstant(CUTOFF, ZoneOffset.UTC));
                     });
         } finally {

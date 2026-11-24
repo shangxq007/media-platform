@@ -59,14 +59,14 @@ class CompositionAdmissionCoexistencePostgresTest {
         try (var w = new PlatformCapabilityExecutionPostgresTest.World()) {
             var capability = new PlatformCapabilityExecutionPostgresTest().plan("other-owner", "source-a", "0.25", "media.thumbnail");
             var owner = w.owner(w.db); var accepted = w.tx(() -> owner.admit(capability)); var repo = repository(w);
-            String internalKey = w.db.fetchOne("select idempotency_key from platform_execution_admission where execution_id=?", accepted.executionId()).get(0, String.class);
+            String internalKey = w.db.fetchOne("select idempotency_key from execution.platform_execution_admission where execution_id=?", accepted.executionId()).get(0, String.class);
             assertTrue(repo.findByExecutionId(accepted.executionId()).isEmpty());
             assertTrue(w.tx(() -> repo.find("tenant-a", "workspace-a", internalKey)).isEmpty());
             assertFalse(w.tx(() -> repo.transition(accepted.executionId(), 1, "ADMITTED", "RUNNING")));
             assertFalse(w.tx(() -> repo.claimQuotaCharge(accepted.executionId())));
             w.tx(() -> { repo.markQuotaCharged(accepted.executionId(), BigDecimal.ONE); repo.deleteUncharged(accepted.executionId()); return null; });
             assertEquals(accepted.handle(), owner.find("tenant-a", "project-a", accepted.executionId()).orElseThrow().handle());
-            var stored = w.db.fetchOne("select state,quota_charged,quota_claimed from platform_execution_admission where execution_id=?", accepted.executionId());
+            var stored = w.db.fetchOne("select state,quota_charged,quota_claimed from execution.platform_execution_admission where execution_id=?", accepted.executionId());
             assertEquals("ADMITTED", stored.get(0)); assertEquals(false, stored.get(1)); assertEquals(false, stored.get(2));
             assertEquals(1, w.count("platform_execution_admission")); assertEquals(1, w.count("outbox_events"));
             assertEquals(0, w.count("artifact")); assertEquals(0, w.count("quota_usage_operation"));
@@ -102,7 +102,7 @@ class CompositionAdmissionCoexistencePostgresTest {
                     f.task(),f.execution(),() -> fixture.nativeCallbackFixture(w.db,f,calls)); }
                     catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); } });
             assertEquals(1,calls.get());
-            var before = w.db.fetchOne("select * from platform_execution_result where execution_id=?", f.plan().executionId()).intoMap();
+            var before = w.db.fetchOne("select * from execution.platform_execution_result where execution_id=?", f.plan().executionId()).intoMap();
             var results = new com.example.platform.composition.app.JdbcCompositionResultRepository(new JdbcTemplate(
                     new SingleConnectionDataSource(w.fixture.schema.connection(), true)));
             String key = f.plan().scopedIdempotencyKey();
@@ -116,7 +116,7 @@ class CompositionAdmissionCoexistencePostgresTest {
             var output = new com.example.platform.composition.app.CompositionResultRepository.MaterializedResult(
                     f.plan().executionId(),"race-attempt","foreign-object","f".repeat(64),99,"foreign-artifact");
             assertThrows(IllegalArgumentException.class, () -> w.tx(() -> {results.recordMaterialized("tenant-a",key,f.plan().requestHash(),output,1);return null;}));
-            assertEquals(before,w.db.fetchOne("select * from platform_execution_result where execution_id=?",f.plan().executionId()).intoMap());
+            assertEquals(before,w.db.fetchOne("select * from execution.platform_execution_result where execution_id=?",f.plan().executionId()).intoMap());
             assertEquals(1,w.count("platform_execution_result")); assertEquals(1,w.count("artifact")); assertEquals(1,w.count("quota_usage_operation"));
             assertEquals(PlatformExecutionState.COMPLETED,w.owner(w.db).find("tenant-a","project-a",f.plan().executionId()).orElseThrow().state());
         }

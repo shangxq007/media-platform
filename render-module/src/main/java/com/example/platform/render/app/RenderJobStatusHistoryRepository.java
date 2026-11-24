@@ -7,7 +7,7 @@ import java.util.List;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
 
 
 @Repository

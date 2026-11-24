@@ -31,11 +31,11 @@ class ApiKeyAuthenticationContextTest extends PostgresTestContainerSupport {
 
     @BeforeAll static void database() {
         dataSource = createDataSource();
-        new JdbcTemplate(dataSource).execute("CREATE TABLE api_key (id varchar(64) primary key, tenant_id varchar(64), fingerprint varchar(32), hashed_key varchar(128) unique, principal varchar(255), created_at timestamp, last_used_at timestamp, revoked_at timestamp)");
+        new JdbcTemplate(dataSource).execute("CREATE TABLE identity.api_key (id varchar(64) primary key, tenant_id varchar(64), fingerprint varchar(32), hashed_key varchar(128) unique, principal varchar(255), created_at timestamp, last_used_at timestamp, revoked_at timestamp)");
     }
     @AfterAll static void close() { closeDataSource(dataSource); }
     @BeforeEach void setup() {
-        new JdbcTemplate(dataSource).execute("TRUNCATE api_key");
+        new JdbcTemplate(dataSource).execute("TRUNCATE identity.api_key");
         var properties = new IdentityProperties();
         properties.setApiKeyAuthEnabled(true);
         properties.setApiKeys(Map.of());

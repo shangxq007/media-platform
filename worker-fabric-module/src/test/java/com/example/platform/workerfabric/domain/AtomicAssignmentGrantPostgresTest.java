@@ -125,7 +125,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                     .singleElement().isInstanceOf(RequestWorkResult.NoWork.class);
             assertCounts(1, 1, 1, 1, 1, 2, 1);
             assertThat(dsl.fetchOne(
-                    "select current_generation from wf_task_ownership where task_id = ?",
+                    "select current_generation from worker_fabric.wf_task_ownership where task_id = ?",
                     candidate.task().id().sha256Hex()).get(0, Long.class)).isEqualTo(1L);
             assertThat(activeLeaseCount(candidate.task().id().sha256Hex())).isOne();
         } finally {
@@ -160,14 +160,14 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
         OffsetDateTime now = OffsetDateTime.ofInstant(FIXED_CLOCK.instant(), ZoneOffset.UTC);
         dsl.execute(
                 """
-                insert into wf_task_ownership (
+                insert into worker_fabric.wf_task_ownership (
                     task_id, current_generation, claimable, updated_at)
                 values (?, 1, true, cast(? as timestamptz))
                 """,
                 candidate.task().id().sha256Hex(), now);
         dsl.execute(
                 """
-                insert into wf_execution_ownership_generation (task_id, generation, created_at)
+                insert into worker_fabric.wf_execution_ownership_generation (task_id, generation, created_at)
                 values (?, 1, cast(? as timestamptz))
                 """,
                 candidate.task().id().sha256Hex(), now);
@@ -192,7 +192,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
         OffsetDateTime now = OffsetDateTime.ofInstant(FIXED_CLOCK.instant(), ZoneOffset.UTC);
         assertThatThrownBy(() -> dsl.execute(
                 """
-                insert into wf_reservation (
+                insert into worker_fabric.wf_reservation (
                     reservation_id, assignment_id, task_id, physical_host_id,
                     physical_host_incarnation_id,
                     kind, state, cpu_millicores, memory_bytes,
@@ -203,7 +203,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                 now)).isInstanceOf(DataAccessException.class);
         dsl.execute(
                 """
-                insert into wf_execution_backend_selection (
+                insert into worker_fabric.wf_execution_backend_selection (
                     selection_id, task_id, backend, placement_authority_scope,
                     active, selected_at)
                 values ('orphan-backend-selection', 'task', 'NATIVE_PULL_WORKER',
@@ -212,7 +212,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                 now);
         assertThatThrownBy(() -> dsl.execute(
                 """
-                insert into wf_execution_attempt (
+                insert into worker_fabric.wf_execution_attempt (
                     attempt_id, task_id, generation, backend, state, backend_selection_id,
                     created_at, updated_at)
                 values ('orphan-attempt', 'task', 1, 'NATIVE_PULL_WORKER', 'CREATED',
@@ -221,7 +221,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                 now, now)).isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> dsl.execute(
                 """
-                insert into wf_task_lease (
+                insert into worker_fabric.wf_task_lease (
                     lease_id, task_id, assignment_id, attempt_id, generation,
                     worker_runtime_id, worker_runtime_incarnation_id,
                     expires_at, last_heartbeat_at, heartbeat_interval_millis,
@@ -236,18 +236,18 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
         assertThatThrownBy(() -> dsl.transaction(configuration -> {
             DSLContext tx = DSL.using(configuration);
             tx.execute("""
-                insert into wf_execution_backend_selection (
+                insert into worker_fabric.wf_execution_backend_selection (
                     selection_id, task_id, backend, placement_authority_scope,
                     active, selected_at)
                 values ('selection-without-reservation', 'assignment-without-reservation',
                     'NATIVE_PULL_WORKER', 'PLATFORM_MANAGED', true, cast(? as timestamptz))
                 """, now);
             tx.execute("""
-                insert into wf_execution_ownership_generation (task_id, generation, created_at)
+                insert into worker_fabric.wf_execution_ownership_generation (task_id, generation, created_at)
                 values ('assignment-without-reservation', 1, cast(? as timestamptz))
                 """, now);
             tx.execute("""
-                insert into wf_execution_attempt (
+                insert into worker_fabric.wf_execution_attempt (
                     attempt_id, task_id, generation, backend, state, backend_selection_id,
                     created_at, updated_at)
                 values ('attempt-without-reservation', 'assignment-without-reservation', 1,
@@ -255,7 +255,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                     cast(? as timestamptz), cast(? as timestamptz))
                 """, now, now);
             tx.execute("""
-                insert into wf_execution_assignment (
+                insert into worker_fabric.wf_execution_assignment (
                     assignment_id, task_id, attempt_id, generation,
                     worker_runtime_id, worker_runtime_incarnation_id,
                     physical_host_id, physical_host_incarnation_id, created_at)
@@ -274,17 +274,17 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
 
         assertThat(dsl.fetchOne(
                 """
-                select count(*) from wf_task_lease l
-                join wf_execution_assignment a
+                select count(*) from worker_fabric.wf_task_lease l
+                join worker_fabric.wf_execution_assignment a
                   on (a.assignment_id, a.task_id, a.attempt_id, a.generation)
                    = (l.assignment_id, l.task_id, l.attempt_id, l.generation)
-                join wf_execution_attempt e
+                join worker_fabric.wf_execution_attempt e
                   on (e.attempt_id, e.task_id, e.generation)
                    = (a.attempt_id, a.task_id, a.generation)
-                join wf_execution_ownership_generation g
+                join worker_fabric.wf_execution_ownership_generation g
                   on (g.task_id, g.generation) = (e.task_id, e.generation)
-                join wf_task_lease_reservation lr on lr.lease_id = l.lease_id
-                join wf_reservation r
+                join worker_fabric.wf_task_lease_reservation lr on lr.lease_id = l.lease_id
+                join worker_fabric.wf_reservation r
                   on (r.reservation_id, r.assignment_id)
                    = (lr.reservation_id, lr.assignment_id)
                 where a.assignment_id = ?
@@ -321,7 +321,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                         RequestWorkFailureReason.GRANT_CONFLICT));
         assertThat(count("wf_reservation")).isOne();
         assertThat(dsl.fetchOne(
-                "select sum(cpu_millicores)::bigint from wf_reservation where state = 'ACTIVE'")
+                "select sum(cpu_millicores)::bigint from worker_fabric.wf_reservation where state = 'ACTIVE'")
                 .get(0, Long.class)).isEqualTo(5_000L);
     }
 
@@ -352,7 +352,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                                 .findFirst().orElseThrow().requestWorkId(),
                         RequestWorkFailureReason.GRANT_CONFLICT));
         assertThat(dsl.fetchOne(
-                "select sum(compute_units)::bigint from wf_reservation_device")
+                "select sum(compute_units)::bigint from worker_fabric.wf_reservation_device")
                 .get(0, Long.class)).isEqualTo(60L);
     }
 
@@ -493,7 +493,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
 
     private static int activeLeaseCount(String taskId) {
         return dsl.fetchOne(
-                "select count(*) from wf_task_lease where task_id = ? and active",
+                "select count(*) from worker_fabric.wf_task_lease where task_id = ? and active",
                 taskId).get(0, Integer.class);
     }
 

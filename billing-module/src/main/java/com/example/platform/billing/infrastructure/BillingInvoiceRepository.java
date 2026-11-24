@@ -35,7 +35,7 @@ public class BillingInvoiceRepository {
 
     public Optional<StoredCommand> findCommand(String tenantId, String idempotencyKey) {
         return jdbc.query("""
-                SELECT * FROM billing_invoice_command
+                SELECT * FROM billing.billing_invoice_command
                 WHERE tenant_id = ? AND idempotency_key = ?
                 """, (rs, row) -> new StoredCommand(rs.getString("payload_fingerprint"),
                 new InvoiceCommandResult(rs.getString("invoice_id"),
@@ -47,7 +47,7 @@ public class BillingInvoiceRepository {
 
     public void saveCommand(InvoiceCommand command, InvoiceCommandResult result) {
         jdbc.update("""
-                INSERT INTO billing_invoice_command
+                INSERT INTO billing.billing_invoice_command
                 (id, tenant_id, invoice_id, idempotency_key, command_type, payload_fingerprint,
                  result_version, result_status, result_total_minor, result_currency,
                  actor, reason, trace_id, created_at)
@@ -62,7 +62,7 @@ public class BillingInvoiceRepository {
     public BillingInvoice insertInvoice(InvoiceCommand command) {
         Money zero = new Money(0, command.unitPrice().currency());
         jdbc.update("""
-                INSERT INTO billing_invoice
+                INSERT INTO billing.billing_invoice
                 (id, tenant_id, principal_type, principal_id, contract_id, provider_code,
                  external_invoice_ref, invoice_status, total_amount_minor, amount_paid_minor,
                  currency_code, version, issued_at, paid_at, created_at, updated_at)
@@ -77,7 +77,7 @@ public class BillingInvoiceRepository {
     public BillingInvoice addLine(InvoiceCommand command) {
         try {
             jdbc.update("""
-                    INSERT INTO invoice_line_item
+                    INSERT INTO billing.invoice_line_item
                     (id, tenant_id, invoice_id, rated_usage_id, line_type, description,
                      quantity_base_units, unit_price_minor, amount_minor, currency_code,
                      period_start, period_end, created_at)
@@ -91,7 +91,7 @@ public class BillingInvoiceRepository {
             throw new IllegalStateException("Rated usage or invoice line was already billed", duplicate);
         }
         int updated = jdbc.update("""
-                UPDATE billing_invoice SET version = version + 1, updated_at = ?
+                UPDATE billing.billing_invoice SET version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND version = ? AND invoice_status = 'OPEN'
                 """, Timestamp.from(command.occurredAt()), command.principal().tenantId(),
                 command.invoiceId(), command.expectedVersion());
@@ -103,7 +103,7 @@ public class BillingInvoiceRepository {
                                      InvoiceStatus expectedStatus, InvoiceStatus targetStatus,
                                      Money total, Instant at) {
         int updated = jdbc.update("""
-                UPDATE billing_invoice SET invoice_status = ?, total_amount_minor = ?,
+                UPDATE billing.billing_invoice SET invoice_status = ?, total_amount_minor = ?,
                     amount_paid_minor = CASE WHEN ? = 'PAID' THEN ? ELSE amount_paid_minor END,
                     version = version + 1,
                     issued_at = CASE WHEN ? = 'ISSUED' THEN ? ELSE issued_at END,
@@ -119,20 +119,20 @@ public class BillingInvoiceRepository {
     }
 
     public Optional<BillingInvoice> findByTenantAndId(String tenantId, String id) {
-        return jdbc.query("SELECT * FROM billing_invoice WHERE tenant_id = ? AND id = ?",
+        return jdbc.query("SELECT * FROM billing.billing_invoice WHERE tenant_id = ? AND id = ?",
                 this::mapInvoice, tenantId, id).stream().findFirst();
     }
 
     public List<BillingInvoice> findByTenantAndContractId(String tenantId, String contractId) {
         return jdbc.query("""
-                SELECT * FROM billing_invoice WHERE tenant_id = ? AND contract_id = ?
+                SELECT * FROM billing.billing_invoice WHERE tenant_id = ? AND contract_id = ?
                 ORDER BY created_at DESC
                 """, this::mapInvoice, tenantId, contractId);
     }
 
     public List<InvoiceLineItem> findLines(String tenantId, String invoiceId) {
         return jdbc.query("""
-                SELECT * FROM invoice_line_item WHERE tenant_id = ? AND invoice_id = ?
+                SELECT * FROM billing.invoice_line_item WHERE tenant_id = ? AND invoice_id = ?
                 ORDER BY created_at, id
                 """, this::mapLine, tenantId, invoiceId);
     }

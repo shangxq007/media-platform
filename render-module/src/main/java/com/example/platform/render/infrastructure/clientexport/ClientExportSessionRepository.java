@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class ClientExportSessionRepository {
 
-    private static final String TABLE = "client_export_session";
+    private static final String TABLE = "render.client_export_session";
 
     private static final String ALL_COLUMNS =
             "id, tenant_id, workspace_id, project_id, user_id, timeline_snapshot_id, " +

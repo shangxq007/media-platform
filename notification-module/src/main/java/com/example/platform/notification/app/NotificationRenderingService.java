@@ -1,6 +1,6 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationTemplate.NOTIFICATION_TEMPLATE;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationTemplate.NOTIFICATION_TEMPLATE;
 
 import com.example.platform.notification.domain.NotificationTemplateCode;
 import com.example.platform.notification.domain.NotificationTemplatePayload;

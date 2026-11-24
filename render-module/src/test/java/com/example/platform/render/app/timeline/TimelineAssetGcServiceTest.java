@@ -93,17 +93,17 @@ class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
         assertEquals(payloadBefore, storedPayload(legacySnapshotId), "legacy snapshot stays immutable");
         assertEquals(legacyPayload, payloadBefore, "the exact owned fixture must be readable");
         assertEquals(0, dsl.fetchOne(
-                        "select count(*) from timeline_snapshot where schema_version = 'timeline-1.0'")
+                        "select count(*) from timeline.timeline_snapshot where schema_version = 'timeline-1.0'")
                 .get(0, Integer.class), "GC must not claim a canonical TimelineDocument write");
     }
 
     private static int snapshotCount() {
-        return dsl.fetchOne("select count(*) from timeline_snapshot").get(0, Integer.class);
+        return dsl.fetchOne("select count(*) from timeline.timeline_snapshot").get(0, Integer.class);
     }
 
     private static String storedPayload(String snapshotId) {
         return dsl.fetchOne(
-                        "select payload_json from timeline_snapshot where id = ?", snapshotId)
+                        "select payload_json from timeline.timeline_snapshot where id = ?", snapshotId)
                 .get(0, String.class);
     }
 }

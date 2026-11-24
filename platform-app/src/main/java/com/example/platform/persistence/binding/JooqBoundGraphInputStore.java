@@ -1,6 +1,6 @@
 package com.example.platform.persistence.binding;
 
-import static com.example.platform.typedschema.jooq.generated.tables.RenderBindingInputs.RENDER_BINDING_INPUTS;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderBindingInputs.RENDER_BINDING_INPUTS;
 
 import com.example.platform.execution.binding.BoundGraphDigestMismatchException;
 import com.example.platform.execution.binding.BoundGraphInputStore;

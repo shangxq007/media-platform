@@ -33,7 +33,7 @@ public class NlqJdbcRepository {
 
     public void saveReport(ReportDefinition report) {
         int updated = jdbc.update("""
-                UPDATE nlq_report_definition SET
+                UPDATE analytics.nlq_report_definition SET
                 tenant_id = ?, workspace_id = ?, name = ?, description = ?,
                 widgets_json = ?, query_definitions_json = ?, created_by = ?,
                 visibility = ?, schedule_json = ?, updated_at = ?, archived = ?
@@ -53,7 +53,7 @@ public class NlqJdbcRepository {
                 report.reportId());
         if (updated == 0) {
             jdbc.update("""
-                    INSERT INTO nlq_report_definition
+                    INSERT INTO analytics.nlq_report_definition
                     (report_id, tenant_id, workspace_id, name, description, widgets_json,
                      query_definitions_json, created_by, visibility, schedule_json,
                      created_at, updated_at, archived)
@@ -77,7 +77,7 @@ public class NlqJdbcRepository {
 
     public void saveQueryHistory(QueryHistoryRecord record) {
         jdbc.update("""
-                INSERT INTO nlq_query_history
+                INSERT INTO analytics.nlq_query_history
                 (query_id, user_id, tenant_id, workspace_id, question_redacted, sql_hash,
                  datasets_json, row_count, duration_ms, risk_level, status, error_code, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -99,7 +99,7 @@ public class NlqJdbcRepository {
 
     public void saveReportExecution(ReportExecution execution) {
         jdbc.update("""
-                INSERT INTO nlq_report_execution
+                INSERT INTO analytics.nlq_report_execution
                 (execution_id, report_id, status, row_count, duration_ms, error_code, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -113,15 +113,15 @@ public class NlqJdbcRepository {
     }
 
     public List<ReportDefinition> loadAllReports() {
-        return jdbc.query("SELECT * FROM nlq_report_definition ORDER BY updated_at DESC", this::mapReport);
+        return jdbc.query("SELECT * FROM analytics.nlq_report_definition ORDER BY updated_at DESC", this::mapReport);
     }
 
     public List<QueryHistoryRecord> loadAllQueryHistory() {
-        return jdbc.query("SELECT * FROM nlq_query_history ORDER BY created_at DESC", this::mapHistory);
+        return jdbc.query("SELECT * FROM analytics.nlq_query_history ORDER BY created_at DESC", this::mapHistory);
     }
 
     public List<ReportExecution> loadAllReportExecutions() {
-        return jdbc.query("SELECT * FROM nlq_report_execution ORDER BY created_at DESC", this::mapExecution);
+        return jdbc.query("SELECT * FROM analytics.nlq_report_execution ORDER BY created_at DESC", this::mapExecution);
     }
 
     private ReportDefinition mapReport(ResultSet rs, int rowNum) throws SQLException {

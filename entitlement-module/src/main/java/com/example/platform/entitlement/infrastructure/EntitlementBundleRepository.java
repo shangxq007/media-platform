@@ -12,7 +12,7 @@ import org.jooq.Record;
 import org.jooq.impl.DSL;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.EntitlementBundle.ENTITLEMENT_BUNDLE;
+import static com.example.platform.typedschema.jooq.generated.entitlement.tables.EntitlementBundle.ENTITLEMENT_BUNDLE;
 
 
 @Repository

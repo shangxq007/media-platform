@@ -18,7 +18,7 @@ public class EntitlementCommandAuditRepository {
 
     public boolean claim(String commandId, EntitlementGrantCommand command, Instant now) {
         return jdbc.update("""
-                INSERT INTO entitlement_command_audit
+                INSERT INTO entitlement.entitlement_command_audit
                     (id, tenant_id, principal_type, principal_id, idempotency_key,
                      command_type, payload_fingerprint, actor, reason, trace_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -32,7 +32,7 @@ public class EntitlementCommandAuditRepository {
     public EntitlementCommandResult replay(EntitlementGrantCommand command) {
         List<EntitlementCommandResult> rows = jdbc.query("""
                 SELECT id, payload_fingerprint, result_snapshot
-                FROM entitlement_command_audit WHERE tenant_id = ? AND idempotency_key = ?
+                FROM entitlement.entitlement_command_audit WHERE tenant_id = ? AND idempotency_key = ?
                 """, (rs, row) -> {
                     if (!command.fingerprint().equals(rs.getString("payload_fingerprint"))) {
                         throw new IllegalStateException(
@@ -49,7 +49,7 @@ public class EntitlementCommandAuditRepository {
 
     public void complete(String commandId, EntitlementGrantView result, Instant completedAt) {
         int updated = jdbc.update("""
-                UPDATE entitlement_command_audit SET result_snapshot = ?, completed_at = ?
+                UPDATE entitlement.entitlement_command_audit SET result_snapshot = ?, completed_at = ?
                 WHERE id = ? AND result_snapshot IS NULL
                 """, EntitlementPersistenceJson.toJson(result), Timestamp.from(completedAt), commandId);
         if (updated != 1) throw new IllegalStateException("Entitlement command audit completion failed");

@@ -76,7 +76,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     private final NotificationInboundEvent event = new NotificationInboundEvent("render.job.created", "job-ep20", Map.of("renderJobId", "job-ep20"));
 
     @BeforeEach void prepare() {
-        dsl.execute("TRUNCATE outbox_events, notification_event, notification_delivery");
+        dsl.execute("TRUNCATE infrastructure.outbox_events, notification_event, notification_delivery");
         reset(provider); reset(rawOutbox);
         when(provider.channel()).thenReturn("TEST");
         when(provider.providerCode()).thenReturn("TEST");
@@ -97,7 +97,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         assertEquals("PROCESSED", outbox.readEvent(id).get("status"));
         assertEquals(1, count("notification_event"));
         assertEquals(1, count("notification_delivery"));
-        assertEquals(event.eventType(), dsl.fetchOne("select event_type from notification_event").get(0));
+        assertEquals(event.eventType(), dsl.fetchOne("select event_type from notification.notification_event").get(0));
         ingress.publish(event, "ep20-notification");
         assertFalse(dispatcher.processOnce(id));
         verify(provider, times(1)).send(any());
@@ -138,7 +138,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         ingress.publish(event,"read-failure");String id=id();
         doThrow(new IllegalStateException("read after claim failed")).when(rawOutbox).readClaimedEvent(any(OutboxClaim.class));
         Throwable escaped=null;try{dispatcher.processOnce(id);}catch(RuntimeException failure){escaped=failure;}
-        assertEquals("FAILED",dsl.fetchValue("select status from outbox_events where id=?",id),"durable claim stranded after read failure: "+escaped);
+        assertEquals("FAILED",dsl.fetchValue("select status from infrastructure.outbox_events where id=?",id),"durable claim stranded after read failure: "+escaped);
         assertEquals(0,count("notification_event"));assertEquals(0,count("notification_delivery"));
         reset(rawOutbox);due(id);assertTrue(dispatcher.processOnce(id));assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));
     }
@@ -147,18 +147,18 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         doAnswer(call->{
             // Acknowledgment has its own transaction. A separate connection proves the listener already committed.
             try(var connection=context.getBean(DataSource.class).getConnection();var statement=connection.createStatement()) {
-                try(var rows=statement.executeQuery("select count(*) from notification_event")){assertTrue(rows.next());assertEquals(1,rows.getInt(1));}
-                try(var rows=statement.executeQuery("select count(*) from notification_delivery")){assertTrue(rows.next());assertEquals(1,rows.getInt(1));}
+                try(var rows=statement.executeQuery("select count(*) from notification.notification_event")){assertTrue(rows.next());assertEquals(1,rows.getInt(1));}
+                try(var rows=statement.executeQuery("select count(*) from notification.notification_delivery")){assertTrue(rows.next());assertEquals(1,rows.getInt(1));}
             }
             throw new IllegalStateException("acknowledgment failed after listener commit");})
             .doCallRealMethod().when(rawOutbox).markProcessed(any(OutboxClaim.class));
         assertFalse(dispatcher.processOnce(id));assertEquals("FAILED",outbox.readEvent(id).get("status"));
-        dsl.execute("update outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);
+        dsl.execute("update infrastructure.outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);
         assertTrue(dispatcher.processOnce(id));assertEquals("PROCESSED",outbox.readEvent(id).get("status"));
         assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));verify(provider,times(1)).send(any());
     }
-    private void due(String id){dsl.execute("update outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);}
-    private void expire(String id){var table=com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS;
+    private void due(String id){dsl.execute("update infrastructure.outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);}
+    private void expire(String id){var table=com.example.platform.typedschema.jooq.generated.infrastructure.tables.OutboxEvents.OUTBOX_EVENTS;
         dsl.update(table).set(table.LOCKED_AT,java.time.Instant.now().minusSeconds(3600)).where(table.ID.eq(id)).execute();}
     @Test void expiredClaimsRecoverAndEveryOldResultIsFenced() {
         ingress.publish(event,"expired");String id=id();var first=outbox.claimForProcessing(id,"same-processor").orElseThrow();
@@ -167,8 +167,8 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         var second=outbox.claimForProcessing(id,"same-processor").orElseThrow();assertNotEquals(first.token(),second.token());
         assertNull(outbox.readClaimedEvent(first));assertFalse(outbox.renewClaim(first));assertFalse(outbox.markProcessed(first));
         assertFalse(outbox.markFailedWithDetails(first,"OLD","obsolete"));assertFalse(outbox.quarantine(first,"OLD","obsolete"));
-        assertEquals("PROCESSING",outbox.readEvent(id).get("status"));assertEquals(second.token(),dsl.fetchValue("select locked_by from outbox_events where id=?",id));
-        assertEquals(1,dsl.fetchValue("select retry_count from outbox_events where id=?",id));assertTrue(outbox.markProcessed(second));
+        assertEquals("PROCESSING",outbox.readEvent(id).get("status"));assertEquals(second.token(),dsl.fetchValue("select locked_by from infrastructure.outbox_events where id=?",id));
+        assertEquals(1,dsl.fetchValue("select retry_count from infrastructure.outbox_events where id=?",id));assertTrue(outbox.markProcessed(second));
     }
     @Test void longRunningListenerRenewsItsClaimBeyondTheInitialLease() throws Exception {
         ingress.publish(event,"renewal");String id=id();
@@ -180,7 +180,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
             var result=pool.submit(()->{TenantContext.set("ep20-tenant");try{return dispatcher.processOnce(id);}finally{TenantContext.clear();}});
             try {
                 assertTrue(entered.await(5,java.util.concurrent.TimeUnit.SECONDS));
-                var original=(java.time.OffsetDateTime)dsl.fetchValue("select locked_at from outbox_events where id=?",id);
+                var original=(java.time.OffsetDateTime)dsl.fetchValue("select locked_at from infrastructure.outbox_events where id=?",id);
                 assertTrue(renewed.await(8,java.util.concurrent.TimeUnit.SECONDS));
                 assertTrue(java.time.Instant.now().isAfter(original.toInstant().plusMillis(outbox.claimLeaseMillis())));
                 assertEquals(0,outbox.recoverExpiredClaims(100));assertEquals("PROCESSING",outbox.readEvent(id).get("status"));
@@ -206,7 +206,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         ingress.publish(event,"rollback-retry");String id=id();when(provider.send(any())).thenThrow(new IllegalStateException("provider unavailable"));
         assertFalse(dispatcher.processOnce(id));assertEquals(0,count("notification_event"));assertEquals(0,count("notification_delivery"));
         doReturn(new DeliveryResult("UNCERTAIN","unconfirmed")).when(provider).send(any());due(id);assertTrue(dispatcher.processOnce(id));
-        assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));assertEquals("UNCERTAIN",dsl.fetchValue("select status from notification_delivery"));
+        assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));assertEquals("UNCERTAIN",dsl.fetchValue("select status from notification.notification_delivery"));
         assertFalse(dispatcher.processOnce(id));verify(provider,times(2)).send(any());
     }
     @Test void durableIdentityRequiresMatchingTenantAndIsRetiredAfterDispatch() {
@@ -227,7 +227,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
             try {
                 var line=reader.submit(()->{try(var input=process.inputReader()){String value;while((value=input.readLine())!=null)if(value.startsWith("CLAIMED "))return value.substring(8);throw new IllegalStateException("claimant exited before claim");}});
                 token=line.get(15,java.util.concurrent.TimeUnit.SECONDS);
-                assertEquals("PROCESSING",outbox.readEvent(id).get("status"));assertEquals(token,dsl.fetchValue("select locked_by from outbox_events where id=?",id));
+                assertEquals("PROCESSING",outbox.readEvent(id).get("status"));assertEquals(token,dsl.fetchValue("select locked_by from infrastructure.outbox_events where id=?",id));
             } finally {process.destroyForcibly();assertTrue(process.waitFor(5,java.util.concurrent.TimeUnit.SECONDS));}
         }
         assertFalse(process.isAlive());assertEquals("PROCESSING",outbox.readEvent(id).get("status"));

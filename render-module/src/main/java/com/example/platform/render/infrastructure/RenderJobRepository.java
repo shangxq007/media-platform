@@ -11,7 +11,7 @@ import com.example.platform.render.api.request.RenderInitiator;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.render.tables.RenderJob.RENDER_JOB;
 
 @Repository
 public class RenderJobRepository {
@@ -74,23 +74,23 @@ public class RenderJobRepository {
     }
 
     public Record requireScopedJobForUpdate(String tenantId,String jobId) {
-        return dsl.fetchOptional("select * from render_job where id=? and tenant_id=? for update", jobId, tenantId)
+        return dsl.fetchOptional("select * from render.render_job where id=? and tenant_id=? for update", jobId, tenantId)
                 .orElseThrow(()->new IllegalArgumentException("Render job not found for tenant"));
     }
 
     public void markGraphPreparation(String tenantId, String jobId) {
         if (dsl.execute("""
-                update render_job set graph_preparation_stage='INPUTS',
+                update render.render_job set graph_preparation_stage='INPUTS',
                     graph_preparation_deadline=clock_timestamp()+interval '10 minutes'
                  where tenant_id=? and id=? and status='QUEUED' and graph_preparation_stage is null
                 """, tenantId, jobId) != 1) throw new IllegalStateException("graph preparation could not be recorded");
     }
     public void graphPreparationStage(String tenantId, String jobId, String stage) {
-        if (dsl.execute("update render_job set graph_preparation_stage=? where tenant_id=? and id=? and status='QUEUED' and graph_preparation_deadline is not null",
+        if (dsl.execute("update render.render_job set graph_preparation_stage=? where tenant_id=? and id=? and status='QUEUED' and graph_preparation_deadline is not null",
                 stage, tenantId, jobId) != 1) throw new IllegalStateException("graph preparation no longer current");
     }
     public void closeGraphPreparation(String tenantId, String jobId, String failureCode) {
-        dsl.execute("update render_job set graph_preparation_stage=null, graph_preparation_deadline=null, error_message=? where tenant_id=? and id=?",
+        dsl.execute("update render.render_job set graph_preparation_stage=null, graph_preparation_deadline=null, error_message=? where tenant_id=? and id=?",
                 failureCode, tenantId, jobId);
     }
 
@@ -124,7 +124,7 @@ public class RenderJobRepository {
     }
 
     public void pinIncrementalReference(String tenant, String project, String job, String previous) {
-        int n = dsl.execute("update render_job set incremental_reference_job_id=? where id=? and tenant_id=? and project_id=? "
+        int n = dsl.execute("update render.render_job set incremental_reference_job_id=? where id=? and tenant_id=? and project_id=? "
                 + "and status='QUEUED' and graph_preparation_stage='DISPATCH' and incremental_reference_job_id is null", previous, job, tenant, project);
         if (n != 1) throw new IllegalStateException("Incremental reference already frozen or Job no longer preparing");
     }

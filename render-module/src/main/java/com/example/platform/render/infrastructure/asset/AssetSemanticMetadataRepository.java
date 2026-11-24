@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata.ASSET_SEMANTIC_METADATA;
+import static com.example.platform.typedschema.jooq.generated.render.tables.AssetSemanticMetadata.ASSET_SEMANTIC_METADATA;
 
 
 @Repository

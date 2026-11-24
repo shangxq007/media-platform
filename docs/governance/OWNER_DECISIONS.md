@@ -23,6 +23,9 @@
 | OD-015 | BMF is preferred for multi-capability media analysis as well as rendering. | ACTIVE | Media analysis direction | Future analysis uses shared decode, safe frame reuse, independent sampling, typed observations, independent result commitment and selective reuse. |
 | OD-016 | Platform-owned Workflow semantics coordinate Query, Analyze, Generate, Plan, Apply, Render, Evaluate, Review and Delivery. Temporal provides durable execution infrastructure. | ACTIVE | Workflow direction | Workflow definitions and native execution graphs retain distinct boundaries. |
 | OD-017 | Future Parameter Channels, keyframes, automation and Auto Reframe build on exact composition and authored temporal semantics. | ACTIVE | Dynamic parameter direction | Scope and implementation require a separate Owner task. |
+| OD-018 | Use one PostgreSQL application database with domain schemas, one write owner for each business state, one Flyway chain and one jOOQ generator. Preserve cross-domain local transactions. | ACTIVE | Persistence and execution | API, Worker, migration and read-only access have distinct privileges. |
+| OD-019 | Codex freezes and pushes the task candidate. ChatGPT independently reviews the remote source and retained evidence. | ACTIVE | Candidate delivery | Owner acceptance and integration require separate authorization. Add no new machine architecture gates at this stage. |
+| OD-020 | Preserve the canonical applied V1 and upgrade it through V2. Transition the known historical V1 into an independently initialized target in isolation. | ACTIVE | G2.2 database lineages | Match both catalog and history. Shared rollout requires separate authorization. |
 
 ## Change control
 

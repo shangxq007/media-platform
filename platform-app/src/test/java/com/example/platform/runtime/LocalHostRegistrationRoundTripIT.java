@@ -105,13 +105,13 @@ class LocalHostRegistrationRoundTripIT {
         assertEquals(1, dsl.fetchCount(DSL.table("wf_host_registration")), "one host registration row");
         String incarnation = hostIncarnation();
         assertNotNull(incarnation);
-        assertTrue(dsl.fetchOne("select active from wf_host_registration where physical_host_id = ?",
+        assertTrue(dsl.fetchOne("select active from worker_fabric.wf_host_registration where physical_host_id = ?",
                 HOST_ID).get("active", Boolean.class));
         OffsetDateTime registeredAt = dsl.fetchOne(
-                "select registered_at from wf_host_registration where physical_host_id = ?",
+                "select registered_at from worker_fabric.wf_host_registration where physical_host_id = ?",
                 HOST_ID).get("registered_at", OffsetDateTime.class);
         OffsetDateTime validUntil = dsl.fetchOne(
-                "select valid_until from wf_host_registration where physical_host_id = ?",
+                "select valid_until from worker_fabric.wf_host_registration where physical_host_id = ?",
                 HOST_ID).get("valid_until", OffsetDateTime.class);
         assertEquals(LocalHostRegistrationLoop.REGISTRATION_VALIDITY,
                 Duration.between(registeredAt.toInstant(), validUntil.toInstant()),
@@ -162,7 +162,7 @@ class LocalHostRegistrationRoundTripIT {
     }
 
     private static String hostIncarnation() {
-        return dsl.fetchOne("select physical_host_incarnation_id from wf_host_registration "
+        return dsl.fetchOne("select physical_host_incarnation_id from worker_fabric.wf_host_registration "
                 + "where physical_host_id = ?", HOST_ID)
                 .get("physical_host_incarnation_id", String.class);
     }

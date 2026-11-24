@@ -17,8 +17,8 @@ class DeliveryPersistencePostgresTest {
             assertFalse(repo.insert(record("delivery-repeat","tenant-a","project-a","job-a","artifact-a")));
             assertEquals("delivery-a",repo.byKey("tenant-a","project-a","key").orElseThrow().id());
             assertTrue(repo.find("tenant-b","project-b","delivery-a").isEmpty());
-            assertThrows(RuntimeException.class,()->w.db.execute("update delivery set artifact_id='other' where id='delivery-a'"));
-            assertThrows(RuntimeException.class,()->w.db.execute("delete from delivery where id='delivery-a'"));
+            assertThrows(RuntimeException.class,()->w.db.execute("update publication.delivery set artifact_id='other' where id='delivery-a'"));
+            assertThrows(RuntimeException.class,()->w.db.execute("delete from publication.delivery where id='delivery-a'"));
             assertEquals("artifact-a",repo.find("tenant-a","project-a","delivery-a").orElseThrow().artifactId());
         }
     }

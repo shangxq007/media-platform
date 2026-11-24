@@ -15,9 +15,9 @@ final class AuthoritativeWorkspaceScope {
     boolean isActiveMember(String tenantId, String workspaceId, String userId) {
         if (tenantId == null || workspaceId == null || userId == null) return false;
         Integer count = jdbc.queryForObject("""
-                select count(*) from workspace w
-                join workspace_member m on m.workspace_id = w.id
-                join \"user\" u on u.id = m.user_id and u.tenant_id = w.tenant_id
+                select count(*) from identity.workspace w
+                join identity.workspace_member m on m.workspace_id = w.id
+                join identity.\"user\" u on u.id = m.user_id and u.tenant_id = w.tenant_id
                 where w.id = ? and w.tenant_id = ?
                   and m.user_id = ? and m.status = 'ACTIVE'
                   and u.status = 'ACTIVE'

@@ -22,8 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static com.example.platform.typedschema.jooq.generated.tables.EffectPack.EFFECT_PACK;
-import static com.example.platform.typedschema.jooq.generated.tables.EffectPackEffect.EFFECT_PACK_EFFECT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.EffectPack.EFFECT_PACK;
+import static com.example.platform.typedschema.jooq.generated.render.tables.EffectPackEffect.EFFECT_PACK_EFFECT;
 
 
 @Service

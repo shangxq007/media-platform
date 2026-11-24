@@ -7,7 +7,7 @@ import java.util.*;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.SearchProjection.SEARCH_PROJECTION;
+import static com.example.platform.typedschema.jooq.generated.analytics.tables.SearchProjection.SEARCH_PROJECTION;
 
 
 @Repository
@@ -23,7 +23,7 @@ public class SearchProjectionRepository {
         LocalDateTime now = LocalDateTime.now();
         String searchText = proj.searchText() != null ? proj.searchText() : "";
         dsl.execute(
-                "INSERT INTO search_projection (artifact_id, tenant_id, project_id, filename, asset_type, "
+                "INSERT INTO analytics.search_projection (artifact_id, tenant_id, project_id, filename, asset_type, "
                         + "transcript_text, scene_labels, objects, brands, people, "
                         + "classification, license, publish_status, search_text, search_vector, updated_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_tsvector('english', ?), ?) "
@@ -56,7 +56,7 @@ public class SearchProjectionRepository {
         try {
             var results = dsl.fetch(
                     "SELECT *, ts_rank(search_vector, plainto_tsquery('english', ?)) as rank "
-                            + "FROM search_projection "
+                            + "FROM analytics.search_projection "
                             + "WHERE search_vector @@ plainto_tsquery('english', ?) "
                             + (projectId != null ? "AND project_id = '" + projectId + "' " : "")
                             + "ORDER BY rank DESC LIMIT ?",

@@ -135,15 +135,15 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
     @BeforeEach
     void resetCanonicalRows() {
         jdbc.execute("""
-                truncate table outbox_events, audit_records, notification_delivery, notification_event, apply_command, artifact_pin, timeline_revision_parent,
+                truncate table infrastructure.outbox_events, audit_records, notification_delivery, notification_event, apply_command, artifact_pin, timeline_revision_parent,
                     timeline_revision_ref, timeline_revision, timeline_snapshot,
                     project_revision_counter, project, artifact, tenant cascade
                 """);
-        jdbc.update("insert into tenant(id,name,status,created_at) values ('ta','A','ACTIVE',now())");
-        jdbc.update("insert into tenant(id,name,status,created_at) values ('tb','B','ACTIVE',now())");
-        jdbc.update("insert into project(id,tenant_id,name,created_at) values ('pa','ta','A1',now())");
-        jdbc.update("insert into project(id,tenant_id,name,created_at) values ('pc','ta','A2',now())");
-        jdbc.update("insert into project(id,tenant_id,name,created_at) values ('pb','tb','B1',now())");
+        jdbc.update("insert into identity.tenant(id,name,status,created_at) values ('ta','A','ACTIVE',now())");
+        jdbc.update("insert into identity.tenant(id,name,status,created_at) values ('tb','B','ACTIVE',now())");
+        jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values ('pa','ta','A1',now())");
+        jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values ('pc','ta','A2',now())");
+        jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values ('pb','tb','B1',now())");
 
         com.example.platform.shared.web.TenantContext.clear();
         eventRouter=new com.example.platform.outbox.app.OutboxEventRouter(List.of(new com.example.platform.timeline.api.event.TimelineOutboxEvents()));
@@ -237,10 +237,10 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
                     second.get(10, TimeUnit.SECONDS)));
         }
         assertEquals(1, jdbc.queryForObject(
-                "select count(*) from project_revision_counter where project_id = ?",
+                "select count(*) from timeline.project_revision_counter where project_id = ?",
                 Integer.class, project));
         assertEquals(2L, jdbc.queryForObject(
-                "select next_revision_number from project_revision_counter where project_id = ?",
+                "select next_revision_number from timeline.project_revision_counter where project_id = ?",
                 Long.class, project));
     }
 
@@ -263,7 +263,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         assertEquals(0L, count("timeline_revision", project));
         assertEquals(0L, count("timeline_snapshot", project));
         assertEquals(0, jdbc.queryForObject(
-                "select count(*) from timeline_revision_ref where project_id = ?",
+                "select count(*) from timeline.timeline_revision_ref where project_id = ?",
                 Integer.class, project));
     }
 
@@ -301,12 +301,12 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         String artifactId = java.util.UUID.randomUUID().toString();
         String contentDigest = "c".repeat(64);
         jdbc.update("""
-                insert into artifact(id,tenant_id,project_id,content_digest,byte_length,
+                insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
                     media_type,artifact_kind,state,schema_version,created_at)
                 values (?, 'ta', ?, ?, 1024, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now())
                 """, artifactId, project, contentDigest);
         jdbc.update("""
-                insert into media_stream(id,artifact_id,stream_index,stream_kind,codec,
+                insert into media.media_stream(id,artifact_id,stream_index,stream_kind,codec,
                     timebase_num,timebase_den,rate_num,rate_den,is_vfr,width,height)
                 values (?, ?, 0, 'VIDEO', 'h264', 1, 1000, 24, 1, false, 1920, 1080)
                 """, mediaStreamId, artifactId);
@@ -322,7 +322,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         com.example.platform.artifact.app.ArtifactSourcePinAuthority pins =
                 (tenant, proj, aid, pinned) -> {
                     var rows = jdbc.queryForList(
-                            "select project_id, content_digest from artifact where id=?", aid.value());
+                            "select project_id, content_digest from artifacts.artifact where id=?", aid.value());
                     var outcome = rows.isEmpty()
                             ? com.example.platform.artifact.app.ArtifactSourcePinAuthority.Outcome.UNKNOWN_ARTIFACT
                             : !proj.equals(rows.get(0).get("project_id"))
@@ -388,17 +388,17 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         assertEquals(artifactId, clip.getArtifactId());
         assertEquals(contentDigest, clip.getContentDigest());
         assertEquals(1, jdbc.queryForObject(
-                "select count(*) from artifact_pin where tenant_id='ta' and project_id=? "
+                "select count(*) from artifacts.artifact_pin where tenant_id='ta' and project_id=? "
                         + "and revision_id=? and artifact_id=? and content_digest=?",
                 Integer.class, project, applied.newRevisionId(), artifactId, contentDigest));
         assertEquals(preview.planDigest(), jdbc.queryForObject(
-                "select plan_digest from apply_command where apply_command_id='apply-h7-complete'",
+                "select plan_digest from timeline.apply_command where apply_command_id='apply-h7-complete'",
                 String.class));
         assertEquals(expectedFingerprint, jdbc.queryForObject(
-                "select fingerprint from apply_command where apply_command_id='apply-h7-complete'",
+                "select fingerprint from timeline.apply_command where apply_command_id='apply-h7-complete'",
                 String.class));
         assertEquals(actor.actorId(), jdbc.queryForObject(
-                "select author_user_id from timeline_revision where id=?",
+                "select author_user_id from timeline.timeline_revision where id=?",
                 String.class, applied.newRevisionId()));
     }
 
@@ -617,7 +617,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
 
         assertEquals(projectBBefore, canonicalState(projectB));
         assertEquals(projectA, jdbc.queryForObject(
-                "select project_id from apply_command where apply_command_id = 'same-command-key'",
+                "select project_id from timeline.apply_command where apply_command_id = 'same-command-key'",
                 String.class));
     }
 
@@ -654,9 +654,9 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         snapshot("sa2", "ta", "pa");
         revision("ra2", "ta", "pa", "sa2", 2);
         assertDoesNotThrow(() -> jdbc.update(
-                "insert into timeline_revision_ref(tenant_id,project_id,ref_id,head_revision_id) values ('ta','pa','main','ra2')"));
+                "insert into timeline.timeline_revision_ref(tenant_id,project_id,ref_id,head_revision_id) values ('ta','pa','main','ra2')"));
         assertDoesNotThrow(() -> jdbc.update(
-                "insert into timeline_revision_parent(tenant_id,project_id,revision_id,parent_revision_id,parent_order) values ('ta','pa','ra2','ra',0)"));
+                "insert into timeline.timeline_revision_parent(tenant_id,project_id,revision_id,parent_revision_id,parent_order) values ('ta','pa','ra2','ra',0)"));
     }
 
     @Test
@@ -697,7 +697,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         snapshot("s_pc", "ta", "pc");
         revision("r_pc", "ta", "pc", "s_pc", 1);
         assertThrows(Exception.class, () -> jdbc.update(
-                "insert into timeline_revision_ref(tenant_id,project_id,ref_id,head_revision_id) values ('ta','pa','main','r_pc')"));
+                "insert into timeline.timeline_revision_ref(tenant_id,project_id,ref_id,head_revision_id) values ('ta','pa','main','r_pc')"));
     }
 
     @Test
@@ -706,7 +706,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         snapshot("s_tb", "tb", "pb");
         revision("r_tb", "tb", "pb", "s_tb", 1);
         assertThrows(Exception.class, () -> jdbc.update(
-                "insert into timeline_revision_ref(tenant_id,project_id,ref_id,head_revision_id) values ('ta','pb','main','r_tb')"));
+                "insert into timeline.timeline_revision_ref(tenant_id,project_id,ref_id,head_revision_id) values ('ta','pb','main','r_tb')"));
     }
 
     @Test
@@ -717,7 +717,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         revision("r_pa", "ta", "pa", "s_pa", 1);
         revision("r_pc", "ta", "pc", "s_pc", 1);
         assertThrows(Exception.class, () -> jdbc.update(
-                "insert into timeline_revision_parent(tenant_id,project_id,revision_id,parent_revision_id,parent_order) values ('ta','pc','r_pa','r_pc',0)"));
+                "insert into timeline.timeline_revision_parent(tenant_id,project_id,revision_id,parent_revision_id,parent_order) values ('ta','pc','r_pa','r_pc',0)"));
     }
 
     @Test
@@ -728,7 +728,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         revision("r_pa", "ta", "pa", "s_pa", 1);
         revision("r_pb", "tb", "pb", "s_pb", 1);
         assertThrows(Exception.class, () -> jdbc.update(
-                "insert into timeline_revision_parent(tenant_id,project_id,revision_id,parent_revision_id,parent_order) values ('ta','pb','r_pa','r_pb',0)"));
+                "insert into timeline.timeline_revision_parent(tenant_id,project_id,revision_id,parent_revision_id,parent_order) values ('ta','pb','r_pa','r_pb',0)"));
     }
 
     @Test
@@ -737,7 +737,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         revision("r_pa", "ta", "pa", "s_pa", 1);
         artifact("artifact-b", "tb");
         assertThrows(Exception.class, () -> jdbc.update(
-                "insert into artifact_pin(pin_id,tenant_id,project_id,revision_id,artifact_id,content_digest,pinned_at) values ('pin-bad','ta','pa','r_pa','artifact-b',?,now())",
+                "insert into artifacts.artifact_pin(pin_id,tenant_id,project_id,revision_id,artifact_id,content_digest,pinned_at) values ('pin-bad','ta','pa','r_pa','artifact-b',?,now())",
                 "b".repeat(64)));
     }
 
@@ -747,7 +747,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         revision("r_pc", "ta", "pc", "s_pc", 1);
         artifact("artifact-a", "ta");
         assertThrows(Exception.class, () -> jdbc.update(
-                "insert into artifact_pin(pin_id,tenant_id,project_id,revision_id,artifact_id,content_digest,pinned_at) values ('pin-bad','ta','pa','r_pc','artifact-a',?,now())",
+                "insert into artifacts.artifact_pin(pin_id,tenant_id,project_id,revision_id,artifact_id,content_digest,pinned_at) values ('pin-bad','ta','pa','r_pc','artifact-a',?,now())",
                 "a".repeat(64)));
     }
 
@@ -783,7 +783,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
     }
 
     private static String createOwnedProject(String projectId) {
-        jdbc.update("insert into project(id,tenant_id,name,created_at) values (?,'ta',?,now())",
+        jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values (?,'ta',?,now())",
                 projectId, projectId);
         return projectId;
     }
@@ -832,7 +832,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
 
     private static List<String> orderedParents(String revisionId) {
         return dsl.fetch(
-                        "select parent_revision_id from timeline_revision_parent "
+                        "select parent_revision_id from timeline.timeline_revision_parent "
                                 + "where revision_id = ? order by parent_order",
                         revisionId)
                 .getValues(0, String.class);
@@ -846,7 +846,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
                 count("apply_command", projectId),
                 revisionRefHead(projectId),
                 jdbc.queryForObject(
-                        "select next_revision_number from project_revision_counter where project_id = ?",
+                        "select next_revision_number from timeline.project_revision_counter where project_id = ?",
                         Long.class,
                         projectId));
     }
@@ -859,7 +859,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
 
     private static String revisionRefHead(String projectId) {
         return jdbc.queryForObject(
-                "select head_revision_id from timeline_revision_ref "
+                "select head_revision_id from timeline.timeline_revision_ref "
                         + "where tenant_id = 'ta' and project_id = ? and ref_id = 'main'",
                 String.class,
                 projectId);
@@ -875,17 +875,17 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
     }
 
     private static void snapshot(String id, String tenant, String project) {
-        jdbc.update("insert into timeline_snapshot(id,tenant_id,project_id,payload_json,schema_version) values (?,?,?,?,?)",
+        jdbc.update("insert into timeline.timeline_snapshot(id,tenant_id,project_id,payload_json,schema_version) values (?,?,?,?,?)",
                 id, tenant, project, "{\"schemaVersion\":\"timeline-1.0\",\"tracks\":[]}", "timeline-1.0");
     }
 
     private static void revision(String id, String tenant, String project, String snapshot, int number) {
-        jdbc.update("insert into timeline_revision(id,tenant_id,project_id,revision_number,snapshot_id,content_hash,schema_version,source,created_at) values (?,?,?,?,?,?,?,?,now())",
+        jdbc.update("insert into timeline.timeline_revision(id,tenant_id,project_id,revision_number,snapshot_id,content_hash,schema_version,source,created_at) values (?,?,?,?,?,?,?,?,now())",
                 id, tenant, project, number, snapshot, "a".repeat(64), "timeline-1.0", "h7-v2-test");
     }
 
     private static void artifact(String id, String tenant) {
-        jdbc.update("insert into artifact(id,tenant_id,content_digest,byte_length,media_type,artifact_kind,state,created_at) values (?,?,?,?,?,?,?,now())",
+        jdbc.update("insert into artifacts.artifact(id,tenant_id,content_digest,byte_length,media_type,artifact_kind,state,created_at) values (?,?,?,?,?,?,?,now())",
                 id, tenant, id + "-digest", 1L, "video/mp4", "RENDER_OUTPUT", "ACTIVE");
     }
 
@@ -912,12 +912,12 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
             Object id=invocation.callRealMethod();
             assertNotNull(id,"real typed append must have inserted before the injected failure");
             var transaction=invocation.getArgument(1,DSLContext.class);
-            assertEquals(1,transaction.fetchCount(com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS));
+            assertEquals(1,transaction.fetchCount(com.example.platform.typedschema.jooq.generated.infrastructure.tables.OutboxEvents.OUTBOX_EVENTS));
             throw new IllegalStateException("failure after real typed append");
         }).when(outbox).appendInTransaction(
             org.mockito.ArgumentMatchers.argThat(a->a.type()==com.example.platform.timeline.api.event.TimelineOutboxEvents.RESTORED),org.mockito.ArgumentMatchers.any());
         assertThrows(IllegalStateException.class,()->restoreRevision("ta","pa",base.revisionId(),head.revisionId(),"actor"));
-        assertEquals(before,canonicalState("pa"));assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
+        assertEquals(before,canonicalState("pa"));assertEquals(0,jdbc.queryForObject("select count(*) from infrastructure.outbox_events",Integer.class));
         org.mockito.Mockito.reset(outbox);
         var restored=restoreRevision("ta","pa",base.revisionId(),head.revisionId(),"actor");
         var fact=org.junit.jupiter.api.Assertions.assertInstanceOf(com.example.platform.timeline.api.event.TimelineRestoredEvent.class,decodedEvent(restored.revisionId()));
@@ -940,13 +940,13 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         org.mockito.Mockito.doThrow(new IllegalStateException("injected merge append failure")).when(outbox).appendInTransaction(
             org.mockito.ArgumentMatchers.argThat(a->a.type()==com.example.platform.timeline.api.event.TimelineOutboxEvents.MERGED),org.mockito.ArgumentMatchers.any());
         assertThrows(IllegalStateException.class,()->mergeEngine.merge(request));assertEquals(before,canonicalState("pa"));
-        assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));org.mockito.Mockito.reset(outbox);
+        assertEquals(0,jdbc.queryForObject("select count(*) from infrastructure.outbox_events",Integer.class));org.mockito.Mockito.reset(outbox);
         var merged=mergeEngine.merge(request);assertEquals(TimelineMergeResult.MergeStatus.MERGED,merged.status());
         var fact=org.junit.jupiter.api.Assertions.assertInstanceOf(com.example.platform.timeline.api.event.TimelineMergedEvent.class,decodedEvent(merged.mergedRevisionId()));
         assertEquals(source.revisionId(),fact.sourceRevisionId());assertEquals(target.revisionId(),fact.targetRevisionId());
         assertEquals(base.revisionId(),fact.baseRevisionId());
         var duplicate=mergeEngine.merge(request);assertEquals(merged.mergedRevisionId(),duplicate.mergedRevisionId());
-        assertEquals(1,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
+        assertEquals(1,jdbc.queryForObject("select count(*) from infrastructure.outbox_events",Integer.class));
         dispatchAndReplay(merged.mergedRevisionId(),fact,"TIMELINE_MERGED");
     }
 
@@ -957,11 +957,11 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         var type=com.example.platform.timeline.api.event.TimelineOutboxEvents.RESTORED;
         assertThrows(RuntimeException.class,()->outbox.appendInTransaction(type.append("ta",fact,fact.factKey()),dsl));
         assertThrows(IllegalArgumentException.class,()->type.append("tb",fact,null));
-        assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
+        assertEquals(0,jdbc.queryForObject("select count(*) from infrastructure.outbox_events",Integer.class));
     }
 
     private Record decodedEvent(String revisionId) {
-        var row=jdbc.queryForMap("select * from outbox_events where aggregate_id=?",revisionId);
+        var row=jdbc.queryForMap("select * from infrastructure.outbox_events where aggregate_id=?",revisionId);
         return eventRouter.decode((String)row.get("event_type"),((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),revisionId,(String)row.get("payload")).payload();
     }
     private void dispatchAndReplay(String revisionId,Record fact,String action) {
@@ -973,12 +973,12 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
             events.registerBean(com.example.platform.notification.app.NotificationEventHandler.class,()->new com.example.platform.notification.app.NotificationEventHandler(dsl,List.of(),events.getBean(com.example.platform.notification.app.NotificationRenderingService.class),null));
             events.refresh();
             var dispatcher=new com.example.platform.outbox.app.OutboxEventDispatcher(outbox,events,eventRouter,3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
-            String id=jdbc.queryForObject("select id from outbox_events where aggregate_id=?",String.class,revisionId);
+            String id=jdbc.queryForObject("select id from infrastructure.outbox_events where aggregate_id=?",String.class,revisionId);
             assertTrue(dispatcher.processOnce(id));assertFalse(dispatcher.processOnce(id));
             com.example.platform.shared.web.TenantContext.set("ta");
             try{events.publishEvent(fact);events.publishEvent(fact);}finally{com.example.platform.shared.web.TenantContext.clear();}
-            assertEquals(1,jdbc.queryForObject("select count(*) from audit_records where resource_id=? and action=?",Integer.class,revisionId,action));
-            assertEquals(1,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Integer.class,revisionId));
+            assertEquals(1,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=? and action=?",Integer.class,revisionId,action));
+            assertEquals(1,jdbc.queryForObject("select count(*) from notification.notification_event where subject_id=?",Integer.class,revisionId));
         }
     }
 

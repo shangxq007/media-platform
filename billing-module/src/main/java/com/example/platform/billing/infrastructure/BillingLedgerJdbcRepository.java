@@ -22,7 +22,7 @@ public class BillingLedgerJdbcRepository {
 
     public BillingLedgerEntry append(BillingLedgerEntry entry) {
         jdbc.update("""
-                INSERT INTO billing_ledger_entry
+                INSERT INTO billing.billing_ledger_entry
                 (id, tenant_id, principal_type, principal_id, workspace_id, entry_type,
                  amount_minor, currency_code, reference_type, reference_id, description,
                  idempotency_key, payload_fingerprint, created_at)
@@ -52,32 +52,32 @@ public class BillingLedgerJdbcRepository {
 
     public Optional<BillingLedgerEntry> findByIdempotencyKey(String tenantId, String key) {
         return jdbc.query("""
-                SELECT * FROM billing_ledger_entry WHERE tenant_id = ? AND idempotency_key = ?
+                SELECT * FROM billing.billing_ledger_entry WHERE tenant_id = ? AND idempotency_key = ?
                 """, this::mapEntry, tenantId, key).stream().findFirst();
     }
 
     public Optional<BillingLedgerEntry> findByReference(String tenantId, String type,
                                                         String id, String entryType) {
         return jdbc.query("""
-                SELECT * FROM billing_ledger_entry
+                SELECT * FROM billing.billing_ledger_entry
                 WHERE tenant_id = ? AND reference_type = ? AND reference_id = ? AND entry_type = ?
                 """, this::mapEntry, tenantId, type, id, entryType).stream().findFirst();
     }
 
     public Optional<BillingLedgerEntry> findByTenantAndId(String tenantId, String entryId) {
-        return jdbc.query("SELECT * FROM billing_ledger_entry WHERE tenant_id = ? AND id = ?",
+        return jdbc.query("SELECT * FROM billing.billing_ledger_entry WHERE tenant_id = ? AND id = ?",
                 this::mapEntry, tenantId, entryId).stream().findFirst();
     }
 
     public List<BillingLedgerEntry> findByTenant(String tenantId) {
         return jdbc.query("""
-                SELECT * FROM billing_ledger_entry WHERE tenant_id = ? ORDER BY created_at DESC
+                SELECT * FROM billing.billing_ledger_entry WHERE tenant_id = ? ORDER BY created_at DESC
                 """, this::mapEntry, tenantId);
     }
 
     public List<BillingLedgerEntry> findByTenantAndType(String tenantId, String entryType) {
         return jdbc.query("""
-                SELECT * FROM billing_ledger_entry
+                SELECT * FROM billing.billing_ledger_entry
                 WHERE tenant_id = ? AND entry_type = ? ORDER BY created_at DESC
                 """, this::mapEntry, tenantId, entryType);
     }

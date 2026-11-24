@@ -370,73 +370,24 @@ tasks.register("verifyJooqGeneratedSources") {
         require(exitCode == 0) {
             "FAIL: jOOQ canonical/generated identity parity verifier exited with code $exitCode"
         }
-        val expectedTopLevelFiles = setOf(
-            "DefaultCatalog.java",
-            "Indexes.java",
-            "Keys.java",
-            "Public.java",
-            "Tables.java"
-        )
-
-        val generatedJavaFiles = committedDir.walkTopDown()
-            .filter { it.isFile && it.name.endsWith(".java") }
-            .toList()
-
-        // Table classes = all *.java directly under tables/ (jOOQ 3.19 names the table class
-        // after the table, e.g. UsageRecord.java; records/ holds the *Record.java companions).
-        val tablesDir = committedDir.resolve("tables")
-        val tableFiles = generatedJavaFiles.filter { it.parentFile == tablesDir }
-        val recordsDir = committedDir.resolve("tables/records")
-        val recordFiles = generatedJavaFiles.filter { it.parentFile == recordsDir }
-        val topLevelFileNames = generatedJavaFiles
-            .filter { it.parentFile == committedDir }
-            .map { it.name }
-            .toSet()
-        val classifiedFiles = tableFiles.toSet() + recordFiles +
-                generatedJavaFiles.filter { it.parentFile == committedDir }
-        val unexpectedGeneratedPaths = (generatedJavaFiles.toSet() - classifiedFiles)
-            .map { it.relativeTo(committedDir).invariantSeparatorsPath }
-            .sorted()
-        val tableClassNames = tableFiles.map { it.name.removeSuffix(".java") }.toSet()
-        val recordTableClassNames = recordFiles
-            .map { it.name.removeSuffix("Record.java") }
-            .toSet()
-        val tableCount = tableFiles.size
-        val recordCount = recordFiles.size
-        val totalFiles = generatedJavaFiles.size
-
-        println("Generated source inventory:")
-        println("  Table classes: " + tableCount)
-        println("  Record classes: " + recordCount)
-        println("  Total Java files: " + totalFiles)
-
-        // The parity verifier above binds both generated table and record identities to
-        // canonical V1; these checks retain exact generated-source layout invariants.
-        require(topLevelFileNames == expectedTopLevelFiles) {
-            "FAIL: Generated top-level files differ; missing=" +
-                    (expectedTopLevelFiles - topLevelFileNames).sorted() + ", extra=" +
-                    (topLevelFileNames - expectedTopLevelFiles).sorted()
+        val domains = committedDir.listFiles().orEmpty().filter { it.isDirectory }
+        require(domains.isNotEmpty() && committedDir.listFiles().orEmpty()
+            .filter { it.isFile }.map { it.name } == listOf("DefaultCatalog.java"))
+        for (domain in domains) {
+            val className = domain.name.split("_").joinToString("") { it.replaceFirstChar(Char::uppercase) }
+            val rootFiles = domain.listFiles().orEmpty().filter { it.isFile }.map { it.name }.toSet()
+            val required = setOf("$className.java", "Keys.java", "Tables.java")
+            require(rootFiles.containsAll(required) && (rootFiles - required - "Indexes.java").isEmpty()) {
+                "Unexpected generated schema layout in ${domain.name}: $rootFiles"
+            }
+            val tables = domain.resolve("tables").listFiles().orEmpty().filter { it.isFile }.map { it.name }.toSet()
+            val records = domain.resolve("tables/records").listFiles().orEmpty().map { it.name }.toSet()
+            require(tables.isNotEmpty() && tables.all { it.endsWith(".java") } &&
+                    records == tables.map { it.removeSuffix(".java") + "Record.java" }.toSet()) {
+                "Incorrect generated record bindings in ${domain.name}"
+            }
+            require(domain.walkTopDown().count { it.isFile } == rootFiles.size + tables.size + records.size)
         }
-        require(unexpectedGeneratedPaths.isEmpty()) {
-            "FAIL: Generated Java files found outside the canonical root/tables/records layout: " +
-                    unexpectedGeneratedPaths
-        }
-        require(tableCount == recordCount) {
-            "FAIL: Generated Table/Record counts differ; tables=" + tableCount +
-                    ", records=" + recordCount
-        }
-        require(tableClassNames == recordTableClassNames) {
-            "FAIL: Generated Table/Record pairs differ; tables without records=" +
-                    (tableClassNames - recordTableClassNames).sorted() + ", records without tables=" +
-                    (recordTableClassNames - tableClassNames).sorted()
-        }
-        val mechanicallyDerivedTotalFileCount =
-            tableCount + recordCount + expectedTopLevelFiles.size
-        require(totalFiles == mechanicallyDerivedTotalFileCount) {
-            "FAIL: Generated Java file count differs from the mechanically derived layout total; " +
-                    "expected=" + mechanicallyDerivedTotalFileCount + ", actual=" + totalFiles
-        }
-
         println("OK: Generated source verification passed")
     }
 }
@@ -556,21 +507,19 @@ tasks.register("verifyJooqNamedInterfacePreservation") {
         // Q1-MA1 (JOOQ_REGENERATION_MUST_PRESERVE_TYPED_SCHEMA_NAMED_INTERFACE_AUTHORITY_V1):
         // the @NamedInterface("jooq-tables") architecture contract must live OUTSIDE the
         // jOOQ generation target (src/main/java) so GenerationTool cannot delete it.
-        val marker = file("typed-schema-module/src/main/modulith/java/com/example/platform/typedschema/jooq/generated/tables/package-info.java")
-        require(marker.exists()) {
-            "FAIL: Named-interface marker missing at ${'$'}{marker.absolutePath} (deleted or relocated by generation)"
-        }
-        val content = marker.readText()
-        require(content.contains("@org.springframework.modulith.NamedInterface(\"jooq-tables\")")) {
-            "FAIL: Named-interface marker lost its @NamedInterface(\"jooq-tables\") contract"
-        }
-        require(content.contains("package com.example.platform.typedschema.jooq.generated.tables;")) {
-            "FAIL: Named-interface marker targets the wrong package"
-        }
-        // Ownership separation: the marker must NOT be back under the destructive generator target.
-        val destructive = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/package-info.java")
-        require(!destructive.exists()) {
-            "FAIL: architecture metadata found inside the jOOQ generation target (ownership separation violated)"
+        val packagePath = "com/example/platform/typedschema/jooq/generated"
+        val generated = file("typed-schema-module/src/main/java/$packagePath")
+        val metadata = file("typed-schema-module/src/main/modulith/java/$packagePath")
+        val domains = generated.listFiles().orEmpty().filter { it.isDirectory }
+        require(domains.isNotEmpty())
+        for (domain in domains) {
+            for ((pkg, contract) in listOf("tables" to "jooq-tables", "tables/records" to "records")) {
+                val marker = metadata.resolve("${domain.name}/$pkg/package-info.java")
+                val qualified = "com.example.platform.typedschema.jooq.generated.${domain.name}." + pkg.replace('/', '.')
+                require(marker.isFile && marker.readText().contains("@org.springframework.modulith.NamedInterface(\"$contract\")")
+                        && marker.readText().contains("package $qualified;"))
+                require(!domain.resolve("$pkg/package-info.java").exists())
+            }
         }
         println("OK: typed-schema named-interface authority preserved (jooq-tables, generator-immune location)")
     }
@@ -624,10 +573,10 @@ tasks.register("verifyP1ProductLayerRetirement") {
             }
         }
         // generated authorities absent
-        val genDir = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables")
-        if (genDir.exists()) {
-            for (t in listOf("TimelineTemplate", "RenderPreset", "AssetLibrary", "RenderHistory", "AiSuggestion")) {
-                require(!file("${'$'}{genDir}/${'$'}t.java").exists()) { "FAIL: generated authority remains: ${'$'}t" }
+        val genDir = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated")
+        for (type in listOf("TimelineTemplate", "RenderPreset", "AssetLibrary", "RenderHistory", "AiSuggestion")) {
+            require(genDir.walkTopDown().none { it.isFile && it.name == "$type.java" }) {
+                "FAIL: generated authority remains: $type"
             }
         }
         // P1-RED-07/08: no template module scope escape
@@ -1608,7 +1557,7 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         // ── 8. Owner-adopted single greenfield V1 baseline ──
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val migrations = migrationDir.listFiles { f -> f.name.endsWith(".sql") } ?: emptyArray()
-        require(migrations.map { it.name }.toSet() == setOf("V1__baseline.sql")) {
+        require(migrations.map { it.name }.toSet() == setOf("V1__baseline.sql", "V2__domain_schemas.sql")) {
             "FAIL: unexpected Flyway migration inventory: ${migrations.map { it.name }}"
         }
         val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
@@ -1710,7 +1659,7 @@ tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
         // 1. Exact adopted migration inventory, with no backup/unclassified migrations.
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val scripts = migrationDir.listFiles().orEmpty().filter { it.name.startsWith("V") && it.name.endsWith(".sql") }
-        require(scripts.map { it.name }.toSet() == setOf("V1__baseline.sql")) {
+        require(scripts.map { it.name }.toSet() == setOf("V1__baseline.sql", "V2__domain_schemas.sql")) {
             "FAIL: unexpected Flyway migration inventory: ${scripts.map { it.name }}"
         }
         val legacyMigrationDir = file("platform-app/src/main/resources/db/artifact-migration")

@@ -23,8 +23,8 @@ class I5CreditWalletRenderShadowArchitectureTest {
         assertTrue(wallet.contains("version bigint not null"));
         assertTrue(wallet.contains("check (balance_minor >= 0)"));
         assertTrue(schema.contains("create unique index uq_credit_wallet_principal"));
-        assertTrue(schema.contains("create table credit_reservation"));
-        assertTrue(schema.contains("create table credit_wallet_command"));
+        assertTrue(schema.contains("create table billing.credit_reservation"));
+        assertTrue(schema.contains("create table billing.credit_wallet_command"));
         assertTrue(transaction.contains("tenant_id varchar(64) not null"));
         assertTrue(transaction.contains("idempotency_key varchar(255) not null"));
         assertEquals(1, writerFiles("credit_wallet"));

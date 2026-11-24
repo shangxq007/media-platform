@@ -56,8 +56,8 @@ public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQu
                     select s.cpu_millicores, s.memory_bytes, s.temporary_storage_bytes,
                            s.safety_headroom_cpu_millicores, s.safety_headroom_memory_bytes,
                            s.safety_headroom_temporary_storage_bytes
-                      from wf_host_resource_snapshot s
-                      join wf_host_snapshot_generation_authority a
+                      from worker_fabric.wf_host_resource_snapshot s
+                      join worker_fabric.wf_host_snapshot_generation_authority a
                         on a.physical_host_id = s.physical_host_id
                        and a.physical_host_incarnation_id = s.physical_host_incarnation_id
                        and a.current_generation = s.snapshot_generation
@@ -88,7 +88,7 @@ public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQu
                            coalesce(sum(memory_bytes), 0)::bigint as memory_bytes,
                            coalesce(sum(temporary_storage_bytes), 0)::bigint
                                as temporary_storage_bytes
-                      from wf_reservation
+                      from worker_fabric.wf_reservation
                      where physical_host_id = ? and physical_host_incarnation_id = ?
                        and state in ('ACTIVE', 'RECOVERY_HOLD')
                     """,
@@ -111,7 +111,7 @@ public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQu
                         """
                         select reservation_id, assignment_id, task_id, state,
                                cpu_millicores, memory_bytes, temporary_storage_bytes, created_at
-                          from wf_reservation
+                          from worker_fabric.wf_reservation
                          where physical_host_id = ? and physical_host_incarnation_id = ?
                            and state in ('ACTIVE', 'RECOVERY_HOLD')
                          order by created_at, reservation_id
@@ -139,7 +139,7 @@ public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQu
                         select vram_bytes, compute_units, encoder_engines, decoder_engines,
                                safety_headroom_vram_bytes, safety_headroom_compute_units,
                                safety_headroom_encoder_engines, safety_headroom_decoder_engines
-                          from wf_host_resource_snapshot_device
+                          from worker_fabric.wf_host_resource_snapshot_device
                          where physical_host_id = ? and physical_host_incarnation_id = ?
                            and snapshot_generation = ? and device_id = ?
                         """,
@@ -173,8 +173,8 @@ public class JooqReservationFeasibilityQuery implements ReservationFeasibilityQu
                                coalesce(sum(rd.compute_units), 0)::bigint as compute_units,
                                coalesce(sum(rd.encoder_engines), 0)::bigint as encoder_engines,
                                coalesce(sum(rd.decoder_engines), 0)::bigint as decoder_engines
-                          from wf_reservation_device rd
-                          join wf_reservation r on r.reservation_id = rd.reservation_id
+                          from worker_fabric.wf_reservation_device rd
+                          join worker_fabric.wf_reservation r on r.reservation_id = rd.reservation_id
                          where r.physical_host_id = ? and r.physical_host_incarnation_id = ?
                            and r.state in ('ACTIVE', 'RECOVERY_HOLD') and rd.device_id = ?
                         """,

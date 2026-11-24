@@ -32,7 +32,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     @Override
     public UserBehaviorEvent save(UserBehaviorEvent event) {
         jdbc.update("""
-                INSERT INTO user_behavior_event
+                INSERT INTO analytics.user_behavior_event
                 (event_id, tenant_id, user_id, event_type, action, resource_type, resource_id, metadata_json, occurred_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -51,7 +51,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     @Override
     public Optional<UserBehaviorEvent> findByEventId(String eventId) {
         List<UserBehaviorEvent> rows = jdbc.query(
-                "SELECT * FROM user_behavior_event WHERE event_id = ?",
+                "SELECT * FROM analytics.user_behavior_event WHERE event_id = ?",
                 this::map,
                 eventId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
@@ -60,7 +60,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     @Override
     public List<UserBehaviorEvent> findByTenantId(String tenantId, int limit) {
         return jdbc.query(
-                "SELECT * FROM user_behavior_event WHERE tenant_id = ? ORDER BY occurred_at DESC LIMIT ?",
+                "SELECT * FROM analytics.user_behavior_event WHERE tenant_id = ? ORDER BY occurred_at DESC LIMIT ?",
                 this::map,
                 tenantId,
                 limit);
@@ -69,7 +69,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     @Override
     public List<UserBehaviorEvent> findByTenantIdAndUserId(String tenantId, String userId, int limit) {
         return jdbc.query(
-                "SELECT * FROM user_behavior_event WHERE tenant_id = ? AND user_id = ? ORDER BY occurred_at DESC LIMIT ?",
+                "SELECT * FROM analytics.user_behavior_event WHERE tenant_id = ? AND user_id = ? ORDER BY occurred_at DESC LIMIT ?",
                 this::map,
                 tenantId,
                 userId,
@@ -79,7 +79,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     @Override
     public List<UserBehaviorEvent> findByTenantIdAndEventType(String tenantId, String eventType, int limit) {
         return jdbc.query(
-                "SELECT * FROM user_behavior_event WHERE tenant_id = ? AND event_type = ? ORDER BY occurred_at DESC LIMIT ?",
+                "SELECT * FROM analytics.user_behavior_event WHERE tenant_id = ? AND event_type = ? ORDER BY occurred_at DESC LIMIT ?",
                 this::map,
                 tenantId,
                 eventType,
@@ -89,7 +89,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     @Override
     public long countByTenantId(String tenantId) {
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM user_behavior_event WHERE tenant_id = ?",
+                "SELECT COUNT(*) FROM analytics.user_behavior_event WHERE tenant_id = ?",
                 Long.class,
                 tenantId);
         return count != null ? count : 0L;

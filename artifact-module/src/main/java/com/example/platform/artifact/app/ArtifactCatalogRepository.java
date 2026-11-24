@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
 
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;

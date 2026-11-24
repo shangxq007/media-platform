@@ -1,7 +1,7 @@
 package com.example.platform.artifact.infrastructure;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ARTIFACT_REPLICA;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactReplica.ARTIFACT_REPLICA;
 
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactKind;

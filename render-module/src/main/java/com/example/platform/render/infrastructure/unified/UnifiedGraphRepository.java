@@ -11,9 +11,9 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import static com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge.UNIFIED_GRAPH_EDGE;
-import static com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode.UNIFIED_GRAPH_NODE;
-import static com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH;
+import static com.example.platform.typedschema.jooq.generated.render.tables.UnifiedGraphEdge.UNIFIED_GRAPH_EDGE;
+import static com.example.platform.typedschema.jooq.generated.render.tables.UnifiedGraphNode.UNIFIED_GRAPH_NODE;
+import static com.example.platform.typedschema.jooq.generated.render.tables.UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH;
 
 
 /**

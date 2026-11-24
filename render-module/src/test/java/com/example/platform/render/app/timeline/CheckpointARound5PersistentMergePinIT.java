@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactPin.ARTIFACT_PIN;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,7 +37,7 @@ import com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector;
 import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
 import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
 import com.example.platform.timeline.diff.merge.TimelineMergeResult;
-import com.example.platform.typedschema.jooq.generated.tables.Product;
+import com.example.platform.typedschema.jooq.generated.render.tables.Product;
 import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
@@ -120,16 +120,16 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
     }
 
     private void insertArtifact(String artifactId, String digest) {
-        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.ID, artifactId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.TENANT_ID, TENANT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.CONTENT_DIGEST, digest)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.BYTE_LENGTH, 1024L)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.MEDIA_TYPE, "VIDEO")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.ARTIFACT_KIND, "SOURCE_MEDIA")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.STATE, "AVAILABLE")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.SCHEMA_VERSION, 1)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT.CREATED_AT, java.time.LocalDateTime.now())
+        dsl.insertInto(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.ID, artifactId)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.CONTENT_DIGEST, digest)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.BYTE_LENGTH, 1024L)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.MEDIA_TYPE, "VIDEO")
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.ARTIFACT_KIND, "SOURCE_MEDIA")
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.STATE, "AVAILABLE")
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.SCHEMA_VERSION, 1)
+                .set(com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT.CREATED_AT, java.time.LocalDateTime.now())
                 .execute();
     }
 
@@ -229,12 +229,12 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 dsl, projectId, TENANT, canonicalPayload, "timeline-1.0");
         insertRevision(revId, projectId, parentRevId, revNumber, snapshotId);
         if (parentRevId != null) {
-            dsl.execute("insert into timeline_revision_parent "
+            dsl.execute("insert into timeline.timeline_revision_parent "
                             + "(tenant_id, project_id, revision_id, parent_revision_id, parent_order) "
                             + "values (?, ?, ?, ?, 0)",
                     TENANT, projectId, revId, parentRevId);
         }
-        dsl.execute("insert into project_revision_counter (project_id, next_revision_number) "
+        dsl.execute("insert into timeline.project_revision_counter (project_id, next_revision_number) "
                         + "values (?, ?) on conflict (project_id) do update set "
                         + "next_revision_number = greatest(project_revision_counter.next_revision_number, excluded.next_revision_number)",
                 projectId, revNumber);
@@ -413,8 +413,8 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
 
     private long countSnapshots(String productId) {
         return dsl.fetchCount(DSL.selectFrom(
-                        com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
-                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)));
+                        com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)));
     }
 
     /** Internal payload with TWO clips pinned to two different artifacts. */

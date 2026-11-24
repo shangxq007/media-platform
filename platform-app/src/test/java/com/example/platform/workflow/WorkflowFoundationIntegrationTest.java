@@ -207,7 +207,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
     void fixture() {
         tenant = "wf-" + UUID.randomUUID();
         jdbc.update(
-                "insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",
+                "insert into identity.tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",
                 tenant,
                 "workflow test");
         user = member();
@@ -261,7 +261,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         }
         String membership =
                 jdbc.queryForObject(
-                        "select id from workspace_member where workspace_id=? and user_id=?",
+                        "select id from identity.workspace_member where workspace_id=? and user_id=?",
                         String.class,
                         workspace,
                         user);
@@ -292,7 +292,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
     String member() {
         String id = "member-" + UUID.randomUUID();
         jdbc.update(
-                "insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values"
+                "insert into identity.\"user\"(id,tenant_id,username,email,role,status,created_at) values"
                         + " (?,?,?,?,'MEMBER','ACTIVE',now())",
                 id,
                 tenant,
@@ -432,7 +432,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
 
     String event(String run) {
         return jdbc.queryForObject(
-                "select id from outbox_events where aggregate_id=? and"
+                "select id from infrastructure.outbox_events where aggregate_id=? and"
                         + " event_type='workflow.run.start'",
                 String.class,
                 run);
@@ -493,7 +493,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         assertThat(store.require(run.id()).status()).isEqualTo("SUCCEEDED");
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_operation_receipt where run_id=?",
+                                "select count(*) from workflow.workflow_operation_receipt where run_id=?",
                                 Integer.class,
                                 run.id()))
                 .isEqualTo(2);
@@ -533,13 +533,13 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                         }));
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_run where tenant_id=?",
+                                "select count(*) from workflow.workflow_run where tenant_id=?",
                                 Integer.class,
                                 tenant))
                 .isZero();
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from outbox_events where payload like ?",
+                                "select count(*) from infrastructure.outbox_events where payload like ?",
                                 Integer.class,
                                 "%" + tenant + "%"))
                 .isZero();
@@ -575,7 +575,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                 .isInstanceOf(IllegalArgumentException.class));
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_run where tenant_id=?",
+                                "select count(*) from workflow.workflow_run where tenant_id=?",
                                 Integer.class,
                                 tenant))
                 .isEqualTo(1);
@@ -648,7 +648,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                 .isEqualTo(1);
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_operation_receipt where run_id=?",
+                                "select count(*) from workflow.workflow_operation_receipt where run_id=?",
                                 Integer.class,
                                 run.id()))
                 .isEqualTo(1);
@@ -695,7 +695,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         as(user, () -> runs.cancel(tenant, run.id()));
         String control =
                 jdbc.queryForObject(
-                        "select id from outbox_events where aggregate_id=? and"
+                        "select id from infrastructure.outbox_events where aggregate_id=? and"
                                 + " event_type='workflow.run.control'",
                         String.class,
                         run.id());
@@ -801,7 +801,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_run where tenant_id=?",
+                                "select count(*) from workflow.workflow_run where tenant_id=?",
                                 Integer.class,
                                 tenant))
                 .isZero();
@@ -892,7 +892,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         assertThat(store.require(run.id()).status()).isEqualTo("SUCCEEDED");
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_operation_receipt where run_id=?",
+                                "select count(*) from workflow.workflow_operation_receipt where run_id=?",
                                 Integer.class,
                                 run.id()))
                 .isEqualTo(2);
@@ -1093,11 +1093,11 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                         .getFirstRunId();
         assertThat(
                         jdbc.queryForObject(
-                                "select status from outbox_events where id=?",
+                                "select status from infrastructure.outbox_events where id=?",
                                 String.class,
                                 event(run.id())))
                 .isEqualTo("FAILED");
-        jdbc.update("update outbox_events set next_attempt_at=now() where id=?", event(run.id()));
+        jdbc.update("update infrastructure.outbox_events set next_attempt_at=now() where id=?", event(run.id()));
         context.getBean(OutboxEventService.class).resetDueFailedEvents();
         try (var restarted = dispatcher()) {
             assertThat(restarted.processOnce(event(run.id()))).isTrue();
@@ -1120,7 +1120,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                 true));
         String control =
                 jdbc.queryForObject(
-                        "select id from outbox_events where aggregate_id=? and"
+                        "select id from infrastructure.outbox_events where aggregate_id=? and"
                                 + " event_type='workflow.run.control'",
                         String.class,
                         run.id());
@@ -1191,7 +1191,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                                 .EVENT_TYPE_WORKFLOW_EXECUTION_CONTINUED_AS_NEW);
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_operation_receipt where run_id=?",
+                                "select count(*) from workflow.workflow_operation_receipt where run_id=?",
                                 Integer.class,
                                 run.id()))
                 .isEqualTo(70);
@@ -1252,7 +1252,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                 .isInstanceOf(IllegalArgumentException.class));
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_run where tenant_id=?",
+                                "select count(*) from workflow.workflow_run where tenant_id=?",
                                 Integer.class,
                                 tenant))
                 .isZero();
@@ -1319,7 +1319,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         String step = WorkflowStepIdentity.child(WorkflowStepIdentity.root("root"), "wait");
         assertThat(
                         jdbc.queryForObject(
-                                "select status from workflow_run_step where run_id=? and step_id=?",
+                                "select status from workflow.workflow_run_step where run_id=? and step_id=?",
                                 String.class,
                                 run.id(),
                                 step))
@@ -1336,7 +1336,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                 });
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from outbox_events where aggregate_id=? and"
+                                "select count(*) from infrastructure.outbox_events where aggregate_id=? and"
                                         + " event_type='workflow.run.control'",
                                 Integer.class,
                                 run.id()))
@@ -1356,7 +1356,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         try {
             String control =
                     jdbc.queryForObject(
-                            "select id from outbox_events where aggregate_id=? and"
+                            "select id from infrastructure.outbox_events where aggregate_id=? and"
                                     + " event_type='workflow.run.control'",
                             String.class,
                             run.id());
@@ -1430,7 +1430,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                     context.getBean(io.micrometer.core.instrument.MeterRegistry.class))) {
                 assertThat(failing.processOnce(event(id))).isFalse();
             }
-            assertThat(jdbc.queryForObject("select status from outbox_events where id=?", String.class, event(id)))
+            assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?", String.class, event(id)))
                     .isEqualTo("FAILED");
             String first = client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(id))
                     .describe().getFirstRunId();
@@ -1445,12 +1445,12 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                 org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
                         .until(() -> restarted.processOnce(event(id)));
             }
-            assertThat(jdbc.queryForObject("select status from outbox_events where id=?", String.class, event(id)))
+            assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?", String.class, event(id)))
                     .isEqualTo("PROCESSED");
-            assertThat(jdbc.queryForObject("select retry_count from outbox_events where id=?", Integer.class, event(id)))
+            assertThat(jdbc.queryForObject("select retry_count from infrastructure.outbox_events where id=?", Integer.class, event(id)))
                     .isEqualTo(1);
             assertThat(client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(id)).describe().getFirstRunId()).isEqualTo(first);
-            assertThat(jdbc.queryForObject("select count(*) from workflow_run where tenant_id=?", Integer.class, tenant)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("select count(*) from workflow.workflow_run where tenant_id=?", Integer.class, tenant)).isEqualTo(1);
             String step = WorkflowStepIdentity.child(WorkflowStepIdentity.root("root"), "wait");
             assertThat(store.waitProjection(id, step).getFirst().get("status")).isEqualTo("WAITING");
             var release = Map.of("stepId", step, "releaseId", "continued-command", "approved", true);
@@ -1460,7 +1460,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
             assertThat(http(outsider, "POST", path, body).statusCode()).isIn(401, 403);
             assertThat(http(user, "POST", path, body).statusCode()).isEqualTo(200);
             assertThat(http(user, "POST", path, body).statusCode()).isEqualTo(200);
-            String control = jdbc.queryForObject("select id from outbox_events where aggregate_id=?"
+            String control = jdbc.queryForObject("select id from infrastructure.outbox_events where aggregate_id=?"
                     + " and event_type='workflow.run.control'", String.class, id);
             Runnable deliver = () -> {
                 replayStart(id); // Same accepted intent, through the existing typed Outbox router.
@@ -1485,9 +1485,9 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                     Integer.class, "workflow:" + id + ":%" )).isEqualTo(count);
             assertThat(jdbc.queryForObject("select count(distinct base_revision) from ep07_test_effect where invocation_id like ?",
                     Integer.class, "workflow:" + id + ":%" )).isEqualTo(count);
-            assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt where run_id=?",
+            assertThat(jdbc.queryForObject("select count(*) from workflow.workflow_operation_receipt where run_id=?",
                     Integer.class, id)).isEqualTo(count);
-            assertThat(jdbc.queryForObject("select status from outbox_events where id=?",
+            assertThat(jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",
                     String.class, control)).isEqualTo("PROCESSED");
             int transitions = continuationsWithPins(id, first);
             assertThat(transitions).isGreaterThanOrEqualTo(count == 70 ? 1 : 3);
@@ -1537,7 +1537,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
     }
 
     private void replayControl(String id, String step, boolean cancel) {
-        String event = jdbc.queryForObject("select id from outbox_events where aggregate_id=?"
+        String event = jdbc.queryForObject("select id from infrastructure.outbox_events where aggregate_id=?"
                 + " and event_type='workflow.run.control'", String.class, id);
         com.example.platform.outbox.api.event.OutboxDeliveryContext.run(
                 new com.example.platform.outbox.api.event.OutboxDeliveryContext.Delivery(event, tenant),
@@ -1570,7 +1570,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
     @Test
     @Order(1)
     void loopAdmissionRejectsNonProducingAndHiddenResultsBeforeAnyDurableWork() throws Exception {
-        receiptsBeforeRejectedLoopMatrix = jdbc.queryForObject("select count(*) from workflow_operation_receipt", Integer.class);
+        receiptsBeforeRejectedLoopMatrix = jdbc.queryForObject("select count(*) from workflow.workflow_operation_receipt", Integer.class);
         effectsBeforeRejectedLoopMatrix = jdbc.queryForObject("select count(*) from ep07_test_effect", Integer.class);
         for (Comparison comparison : List.of(Comparison.IS_SET, Comparison.IS_EMPTY)) {
             for (WaitKind kind : WaitKind.values()) {
@@ -1621,7 +1621,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         complete(id);
         assertThat(store.require(id).status()).isEqualTo("SUCCEEDED");
         assertThat(effectCount(id)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt where run_id=?", Integer.class, id)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from workflow.workflow_operation_receipt where run_id=?", Integer.class, id)).isEqualTo(1);
         System.out.println("EP07_CORRECTION_ADMISSION rejectedCases=28 runIntentReceiptEffects=0 validRun=" + id + " effects=1 status=SUCCEEDED");
     }
 
@@ -1635,10 +1635,10 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                 Map.of("definitionId", definition, "definitionVersion", 1, "projectId", project,
                         "idempotencyKey", "invalid-" + UUID.randomUUID(), "inputsJson", "{\"items\":[1]}"));
         assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(400);
-        assertThat(jdbc.queryForObject("select count(*) from workflow_run where tenant_id=?", Integer.class, tenant)).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from outbox_events where event_type like 'workflow.run.%' and payload like ?",
+        assertThat(jdbc.queryForObject("select count(*) from workflow.workflow_run where tenant_id=?", Integer.class, tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from infrastructure.outbox_events where event_type like 'workflow.run.%' and payload like ?",
                 Integer.class, "%" + tenant + "%")).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt", Integer.class))
+        assertThat(jdbc.queryForObject("select count(*) from workflow.workflow_operation_receipt", Integer.class))
                 .isEqualTo(receiptsBeforeRejectedLoopMatrix);
         assertThat(jdbc.queryForObject("select count(*) from ep07_test_effect", Integer.class))
                 .isEqualTo(effectsBeforeRejectedLoopMatrix);

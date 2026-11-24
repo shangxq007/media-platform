@@ -5,8 +5,8 @@ import com.example.platform.shared.identity.ArtifactId;
 import java.util.*;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Service;
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ARTIFACT_REPLICA;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactReplica.ARTIFACT_REPLICA;
 @Service
 public class ArtifactOutputReferenceIndexService implements ArtifactOutputReferenceIndex {
  private final StoragePlacementQuery storage;private final DSLContext dsl;

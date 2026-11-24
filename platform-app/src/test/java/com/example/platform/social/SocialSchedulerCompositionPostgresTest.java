@@ -32,12 +32,12 @@ class SocialSchedulerCompositionPostgresTest extends PostgresTestContainerSuppor
         jdbc = new JdbcTemplate(new DriverManagerDataSource(jdbcUrl() + (jdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema, username(), password()));
     }
     @BeforeEach void fixture() {
-        jdbc.update("DELETE FROM social_post");
-        jdbc.update("DELETE FROM social_connected_platform");
-        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,platform_user_id,platform_username,status,binding_version) VALUES ('account','tenant','actor','TWITTER','external','name','ACTIVE',1)");
-        jdbc.update("INSERT INTO tenant(id,name,status,created_at) VALUES ('tenant','tenant','ACTIVE',now()) ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO project(id,tenant_id,name,status,created_at) VALUES ('project','tenant','project','ACTIVE',now()) ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,project_id,connected_platform_id,connected_platform_binding_version,platform_type,status,scheduled_at) VALUES ('post','tenant','actor','project','account',1,'TWITTER','SCHEDULED',?)", LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+        jdbc.update("DELETE FROM publication.social_post");
+        jdbc.update("DELETE FROM publication.social_connected_platform");
+        jdbc.update("INSERT INTO publication.social_connected_platform(id,tenant_id,user_id,platform_type,platform_user_id,platform_username,status,binding_version) VALUES ('account','tenant','actor','TWITTER','external','name','ACTIVE',1)");
+        jdbc.update("INSERT INTO identity.tenant(id,name,status,created_at) VALUES ('tenant','tenant','ACTIVE',now()) ON CONFLICT DO NOTHING");
+        jdbc.update("INSERT INTO identity.project(id,tenant_id,name,status,created_at) VALUES ('project','tenant','project','ACTIVE',now()) ON CONFLICT DO NOTHING");
+        jdbc.update("INSERT INTO publication.social_post(id,tenant_id,user_id,project_id,connected_platform_id,connected_platform_binding_version,platform_type,status,scheduled_at) VALUES ('post','tenant','actor','project','account',1,'TWITTER','SCHEDULED',?)", LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
     }
     @Test void registeredSchedulerUsesDurableOwnerPathAndDisabledFlagsLeaveRowsUnchanged() {
         var provider = mock(PlatformAdapter.class);
@@ -57,8 +57,8 @@ class SocialSchedulerCompositionPostgresTest extends PostgresTestContainerSuppor
             runner.withPropertyValues(flags).run(c -> {
                 assertThat(c).hasNotFailed();
                 assertThat(c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks()).isEmpty();
-                assertThat(jdbc.queryForObject("SELECT status FROM social_post WHERE id='post'", String.class)).isEqualTo("SCHEDULED");
-                assertThat(jdbc.queryForObject("SELECT publication_attempt_id FROM social_post WHERE id='post'", String.class)).isNull();
+                assertThat(jdbc.queryForObject("SELECT status FROM publication.social_post WHERE id='post'", String.class)).isEqualTo("SCHEDULED");
+                assertThat(jdbc.queryForObject("SELECT publication_attempt_id FROM publication.social_post WHERE id='post'", String.class)).isNull();
                 verify(provider, never()).publish(any(), any());
             });
         }
@@ -67,14 +67,14 @@ class SocialSchedulerCompositionPostgresTest extends PostgresTestContainerSuppor
             var tasks = c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
             assertThat(tasks).hasSize(1);
             tasks.iterator().next().getTask().getRunnable().run();
-            assertThat(jdbc.queryForObject("SELECT status FROM social_post WHERE id='post'", String.class)).isEqualTo("FAILED");
-            assertThat(jdbc.queryForObject("SELECT retry_count FROM social_post WHERE id='post'", Integer.class)).isEqualTo(1);
-            jdbc.update("UPDATE social_post SET status='SCHEDULED' WHERE id='post'");
+            assertThat(jdbc.queryForObject("SELECT status FROM publication.social_post WHERE id='post'", String.class)).isEqualTo("FAILED");
+            assertThat(jdbc.queryForObject("SELECT retry_count FROM publication.social_post WHERE id='post'", Integer.class)).isEqualTo(1);
+            jdbc.update("UPDATE publication.social_post SET status='SCHEDULED' WHERE id='post'");
             when(provider.validateCredentials(any())).thenReturn(true);
             when(provider.publish(any(), any())).thenReturn(new PublishResult(true, "external", "https://example.test/post", null, null));
             tasks.iterator().next().getTask().getRunnable().run();
-            assertThat(jdbc.queryForObject("SELECT status FROM social_post WHERE id='post'", String.class)).isEqualTo("PUBLISHED");
-            assertThat(jdbc.queryForObject("SELECT retry_count FROM social_post WHERE id='post'", Integer.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT status FROM publication.social_post WHERE id='post'", String.class)).isEqualTo("PUBLISHED");
+            assertThat(jdbc.queryForObject("SELECT retry_count FROM publication.social_post WHERE id='post'", Integer.class)).isEqualTo(1);
         });
     }
 }

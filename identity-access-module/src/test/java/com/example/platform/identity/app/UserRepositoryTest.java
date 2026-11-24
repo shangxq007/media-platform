@@ -29,7 +29,7 @@ class UserRepositoryTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS \"user\" ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS identity.\"user\" ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64) not null,"
                 + "username varchar(128) not null,"
@@ -49,7 +49,7 @@ class UserRepositoryTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE \"user\" CASCADE");
+        dsl.execute("TRUNCATE TABLE identity.\"user\" CASCADE");
         repository = new UserRepository(dsl);
     }
 

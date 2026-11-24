@@ -29,12 +29,12 @@ class GraphRenderLifecycleIT {
             TenantContext.set("tenant-a");schema=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
             for(String file:List.of("V1__baseline.sql"))try(var input=getClass().getResourceAsStream("/db/migration/"+file)){schema.executeScript(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));}
             db=schema.dsl();
-            db.execute("insert into tenant(id,name,created_at) values('tenant-a','test',current_timestamp),('tenant-b','other',current_timestamp)");
-            db.execute("insert into project(id,tenant_id,name,created_at) values('project-a','tenant-a','test',current_timestamp),('project-b','tenant-b','other',current_timestamp)");
-            db.execute("insert into render_job(id,project_id,tenant_id,timeline_snapshot_id,profile,status,initiator_type,initiator_id,initiator_tenant_id,created_at) values('job-a','project-a','tenant-a','snapshot','test','QUEUED','USER','user-a','tenant-a',current_timestamp),('job-b','project-b','tenant-b','snapshot','test','QUEUED','USER','user-b','tenant-b',current_timestamp)");
-            db.execute("insert into wf_execution_backend_selection(selection_id,task_id,backend,placement_authority_scope,active,selected_at) values('selection',?,'NATIVE_PULL_WORKER','PLATFORM_MANAGED',true,now())",TASK);
-            db.execute("insert into wf_execution_ownership_generation(task_id,generation,created_at) values(?,1,now())",TASK);
-            db.execute("insert into wf_execution_attempt(attempt_id,task_id,generation,backend,state,backend_selection_id,created_at,updated_at) values('task-attempt-1',?,1,'NATIVE_PULL_WORKER','CREATED','selection',now(),now())",TASK);
+            db.execute("insert into identity.tenant(id,name,created_at) values('tenant-a','test',current_timestamp),('tenant-b','other',current_timestamp)");
+            db.execute("insert into identity.project(id,tenant_id,name,created_at) values('project-a','tenant-a','test',current_timestamp),('project-b','tenant-b','other',current_timestamp)");
+            db.execute("insert into render.render_job(id,project_id,tenant_id,timeline_snapshot_id,profile,status,initiator_type,initiator_id,initiator_tenant_id,created_at) values('job-a','project-a','tenant-a','snapshot','test','QUEUED','USER','user-a','tenant-a',current_timestamp),('job-b','project-b','tenant-b','snapshot','test','QUEUED','USER','user-b','tenant-b',current_timestamp)");
+            db.execute("insert into worker_fabric.wf_execution_backend_selection(selection_id,task_id,backend,placement_authority_scope,active,selected_at) values('selection',?,'NATIVE_PULL_WORKER','PLATFORM_MANAGED',true,now())",TASK);
+            db.execute("insert into worker_fabric.wf_execution_ownership_generation(task_id,generation,created_at) values(?,1,now())",TASK);
+            db.execute("insert into worker_fabric.wf_execution_attempt(attempt_id,task_id,generation,backend,state,backend_selection_id,created_at,updated_at) values('task-attempt-1',?,1,'NATIVE_PULL_WORKER','CREATED','selection',now(),now())",TASK);
             jobs=new RenderJobRepository(db);
             var events=new RenderLifecyclePublisher(new OutboxEventService(db,3,mock(PostgresNotificationService.class),new OutboxEventRouter(List.of(new RenderOutboxEvents()))));
             var jdbc=new org.springframework.jdbc.core.JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(schema.connection(),true));
@@ -48,10 +48,10 @@ class GraphRenderLifecycleIT {
         Execution begin() throws Exception {return tx(()->owner.begin("tenant-a","job-a","plan-ref",PLAN,GRAPH,TASK));}
         Output output(){return new Output(TASK,"task-attempt-1",1,"artifact-final");}
         void artifact(String id,String tenant,String project,String job,String kind) {
-            db.execute("insert into artifact(id,tenant_id,project_id,render_job_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values(?,?,?,?,?,1,'VIDEO',?,'AVAILABLE',1,current_timestamp)",id,tenant,project,job,"a".repeat(64),kind);
+            db.execute("insert into artifacts.artifact(id,tenant_id,project_id,render_job_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values(?,?,?,?,?,1,'VIDEO',?,'AVAILABLE',1,current_timestamp)",id,tenant,project,job,"a".repeat(64),kind);
         }
         void ready(Execution e) throws Exception {tx(()->{owner.bindOutput(e,output());return null;});artifact("artifact-final","tenant-a","project-a","job-a","RENDER_MASTER");}
-        String state(){return db.fetchOne("select status from render_job where id='job-a'").get("status",String.class);}
+        String state(){return db.fetchOne("select status from render.render_job where id='job-a'").get("status",String.class);}
         int count(String table){return db.fetchCount(org.jooq.impl.DSL.table(table));}
         public void close() throws Exception{schema.close();}
     }
@@ -110,7 +110,7 @@ class GraphRenderLifecycleIT {
     @Test void sourceFactsAreScopedIdempotentAndImmutable() throws Exception {
         try (var w = new World()) {
             String hash = "d".repeat(64);
-            w.db.execute("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('source-facts','tenant-a','project-a','workspace-a',?,10,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())", hash);
+            w.db.execute("insert into artifacts.artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('source-facts','tenant-a','project-a','workspace-a',?,10,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())", hash);
             var store = new com.example.platform.artifact.infrastructure.ArtifactSourceFactsStore(w.db);
             var scope = new com.example.platform.artifact.contract.ArtifactScope("tenant-a", "workspace-a", "project-a");
             var id = new com.example.platform.shared.identity.ArtifactId("source-facts");
@@ -127,7 +127,7 @@ class GraphRenderLifecycleIT {
             store.record(scope, id, digest, newlyObservableDisplay);
             assertEquals(facts, store.find("tenant-a", "project-a", id, digest).orElseThrow());
             assertTrue(store.find("tenant-a", "other-project", id, digest).isEmpty());
-            assertThrows(RuntimeException.class, () -> w.db.execute("update artifact set audit_provenance='{}'::jsonb where id='source-facts'"));
+            assertThrows(RuntimeException.class, () -> w.db.execute("update artifacts.artifact set audit_provenance='{}'::jsonb where id='source-facts'"));
             assertEquals(facts, store.find("tenant-a", "project-a", id, digest).orElseThrow());
         }
     }

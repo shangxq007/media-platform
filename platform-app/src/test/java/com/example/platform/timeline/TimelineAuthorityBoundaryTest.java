@@ -12,8 +12,8 @@ class TimelineAuthorityBoundaryTest {
     String path=p.toString().replace('\\','/'),s=Files.readString(p);
     if(path.contains("render-module/")){
      if(s.matches("(?s).*com\\.example\\.platform\\.timeline\\.(?:app|adapter|infrastructure)\\..*"))result.add(path);
-     if(s.contains("typedschema.jooq.generated.tables.TimelineReview")||s.contains("typedschema.jooq.generated.tables.TimelineComment")
-        ||s.contains("typedschema.jooq.generated.tables.ReviewDecision")||s.contains("typedschema.jooq.generated.tables.ReviewThread"))result.add(path);
+     if(s.contains("typedschema.jooq.generated.timeline.tables.TimelineReview")||s.contains("typedschema.jooq.generated.timeline.tables.TimelineComment")
+        ||s.contains("typedschema.jooq.generated.timeline.tables.ReviewDecision")||s.contains("typedschema.jooq.generated.timeline.tables.ReviewThread"))result.add(path);
      if(s.matches("(?s).*\\b(?:insertInto|update|deleteFrom)\\s*\\(\\s*\"(?:timeline_review|timeline_comment)\".*"))result.add(path);
      if(Set.of("TimelineReviewRepository.java","TimelineReviewService.java","TimelineCommentService.java","ReviewDecisionService.java","TimelineMergeConfiguration.java").contains(p.getFileName().toString()))result.add(path);
     }

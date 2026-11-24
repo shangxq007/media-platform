@@ -1,6 +1,6 @@
 package com.example.platform.media.infrastructure.persistence;
 
-import static com.example.platform.typedschema.jooq.generated.tables.MediaStream.MEDIA_STREAM;
+import static com.example.platform.typedschema.jooq.generated.media.tables.MediaStream.MEDIA_STREAM;
 
 import com.example.platform.media.app.MediaStreamRepository;
 import com.example.platform.media.domain.description.SourceAudioDescription;

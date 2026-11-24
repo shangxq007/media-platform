@@ -1,6 +1,6 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
 
 import java.util.List;
 import java.util.Map;

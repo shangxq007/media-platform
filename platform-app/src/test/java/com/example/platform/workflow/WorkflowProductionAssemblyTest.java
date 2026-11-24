@@ -67,18 +67,18 @@ class WorkflowProductionAssemblyTest extends PostgresTestContainerSupport {
                 .executeWithoutResult(
                         tx -> {
                             jdbc.update(
-                                    "insert into tenant(id,name,status,created_at) values"
+                                    "insert into identity.tenant(id,name,status,created_at) values"
                                         + " (?,?,'ACTIVE',now())",
                                     tenant,
                                     "assembly");
                             jdbc.update(
-                                    "insert into workspace(id,tenant_id,name,created_at,updated_at)"
+                                    "insert into identity.workspace(id,tenant_id,name,created_at,updated_at)"
                                         + " values (?,?,?,now(),now())",
                                     workspace,
                                     tenant,
                                     "assembly");
                             jdbc.update(
-                                    "insert into project(id,tenant_id,workspace_id,name,created_at)"
+                                    "insert into identity.project(id,tenant_id,workspace_id,name,created_at)"
                                         + " values (?,?,?,?,now())",
                                     project,
                                     tenant,
@@ -177,7 +177,7 @@ class WorkflowProductionAssemblyTest extends PostgresTestContainerSupport {
         assertThat(store.require(runId).status()).isEqualTo("SUCCEEDED");
         assertThat(
                         jdbc.queryForObject(
-                                "select count(*) from workflow_run_step where run_id=? and"
+                                "select count(*) from workflow.workflow_run_step where run_id=? and"
                                     + " status='COMPLETED'",
                                 Integer.class,
                                 runId))

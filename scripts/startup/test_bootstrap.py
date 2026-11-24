@@ -18,7 +18,6 @@ TOKEN = "0.synthetic-bootstrap-token"
 PROJECT = "00000000-0000-0000-0000-000000000000"
 API_NAMES = [
     "SPRING_DATASOURCE_URL", "SPRING_DATASOURCE_USERNAME", "SPRING_DATASOURCE_PASSWORD",
-    "SPRING_FLYWAY_URL", "SPRING_FLYWAY_USER", "SPRING_FLYWAY_PASSWORD",
     "APP_JWT_SECRET", "DEV_AUTH_SECRET", "STRIPE_WEBHOOK_SECRET",
 ]
 
@@ -122,6 +121,7 @@ exec cat "$(dirname "$0")/payload.json"
         self.assertEqual(proc.returncode, 0, proc.stderr)
         out = json.loads(self.out.read_text(encoding="utf-8"))
         self.assertNotIn("APP_JWT_SECRET", out["keys"])
+        self.assertFalse(any(k.startswith("SPRING_FLYWAY_") for k in out["keys"]))
 
     def test_all_existing_profiles_exact_injection_scope(self):
         runtime={"JOOQ_PG_IMAGE":"synthetic-image", "JOOQ_FLYWAY_LIB_DIR":"/synthetic/flyway",

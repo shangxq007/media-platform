@@ -11,7 +11,7 @@ import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationUserInbox.NOTIFICATION_USER_INBOX;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationUserInbox.NOTIFICATION_USER_INBOX;
 
 
 @Service

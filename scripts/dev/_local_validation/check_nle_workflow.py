@@ -20,11 +20,11 @@ def psql(sql):
 
 
 facts = json.loads(psql("""select json_build_object(
- 'revisionCount',(select count(*) from timeline_revision where project_id='project-fr-e2e'),
- 'head',(select head_revision_id from timeline_revision_ref where project_id='project-fr-e2e'),
- 'applied',(select count(*) from apply_command where project_id='project-fr-e2e' and status='COMPLETED'
+ 'revisionCount',(select count(*) from timeline.timeline_revision where project_id='project-fr-e2e'),
+ 'head',(select head_revision_id from timeline.timeline_revision_ref where project_id='project-fr-e2e'),
+ 'applied',(select count(*) from timeline.apply_command where project_id='project-fr-e2e' and status='COMPLETED'
             and result_status='APPLIED'),
- 'jobs',(select count(*) from render_job where project_id='project-fr-e2e'))"""))
+ 'jobs',(select count(*) from render.render_job where project_id='project-fr-e2e'))"""))
 assert facts['revisionCount'] == 9, facts
 assert facts['applied'] >= 8, facts
 assert facts['jobs'] == 1, facts

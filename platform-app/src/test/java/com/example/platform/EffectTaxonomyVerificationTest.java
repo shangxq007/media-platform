@@ -50,15 +50,15 @@ class EffectTaxonomyVerificationTest extends PostgresTestContainerSupport {
     private void insertEffectIfNotExists(String effectKey, String displayName, String category, boolean isEffect) {
         try {
             Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM effect_pack_effect WHERE effect_key = ?", Integer.class, effectKey);
+                "SELECT COUNT(*) FROM render.effect_pack_effect WHERE effect_key = ?", Integer.class, effectKey);
             if (count == null || count == 0) {
                 jdbcTemplate.update(
-                    "INSERT INTO effect_pack_effect (id, pack_row_id, effect_key, display_name, category, sort_order, taxonomy_category, is_effect) " +
+                    "INSERT INTO render.effect_pack_effect (id, pack_row_id, effect_key, display_name, category, sort_order, taxonomy_category, is_effect) " +
                     "VALUES (?, ?, ?, ?, ?, 0, ?, ?)",
                     "test-" + effectKey, "test-pack", effectKey, displayName, "video", category, isEffect);
             } else {
                 jdbcTemplate.update(
-                    "UPDATE effect_pack_effect SET taxonomy_category = ?, is_effect = ? WHERE effect_key = ?",
+                    "UPDATE render.effect_pack_effect SET taxonomy_category = ?, is_effect = ? WHERE effect_key = ?",
                     category, isEffect, effectKey);
             }
         } catch (Exception e) {
@@ -70,7 +70,7 @@ class EffectTaxonomyVerificationTest extends PostgresTestContainerSupport {
     void verifyEffectPackEffectSchema() {
         try {
             jdbcTemplate.queryForList(
-                "SELECT taxonomy_category, is_effect FROM effect_pack_effect LIMIT 1");
+                "SELECT taxonomy_category, is_effect FROM render.effect_pack_effect LIMIT 1");
         } catch (Exception e) {
             fail("taxonomy_category or is_effect column missing: " + e.getMessage());
         }
@@ -79,12 +79,12 @@ class EffectTaxonomyVerificationTest extends PostgresTestContainerSupport {
     @Test
     void verifyDataBackfill() {
         Integer totalEffects = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM effect_pack_effect", Integer.class);
+            "SELECT COUNT(*) FROM render.effect_pack_effect", Integer.class);
         assertNotNull(totalEffects, "Should have effect pack effects");
         assertTrue(totalEffects > 0, "Should have at least one effect pack effect");
 
         Map<String, Object> fadeIn = jdbcTemplate.queryForMap(
-            "SELECT effect_key, taxonomy_category, is_effect FROM effect_pack_effect WHERE effect_key = 'video.fade_in'");
+            "SELECT effect_key, taxonomy_category, is_effect FROM render.effect_pack_effect WHERE effect_key = 'video.fade_in'");
         assertEquals("temporal", fadeIn.get("taxonomy_category"));
         assertEquals(true, fadeIn.get("is_effect"));
     }
@@ -93,7 +93,7 @@ class EffectTaxonomyVerificationTest extends PostgresTestContainerSupport {
     void verifyAllTaxonomyCategories() {
         List<Map<String, Object>> categories = jdbcTemplate.queryForList(
             "SELECT DISTINCT taxonomy_category, COUNT(*) as count " +
-            "FROM effect_pack_effect " +
+            "FROM render.effect_pack_effect " +
             "WHERE taxonomy_category IS NOT NULL " +
             "GROUP BY taxonomy_category " +
             "ORDER BY taxonomy_category"
@@ -106,7 +106,7 @@ class EffectTaxonomyVerificationTest extends PostgresTestContainerSupport {
     void verifyNonEffectOperations() {
         List<Map<String, Object>> nonEffects = jdbcTemplate.queryForList(
             "SELECT effect_key, taxonomy_category, is_effect " +
-            "FROM effect_pack_effect " +
+            "FROM render.effect_pack_effect " +
             "WHERE is_effect = false"
         );
 

@@ -20,7 +20,7 @@ public class NativeOutputPublicationTransaction implements RuntimePublicationTra
     }
     @Override @Transactional(rollbackFor=Exception.class)
     public RuntimeClosedLoopTaskResult commit(ExecutableTaskId task,TaskRuntimeExecution execution,CommitAction action) throws IOException {
-        if(db.fetchOne("select task_id from wf_task_ownership where task_id=? for update",task.sha256Hex())==null) {
+        if(db.fetchOne("select task_id from worker_fabric.wf_task_ownership where task_id=? for update",task.sha256Hex())==null) {
             throw new IllegalStateException("native output ownership is absent");
         }
         var grant=grants.findCurrentGrant(task).orElseThrow(()->new IllegalStateException("native output ownership is no longer current"));

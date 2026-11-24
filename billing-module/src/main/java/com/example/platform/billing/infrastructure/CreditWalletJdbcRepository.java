@@ -37,8 +37,8 @@ public class CreditWalletJdbcRepository {
         return jdbc.query("""
                 SELECT c.*, w.principal_type, w.principal_id, w.workspace_id,
                        w.status, w.created_at AS wallet_created_at
-                FROM credit_wallet_command c
-                JOIN credit_wallet w ON w.tenant_id = c.tenant_id AND w.id = c.wallet_id
+                FROM billing.credit_wallet_command c
+                JOIN billing.credit_wallet w ON w.tenant_id = c.tenant_id AND w.id = c.wallet_id
                 WHERE c.tenant_id = ? AND c.idempotency_key = ?
                 """, (rs, row) -> {
                     PrincipalRef principal = new PrincipalRef(rs.getString("tenant_id"),
@@ -59,7 +59,7 @@ public class CreditWalletJdbcRepository {
 
     public void saveCommand(CreditWalletCommand command, CreditWalletCommandResult result) {
         jdbc.update("""
-                INSERT INTO credit_wallet_command
+                INSERT INTO billing.credit_wallet_command
                 (id, tenant_id, wallet_id, idempotency_key, command_type, payload_fingerprint,
                  result_balance_minor, result_currency, result_wallet_version,
                  result_reservation_id, result_reservation_status,
@@ -75,7 +75,7 @@ public class CreditWalletJdbcRepository {
     public CreditWallet insertWallet(CreditWalletCommand command) {
         try {
             jdbc.update("""
-                    INSERT INTO credit_wallet
+                    INSERT INTO billing.credit_wallet
                     (id, tenant_id, principal_type, principal_id, workspace_id, balance_minor,
                      currency_code, status, version, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, 0, ?, 'ACTIVE', 1, ?, ?)
@@ -91,13 +91,13 @@ public class CreditWalletJdbcRepository {
 
     public Optional<CreditWallet> findWalletForUpdate(String tenantId, String walletId) {
         return jdbc.query("""
-                SELECT * FROM credit_wallet WHERE tenant_id = ? AND id = ? FOR UPDATE
+                SELECT * FROM billing.credit_wallet WHERE tenant_id = ? AND id = ? FOR UPDATE
                 """, this::mapWallet, tenantId, walletId).stream().findFirst();
     }
 
     public Optional<CreditWallet> findWalletByPrincipal(PrincipalRef principal, String currency) {
         return jdbc.query("""
-                SELECT * FROM credit_wallet
+                SELECT * FROM billing.credit_wallet
                 WHERE tenant_id = ? AND principal_type = ? AND principal_id = ?
                   AND currency_code = ? AND (workspace_id = ? OR (workspace_id IS NULL AND ? IS NULL))
                 """, this::mapWallet, principal.tenantId(), principal.principalType().name(),
@@ -108,14 +108,14 @@ public class CreditWalletJdbcRepository {
     }
 
     public List<CreditWallet> findWalletsByTenant(String tenantId) {
-        return jdbc.query("SELECT * FROM credit_wallet WHERE tenant_id = ? ORDER BY created_at",
+        return jdbc.query("SELECT * FROM billing.credit_wallet WHERE tenant_id = ? ORDER BY created_at",
                 this::mapWallet, tenantId);
     }
 
     public CreditWallet updateWallet(CreditWallet wallet, Money balance,
                                      long expectedVersion, Instant at) {
         int updated = jdbc.update("""
-                UPDATE credit_wallet SET balance_minor = ?, version = version + 1, updated_at = ?
+                UPDATE billing.credit_wallet SET balance_minor = ?, version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND id = ? AND version = ? AND status = 'ACTIVE'
                 """, balance.amountMinor(), Timestamp.from(at), wallet.tenantId(), wallet.walletId(),
                 expectedVersion);
@@ -125,7 +125,7 @@ public class CreditWalletJdbcRepository {
 
     public long activeReservedMinor(String tenantId, String walletId) {
         Long total = jdbc.queryForObject("""
-                SELECT COALESCE(sum(amount_minor), 0) FROM credit_reservation
+                SELECT COALESCE(sum(amount_minor), 0) FROM billing.credit_reservation
                 WHERE tenant_id = ? AND wallet_id = ? AND status = 'ACTIVE'
                 """, Long.class, tenantId, walletId);
         return total == null ? 0 : total;
@@ -134,7 +134,7 @@ public class CreditWalletJdbcRepository {
     public CreditReservation insertReservation(CreditWalletCommand command) {
         try {
             jdbc.update("""
-                    INSERT INTO credit_reservation
+                    INSERT INTO billing.credit_reservation
                     (id, tenant_id, wallet_id, amount_minor, currency_code, status, version,
                      reference_type, reference_id, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?)
@@ -152,7 +152,7 @@ public class CreditWalletJdbcRepository {
     public Optional<CreditReservation> findReservationForUpdate(
             String tenantId, String walletId, String reservationId) {
         return jdbc.query("""
-                SELECT * FROM credit_reservation
+                SELECT * FROM billing.credit_reservation
                 WHERE tenant_id = ? AND wallet_id = ? AND id = ? FOR UPDATE
                 """, this::mapReservation, tenantId, walletId, reservationId).stream().findFirst();
     }
@@ -160,7 +160,7 @@ public class CreditWalletJdbcRepository {
     public CreditReservation transitionReservation(CreditReservation reservation,
                                                    String target, Instant at) {
         int updated = jdbc.update("""
-                UPDATE credit_reservation SET status = ?, version = version + 1, updated_at = ?
+                UPDATE billing.credit_reservation SET status = ?, version = version + 1, updated_at = ?
                 WHERE tenant_id = ? AND wallet_id = ? AND id = ?
                   AND version = ? AND status = 'ACTIVE'
                 """, target, Timestamp.from(at), reservation.tenantId(), reservation.walletId(),
@@ -172,7 +172,7 @@ public class CreditWalletJdbcRepository {
 
     public void appendTransaction(CreditTransaction transaction) {
         jdbc.update("""
-                INSERT INTO credit_transaction
+                INSERT INTO billing.credit_transaction
                 (id, tenant_id, wallet_id, reservation_id, transaction_type,
                  amount_minor, currency_code, balance_after_minor, reference_type,
                  reference_id, description, idempotency_key, payload_fingerprint, created_at)
@@ -187,7 +187,7 @@ public class CreditWalletJdbcRepository {
 
     public List<CreditTransaction> findTransactions(String tenantId, String walletId) {
         return jdbc.query("""
-                SELECT * FROM credit_transaction
+                SELECT * FROM billing.credit_transaction
                 WHERE tenant_id = ? AND wallet_id = ? ORDER BY created_at, id
                 """, this::mapTransaction, tenantId, walletId);
     }

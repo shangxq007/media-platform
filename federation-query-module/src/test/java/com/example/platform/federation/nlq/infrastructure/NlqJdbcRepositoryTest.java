@@ -25,7 +25,7 @@ class NlqJdbcRepositoryTest extends PostgresTestContainerSupport {
         var jdbc = new JdbcTemplate(dataSource);
 
         jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS nlq_report_definition (
+            CREATE TABLE IF NOT EXISTS analytics.nlq_report_definition (
                 report_id varchar(64) primary key,
                 tenant_id varchar(64),
                 workspace_id varchar(64),
@@ -42,7 +42,7 @@ class NlqJdbcRepositoryTest extends PostgresTestContainerSupport {
             )
         """);
         jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS nlq_query_history (
+            CREATE TABLE IF NOT EXISTS analytics.nlq_query_history (
                 query_id varchar(64) primary key,
                 user_id varchar(128) not null,
                 tenant_id varchar(64),
@@ -59,7 +59,7 @@ class NlqJdbcRepositoryTest extends PostgresTestContainerSupport {
             )
         """);
         jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS nlq_report_execution (
+            CREATE TABLE IF NOT EXISTS analytics.nlq_report_execution (
                 execution_id varchar(64) primary key,
                 report_id varchar(64) not null,
                 status varchar(32) not null,
@@ -74,9 +74,9 @@ class NlqJdbcRepositoryTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         var jdbc = new JdbcTemplate(dataSource);
-        jdbc.execute("TRUNCATE TABLE nlq_report_execution CASCADE");
-        jdbc.execute("TRUNCATE TABLE nlq_query_history CASCADE");
-        jdbc.execute("TRUNCATE TABLE nlq_report_definition CASCADE");
+        jdbc.execute("TRUNCATE TABLE analytics.nlq_report_execution CASCADE");
+        jdbc.execute("TRUNCATE TABLE analytics.nlq_query_history CASCADE");
+        jdbc.execute("TRUNCATE TABLE analytics.nlq_report_definition CASCADE");
 
         repository = new NlqJdbcRepository(jdbc);
     }

@@ -45,25 +45,25 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
     String tenant, actor, project, account, id, workspace;
 
     @BeforeEach void fixture() {
-        jdbc.update("DELETE FROM social_post");
+        jdbc.update("DELETE FROM publication.social_post");
         String key=UUID.randomUUID().toString().substring(0,24);
         tenant="t"+key; actor="u"+key; project="p"+key; account="a"+key; id="s"+key; workspace="w"+key;
         TenantContext.set(tenant);
-        jdbc.update("INSERT INTO tenant(id,name,status,created_at) VALUES (?,?,'ACTIVE',now())",tenant,tenant);
-        jdbc.update("INSERT INTO account(id,issuer,subject,status,created_at) VALUES (?,'urn:media-platform:local-hmac',?,'ACTIVE',now())",actor,actor);
-        jdbc.update("INSERT INTO \"user\"(id,tenant_id,username,email,status,account_id,created_at) VALUES (?,?,?,?,'ACTIVE',?,now())",actor,tenant,actor,actor,actor);
-        jdbc.update("INSERT INTO workspace(id,tenant_id,name,created_at,updated_at) VALUES (?,?,?,now(),now())",workspace,tenant,workspace);
-        jdbc.update("INSERT INTO workspace_member(id,workspace_id,user_id,role,joined_at,updated_at) VALUES (?,?,?,'OWNER',now(),now())",actor,workspace,actor);
-        jdbc.update("INSERT INTO project(id,tenant_id,workspace_id,name,status,created_at) VALUES (?,?,?,?,'ACTIVE',now())",project,tenant,workspace,project);
-        jdbc.update("INSERT INTO role(id,role_key,name,scope,created_at) VALUES (?,?,?,'WORKSPACE',now())",actor,actor,actor);
-        jdbc.update("INSERT INTO permission(id,permission_key,name,created_at) VALUES ('social-correction-publish','social.publish','publish',now()) ON CONFLICT(permission_key) DO NOTHING");
-        String permission=jdbc.queryForObject("SELECT id FROM permission WHERE permission_key='social.publish'",String.class);
-        jdbc.update("INSERT INTO role_permission(id,role_id,permission_id,created_at) VALUES (?,?,?,now())",actor,actor,permission);
-        jdbc.update("INSERT INTO user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) VALUES (?,?,?,?,?,now())",actor,tenant,workspace,actor,actor);
+        jdbc.update("INSERT INTO identity.tenant(id,name,status,created_at) VALUES (?,?,'ACTIVE',now())",tenant,tenant);
+        jdbc.update("INSERT INTO identity.account(id,issuer,subject,status,created_at) VALUES (?,'urn:media-platform:local-hmac',?,'ACTIVE',now())",actor,actor);
+        jdbc.update("INSERT INTO identity.\"user\"(id,tenant_id,username,email,status,account_id,created_at) VALUES (?,?,?,?,'ACTIVE',?,now())",actor,tenant,actor,actor,actor);
+        jdbc.update("INSERT INTO identity.workspace(id,tenant_id,name,created_at,updated_at) VALUES (?,?,?,now(),now())",workspace,tenant,workspace);
+        jdbc.update("INSERT INTO identity.workspace_member(id,workspace_id,user_id,role,joined_at,updated_at) VALUES (?,?,?,'OWNER',now(),now())",actor,workspace,actor);
+        jdbc.update("INSERT INTO identity.project(id,tenant_id,workspace_id,name,status,created_at) VALUES (?,?,?,?,'ACTIVE',now())",project,tenant,workspace,project);
+        jdbc.update("INSERT INTO identity.role(id,role_key,name,scope,created_at) VALUES (?,?,?,'WORKSPACE',now())",actor,actor,actor);
+        jdbc.update("INSERT INTO identity.permission(id,permission_key,name,created_at) VALUES ('social-correction-publish','social.publish','publish',now()) ON CONFLICT(permission_key) DO NOTHING");
+        String permission=jdbc.queryForObject("SELECT id FROM identity.permission WHERE permission_key='social.publish'",String.class);
+        jdbc.update("INSERT INTO identity.role_permission(id,role_id,permission_id,created_at) VALUES (?,?,?,now())",actor,actor,permission);
+        jdbc.update("INSERT INTO identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) VALUES (?,?,?,?,?,now())",actor,tenant,workspace,actor,actor);
         // Decoy precedes the bound account, reproducing the reviewer's first-match routing counterexample.
-        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,status) VALUES (?,?,?,'TWITTER','ACTIVE')","x"+account,tenant,actor);
-        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,status,binding_version) VALUES (?,?,?,'TWITTER','ACTIVE',2)",account,tenant,actor);
-        jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,project_id,connected_platform_id,connected_platform_binding_version,platform_type,status,scheduled_at) VALUES (?,?,?,?,?,2,'TWITTER','SCHEDULED',?)",id,tenant,actor,project,account,LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+        jdbc.update("INSERT INTO publication.social_connected_platform(id,tenant_id,user_id,platform_type,status) VALUES (?,?,?,'TWITTER','ACTIVE')","x"+account,tenant,actor);
+        jdbc.update("INSERT INTO publication.social_connected_platform(id,tenant_id,user_id,platform_type,status,binding_version) VALUES (?,?,?,'TWITTER','ACTIVE',2)",account,tenant,actor);
+        jdbc.update("INSERT INTO publication.social_post(id,tenant_id,user_id,project_id,connected_platform_id,connected_platform_binding_version,platform_type,status,scheduled_at) VALUES (?,?,?,?,?,2,'TWITTER','SCHEDULED',?)",id,tenant,actor,project,account,LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
         when(provider.platform()).thenReturn(PlatformType.TWITTER);
         doReturn(true).when(provider).validateCredentials(any());
         doAnswer(inv -> {
@@ -74,7 +74,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
     }
     @AfterEach void clear() { TenantContext.clear(); }
     PublishResult success() { return new PublishResult(true,"external","https://example.test/post",null,null); }
-    Map<String,Object> state() {return jdbc.queryForMap("SELECT * FROM social_post WHERE id=?",id);}
+    Map<String,Object> state() {return jdbc.queryForMap("SELECT * FROM publication.social_post WHERE id=?",id);}
     void publish() { service.publishNow(tenant,actor,id); }
     void scheduled() { TenantContext.set(tenant); try { service.publishScheduled(tenant,actor,id); } finally {TenantContext.clear();} }
     void await(CountDownLatch latch) throws InterruptedException { assertThat(latch.await(10,TimeUnit.SECONDS)).isTrue(); }
@@ -98,7 +98,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         for (String change : List.of("rotation", "expiry", "revocation", "invalidation-restored")) {
             fixture(); clearInvocations(provider);
             var expiry=LocalDateTime.ofInstant(Instant.now().plusSeconds(3600),ZoneOffset.UTC).withNano(123456000);
-            jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=?,token_expires_at=? WHERE id=?",
+            jdbc.update("UPDATE publication.social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=?,token_expires_at=? WHERE id=?",
                     "fixture-encrypted-A","fixture-refresh-A",expiry,account);
             var validated=new CountDownLatch(1);var release=new CountDownLatch(1);
             var snapshot=new java.util.concurrent.atomic.AtomicReference<ConnectedPlatform.CredentialSnapshot>();
@@ -117,13 +117,13 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
                     assertThat(claimed).containsEntry("status","PUBLISHING").containsEntry("dispatch_started_at",null);
                     new TransactionTemplate(manager).executeWithoutResult(tx->{
                         switch(change) {
-                            case "rotation" -> jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=? WHERE id=?","fixture-encrypted-B","fixture-refresh-B",account);
-                            case "expiry" -> jdbc.update("UPDATE social_connected_platform SET token_expires_at=? WHERE id=?",LocalDateTime.ofInstant(Instant.now().minusSeconds(60),ZoneOffset.UTC),account);
-                            case "revocation" -> jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=NULL,refresh_token_encrypted=NULL WHERE id=?",account);
-                            default -> {jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);jdbc.update("UPDATE social_connected_platform SET status='ACTIVE' WHERE id=?",account);}
+                            case "rotation" -> jdbc.update("UPDATE publication.social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=? WHERE id=?","fixture-encrypted-B","fixture-refresh-B",account);
+                            case "expiry" -> jdbc.update("UPDATE publication.social_connected_platform SET token_expires_at=? WHERE id=?",LocalDateTime.ofInstant(Instant.now().minusSeconds(60),ZoneOffset.UTC),account);
+                            case "revocation" -> jdbc.update("UPDATE publication.social_connected_platform SET access_token_encrypted=NULL,refresh_token_encrypted=NULL WHERE id=?",account);
+                            default -> {jdbc.update("UPDATE publication.social_connected_platform SET status='INACTIVE' WHERE id=?",account);jdbc.update("UPDATE publication.social_connected_platform SET status='ACTIVE' WHERE id=?",account);}
                         }
                     });
-                    assertThat(jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id=?",Long.class,account)).isGreaterThan(snapshot.get().revision());
+                    assertThat(jdbc.queryForObject("SELECT credential_revision FROM publication.social_connected_platform WHERE id=?",Long.class,account)).isGreaterThan(snapshot.get().revision());
                 } finally {release.countDown();}
                 assertThat(job.get(15,TimeUnit.SECONDS)).isInstanceOf(IllegalStateException.class).hasMessageContaining("credentials changed");
             }
@@ -136,8 +136,8 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
                     .containsEntry("attempt_credential_expires_at",null).containsEntry("platform_post_id",null)
                     .containsEntry("error_code","PRE_DISPATCH_REJECTED")
                     .containsEntry("error_message","Publication prerequisites rejected before dispatch");
-            jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=?,token_expires_at=? WHERE id=?","fixture-encrypted-C","fixture-refresh-C",expiry,account);
-            var restoredRevision=jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id=?",Long.class,account);
+            jdbc.update("UPDATE publication.social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=?,token_expires_at=? WHERE id=?","fixture-encrypted-C","fixture-refresh-C",expiry,account);
+            var restoredRevision=jdbc.queryForObject("SELECT credential_revision FROM publication.social_connected_platform WHERE id=?",Long.class,account);
             doReturn(true).when(provider).validateCredentials(any());
             service.retryPost(tenant,actor,id);
             assertThat(state()).containsEntry("status","PUBLISHED").containsEntry("retry_count",1)
@@ -149,14 +149,14 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
 
     @Test void credentialExpiryIsUtcAndPastExpiryRejectsBeforeValidation() {
         var expiry=LocalDateTime.ofInstant(Instant.now().minusSeconds(60),ZoneOffset.UTC);
-        jdbc.update("UPDATE social_connected_platform SET token_expires_at=? WHERE id=?",expiry,account);
+        jdbc.update("UPDATE publication.social_connected_platform SET token_expires_at=? WHERE id=?",expiry,account);
         assertThatThrownBy(this::publish).hasMessageContaining("expired");
         assertThat(state()).containsEntry("status","FAILED").containsEntry("retry_count",1).containsEntry("dispatch_started_at",null);
         verify(provider,never()).validateCredentials(any());verify(provider,never()).publish(any(),any());
     }
 
     @Test void unchangedCredentialSnapshotPermitsExactBindingAndPersistsSnapshot() {
-        jdbc.update("UPDATE social_connected_platform SET access_token_encrypted='stable', refresh_token_encrypted='stable-refresh', token_expires_at=? WHERE id=?", LocalDateTime.now(ZoneOffset.UTC).plusHours(1), account);
+        jdbc.update("UPDATE publication.social_connected_platform SET access_token_encrypted='stable', refresh_token_encrypted='stable-refresh', token_expires_at=? WHERE id=?", LocalDateTime.now(ZoneOffset.UTC).plusHours(1), account);
         publish();
         var row=state();
         assertThat(row.get("attempt_credential_revision")).isEqualTo(2L);
@@ -175,7 +175,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
                 var dispatched=state();
                 assertThat(dispatched.get("dispatch_started_at")).isNotNull();
                 assertThat(dispatched).containsEntry("attempt_credential_revision",1L);
-                jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=? WHERE id=?","fixture-after-dispatch",account);
+                jdbc.update("UPDATE publication.social_connected_platform SET access_token_encrypted=? WHERE id=?","fixture-after-dispatch",account);
                 assertThat(state()).isEqualTo(dispatched);
             } finally {release.countDown();}
             job.get(15,TimeUnit.SECONDS);
@@ -319,11 +319,11 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
     }
     @Test void invalidBindingsAndCanonicalPermissionFailClosed() {
         for(String change:List.of(
-                "UPDATE social_post SET project_id=NULL,connected_platform_id=NULL,connected_platform_binding_version=NULL WHERE id=?",
-                "UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",
-                "UPDATE workspace_member SET status='REMOVED' WHERE id=?",
-                "DELETE FROM user_role_assignment WHERE id=?",
-                "UPDATE project SET status='ARCHIVED' WHERE id=?")) {
+                "UPDATE publication.social_post SET project_id=NULL,connected_platform_id=NULL,connected_platform_binding_version=NULL WHERE id=?",
+                "UPDATE publication.social_connected_platform SET status='INACTIVE' WHERE id=?",
+                "UPDATE identity.workspace_member SET status='REMOVED' WHERE id=?",
+                "DELETE FROM identity.user_role_assignment WHERE id=?",
+                "UPDATE identity.project SET status='ARCHIVED' WHERE id=?")) {
             jdbc.update(change,change.contains("social_post")?id:change.contains("social_connected")?account:change.contains("project SET")?project:actor);
             assertThatThrownBy(this::publish).isInstanceOf(RuntimeException.class);
             assertThat(state()).containsEntry("status","FAILED").containsEntry("dispatch_started_at",null).containsEntry("platform_post_id",null).containsEntry("retry_count",1);
@@ -332,7 +332,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         var before=state();assertThatThrownBy(()->service.publishNow(tenant,"foreign",id)).isInstanceOf(IllegalArgumentException.class);assertThat(state()).isEqualTo(before);
         TenantContext.set("foreign");assertThatThrownBy(this::publish).isInstanceOf(RuntimeException.class);TenantContext.set(tenant);assertThat(state()).isEqualTo(before);
         // Invalid revision cannot exist under the composite FK; this is separate schema evidence.
-        assertThatThrownBy(()->jdbc.update("UPDATE social_post SET connected_platform_binding_version=99 WHERE id=?",id)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThatThrownBy(()->jdbc.update("UPDATE publication.social_post SET connected_platform_binding_version=99 WHERE id=?",id)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
         assertThat(state()).isEqualTo(before);
     }
     @Test void accountChangeBeforeDispatchRejectsButAfterDispatchCannotRecallRequest() throws Exception {
@@ -340,20 +340,20 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         doAnswer(inv->{checking.countDown();await(checked);return true;}).when(provider).validateCredentials(any());
         try(var pool=Executors.newSingleThreadExecutor()) {
             var job=pool.submit(()->assertThatThrownBy(this::scheduled).hasMessageContaining("binding"));
-            try {await(checking);jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);}
+            try {await(checking);jdbc.update("UPDATE publication.social_connected_platform SET status='INACTIVE' WHERE id=?",account);}
             finally {checked.countDown();}
             job.get(15,TimeUnit.SECONDS);
         }
         assertThat(state()).containsEntry("status","FAILED").containsEntry("dispatch_started_at",null);
         verify(provider,never()).publish(any(),any());
-        jdbc.update("UPDATE social_connected_platform SET status='ACTIVE' WHERE id=?",account);
+        jdbc.update("UPDATE publication.social_connected_platform SET status='ACTIVE' WHERE id=?",account);
         doReturn(true).when(provider).validateCredentials(any());
         var sent=new CountDownLatch(1);var response=new CountDownLatch(1);
         doAnswer(inv->{sent.countDown();await(response);return success();}).when(provider).publish(any(),any());
         service.schedulePost(tenant,actor,id,new com.example.platform.social.api.dto.SchedulePostRequest(Instant.now().minusSeconds(1).toString()));
         try(var pool=Executors.newSingleThreadExecutor()) {
             var job=pool.submit(this::scheduled);
-            try {await(sent);jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);}
+            try {await(sent);jdbc.update("UPDATE publication.social_connected_platform SET status='INACTIVE' WHERE id=?",account);}
             finally {response.countDown();}
             job.get(15,TimeUnit.SECONDS);
         }

@@ -10,9 +10,9 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import static com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalEdge.SYSTEM_CANONICAL_EDGE;
-import static com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalEvent.SYSTEM_CANONICAL_EVENT;
-import static com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalGraph.SYSTEM_CANONICAL_GRAPH;
+import static com.example.platform.typedschema.jooq.generated.render.tables.SystemCanonicalEdge.SYSTEM_CANONICAL_EDGE;
+import static com.example.platform.typedschema.jooq.generated.render.tables.SystemCanonicalEvent.SYSTEM_CANONICAL_EVENT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.SystemCanonicalGraph.SYSTEM_CANONICAL_GRAPH;
 
 
 /**

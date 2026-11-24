@@ -113,13 +113,13 @@ class FirstRenderPreparationPostgresTest {
                     new com.example.platform.render.domain.renderplan.RenderExtent(
                             MediaTime.ofMillis(0),MediaTime.ofMillis(2000),FrameRate.of(30,1)),"preparation-test"));
         }
-        org.jooq.Record job() { return world.db.fetchOne("select * from render_job where profile='preparation-test'"); }
+        org.jooq.Record job() { return world.db.fetchOne("select * from render.render_job where profile='preparation-test'"); }
         void assertFailed(String stage) {
             var job=job();assertNotNull(job);assertEquals("FAILED",job.get("status"));
             String code="GRAPH_PREPARATION_"+stage+"_FAILED";
             assertEquals(code,job.get("error_message"));assertNull(job.get("graph_preparation_deadline"));
-            assertEquals(1,world.db.fetchOne("select count(*) from render_job_status_history where job_id=? and to_status='FAILED' and error_code=?",job.get("id"),code).get(0,Integer.class));
-            assertEquals(1,world.db.fetchOne("select count(*) from outbox_events where aggregate_id=? and event_type='render.job.failed'",job.get("id")).get(0,Integer.class));
+            assertEquals(1,world.db.fetchOne("select count(*) from render.render_job_status_history where job_id=? and to_status='FAILED' and error_code=?",job.get("id"),code).get(0,Integer.class));
+            assertEquals(1,world.db.fetchOne("select count(*) from infrastructure.outbox_events where aggregate_id=? and event_type='render.job.failed'",job.get("id")).get(0,Integer.class));
             assertEquals(0,world.count("quota_usage_operation"));
             verifyNoInteractions(starter);
         }
@@ -144,7 +144,7 @@ class FirstRenderPreparationPostgresTest {
             var request=StaleRenderJobCompensationService.CompensationRequest.scheduled(Duration.ofMinutes(30));
             assertEquals(0,s.world.tx(()->recovery.compensate(request)).compensated());
             // Fault fixture simulates elapsed time after process loss, never writes a job terminal.
-            s.world.db.execute("update render_job set graph_preparation_deadline=clock_timestamp()-interval '1 second' where id=?",job);
+            s.world.db.execute("update render.render_job set graph_preparation_deadline=clock_timestamp()-interval '1 second' where id=?",job);
             assertEquals(1,s.world.tx(()->recovery.compensate(request)).compensated());
             assertEquals(0,s.world.tx(()->recovery.compensate(request)).compensated());
             assertEquals("FAILED",s.job().get("status"));

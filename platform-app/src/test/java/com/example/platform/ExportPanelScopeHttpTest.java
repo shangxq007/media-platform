@@ -24,18 +24,18 @@ class ExportPanelScopeHttpTest extends FederationOwnerReadsHttpTest {
  HttpResponse<String> gql(Actor a,String q,String ws)throws Exception{return http(a,"POST","/graphql",Map.of("query",q),ws);}
  String workspace(Actor a)throws Exception{var r=http(a,"POST","/api/product/workspace",Map.of("name","Correction regression"),null);assertEquals(200,r.statusCode(),r.body());return json.readTree(r.body()).get("workspaceId").asText();}
  List<AccessCheckRequest> requests(){return mockingDetails(decisions).getInvocations().stream().filter(i->i.getMethod().getName().equals("evaluate")).map(i->(AccessCheckRequest)i.getArgument(0)).toList();}
- Actor sameTenant(Actor a){String id=UUID.randomUUID().toString();db.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,a.tenant(),id,id+"@test.invalid");var op=CanonicalActor.system("system:identity-provisioning",a.tenant());String account=accounts.provisionVerifiedAccount(op,"urn:media-platform:local-hmac",id);accounts.linkMembership(op,account,a.tenant(),id);String token=io.jsonwebtoken.Jwts.builder().subject(id).claim("tenantId",a.tenant()).claim("roles",List.of("ADMIN")).expiration(new Date(System.currentTimeMillis()+600000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("ep22-graphql-http-key-at-least-256-bits".getBytes(java.nio.charset.StandardCharsets.UTF_8))).compact();return new Actor(id,a.tenant(),token);}
+ Actor sameTenant(Actor a){String id=UUID.randomUUID().toString();db.update("insert into identity.\"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,a.tenant(),id,id+"@test.invalid");var op=CanonicalActor.system("system:identity-provisioning",a.tenant());String account=accounts.provisionVerifiedAccount(op,"urn:media-platform:local-hmac",id);accounts.linkMembership(op,account,a.tenant(),id);String token=io.jsonwebtoken.Jwts.builder().subject(id).claim("tenantId",a.tenant()).claim("roles",List.of("ADMIN")).expiration(new Date(System.currentTimeMillis()+600000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("ep22-graphql-http-key-at-least-256-bits".getBytes(java.nio.charset.StandardCharsets.UTF_8))).compact();return new Actor(id,a.tenant(),token);}
  void grantRead(Actor a,String p){
-  String id="r-"+UUID.randomUUID();db.update("insert into role(id,role_key,name,scope,created_at) values (?,?,?,'WORKSPACE',now())",id,id,id);
-  db.update("insert into permission(id,permission_key,name,created_at) values (?,'READ','Read',now()) on conflict(permission_key) do nothing",id);
-  String permission=db.queryForObject("select id from permission where permission_key='READ'",String.class);
-  db.update("insert into role_permission(id,role_id,permission_id,created_at) values (?,?,?,now())",id,id,permission);
-  db.update("insert into user_role_assignment(id,tenant_id,project_id,user_id,role_id,created_at) values (?,?,?,?,?,now())",id,a.tenant(),p,a.id(),id);
+  String id="r-"+UUID.randomUUID();db.update("insert into identity.role(id,role_key,name,scope,created_at) values (?,?,?,'WORKSPACE',now())",id,id,id);
+  db.update("insert into identity.permission(id,permission_key,name,created_at) values (?,'READ','Read',now()) on conflict(permission_key) do nothing",id);
+  String permission=db.queryForObject("select id from identity.permission where permission_key='READ'",String.class);
+  db.update("insert into identity.role_permission(id,role_id,permission_id,created_at) values (?,?,?,now())",id,id,permission);
+  db.update("insert into identity.user_role_assignment(id,tenant_id,project_id,user_id,role_id,created_at) values (?,?,?,?,?,now())",id,a.tenant(),p,a.id(),id);
  }
 
  String project(Actor a, String ws) {
   String id = "export-" + UUID.randomUUID();
-  db.update("insert into project(id,tenant_id,workspace_id,name,status,created_at) values (?,?,?,?,'ACTIVE',now())", id,a.tenant(),ws,"Export project");
+  db.update("insert into identity.project(id,tenant_id,workspace_id,name,status,created_at) values (?,?,?,?,'ACTIVE',now())", id,a.tenant(),ws,"Export project");
   grantRead(a,id);
   return id;
  }

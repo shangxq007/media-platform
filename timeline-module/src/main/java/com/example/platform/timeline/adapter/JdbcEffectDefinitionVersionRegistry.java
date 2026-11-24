@@ -56,7 +56,7 @@ public final class JdbcEffectDefinitionVersionRegistry implements EffectDefiniti
         // scan every durable Effect snapshot payload (via the SAME transaction)
         // for the same (definitionId, version)
         java.util.List<String> payloads = tx.fetch(
-                        "select payload_json from timeline_snapshot where id like '"
+                        "select payload_json from timeline.timeline_snapshot where id like '"
                                 + JdbcEffectSemanticSnapshotStore.ID_PREFIX + "%'")
                 .getValues(0, String.class);
         if ("true".equalsIgnoreCase(System.getenv("RM20_REGISTRY_DIAG"))) {

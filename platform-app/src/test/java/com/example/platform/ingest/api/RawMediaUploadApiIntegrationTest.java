@@ -150,20 +150,20 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
 
     private String createTenant(String name) {
         String id="ten_"+java.util.UUID.randomUUID().toString().replace("-","");
-        jdbc.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",id,name);return id;
+        jdbc.update("insert into identity.tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",id,name);return id;
     }
     private String createProject(String tenantId,String name) {
         String id="prj_"+java.util.UUID.randomUUID().toString().replace("-","");
-        jdbc.update("insert into project(id,tenant_id,name,status,created_at) values (?,?,?,'ACTIVE',now())",id,tenantId,name);
+        jdbc.update("insert into identity.project(id,tenant_id,name,status,created_at) values (?,?,?,'ACTIVE',now())",id,tenantId,name);
         String role="upload-"+java.util.UUID.randomUUID();
-        jdbc.update("insert into role(id,role_key,name,scope,created_at) values (?,?,?,'WORKSPACE',now())",role,role,"Upload fixture");
+        jdbc.update("insert into identity.role(id,role_key,name,scope,created_at) values (?,?,?,'WORKSPACE',now())",role,role,"Upload fixture");
         for(String key:List.of("READ","WRITE")) {
             String permission="perm-"+java.util.UUID.randomUUID();
-            jdbc.update("insert into permission(id,permission_key,name,created_at) values (?,?,?,now()) on conflict(permission_key) do nothing",permission,key,key);
-            String actual=jdbc.queryForObject("select id from permission where permission_key=?",String.class,key);
-            jdbc.update("insert into role_permission(id,role_id,permission_id,created_at) values (?,?,?,now())","rp-"+java.util.UUID.randomUUID(),role,actual);
+            jdbc.update("insert into identity.permission(id,permission_key,name,created_at) values (?,?,?,now()) on conflict(permission_key) do nothing",permission,key,key);
+            String actual=jdbc.queryForObject("select id from identity.permission where permission_key=?",String.class,key);
+            jdbc.update("insert into identity.role_permission(id,role_id,permission_id,created_at) values (?,?,?,now())","rp-"+java.util.UUID.randomUUID(),role,actual);
         }
-        jdbc.update("insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values (?,?,?,'uploader',?,now())","ra-"+java.util.UUID.randomUUID(),tenantId,id,role);
+        jdbc.update("insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values (?,?,?,'uploader',?,now())","ra-"+java.util.UUID.randomUUID(),tenantId,id,role);
         return id;
     }
     private String token(String tenant,String user) {
@@ -182,7 +182,7 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
         var result=client.send(request,HttpResponse.BodyHandlers.ofString());
         Assertions.assertEquals(403,result.statusCode(),result.body());
         Assertions.assertEquals(0,jdbc.queryForObject("select count(*) from media_asset where tenant_id=?",Integer.class,tenant));
-        Assertions.assertEquals(0,jdbc.queryForObject("select count(*) from product where tenant_id=?",Integer.class,tenant));
+        Assertions.assertEquals(0,jdbc.queryForObject("select count(*) from render.product where tenant_id=?",Integer.class,tenant));
         Assertions.assertEquals(objectsBefore,blobStorage.listObjects("uploads","",1000).size());
     }
 

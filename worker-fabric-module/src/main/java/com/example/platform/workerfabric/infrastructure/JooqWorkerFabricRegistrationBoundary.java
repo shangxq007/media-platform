@@ -56,7 +56,7 @@ public class JooqWorkerFabricRegistrationBoundary
 
             Record currentHost = tx.fetchOne(
                     """
-                    select physical_host_incarnation_id from wf_host_registration
+                    select physical_host_incarnation_id from worker_fabric.wf_host_registration
                      where physical_host_id = ? and active
                      for update
                     """,
@@ -72,7 +72,7 @@ public class JooqWorkerFabricRegistrationBoundary
                             registration.registeredAt());
                     tx.execute(
                             """
-                            update wf_runtime_registration set active = false
+                            update worker_fabric.wf_runtime_registration set active = false
                              where physical_host_id = ? and physical_host_incarnation_id = ? and active
                             """,
                             hostId,
@@ -81,11 +81,11 @@ public class JooqWorkerFabricRegistrationBoundary
             }
 
             tx.execute(
-                    "update wf_host_registration set active = false where physical_host_id = ? and active",
+                    "update worker_fabric.wf_host_registration set active = false where physical_host_id = ? and active",
                     hostId);
             tx.execute(
                     """
-                    insert into wf_host_registration (
+                    insert into worker_fabric.wf_host_registration (
                         physical_host_id, physical_host_incarnation_id,
                         registered_at, valid_until, active)
                     values (?, ?, cast(? as timestamptz), cast(? as timestamptz), true)
@@ -100,7 +100,7 @@ public class JooqWorkerFabricRegistrationBoundary
                     databaseTime(registration.validUntil()));
             int generationAdvanced = tx.execute(
                     """
-                    insert into wf_host_snapshot_generation_authority (
+                    insert into worker_fabric.wf_host_snapshot_generation_authority (
                         physical_host_id, physical_host_incarnation_id, current_generation)
                     values (?, ?, ?)
                     on conflict (physical_host_id, physical_host_incarnation_id) do update
@@ -117,7 +117,7 @@ public class JooqWorkerFabricRegistrationBoundary
             }
             tx.execute(
                     """
-                    insert into wf_host_resource_snapshot (
+                    insert into worker_fabric.wf_host_resource_snapshot (
                         physical_host_id, physical_host_incarnation_id, snapshot_generation,
                         snapshot_fingerprint, captured_at, schema_version,
                         cpu_millicores, memory_bytes, temporary_storage_bytes,
@@ -153,7 +153,7 @@ public class JooqWorkerFabricRegistrationBoundary
                             registration.safetyHeadroom().resources()));
             tx.execute(
                     """
-                    insert into wf_physical_host_connection (
+                    insert into worker_fabric.wf_physical_host_connection (
                         physical_host_id, current_incarnation_id, connected, updated_at)
                     values (?, ?, true, cast(? as timestamptz))
                     on conflict (physical_host_id) do update
@@ -176,7 +176,7 @@ public class JooqWorkerFabricRegistrationBoundary
             String hostId = descriptor.id().value();
             tx.execute(
                     """
-                    insert into wf_physical_host_descriptor (
+                    insert into worker_fabric.wf_physical_host_descriptor (
                         physical_host_id, host_location, trust_zone_id, captured_at)
                     values (?, ?, ?, now())
                     on conflict (physical_host_id) do update
@@ -188,13 +188,13 @@ public class JooqWorkerFabricRegistrationBoundary
                     descriptor.location().value(),
                     descriptor.trustZoneId().value());
             tx.execute(
-                    "delete from wf_physical_host_descriptor_device where physical_host_id = ?",
+                    "delete from worker_fabric.wf_physical_host_descriptor_device where physical_host_id = ?",
                     hostId);
             descriptor.devices().stream()
                     .sorted(Comparator.comparing(device -> device.id().value()))
                     .forEach(device -> tx.execute(
                             """
-                            insert into wf_physical_host_descriptor_device (
+                            insert into worker_fabric.wf_physical_host_descriptor_device (
                                 physical_host_id, device_id, device_kind, device_vendor, device_model)
                             values (?, ?, ?, ?, ?)
                             """,
@@ -212,7 +212,7 @@ public class JooqWorkerFabricRegistrationBoundary
         Record row = dsl.fetchOne(
                 """
                 select host_location, trust_zone_id, captured_at
-                  from wf_physical_host_descriptor
+                  from worker_fabric.wf_physical_host_descriptor
                  where physical_host_id = ?
                 """,
                 physicalHostId.value());
@@ -223,7 +223,7 @@ public class JooqWorkerFabricRegistrationBoundary
         dsl.fetch(
                 """
                 select device_id, device_kind, device_vendor, device_model
-                  from wf_physical_host_descriptor_device
+                  from worker_fabric.wf_physical_host_descriptor_device
                  where physical_host_id = ?
                  order by device_id
                 """,
@@ -248,7 +248,7 @@ public class JooqWorkerFabricRegistrationBoundary
             DSLContext tx = DSL.using(configuration);
             Record host = tx.fetchOne(
                     """
-                    select valid_until from wf_host_registration
+                    select valid_until from worker_fabric.wf_host_registration
                      where physical_host_id = ? and physical_host_incarnation_id = ? and active
                      for update
                     """,
@@ -264,7 +264,7 @@ public class JooqWorkerFabricRegistrationBoundary
             // Locking only an active registration cannot serialize the absent-row/takeover case.
             tx.execute(
                     """
-                    insert into wf_worker_runtime_connection (
+                    insert into worker_fabric.wf_worker_runtime_connection (
                         worker_runtime_id, current_incarnation_id, connected, updated_at)
                     values (?, ?, false, cast(? as timestamptz))
                     on conflict (worker_runtime_id) do nothing
@@ -273,13 +273,13 @@ public class JooqWorkerFabricRegistrationBoundary
                     registration.workerRuntimeIncarnationId().value(),
                     databaseTime(registration.registeredAt()));
             Record connection = tx.fetchOne(
-                    "select * from wf_worker_runtime_connection where worker_runtime_id = ? for update",
+                    "select * from worker_fabric.wf_worker_runtime_connection where worker_runtime_id = ? for update",
                     registration.workerRuntimeId().value());
             String incoming = registration.workerRuntimeIncarnationId().value();
             String current = connection.get("current_incarnation_id", String.class);
             Record previous = tx.fetchOne(
                     """
-                    select * from wf_runtime_registration
+                    select * from worker_fabric.wf_runtime_registration
                      where worker_runtime_id = ? and worker_runtime_incarnation_id = ?
                      for update
                     """,
@@ -299,7 +299,7 @@ public class JooqWorkerFabricRegistrationBoundary
             }
             Record currentRuntime = tx.fetchOne(
                     """
-                    select worker_runtime_incarnation_id, valid_until from wf_runtime_registration
+                    select worker_runtime_incarnation_id, valid_until from worker_fabric.wf_runtime_registration
                      where worker_runtime_id = ? and worker_runtime_incarnation_id = ?
                      for update
                     """,
@@ -318,11 +318,11 @@ public class JooqWorkerFabricRegistrationBoundary
                 }
             }
             tx.execute(
-                    "update wf_runtime_registration set active = false where worker_runtime_id = ? and active",
+                    "update worker_fabric.wf_runtime_registration set active = false where worker_runtime_id = ? and active",
                     registration.workerRuntimeId().value());
             tx.execute(
                     """
-                    insert into wf_runtime_registration (
+                    insert into worker_fabric.wf_runtime_registration (
                         worker_runtime_id, worker_runtime_incarnation_id,
                         physical_host_id, physical_host_incarnation_id,
                         registered_at, valid_until, active)
@@ -342,7 +342,7 @@ public class JooqWorkerFabricRegistrationBoundary
                     databaseTime(registration.validUntil()));
             tx.execute(
                     """
-                    insert into wf_worker_runtime_connection (
+                    insert into worker_fabric.wf_worker_runtime_connection (
                         worker_runtime_id, current_incarnation_id, connected, updated_at)
                     values (?, ?, true, cast(? as timestamptz))
                     on conflict (worker_runtime_id) do update
@@ -364,7 +364,7 @@ public class JooqWorkerFabricRegistrationBoundary
         Objects.requireNonNull(physicalHostIncarnationId, "physicalHostIncarnationId");
         Record row = dsl.fetchOne(
                 """
-                select current_generation from wf_host_snapshot_generation_authority
+                select current_generation from worker_fabric.wf_host_snapshot_generation_authority
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                 """,
                 physicalHostId.value(),
@@ -386,7 +386,7 @@ public class JooqWorkerFabricRegistrationBoundary
         ObservedDeviceUsage observed = snapshot.observedUsage().deviceUsage().get(device.deviceId());
         tx.execute(
                 """
-                insert into wf_host_resource_snapshot_device (
+                insert into worker_fabric.wf_host_resource_snapshot_device (
                     physical_host_id, physical_host_incarnation_id, snapshot_generation,
                     device_id, vram_bytes, compute_units, encoder_engines, decoder_engines,
                     safety_headroom_vram_bytes, safety_headroom_compute_units,
@@ -422,7 +422,7 @@ public class JooqWorkerFabricRegistrationBoundary
         Record row = dsl.fetchOne(
                 """
                 select physical_host_incarnation_id, registered_at, valid_until
-                  from wf_host_registration
+                  from worker_fabric.wf_host_registration
                  where physical_host_id = ? and active
                 """,
                 physicalHostId.value());
@@ -445,7 +445,7 @@ public class JooqWorkerFabricRegistrationBoundary
                 """
                 select worker_runtime_incarnation_id, physical_host_id,
                        physical_host_incarnation_id, registered_at, valid_until
-                  from wf_runtime_registration
+                  from worker_fabric.wf_runtime_registration
                  where worker_runtime_id = ? and active
                 """,
                 workerRuntimeId.value());
@@ -468,7 +468,7 @@ public class JooqWorkerFabricRegistrationBoundary
         Record row = dsl.fetchOne(
                 """
                 select physical_host_id, physical_host_incarnation_id, registered_at, valid_until
-                  from wf_host_registration
+                  from worker_fabric.wf_host_registration
                  where active
                  order by registered_at desc
                  limit 1
@@ -490,7 +490,7 @@ public class JooqWorkerFabricRegistrationBoundary
                 """
                 select worker_runtime_id, worker_runtime_incarnation_id, physical_host_id,
                        physical_host_incarnation_id, registered_at, valid_until
-                  from wf_runtime_registration
+                  from worker_fabric.wf_runtime_registration
                  where active
                  order by registered_at desc
                  limit 1
@@ -525,7 +525,7 @@ public class JooqWorkerFabricRegistrationBoundary
                        safety_headroom_temporary_storage_bytes,
                        observed_cpu_utilization_ratio, observed_memory_used_bytes,
                        observed_temporary_storage_used_bytes
-                  from wf_host_resource_snapshot
+                  from worker_fabric.wf_host_resource_snapshot
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                    and snapshot_generation = ?
                 """,
@@ -541,7 +541,7 @@ public class JooqWorkerFabricRegistrationBoundary
                 select device_id, vram_bytes, compute_units, encoder_engines, decoder_engines,
                        safety_headroom_vram_bytes, safety_headroom_compute_units,
                        safety_headroom_encoder_engines, safety_headroom_decoder_engines
-                  from wf_host_resource_snapshot_device
+                  from worker_fabric.wf_host_resource_snapshot_device
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                    and snapshot_generation = ?
                  order by device_id
@@ -601,7 +601,7 @@ public class JooqWorkerFabricRegistrationBoundary
                 """
                 select device_id, observed_compute_utilization_ratio, observed_vram_used_bytes,
                        observed_encoder_utilization_ratio, observed_decoder_utilization_ratio
-                  from wf_host_resource_snapshot_device
+                  from worker_fabric.wf_host_resource_snapshot_device
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                    and snapshot_generation = ?
                    and observed_compute_utilization_ratio is not null
@@ -632,7 +632,7 @@ public class JooqWorkerFabricRegistrationBoundary
         Objects.requireNonNull(evidence, "evidence");
         dsl.execute(
                 """
-                insert into wf_host_readiness (
+                insert into worker_fabric.wf_host_readiness (
                     physical_host_id, physical_host_incarnation_id, worker_runtime_id,
                     worker_runtime_incarnation_id, environment_readiness, sandbox_readiness,
                     snapshot_generation, captured_at, valid_until)
@@ -671,7 +671,7 @@ public class JooqWorkerFabricRegistrationBoundary
                 """
                 select worker_runtime_id, worker_runtime_incarnation_id, environment_readiness,
                        sandbox_readiness, snapshot_generation, captured_at, valid_until
-                  from wf_host_readiness
+                  from worker_fabric.wf_host_readiness
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                    and valid_until > now()
                 """,

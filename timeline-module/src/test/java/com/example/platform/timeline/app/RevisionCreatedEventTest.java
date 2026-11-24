@@ -83,7 +83,7 @@ class RevisionCreatedEventTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("truncate table outbox_events, project, product cascade");
+        dsl.execute("truncate table infrastructure.outbox_events, project, product cascade");
         TenantContext.set(TENANT);
         service = new TimelineRevisionSaveService(
                 dsl,
@@ -140,7 +140,7 @@ class RevisionCreatedEventTest extends PostgresTestContainerSupport {
 
         Map<String, Object> row = dsl.fetchOne(
                 "select aggregate_type, aggregate_id, event_type, event_version, payload "
-                        + "from outbox_events where event_type = ? and aggregate_id = ?",
+                        + "from infrastructure.outbox_events where event_type = ? and aggregate_id = ?",
                 EVENT_TYPE, revision.revisionId()).intoMap();
         assertNotNull(row, "REVISION_CREATED row present");
         assertEquals("timeline_revision", row.get("aggregate_type"));
@@ -171,13 +171,13 @@ class RevisionCreatedEventTest extends PostgresTestContainerSupport {
 
     private String seedProduct() {
         String productId = "prod-rce-" + java.util.UUID.randomUUID();
-        dsl.execute("insert into tenant (id, name, status, created_at) values (?, ?, 'ACTIVE', now()) "
+        dsl.execute("insert into identity.tenant (id, name, status, created_at) values (?, ?, 'ACTIVE', now()) "
                         + "on conflict (id) do nothing",
                 TENANT, "rce-tenant");
-        dsl.execute("insert into project (id, tenant_id, name, description, status, created_at) "
+        dsl.execute("insert into identity.project (id, tenant_id, name, description, status, created_at) "
                         + "values (?, ?, ?, ?, ?, now())",
                 productId, TENANT, "rce-project", "", "ACTIVE");
-        dsl.execute("insert into product (product_id, product_type, representation_kind, status, "
+        dsl.execute("insert into render.product (product_id, product_type, representation_kind, status, "
                         + "tenant_id, project_id, created_at, updated_at) "
                         + "values (?, ?, ?, ?, ?, ?, now(), now())",
                 productId, "video", "master", "REGISTERED", TENANT, productId);
@@ -192,14 +192,14 @@ class RevisionCreatedEventTest extends PostgresTestContainerSupport {
 
     private long revisionCreatedCount(String revisionId) {
         Integer count = dsl.fetchOne(
-                "select count(*) from outbox_events where event_type = ? and aggregate_id = ?",
+                "select count(*) from infrastructure.outbox_events where event_type = ? and aggregate_id = ?",
                 EVENT_TYPE, revisionId).get(0, Integer.class);
         return count == null ? 0 : count;
     }
 
     private long totalRevisionCreatedCount() {
         Integer count = dsl.fetchOne(
-                "select count(*) from outbox_events where event_type = ?", EVENT_TYPE)
+                "select count(*) from infrastructure.outbox_events where event_type = ?", EVENT_TYPE)
                 .get(0, Integer.class);
         return count == null ? 0 : count;
     }

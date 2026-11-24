@@ -1,7 +1,7 @@
 package com.example.platform.artifact.infrastructure;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-import static com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ARTIFACT_RELATION;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.ArtifactRelation.ARTIFACT_RELATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -86,7 +86,7 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
 
     @BeforeEach
     void cleanCanonicalTables() {
-        dsl.execute("TRUNCATE TABLE artifact_relation, artifact_replica, artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_relation, artifact_replica, artifact CASCADE");
     }
 
     private static ArtifactCommitRequest request(

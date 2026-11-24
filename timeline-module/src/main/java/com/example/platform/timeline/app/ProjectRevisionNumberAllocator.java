@@ -2,7 +2,7 @@ package com.example.platform.timeline.app;
 
 import org.jooq.DSLContext;
 
-import static com.example.platform.typedschema.jooq.generated.tables.ProjectRevisionCounter.PROJECT_REVISION_COUNTER;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.ProjectRevisionCounter.PROJECT_REVISION_COUNTER;
 
 /**
  * Timeline-owned project revision-number authority.

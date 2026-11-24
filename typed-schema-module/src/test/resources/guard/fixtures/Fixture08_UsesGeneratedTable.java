@@ -1,6 +1,6 @@
 package com.example.platform.test;
 
-import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
+import com.example.platform.typedschema.jooq.generated.render.tables.RenderJob;
 
 /**
  * Fixture 08: Uses generated table — ALLOWED (must pass guard).

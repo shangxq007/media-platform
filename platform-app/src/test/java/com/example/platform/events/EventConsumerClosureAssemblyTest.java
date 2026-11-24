@@ -92,7 +92,7 @@ class EventConsumerClosureAssemblyTest extends PostgresTestContainerSupport {
                 now, now.plusSeconds(3600), "ACTIVE", 0, "USD", java.util.Map.of(), java.util.Map.of(),
                 com.example.platform.billing.domain.SubscriptionContractRole.BASE, "ep23-product");
         subscriptions.insertContract(contract, principal, now);
-        long before = jdbc.queryForObject("select count(*) from outbox_events", Long.class);
+        long before = jdbc.queryForObject("select count(*) from infrastructure.outbox_events", Long.class);
         assertEquals("ACTIVE", billing.currentState(principal).contractState());
         assertEquals("ep23-product", billing.currentState(principal).canonicalProductCode());
         assertEquals(id, billing.getContract(principal, id).contractId());
@@ -100,7 +100,7 @@ class EventConsumerClosureAssemblyTest extends PostgresTestContainerSupport {
                 "foreign", com.example.platform.shared.commercial.PrincipalType.USER, id);
         assertNull(billing.currentState(foreign));
         assertNull(billing.getContract(foreign, id));
-        assertEquals(before, jdbc.queryForObject("select count(*) from outbox_events", Long.class));
+        assertEquals(before, jdbc.queryForObject("select count(*) from infrastructure.outbox_events", Long.class));
         assertEquals("ACTIVE", billing.getContract(principal, id).lifecycleState());
     }
 

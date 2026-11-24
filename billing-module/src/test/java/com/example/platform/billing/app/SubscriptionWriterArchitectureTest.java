@@ -24,8 +24,8 @@ class SubscriptionWriterArchitectureTest {
                     .filter(path -> path.toString().contains("/src/main/"))
                     .filter(path -> {
                         String source = read(path).toLowerCase();
-                        return source.contains("insert into subscription_contract")
-                                || source.contains("update subscription_contract")
+                        return source.contains("insert into billing.subscription_contract")
+                                || source.contains("update billing.subscription_contract")
                                 || source.contains("insertinto(subscription_contract)")
                                 || source.contains("update(subscription_contract)");
                     }).toList();

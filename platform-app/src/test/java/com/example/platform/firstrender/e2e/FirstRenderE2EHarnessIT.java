@@ -311,8 +311,8 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
     @Test
     void firstRenderRunsEndToEndAndProducesARealH264Artifact() throws Exception {
         // ---- seed tenant/project (FK prerequisites) ----
-        jdbc.execute("insert into tenant(id, name, created_at) values ('" + TENANT + "', 'FR-E2E', now()) on conflict (id) do nothing");
-        jdbc.execute("insert into project(id, tenant_id, name, created_at) values ('" + PROJECT + "', '" + TENANT + "', 'FR-E2E', now()) on conflict (id) do nothing");
+        jdbc.execute("insert into identity.tenant(id, name, created_at) values ('" + TENANT + "', 'FR-E2E', now()) on conflict (id) do nothing");
+        jdbc.execute("insert into identity.project(id, tenant_id, name, created_at) values ('" + PROJECT + "', '" + TENANT + "', 'FR-E2E', now()) on conflict (id) do nothing");
         stage("seed tenant/project");
 
         // ---- 1. seed a real source Artifact (bytes = repo fixture) ----
@@ -413,11 +413,11 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
                         + "(valid_until > now()) as fresh from wf_host_readiness"));
         stage("host_registration=" + jdbc.queryForList(
                 "select physical_host_id, physical_host_incarnation_id, valid_until > now() as fresh "
-                        + "from wf_host_registration"));
+                        + "from worker_fabric.wf_host_registration"));
         stage("worker registration + readiness written");
         stage("authority=" + jdbc.queryForList(
                 "select physical_host_id, physical_host_incarnation_id, current_generation "
-                        + "from wf_host_snapshot_generation_authority"));
+                        + "from worker_fabric.wf_host_snapshot_generation_authority"));
         stage("snapshot=" + jdbc.queryForList(
                 "select snapshot_generation, cpu_millicores, memory_bytes, temporary_storage_bytes, "
                         + "safety_headroom_cpu_millicores, safety_headroom_memory_bytes, "
@@ -431,7 +431,7 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
                 .orElse(null);
         var diagAuthority = jdbc.queryForMap(
                 "select physical_host_id, physical_host_incarnation_id, current_generation "
-                        + "from wf_host_snapshot_generation_authority limit 1");
+                        + "from worker_fabric.wf_host_snapshot_generation_authority limit 1");
         stage("direct-assess demand=" + diagDemand + " -> " + reservationFeasibilityQuery.assess(
                 PhysicalHostId.of((String) diagAuthority.get("physical_host_id")),
                 PhysicalHostIncarnationId.of(
@@ -461,14 +461,14 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
             stage("workflow-failed: " + workflowFailure.getMessage());
             stage("graph_task_ids=" + graph.tasks().stream()
                     .map(t -> t.id().sha256Hex()).toList());
-            stage("wf_task_ownership=" + jdbc.queryForList("select * from wf_task_ownership"));
+            stage("wf_task_ownership=" + jdbc.queryForList("select * from worker_fabric.wf_task_ownership"));
             stage("wf_reservation=" + jdbc.queryForList(
-                    "select reservation_id, task_id, state, cpu_millicores from wf_reservation"));
+                    "select reservation_id, task_id, state, cpu_millicores from worker_fabric.wf_reservation"));
             stage("wf_execution_assignment=" + jdbc.queryForList(
-                    "select assignment_id, task_id from wf_execution_assignment"));
+                    "select assignment_id, task_id from worker_fabric.wf_execution_assignment"));
             stage("wf_resolution=" + jdbc.queryForList(
                     "select request_work_id, result_kind, failure_reason, task_id, assignment_id "
-                            + "from wf_request_work_resolution"));
+                            + "from worker_fabric.wf_request_work_resolution"));
             throw workflowFailure;
         }
         assertThat(result.status()).isEqualTo(MediaTaskWorkflowResult.STATUS_EXECUTED);

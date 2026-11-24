@@ -34,7 +34,7 @@ public class CommercialPricingJdbcRepository {
     public PricingRule saveRule(PricingRule rule) {
         try {
             jdbc.update("""
-                    INSERT INTO pricing_rule
+                    INSERT INTO billing.pricing_rule
                     (id, tenant_id, rule_key, rule_version, name, description, pricing_model,
                      meter_key, unit_price_minor, currency_code, tier_config, status,
                      effective_from, effective_to, created_at, updated_at)
@@ -57,7 +57,7 @@ public class CommercialPricingJdbcRepository {
 
     public CustomPricingRule saveOverride(CustomPricingRule rule) {
         jdbc.update("""
-                INSERT INTO custom_pricing_rule
+                INSERT INTO billing.custom_pricing_rule
                 (id, tenant_id, workspace_id, meter_key, rule_version, override_price_minor,
                  currency_code, discount_numerator, discount_denominator, effective_from,
                  effective_to, status, created_at)
@@ -78,7 +78,7 @@ public class CommercialPricingJdbcRepository {
 
     public Optional<PricingRule> findRule(String tenantId, String ruleKey, long version) {
         return jdbc.query("""
-                SELECT * FROM pricing_rule
+                SELECT * FROM billing.pricing_rule
                 WHERE tenant_id = ? AND rule_key = ? AND rule_version = ?
                 """, this::mapRule, tenantId, ruleKey, version).stream().findFirst();
     }
@@ -93,7 +93,7 @@ public class CommercialPricingJdbcRepository {
 
     public List<PricingRule> findRulesByTenant(String tenantId) {
         return jdbc.query("""
-                SELECT * FROM pricing_rule WHERE tenant_id = ?
+                SELECT * FROM billing.pricing_rule WHERE tenant_id = ?
                 ORDER BY rule_key, rule_version
                 """, this::mapRule, tenantId);
     }
@@ -101,7 +101,7 @@ public class CommercialPricingJdbcRepository {
     public Optional<CustomPricingRule> findOverride(String tenantId, String workspaceId,
                                                     String meterKey, Instant at) {
         List<CustomPricingRule> candidates = jdbc.query("""
-                SELECT * FROM custom_pricing_rule
+                SELECT * FROM billing.custom_pricing_rule
                 WHERE tenant_id = ? AND meter_key = ? AND status = 'ACTIVE'
                   AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)
                   AND (workspace_id = ? OR workspace_id IS NULL)
@@ -116,20 +116,20 @@ public class CommercialPricingJdbcRepository {
 
     public List<CustomPricingRule> findOverridesByTenant(String tenantId) {
         return jdbc.query("""
-                SELECT * FROM custom_pricing_rule WHERE tenant_id = ?
+                SELECT * FROM billing.custom_pricing_rule WHERE tenant_id = ?
                 ORDER BY meter_key, rule_version
                 """, this::mapOverride, tenantId);
     }
 
     public Optional<CustomPricingRule> findOverrideById(String tenantId, String id) {
-        return jdbc.query("SELECT * FROM custom_pricing_rule WHERE tenant_id = ? AND id = ?",
+        return jdbc.query("SELECT * FROM billing.custom_pricing_rule WHERE tenant_id = ? AND id = ?",
                 this::mapOverride, tenantId, id).stream().findFirst();
     }
 
     public void updateRuleStatus(String tenantId, String ruleKey, long version,
                                  String expectedStatus, String newStatus, Instant updatedAt) {
         int changed = jdbc.update("""
-                UPDATE pricing_rule SET status = ?, updated_at = ?
+                UPDATE billing.pricing_rule SET status = ?, updated_at = ?
                 WHERE tenant_id = ? AND rule_key = ? AND rule_version = ? AND status = ?
                 """, newStatus, Timestamp.from(updatedAt), tenantId, ruleKey, version, expectedStatus);
         if (changed != 1) throw new IllegalStateException("pricing rule status transition failed");
@@ -137,7 +137,7 @@ public class CommercialPricingJdbcRepository {
 
     public DiscountPolicy saveDiscount(DiscountPolicy policy) {
         jdbc.update("""
-                INSERT INTO discount_policy
+                INSERT INTO billing.discount_policy
                 (id, tenant_id, policy_key, rule_version, meter_key, currency_code,
                  name, description, discount_type, discount_numerator,
                  discount_denominator, flat_amount_minor, conditions, status,
@@ -160,14 +160,14 @@ public class CommercialPricingJdbcRepository {
 
     public Optional<DiscountPolicy> findDiscount(String tenantId, String key, long version) {
         return jdbc.query("""
-                SELECT * FROM discount_policy
+                SELECT * FROM billing.discount_policy
                 WHERE tenant_id = ? AND policy_key = ? AND rule_version = ?
                 """, this::mapDiscount, tenantId, key, version).stream().findFirst();
     }
 
     public List<DiscountPolicy> findEffectiveDiscounts(String tenantId, String meterKey, Instant at) {
         return jdbc.query("""
-                SELECT * FROM discount_policy
+                SELECT * FROM billing.discount_policy
                 WHERE tenant_id IN (?, 'GLOBAL') AND meter_key = ? AND status = 'ACTIVE'
                 AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)
                 ORDER BY CASE WHEN tenant_id = ? THEN 0 ELSE 1 END, policy_key, rule_version
@@ -177,7 +177,7 @@ public class CommercialPricingJdbcRepository {
 
     public List<DiscountPolicy> findDiscountsByTenant(String tenantId, Instant at) {
         return jdbc.query("""
-                SELECT * FROM discount_policy WHERE tenant_id = ? AND status = 'ACTIVE'
+                SELECT * FROM billing.discount_policy WHERE tenant_id = ? AND status = 'ACTIVE'
                 AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)
                 ORDER BY policy_key, rule_version
                 """, this::mapDiscount, tenantId, Timestamp.from(at), Timestamp.from(at));

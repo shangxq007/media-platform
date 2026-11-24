@@ -13,8 +13,8 @@ import java.util.*;
 @Repository
 public class CompositionRepository {
     public enum Kind {
-        WORKFLOW("composition_template_workflow_draft", "workflow_id", TemplateWorkflow.class),
-        APPLICATION("composition_application_draft", "application_id", Application.class);
+        WORKFLOW("composition.composition_template_workflow_draft", "workflow_id", TemplateWorkflow.class),
+        APPLICATION("composition.composition_application_draft", "application_id", Application.class);
         final String table, idColumn;
         final Class<?> type;
         Kind(String table, String idColumn, Class<?> type) { this.table=table; this.idColumn=idColumn; this.type=type; }
@@ -36,7 +36,7 @@ public class CompositionRepository {
 
     public <T> Optional<T> version(Kind kind,String tenant,String workspace,String id,String version,Class<T> type) {
         access.require(tenant,workspace);
-        return db.query("SELECT definition::text FROM composition_version WHERE tenant_id=? AND workspace_id=? AND kind=? AND composition_id=? AND version=?",
+        return db.query("SELECT definition::text FROM composition.composition_version WHERE tenant_id=? AND workspace_id=? AND kind=? AND composition_id=? AND version=?",
                 (r,n)->read(r.getString(1),type),tenant,workspace,kind.name(),id,version).stream().findFirst();
     }
 
@@ -56,13 +56,13 @@ public class CompositionRepository {
         transactions.executeWithoutResult(tx->{
             int changed=db.update("UPDATE "+kind.table+" SET lifecycle='PUBLISHED',definition=?::jsonb,revision=revision+1,updated_at=now() WHERE tenant_id=? AND workspace_id=? AND "+kind.idColumn+"=? AND version=? AND revision=? AND lifecycle='DRAFT'",write(value),tenant,workspace,id,version,expected);
             if(changed!=1) throw new CompositionService.OptimisticConcurrencyException();
-            db.update("INSERT INTO composition_version (tenant_id,workspace_id,kind,composition_id,version,definition) VALUES (?,?,?,?,?,?::jsonb)",tenant,workspace,kind.name(),id,version,write(value));
+            db.update("INSERT INTO composition.composition_version (tenant_id,workspace_id,kind,composition_id,version,definition) VALUES (?,?,?,?,?,?::jsonb)",tenant,workspace,kind.name(),id,version,write(value));
         });
     }
 
     public void snapshot(String tenant,String workspace,String id,ValidationResult result) {
         access.require(tenant,workspace);
-        db.update("INSERT INTO composition_validation_snapshot (snapshot_id,tenant_id,workspace_id,subject_id,result) VALUES (?,?,?,?,?::jsonb) ON CONFLICT DO NOTHING",result.snapshotId(),tenant,workspace,id,write(result));
+        db.update("INSERT INTO composition.composition_validation_snapshot (snapshot_id,tenant_id,workspace_id,subject_id,result) VALUES (?,?,?,?,?::jsonb) ON CONFLICT DO NOTHING",result.snapshotId(),tenant,workspace,id,write(result));
     }
 
     public void newVersion(Kind kind,String tenant,String workspace,String id,String version,long expected,Object value) {

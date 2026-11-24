@@ -14,11 +14,11 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT;
-import static com.example.platform.typedschema.jooq.generated.tables.Permission.PERMISSION;
-import static com.example.platform.typedschema.jooq.generated.tables.Role.ROLE;
-import static com.example.platform.typedschema.jooq.generated.tables.RolePermission.ROLE_PERMISSION;
-import static com.example.platform.typedschema.jooq.generated.tables.UserRoleAssignment.USER_ROLE_ASSIGNMENT;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.Permission.PERMISSION;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.Role.ROLE;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.RolePermission.ROLE_PERMISSION;
+import static com.example.platform.typedschema.jooq.generated.identity.tables.UserRoleAssignment.USER_ROLE_ASSIGNMENT;
 import org.jooq.impl.DSL;
 
 
@@ -188,7 +188,7 @@ public class RoleRepository {
      * @param workspaceId the workspace ID scope
      */
     public void deleteMemberAssignments(String workspaceId, String userId) {
-        var project=com.example.platform.typedschema.jooq.generated.tables.Project.PROJECT;
+        var project=com.example.platform.typedschema.jooq.generated.identity.tables.Project.PROJECT;
         dsl.deleteFrom(USER_ROLE_ASSIGNMENT).where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
                 .and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId)
                         .or(USER_ROLE_ASSIGNMENT.PROJECT_ID.in(dsl.select(project.ID).from(project).where(project.WORKSPACE_ID.eq(workspaceId)))))

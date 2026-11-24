@@ -1,6 +1,6 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationSubscription.NOTIFICATION_SUBSCRIPTION;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationSubscription.NOTIFICATION_SUBSCRIPTION;
 
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.domain.NotificationSubscription;

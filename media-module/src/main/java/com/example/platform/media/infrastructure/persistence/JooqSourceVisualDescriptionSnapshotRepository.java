@@ -26,12 +26,12 @@ public class JooqSourceVisualDescriptionSnapshotRepository
         // append-only: same exact key with identical payload -> idempotent
         // no-op; conflicting payload -> PK conflict + check fails closed
         dsl.execute("""
-                insert into source_visual_description_snapshot
+                insert into media.source_visual_description_snapshot
                     (media_stream_id, artifact_id, canonical_payload)
                 values (?, ?, ?)
                 on conflict (media_stream_id, artifact_id) do nothing
                 """, streamId.value(), artifactId.value(), payload);
-        var existing = dsl.fetchOne("select canonical_payload from source_visual_description_snapshot "
+        var existing = dsl.fetchOne("select canonical_payload from media.source_visual_description_snapshot "
                 + "where media_stream_id = ? and artifact_id = ?", streamId.value(), artifactId.value());
         if (existing == null || !payload.equals(existing.get(0, String.class))) {
             throw new IllegalStateException(
@@ -42,7 +42,7 @@ public class JooqSourceVisualDescriptionSnapshotRepository
 
     @Override
     public Optional<SourceVisualDescription> findByStreamAndArtifact(MediaStreamId streamId, ArtifactId artifactId) {
-        var rec = dsl.fetchOne("select canonical_payload from source_visual_description_snapshot "
+        var rec = dsl.fetchOne("select canonical_payload from media.source_visual_description_snapshot "
                 + "where media_stream_id = ? and artifact_id = ?", streamId.value(), artifactId.value());
         if (rec == null) {
             return Optional.empty();

@@ -23,7 +23,7 @@ final class AssignmentGrantPostgresFixture {
 
     static void truncate(DSLContext dsl) {
         dsl.execute("""
-            truncate table wf_completion_event, wf_execution_observation,
+            truncate table worker_fabric.wf_completion_event, wf_execution_observation,
                 wf_physical_release_confirmation, wf_local_admission,
                 wf_request_work_resolution, wf_task_ownership,
                 wf_task_lease_reservation, wf_task_lease, wf_reservation_device,

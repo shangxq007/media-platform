@@ -66,7 +66,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     void resetAuthoritativeRows() {
         AssignmentGrantPostgresFixture.truncate(dsl);
         dsl.execute("truncate native_publication_probe");
-        dsl.execute("delete from artifact where id='native-probe-output' and tenant_id='tenant-native'");
+        dsl.execute("delete from artifacts.artifact where id='native-probe-output' and tenant_id='tenant-native'");
     }
 
     @Test
@@ -104,7 +104,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     void disconnectedRuntimeConnectionInvalidatesTheGrant() {
         Granted granted = grant("g2-disconnected", 505);
         dsl.execute(
-                "update wf_worker_runtime_connection set connected = false"
+                "update worker_fabric.wf_worker_runtime_connection set connected = false"
                         + " where worker_runtime_id = ?",
                 granted.grant().assignment().workerRuntimeId().value());
 
@@ -115,7 +115,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     void runtimeIncarnationMismatchInvalidatesTheGrant() {
         Granted granted = grant("g2-incarnation", 506);
         dsl.execute(
-                "update wf_worker_runtime_connection set current_incarnation_id = ?"
+                "update worker_fabric.wf_worker_runtime_connection set current_incarnation_id = ?"
                         + " where worker_runtime_id = ?",
                 "other-runtime-incarnation",
                 granted.grant().assignment().workerRuntimeId().value());
@@ -197,7 +197,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         var granted = granted(runtime, TaskCTestFixture.candidate(602));
         runtimeRegistration(runtime, "replacement", FIXED_CLOCK.instant());
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
-        assertThat(dsl.fetchOne("select active from wf_task_lease where lease_id = ?",
+        assertThat(dsl.fetchOne("select active from worker_fabric.wf_task_lease where lease_id = ?",
                 granted.grant().lease().id().value()).get(0, Boolean.class)).isFalse();
         assertThat(count("wf_runtime_registration")).isEqualTo(2);
         assertThatThrownBy(() -> runtimeRegistration(runtime,
@@ -253,7 +253,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         runtimeRegistration(runtime, incarnation, FIXED_CLOCK.instant().plusSeconds(2));
         assertThatThrownBy(() -> runtimeRegistration(runtime, incarnation, FIXED_CLOCK.instant()))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("older");
-        assertThat(dsl.fetchOne("select registered_at from wf_runtime_registration where active")
+        assertThat(dsl.fetchOne("select registered_at from worker_fabric.wf_runtime_registration where active")
                 .get(0, java.time.OffsetDateTime.class).toInstant())
                 .isEqualTo(FIXED_CLOCK.instant().plusSeconds(2));
     }
@@ -267,7 +267,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         runtimeRegistration(runtime, runtime.requestWork().workerRuntimeIncarnationId().value(),
                 FIXED_CLOCK.instant());
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
-        assertThat(dsl.fetchOne("select active from wf_task_lease").get(0, Boolean.class)).isFalse();
+        assertThat(dsl.fetchOne("select active from worker_fabric.wf_task_lease").get(0, Boolean.class)).isFalse();
         assertThat(count("wf_runtime_registration")).isOne();
     }
 
@@ -293,7 +293,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     }
 
     private static String currentIncarnation(TaskCTestFixture.RuntimeFixture runtime) {
-        return dsl.fetchOne("select current_incarnation_id from wf_worker_runtime_connection where worker_runtime_id = ?",
+        return dsl.fetchOne("select current_incarnation_id from worker_fabric.wf_worker_runtime_connection where worker_runtime_id = ?",
                 runtime.requestWork().workerRuntimeId().value()).get(0, String.class);
     }
 
@@ -332,7 +332,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
             var lifecycle=new com.example.platform.workerfabric.infrastructure.JooqExecutionLifecycleBoundary(tx);
             var publication=new com.example.platform.workerfabric.infrastructure.NativeOutputPublicationTransaction(tx,boundary(tx),lifecycle);
             try{return publication.commit(candidate.task().id(),execution,()->{
-                tx.execute("insert into artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('native-probe-output','tenant-native','project-native',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,current_timestamp)","a".repeat(64));
+                tx.execute("insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('native-probe-output','tenant-native','project-native',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,current_timestamp)","a".repeat(64));
                 tx.execute("insert into native_publication_probe values(1)");
                 var decision=new com.example.platform.workerfabric.infrastructure.JooqExecutionAuthorityBoundary(tx,FIXED_CLOCK)
                         .completeIfCurrent(execution.completionEvidence(),new ArtifactCommitEvidence(execution.artifactCommitMetadata().artifactId()));
@@ -341,7 +341,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         });
         assertThat(result).isSameAs(expected);assertThat(count("native_publication_probe")).isOne();assertThat(count("wf_completion_event")).isOne();
         assertThat(boundary(dsl).findCurrentGrant(candidate.task().id())).isEmpty();
-        assertThat(dsl.fetch("select state from wf_reservation").getValues("state",String.class)).containsOnly("RELEASED");
+        assertThat(dsl.fetch("select state from worker_fabric.wf_reservation").getValues("state",String.class)).containsOnly("RELEASED");
     }
     @Test void nativePublicationFailureRollsBackCallbackAndCompletionAndKeepsOriginalOwnership() {
         var runtime=TaskCTestFixture.runtime("native-rollback");register(runtime,FIXED_CLOCK.instant().plusSeconds(3600));
@@ -349,7 +349,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         assertThatThrownBy(()->dsl.transactionResult(configuration->{var tx=DSL.using(configuration);
             var publication=new com.example.platform.workerfabric.infrastructure.NativeOutputPublicationTransaction(tx,boundary(tx),new com.example.platform.workerfabric.infrastructure.JooqExecutionLifecycleBoundary(tx));
             try{return publication.commit(candidate.task().id(),execution,()->{
-                tx.execute("insert into artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('native-probe-output','tenant-native','project-native',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,current_timestamp)","a".repeat(64));
+                tx.execute("insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('native-probe-output','tenant-native','project-native',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,current_timestamp)","a".repeat(64));
                 tx.execute("insert into native_publication_probe values(1)");
                 assertThat(new com.example.platform.workerfabric.infrastructure.JooqExecutionAuthorityBoundary(tx,FIXED_CLOCK)
                         .completeIfCurrent(execution.completionEvidence(),new ArtifactCommitEvidence(execution.artifactCommitMetadata().artifactId())))
@@ -360,7 +360,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         assertThat(count("artifact")).isZero();
         assertThat(count("native_publication_probe")).isZero();assertThat(count("wf_completion_event")).isZero();
         assertThat(boundary(dsl).findCurrentGrant(candidate.task().id())).contains(granted.grant());
-        assertThat(dsl.fetch("select state from wf_reservation").getValues("state",String.class)).containsOnly("ACTIVE");
+        assertThat(dsl.fetch("select state from worker_fabric.wf_reservation").getValues("state",String.class)).containsOnly("ACTIVE");
     }
     @Test void retiredRuntimeNeverReachesNativePublicationCallback() {
         var runtime=TaskCTestFixture.runtime("native-retired");register(runtime,FIXED_CLOCK.instant().plusSeconds(3600));
@@ -396,7 +396,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     private static void expireLease(AssignmentGrant grant) {
         dsl.execute(
                 """
-                update wf_task_lease
+                update worker_fabric.wf_task_lease
                    set last_heartbeat_at = cast(? as timestamptz) - interval '2 minutes',
                        expires_at = cast(? as timestamptz) - interval '1 minute'
                  where assignment_id = ?
@@ -409,7 +409,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     private static void staleHostRegistration(AssignmentGrant grant) {
         dsl.execute(
                 """
-                update wf_host_registration
+                update worker_fabric.wf_host_registration
                    set valid_until = registered_at + interval '1 millisecond'
                  where physical_host_id = ? and physical_host_incarnation_id = ?
                 """,
@@ -420,7 +420,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     private static void staleRuntimeRegistration(AssignmentGrant grant) {
         dsl.execute(
                 """
-                update wf_runtime_registration
+                update worker_fabric.wf_runtime_registration
                    set valid_until = registered_at + interval '1 millisecond'
                  where worker_runtime_id = ? and worker_runtime_incarnation_id = ?
                 """,

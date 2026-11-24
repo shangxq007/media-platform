@@ -136,8 +136,8 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             return com.example.platform.shared.authorization.AuthorizationDecision.allow("fixture");});
         context.registerBean(com.example.platform.render.app.preview.PreviewMediaUploadService.class);
         context.refresh();
-        jdbc.update("insert into tenant(id,name,created_at) values ('ep04-tenant','test',now())");
-        jdbc.update("insert into project(id,tenant_id,name,created_at) values ('project','ep04-tenant','test',now())");
+        jdbc.update("insert into identity.tenant(id,name,created_at) values ('ep04-tenant','test',now())");
+        jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values ('project','ep04-tenant','test',now())");
         dispatcher=context.getBean(OutboxEventDispatcher.class);
         output=context.getBean(StorageOutputPort.class); placements=context.getBean(StoragePlacementQuery.class);
     }
@@ -164,7 +164,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
 
     long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
 
-    long jobEvents(String job){return jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Long.class,job);}
+    long jobEvents(String job){return jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?",Long.class,job);}
 
     static void registerProfileFenced(String name,Class<?> type,java.util.function.Supplier<?> supplier){
         var definition=new org.springframework.beans.factory.support.RootBeanDefinition(type);
@@ -173,7 +173,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     }
 
     Record decodeFact(String type,String aggregate) {
-        var row=jdbc.queryForMap("select * from outbox_events where event_type=? and aggregate_id=? order by created_at desc limit 1",type,aggregate);
+        var row=jdbc.queryForMap("select * from infrastructure.outbox_events where event_type=? and aggregate_id=? order by created_at desc limit 1",type,aggregate);
         return context.getBean(OutboxEventRouter.class).decode(type,((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),aggregate,(String)row.get("payload")).payload();
     }
 
@@ -188,7 +188,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
 
     @Test void originalReceiptReplayDoesNotOverrideCurrentStorageQuarantine() throws Exception {
         var c=command("quarantine-key",file("quarantine.mp4"));var original=output.write(c).issuance();
-        jdbc.update("update storage_object_placement set placement_state='QUARANTINED' where object_id=?",original.objectId().value());
+        jdbc.update("update storage.storage_object_placement set placement_state='QUARANTINED' where object_id=?",original.objectId().value());
         assertEquals(original,placements.find(c.owner(),c.key()).orElseThrow());
         assertThrows(IllegalStateException.class,()->placements.read(c.owner(),c.key()));
         assertThrows(IllegalArgumentException.class,()->placements.read(c.owner(),original.objectId(),original.placement().replicaId()));
@@ -206,7 +206,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         String path=file("partial.mp4");var c=command("partial-key",path);
         doAnswer(i->{backend.getClass();throw new IllegalStateException("backend unavailable");}).when(backend).put(any());
         assertThrows(IllegalStateException.class,()->output.write(c));assertTrue(placements.find(c.owner(),c.key()).isEmpty());
-        String object=jdbc.queryForObject("select object_id from storage_write_intent where issuance_idempotency_key=?",String.class,c.key().value());
+        String object=jdbc.queryForObject("select object_id from storage.storage_write_intent where issuance_idempotency_key=?",String.class,c.key().value());
         reset(backend);var result=output.write(c);assertEquals(object,result.issuance().objectId().value());
     }
 
@@ -228,7 +228,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
 
     @Test void enrichmentUpdateAppendRollbackAndDuplicateSearchIntentUseActualScope() throws Exception {
         var service=context.getBean(com.example.platform.render.app.asset.AssetSemanticMetadataService.class);
-        jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at)"
+        jdbc.update("insert into artifacts.artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at)"
                 + " values ('metadata-fact','ep04-tenant','project','project','metadata-fact-digest',1,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())");
         var before=service.create("metadata-fact","v3");
         var updated=new com.example.platform.render.domain.asset.semantic.AssetSemanticMetadata(before.assetId(),before.assetVersion(),
@@ -242,14 +242,14 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             for(int i=0;i<2;i++)futures.add(pool.submit(()->{TenantContext.set("ep04-tenant");try{context.publishEvent(fact);}finally{TenantContext.clear();}}));
             for(var future:futures)future.get(30,java.util.concurrent.TimeUnit.SECONDS);
         }
-        assertEquals(1L,jdbc.queryForObject("select count(*) from platform_job where aggregate_id='metadata-fact'",Long.class));
-        assertEquals(1L,jdbc.queryForObject("select count(*) from platform_task t join platform_job j on t.job_id=j.id where j.aggregate_id='metadata-fact'",Long.class));
-        assertEquals("ep04-tenant",jdbc.queryForObject("select tenant_id from platform_job where aggregate_id='metadata-fact'",String.class));
-        assertEquals("project",jdbc.queryForObject("select project_id from platform_job where aggregate_id='metadata-fact'",String.class));
-        assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id='metadata-fact'",Long.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from execution.platform_job where aggregate_id='metadata-fact'",Long.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from execution.platform_task t join execution.platform_job j on t.job_id=j.id where j.aggregate_id='metadata-fact'",Long.class));
+        assertEquals("ep04-tenant",jdbc.queryForObject("select tenant_id from execution.platform_job where aggregate_id='metadata-fact'",String.class));
+        assertEquals("project",jdbc.queryForObject("select project_id from execution.platform_job where aggregate_id='metadata-fact'",String.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from notification.notification_event where subject_id='metadata-fact'",Long.class));
         assertThrows(IllegalArgumentException.class,()->service.completeEnrichment(updated,"ep04-tenant","wrong-project","ASR"));
         TenantContext.set("foreign");assertThrows(IllegalArgumentException.class,()->service.completeEnrichment(updated,"foreign","project","ASR"));TenantContext.set("ep04-tenant");
-        jdbc.update("update asset_semantic_metadata set asset_version='v4' where artifact_id='metadata-fact'");
+        jdbc.update("update render.asset_semantic_metadata set asset_version='v4' where artifact_id='metadata-fact'");
         assertThrows(IllegalStateException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));assertEquals(1,jobEvents(before.assetId()));
         TenantContext.set("foreign");assertThrows(RuntimeException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));
     }
@@ -257,7 +257,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     @Test void actualAnomalyObservationUsesAuditCatalogAndProductionDispatcher() {
         var service=new UsageAnomalyDetectionService(context.getBean(OutboxEventService.class));
         for(int i=0;i<11;i++)service.analyzeSubmission("ep04-tenant","anomaly-test","default","test");
-        var row=jdbc.queryForMap("select * from outbox_events where event_type='audit.usage.anomaly.detected' order by created_at desc limit 1");
+        var row=jdbc.queryForMap("select * from infrastructure.outbox_events where event_type='audit.usage.anomaly.detected' order by created_at desc limit 1");
         var fact=assertInstanceOf(com.example.platform.audit.api.event.UsageAnomalyDetectedEvent.class,decodeFact("audit.usage.anomaly.detected",(String)row.get("aggregate_id")));
         assertEquals("ep04-tenant",fact.tenantId());assertEquals("anomaly-test",fact.userId());assertEquals("render_burst",fact.ruleType());
         assertTrue(dispatcher.processOnce((String)row.get("id")));assertFalse(dispatcher.processOnce((String)row.get("id")));
@@ -271,8 +271,8 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             "com.example.platform.shared.events.AssetRegisteredEvent","com.example.platform.shared.events.AssetMetadataUpdatedEvent",
             "com.example.platform.shared.events.RenderDeliveryCompletedEvent","com.example.platform.shared.events.RenderDeliveryFailedEvent",
             "com.example.platform.shared.events.UsageAnomalyDetectedEvent")) {
-            String id="other-retired-"+n++;jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'unused','unused',?,1,'{}','PENDING',0,3,now())",id,type);
-            assertFalse(dispatcher.processOnce(id));assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from outbox_events where id=?",String.class,id));
+            String id="other-retired-"+n++;jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'unused','unused',?,1,'{}','PENDING',0,3,now())",id,type);
+            assertFalse(dispatcher.processOnce(id));assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,id));
         }
         assertEquals(audits,count("audit_records"));assertEquals(notifications,count("notification_event"));
     }
@@ -283,12 +283,12 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","intent-asset","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX);
             throw new IllegalStateException("consumer rollback");
         }));
-        assertEquals(0L,jdbc.queryForObject("select count(*) from platform_job where aggregate_id='intent-asset'",Long.class));
+        assertEquals(0L,jdbc.queryForObject("select count(*) from execution.platform_job where aggregate_id='intent-asset'",Long.class));
         var first=service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","intent-asset","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX);
         var duplicate=service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","intent-asset","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX);
         assertEquals(first,duplicate);assertEquals(1,service.listTasks(first.id()).size());
         assertThrows(IllegalArgumentException.class,()->service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","different","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX));
-        assertEquals(1L,jdbc.queryForObject("select count(*) from platform_job where aggregate_id='intent-asset'",Long.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from execution.platform_job where aggregate_id='intent-asset'",Long.class));
     }
 
     @Test void previewRealWriteReceiptProductAndDuplicateAreAcceptedWithoutCanonicalMediaClaims() throws Exception {
@@ -301,8 +301,8 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         var reference=context.getBean(StorageReferenceStore.class).findById(product.storageReferenceId()).orElseThrow();
         assertArrayEquals(previewBytes(),Files.readAllBytes(Path.of(reference.absolutePath())));
         String object=reference.relativePath().split("/")[1];
-        assertEquals("CANONICAL_COMMITTED",jdbc.queryForObject("select intent_state from storage_write_intent where object_id=?",String.class,object));
-        assertEquals(1,jdbc.queryForObject("select count(*) from storage_object_placement where object_id=? and placement_state='AVAILABLE'",Integer.class,object));
+        assertEquals("CANONICAL_COMMITTED",jdbc.queryForObject("select intent_state from storage.storage_write_intent where object_id=?",String.class,object));
+        assertEquals(1,jdbc.queryForObject("select count(*) from storage.storage_object_placement where object_id=? and placement_state='AVAILABLE'",Integer.class,object));
         assertEquals(artifacts,count("artifact"));assertEquals(events,count("outbox_events"));
     }
 
@@ -348,7 +348,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         assertThrows(StorageIssuanceConflictException.class,()->service.upload(new com.example.platform.render.api.request.PreviewUploadKey("preview-integrity"),new byte[]{2,3},"video/mp4"));
         var product=previewProducts.findByAsset(accepted.mediaId()).getFirst();
         var ref=context.getBean(StorageReferenceStore.class).findById(product.storageReferenceId()).orElseThrow();
-        jdbc.update("update storage_object_placement set placement_state='QUARANTINED' where object_id=?",ref.relativePath().split("/")[1]);
+        jdbc.update("update storage.storage_object_placement set placement_state='QUARANTINED' where object_id=?",ref.relativePath().split("/")[1]);
         assertThrows(IllegalStateException.class,()->preview("preview-integrity"));assertEquals(products,count("product"));
     }
 
@@ -375,5 +375,5 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         }
         assertEquals(products+1,count("product"));
     }
-    List<String> eventIds(String job){return jdbc.queryForList("select id from outbox_events where aggregate_id=? order by created_at,id",String.class,job);}
+    List<String> eventIds(String job){return jdbc.queryForList("select id from infrastructure.outbox_events where aggregate_id=? order by created_at,id",String.class,job);}
 }

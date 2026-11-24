@@ -31,10 +31,10 @@ class PlatformCapabilityTerminalRacePostgresTest {
         var owner = w.owner(w.db); w.tx(() -> owner.admit(plan));
         w.tx(() -> owner.begin("tenant-a", "project-a", plan.executionId(), 1));
         var task = new ProviderBindingEntryService().bind(plan.inputs().physicalPlan(), plan.inputs().candidates(), List.of()).executableTaskGraph().tasks().getFirst().id();
-        w.db.execute("insert into wf_execution_backend_selection(selection_id,task_id,backend,placement_authority_scope,active,selected_at) values('race-selection',?,'NATIVE_PULL_WORKER','PLATFORM_MANAGED',true,now())", task.sha256Hex());
-        w.db.execute("insert into wf_execution_ownership_generation(task_id,generation,created_at) values(?,1,now())", task.sha256Hex());
-        w.db.execute("insert into wf_execution_attempt(attempt_id,task_id,generation,backend,state,backend_selection_id,created_at,updated_at) values('race-attempt',?,1,'NATIVE_PULL_WORKER','CREATED','race-selection',now(),now())", task.sha256Hex());
-        w.db.execute("insert into wf_task_ownership(task_id,current_generation,claimable,updated_at) values(?,1,true,now())", task.sha256Hex());
+        w.db.execute("insert into worker_fabric.wf_execution_backend_selection(selection_id,task_id,backend,placement_authority_scope,active,selected_at) values('race-selection',?,'NATIVE_PULL_WORKER','PLATFORM_MANAGED',true,now())", task.sha256Hex());
+        w.db.execute("insert into worker_fabric.wf_execution_ownership_generation(task_id,generation,created_at) values(?,1,now())", task.sha256Hex());
+        w.db.execute("insert into worker_fabric.wf_execution_attempt(attempt_id,task_id,generation,backend,state,backend_selection_id,created_at,updated_at) values('race-attempt',?,1,'NATIVE_PULL_WORKER','CREATED','race-selection',now(),now())", task.sha256Hex());
+        w.db.execute("insert into worker_fabric.wf_task_ownership(task_id,current_generation,claimable,updated_at) values(?,1,true,now())", task.sha256Hex());
         var execution = mock(TaskRuntimeExecution.class, RETURNS_DEEP_STUBS);
         when(execution.artifactCommitMetadata().tenantId()).thenReturn("tenant-a");
         when(execution.artifactCommitMetadata().projectId()).thenReturn("project-a");
@@ -49,9 +49,9 @@ class PlatformCapabilityTerminalRacePostgresTest {
     }
     RuntimeClosedLoopTaskResult nativeCallbackFixture(DSLContext db, Fixture f, AtomicInteger callbacks) {
         callbacks.incrementAndGet();
-        db.execute("insert into artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('race-image','tenant-a','project-a',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,now())", "a".repeat(64));
-        db.execute("update wf_execution_attempt set state='SUCCEEDED',updated_at=now() where attempt_id='race-attempt'");
-        db.execute("insert into wf_completion_event(completion_event_id,task_id,attempt_id,generation,artifact_id,completed_at) values('race-native-completion',?,'race-attempt',1,'race-image',now())", f.task().sha256Hex());
+        db.execute("insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values('race-image','tenant-a','project-a',?,1,'IMAGE','DERIVED_MEDIA','AVAILABLE',1,now())", "a".repeat(64));
+        db.execute("update worker_fabric.wf_execution_attempt set state='SUCCEEDED',updated_at=now() where attempt_id='race-attempt'");
+        db.execute("insert into worker_fabric.wf_completion_event(completion_event_id,task_id,attempt_id,generation,artifact_id,completed_at) values('race-native-completion',?,'race-attempt',1,'race-image',now())", f.task().sha256Hex());
         return f.result();
     }
     interface Action<T> { T apply(PlatformCapabilityExecutionService owner, DSLContext db) throws Exception; }
@@ -92,10 +92,10 @@ class PlatformCapabilityTerminalRacePostgresTest {
             assertSame(f.result(),publication.get(8,TimeUnit.SECONDS));
             assertEquals(PlatformExecutionState.COMPLETED,cancellation.get(8,TimeUnit.SECONDS).state());
             assertEquals(1,callbacks.get()); assertEquals(1,w.count("artifact")); assertEquals(1,w.count("platform_execution_result"));
-            assertEquals(1,w.db.fetchOne("select count(*) from wf_completion_event where task_id=?",f.task().sha256Hex()).get(0,Integer.class));
+            assertEquals(1,w.db.fetchOne("select count(*) from worker_fabric.wf_completion_event where task_id=?",f.task().sha256Hex()).get(0,Integer.class));
             assertEquals(1,w.count("quota_usage_operation"));
-            assertEquals(0, w.db.fetchOne("select signed_delta from quota_usage_operation").get(0, java.math.BigDecimal.class).compareTo(java.math.BigDecimal.ONE));
-            var saved = w.db.fetchOne("select attempt_id,native_task_id,native_generation,ownership_generation,artifact_id from platform_execution_result where execution_id=?",f.plan().executionId());
+            assertEquals(0, w.db.fetchOne("select signed_delta from entitlement.quota_usage_operation").get(0, java.math.BigDecimal.class).compareTo(java.math.BigDecimal.ONE));
+            var saved = w.db.fetchOne("select attempt_id,native_task_id,native_generation,ownership_generation,artifact_id from execution.platform_execution_result where execution_id=?",f.plan().executionId());
             assertEquals("race-attempt",saved.get(0)); assertEquals(f.task().sha256Hex(),saved.get(1));
             assertEquals(1L,saved.get(2,Long.class)); assertEquals(1L,saved.get(3,Long.class)); assertEquals("race-image",saved.get(4));
             assertEquals("race-image",w.owner(w.db).find("tenant-a","project-a",f.plan().executionId()).orElseThrow().artifactId());

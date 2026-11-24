@@ -31,7 +31,7 @@ public class SocialPostRepository {
     public SocialPost save(SocialPost post) {
         TenantGuard.assertSameTenant(post.tenantId());
         String sql = """
-                INSERT INTO social_post (id, tenant_id, user_id, project_id, connected_platform_id,
+                INSERT INTO publication.social_post (id, tenant_id, user_id, project_id, connected_platform_id,
                     connected_platform_binding_version, artifact_id,
                     content_text, media_urls, platform_type,
                     status, platform_post_id, platform_post_url, scheduled_at, published_at, failed_at,
@@ -58,7 +58,7 @@ public class SocialPostRepository {
         if (expected != PostStatus.DRAFT && expected != PostStatus.SCHEDULED && expected != PostStatus.FAILED)
             throw new IllegalArgumentException("Ineligible publication status");
         var rows = jdbc.query("""
-                UPDATE social_post SET status='PUBLISHING', publication_attempt_id=?,
+                UPDATE publication.social_post SET status='PUBLISHING', publication_attempt_id=?,
                     attempt_project_id=project_id, attempt_account_id=connected_platform_id,
                     attempt_binding_version=connected_platform_binding_version, updated_at=?
                 WHERE id=? AND tenant_id=? AND user_id=? AND status=? AND dispatch_started_at IS NULL
@@ -78,7 +78,7 @@ public class SocialPostRepository {
     public boolean markDispatched(Attempt attempt, ConnectedPlatform.CredentialSnapshot credentials, Instant now) {
         var p = attempt.post();
         TenantGuard.assertSameTenant(p.tenantId());
-        return jdbc.update("UPDATE social_post SET dispatch_started_at=?, attempt_credential_revision=?, attempt_credential_expires_at=?, updated_at=? " + OWNED
+        return jdbc.update("UPDATE publication.social_post SET dispatch_started_at=?, attempt_credential_revision=?, attempt_credential_expires_at=?, updated_at=? " + OWNED
                         + " AND dispatch_started_at IS NULL AND (?::timestamp IS NULL OR ?::timestamp > (clock_timestamp() AT TIME ZONE 'UTC'))",
                 utcTimestamp(now), credentials.revision(), utcTimestamp(credentials.expiresAt()), utcTimestamp(now),
                 p.id(), p.tenantId(), p.userId(), attempt.token(), utcTimestamp(credentials.expiresAt()), utcTimestamp(credentials.expiresAt())) == 1;
@@ -88,7 +88,7 @@ public class SocialPostRepository {
         var p = attempt.post();
         TenantGuard.assertSameTenant(p.tenantId());
         return jdbc.update("""
-                UPDATE social_post SET status='PUBLISHED', platform_post_id=?, platform_post_url=?,
+                UPDATE publication.social_post SET status='PUBLISHED', platform_post_id=?, platform_post_url=?,
                     published_at=?, error_code=NULL, error_message=NULL, updated_at=?
                 """ + OWNED + " AND dispatch_started_at IS NOT NULL", externalId, externalUrl,
                 utcTimestamp(now), utcTimestamp(now), p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
@@ -98,7 +98,7 @@ public class SocialPostRepository {
         var p = attempt.post();
         TenantGuard.assertSameTenant(p.tenantId());
         return jdbc.update("""
-                UPDATE social_post SET status='FAILED', failed_at=?, error_code='PRE_DISPATCH_REJECTED',
+                UPDATE publication.social_post SET status='FAILED', failed_at=?, error_code='PRE_DISPATCH_REJECTED',
                     error_message='Publication prerequisites rejected before dispatch', retry_count=retry_count+1, updated_at=?
                 """ + OWNED + " AND dispatch_started_at IS NULL", utcTimestamp(now), utcTimestamp(now),
                 p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
@@ -108,7 +108,7 @@ public class SocialPostRepository {
         var p = attempt.post();
         TenantGuard.assertSameTenant(p.tenantId());
         return jdbc.update("""
-                UPDATE social_post SET status='UNRESOLVED', error_code='EXTERNAL_OUTCOME_UNKNOWN',
+                UPDATE publication.social_post SET status='UNRESOLVED', error_code='EXTERNAL_OUTCOME_UNKNOWN',
                     error_message='Dispatch may have produced an external effect; reconciliation required', updated_at=?
                 """ + OWNED + " AND dispatch_started_at IS NOT NULL", utcTimestamp(now),
                 p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
@@ -117,7 +117,7 @@ public class SocialPostRepository {
     public boolean schedule(String tenant, String actor, String id, Instant schedule, Instant now) {
         TenantGuard.assertSameTenant(tenant);
         return jdbc.update("""
-                UPDATE social_post SET status='SCHEDULED', scheduled_at=?, updated_at=?
+                UPDATE publication.social_post SET status='SCHEDULED', scheduled_at=?, updated_at=?
                 WHERE id=? AND tenant_id=? AND user_id=? AND dispatch_started_at IS NULL
                   AND status IN ('DRAFT','SCHEDULED','FAILED','CANCELLED')
                 """, utcTimestamp(schedule), utcTimestamp(now), id, tenant, actor) == 1;
@@ -127,7 +127,7 @@ public class SocialPostRepository {
     public boolean cancel(String tenant, String actor, String id, Instant now) {
         TenantGuard.assertSameTenant(tenant);
         return jdbc.update("""
-                UPDATE social_post SET status=CASE WHEN dispatch_started_at IS NULL THEN 'CANCELLED' ELSE 'UNRESOLVED' END,
+                UPDATE publication.social_post SET status=CASE WHEN dispatch_started_at IS NULL THEN 'CANCELLED' ELSE 'UNRESOLVED' END,
                     error_code=CASE WHEN dispatch_started_at IS NULL THEN NULL ELSE 'CANCELLED_AFTER_DISPATCH' END,
                     error_message=CASE WHEN dispatch_started_at IS NULL THEN NULL ELSE 'External request cannot be recalled' END,
                     updated_at=?
@@ -138,7 +138,7 @@ public class SocialPostRepository {
     public boolean delete(String tenant, String actor, String id) {
         TenantGuard.assertSameTenant(tenant);
         return jdbc.update("""
-                DELETE FROM social_post WHERE id=? AND tenant_id=? AND user_id=?
+                DELETE FROM publication.social_post WHERE id=? AND tenant_id=? AND user_id=?
                   AND dispatch_started_at IS NULL AND status IN ('DRAFT','SCHEDULED','FAILED','CANCELLED')
                 """, id, tenant, actor) == 1;
     }
@@ -146,32 +146,32 @@ public class SocialPostRepository {
     public Optional<SocialPost> findById(String id) {
         String tenantId = TenantGuard.requireTenantId();
         List<SocialPost> results = jdbc.query(
-                "SELECT * FROM social_post WHERE id = ? AND tenant_id = ?", rowMapper, id, tenantId);
+                "SELECT * FROM publication.social_post WHERE id = ? AND tenant_id = ?", rowMapper, id, tenantId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public List<SocialPost> findByTenantAndUser(String tenantId, String userId, int offset, int limit) {
         tenantId = TenantGuard.tenantOrDefault(tenantId);
         return jdbc.query(
-                "SELECT * FROM social_post WHERE tenant_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM publication.social_post WHERE tenant_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
                 rowMapper, tenantId, userId, limit, offset);
     }
 
     public List<SocialPost> findByStatus(String tenantId, String userId, PostStatus status) {
         return jdbc.query(
-                "SELECT * FROM social_post WHERE tenant_id = ? AND user_id = ? AND status = ? ORDER BY created_at DESC",
+                "SELECT * FROM publication.social_post WHERE tenant_id = ? AND user_id = ? AND status = ? ORDER BY created_at DESC",
                 rowMapper, tenantId, userId, status.name());
     }
 
     public List<SocialPost> findScheduledBefore(Instant before) {
         return jdbc.query(
-                "SELECT * FROM social_post WHERE status = 'SCHEDULED' AND scheduled_at <= ?",
+                "SELECT * FROM publication.social_post WHERE status = 'SCHEDULED' AND scheduled_at <= ?",
                 rowMapper, utcTimestamp(before));
     }
 
     public long countByTenantAndUser(String tenantId, String userId) {
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM social_post WHERE tenant_id = ? AND user_id = ?",
+                "SELECT COUNT(*) FROM publication.social_post WHERE tenant_id = ? AND user_id = ?",
                 Long.class, tenantId, userId);
         return count != null ? count : 0;
     }
@@ -196,8 +196,8 @@ public class SocialPostRepository {
                 SELECT p.id AS post_id, p.project_id, p.connected_platform_id,
                        p.connected_platform_binding_version, p.content_text,
                        p.artifact_id, p.platform_type, p.scheduled_at
-                FROM social_post p
-                JOIN social_connected_platform a
+                FROM publication.social_post p
+                JOIN publication.social_connected_platform a
                   ON a.id = p.connected_platform_id
                  AND a.tenant_id = p.tenant_id
                  AND a.user_id = p.user_id
@@ -229,8 +229,8 @@ public class SocialPostRepository {
                 SELECT p.id AS post_id, p.project_id, p.connected_platform_id,
                        p.connected_platform_binding_version, p.content_text,
                        p.artifact_id, p.platform_type, p.scheduled_at
-                FROM social_post p
-                JOIN social_connected_platform a
+                FROM publication.social_post p
+                JOIN publication.social_connected_platform a
                   ON a.id = p.connected_platform_id
                  AND a.tenant_id = p.tenant_id
                  AND a.user_id = p.user_id

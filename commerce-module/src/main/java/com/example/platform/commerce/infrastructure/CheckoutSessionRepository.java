@@ -15,7 +15,7 @@ import com.example.platform.commerce.domain.AuthorityReference;
 import com.example.platform.shared.commercial.Money;
 
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.CheckoutSession.CHECKOUT_SESSION;
+import static com.example.platform.typedschema.jooq.generated.commerce.tables.CheckoutSession.CHECKOUT_SESSION;
 
 
 @Repository

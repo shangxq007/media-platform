@@ -64,13 +64,13 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
                         first.physicalHostId(), first.physicalHostIncarnationId()))
                 .contains(new HostResourceSnapshotGeneration(2));
         assertThat(dsl.fetchOne(
-                        "select count(*) from wf_host_resource_snapshot where physical_host_id = ?",
+                        "select count(*) from worker_fabric.wf_host_resource_snapshot where physical_host_id = ?",
                         first.physicalHostId().value())
                 .get(0, Integer.class))
                 .isEqualTo(2);
         assertThat(dsl.fetchOne(
-                        "select s.snapshot_generation from wf_host_resource_snapshot s "
-                                + "join wf_host_snapshot_generation_authority a "
+                        "select s.snapshot_generation from worker_fabric.wf_host_resource_snapshot s "
+                                + "join worker_fabric.wf_host_snapshot_generation_authority a "
                                 + "on a.physical_host_id = s.physical_host_id "
                                 + "and a.physical_host_incarnation_id = s.physical_host_incarnation_id "
                                 + "and a.current_generation = s.snapshot_generation "
@@ -104,7 +104,7 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
                         generationTwo.physicalHostIncarnationId()))
                 .contains(generationTwo.snapshotGeneration());
         assertThat(dsl.fetchOne(
-                        "select count(*) from wf_host_resource_snapshot where physical_host_id = ?",
+                        "select count(*) from worker_fabric.wf_host_resource_snapshot where physical_host_id = ?",
                         generationTwo.physicalHostId().value())
                 .get(0, Integer.class))
                 .isEqualTo(2);
@@ -133,7 +133,7 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
                         first.physicalHostId(), first.physicalHostIncarnationId()))
                 .contains(new HostResourceSnapshotGeneration(2));
         assertThat(dsl.fetchOne(
-                        "select captured_at from wf_host_resource_snapshot "
+                        "select captured_at from worker_fabric.wf_host_resource_snapshot "
                                 + "where physical_host_id = ? and snapshot_generation = 2",
                         first.physicalHostId().value())
                 .get(0, java.time.OffsetDateTime.class)
@@ -148,14 +148,14 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
         new JooqWorkerFabricRegistrationBoundary(dsl).registerHost(registration(first));
 
         assertThatThrownBy(() -> dsl.execute(
-                        "update wf_host_resource_snapshot set captured_at = captured_at + interval '1 second' "
+                        "update worker_fabric.wf_host_resource_snapshot set captured_at = captured_at + interval '1 second' "
                                 + "where physical_host_id = ?",
                         first.physicalHostId().value()))
                 .isInstanceOf(DataAccessException.class)
                 .rootCause()
                 .hasMessageContaining("immutable");
         assertThatThrownBy(() -> dsl.execute(
-                        "update wf_host_snapshot_generation_authority set current_generation = 1 "
+                        "update worker_fabric.wf_host_snapshot_generation_authority set current_generation = 1 "
                                 + "where physical_host_id = ?",
                         first.physicalHostId().value()))
                 .isInstanceOf(DataAccessException.class)
@@ -168,7 +168,7 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
         HostResourceSnapshot snapshot = publish("snapshot-delete-guard");
 
         assertThatThrownBy(() -> dsl.execute(
-                        "delete from wf_host_resource_snapshot where physical_host_id = ?",
+                        "delete from worker_fabric.wf_host_resource_snapshot where physical_host_id = ?",
                         snapshot.physicalHostId().value()))
                 .isInstanceOf(DataAccessException.class)
                 .rootCause()
@@ -179,14 +179,14 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
     void databaseRejectsPublishedDeviceMembershipUpdateAndDelete() {
         HostResourceSnapshot snapshot = publish("snapshot-device-mutation-guard");
         assertThat(dsl.fetchOne(
-                        "select count(*) from wf_host_resource_snapshot_device "
+                        "select count(*) from worker_fabric.wf_host_resource_snapshot_device "
                                 + "where physical_host_id = ?",
                         snapshot.physicalHostId().value())
                 .get(0, Integer.class))
                 .isOne();
 
         assertThatThrownBy(() -> dsl.execute(
-                        "update wf_host_resource_snapshot_device "
+                        "update worker_fabric.wf_host_resource_snapshot_device "
                                 + "set vram_bytes = vram_bytes + 1 "
                                 + "where physical_host_id = ?",
                         snapshot.physicalHostId().value()))
@@ -194,7 +194,7 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
                 .rootCause()
                 .hasMessageContaining("device membership is immutable");
         assertThatThrownBy(() -> dsl.execute(
-                        "delete from wf_host_resource_snapshot_device where physical_host_id = ?",
+                        "delete from worker_fabric.wf_host_resource_snapshot_device where physical_host_id = ?",
                         snapshot.physicalHostId().value()))
                 .isInstanceOf(DataAccessException.class)
                 .rootCause()
@@ -207,7 +207,7 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
 
         assertThatThrownBy(() -> dsl.execute(
                         """
-                        insert into wf_host_resource_snapshot_device (
+                        insert into worker_fabric.wf_host_resource_snapshot_device (
                             physical_host_id, physical_host_incarnation_id, snapshot_generation,
                             device_id, vram_bytes, compute_units, encoder_engines, decoder_engines,
                             safety_headroom_vram_bytes, safety_headroom_compute_units,
@@ -297,18 +297,18 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
         dsl.transaction(configuration -> {
             DSLContext tx = DSL.using(configuration);
             tx.execute(
-                    "insert into wf_host_registration (physical_host_id, physical_host_incarnation_id,"
+                    "insert into worker_fabric.wf_host_registration (physical_host_id, physical_host_incarnation_id,"
                             + " registered_at, valid_until, active) values (?, ?, now(), now()"
                             + " + interval '1 hour', true)",
                     hostId,
                     hostIncarnationId);
             tx.execute(
-                    "insert into wf_host_snapshot_generation_authority (physical_host_id,"
+                    "insert into worker_fabric.wf_host_snapshot_generation_authority (physical_host_id,"
                             + " physical_host_incarnation_id, current_generation) values (?, ?, 1)",
                     hostId,
                     hostIncarnationId);
             tx.execute(
-                    "insert into wf_host_resource_snapshot (physical_host_id,"
+                    "insert into worker_fabric.wf_host_resource_snapshot (physical_host_id,"
                             + " physical_host_incarnation_id, snapshot_generation, snapshot_fingerprint,"
                             + " captured_at, schema_version, cpu_millicores, memory_bytes,"
                             + " temporary_storage_bytes, safety_headroom_cpu_millicores,"

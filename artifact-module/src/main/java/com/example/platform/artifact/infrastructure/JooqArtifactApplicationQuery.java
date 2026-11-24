@@ -1,6 +1,6 @@
 package com.example.platform.artifact.infrastructure;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
+import static com.example.platform.typedschema.jooq.generated.artifacts.tables.Artifact.ARTIFACT;
 
 import com.example.platform.artifact.app.ArtifactApplicationQuery;
 import com.example.platform.artifact.app.ArtifactScope;

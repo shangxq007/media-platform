@@ -52,7 +52,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
         jdbc = context.getBean(JdbcTemplate.class);
         authority = context.getBean(SubscriptionBillingService.class);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS subscription_plan (
+                CREATE TABLE IF NOT EXISTS billing.subscription_plan (
                     id varchar(64) primary key, plan_key varchar(128) not null unique,
                     name varchar(255) not null, description text, billing_interval varchar(32) not null,
                     base_price_minor bigint not null, currency_code varchar(8) not null,
@@ -60,7 +60,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
                     created_at timestamptz not null, updated_at timestamptz not null)
                 """);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS subscription_contract (
+                CREATE TABLE IF NOT EXISTS billing.subscription_contract (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     subject_type varchar(32) not null, subject_id varchar(128) not null,
                     canonical_product_code varchar(128) not null, contract_role varchar(32) not null,
@@ -75,7 +75,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
                 WHERE contract_state = 'ACTIVE' AND contract_role = 'BASE'
                 """);
         jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS subscription_command (
+                CREATE TABLE IF NOT EXISTS billing.subscription_command (
                     id varchar(64) primary key, tenant_id varchar(64) not null,
                     principal_type varchar(32) not null, principal_id varchar(128) not null,
                     idempotency_key varchar(255) not null, command_type varchar(32) not null,
@@ -95,7 +95,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
 
     @BeforeEach
     void reset() {
-        jdbc.execute("TRUNCATE subscription_command, subscription_contract, subscription_plan CASCADE");
+        jdbc.execute("TRUNCATE billing.subscription_command, subscription_contract, subscription_plan CASCADE");
         authority.createPlan("basic", "Basic", "", "MONTHLY", 1000, "USD", Map.of());
         authority.createPlan("pro", "Pro", "", "MONTHLY", 3000, "USD", Map.of());
     }
@@ -177,7 +177,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
         PrincipalRef principal = principal("tenant-a", "user-a");
         authority.execute(create(principal, "old-base", "basic", "create-old"));
         jdbc.update("""
-                INSERT INTO subscription_contract
+                INSERT INTO billing.subscription_contract
                     (id, tenant_id, subject_type, subject_id, canonical_product_code, contract_role,
                      contract_state, period_start_at, period_end_at, created_at, updated_at,
                      plan_key, included_quota_used, version)
@@ -192,7 +192,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
         assertEquals(1L, authority.listActiveSubscriptions(principal).stream()
                 .filter(c -> c.contractRole() == SubscriptionContractRole.BASE).count());
         assertEquals(0L, jdbc.queryForObject(
-                "SELECT count(*) FROM subscription_command WHERE idempotency_key = 'replace-fails'", Long.class));
+                "SELECT count(*) FROM billing.subscription_command WHERE idempotency_key = 'replace-fails'", Long.class));
     }
 
     @Test

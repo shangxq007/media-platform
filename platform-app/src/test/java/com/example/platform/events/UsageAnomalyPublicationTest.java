@@ -38,10 +38,10 @@ class UsageAnomalyPublicationTest extends PostgresTestContainerSupport {
         return user;
     }
     private int observations(String user) {
-        return jdbc.queryForObject("select count(*) from outbox_events where event_type = 'audit.usage.anomaly.detected' and payload::jsonb->'payload'->>'userId' = ?", Integer.class, user);
+        return jdbc.queryForObject("select count(*) from infrastructure.outbox_events where event_type = 'audit.usage.anomaly.detected' and payload::jsonb->'payload'->>'userId' = ?", Integer.class, user);
     }
     private Map<String,Object> observation(String user) {
-        return jdbc.queryForMap("select * from outbox_events where event_type = 'audit.usage.anomaly.detected' and payload::jsonb->'payload'->>'userId' = ?", user);
+        return jdbc.queryForMap("select * from infrastructure.outbox_events where event_type = 'audit.usage.anomaly.detected' and payload::jsonb->'payload'->>'userId' = ?", user);
     }
 
     @Test void outerRollbackDoesNotPublishOrAdvanceTheDerivedRiskView() {

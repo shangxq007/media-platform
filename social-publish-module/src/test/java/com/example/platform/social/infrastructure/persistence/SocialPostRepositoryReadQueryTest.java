@@ -79,7 +79,7 @@ class SocialPostRepositoryReadQueryTest {
         assertTrue(normalized.contains("p.project_id = ?"));
         assertTrue(normalized.contains("p.connected_platform_id = ?"));
         assertTrue(normalized.contains("p.connected_platform_binding_version = ?"));
-        assertTrue(normalized.contains("JOIN social_connected_platform a"));
+        assertTrue(normalized.contains("JOIN publication.social_connected_platform a"));
         assertTrue(normalized.contains("p.artifact_id"));
         assertFalse(normalized.contains("error_message"));
         assertFalse(normalized.contains("published_at"));

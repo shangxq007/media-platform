@@ -245,7 +245,7 @@ delivery = json.loads((app / 'delivery-http.json').read_text())
 assert delivery['delivery'] and delivery['status'] == 'READY'
 assert delivery['sha256'] == masters[0]['digest'].split(':')[-1], ('downloaded Delivery bytes differ from the Artifact digest', delivery, masters[0])
 assert delivery['bytes'] == masters[0]['bytes']
-delivery_row = json.loads(psql("select row_to_json(d) from (select id,artifact_id,status,requester_id,idempotency_key from delivery where id='"
+delivery_row = json.loads(psql("select row_to_json(d) from (select id,artifact_id,status,requester_id,idempotency_key from publication.delivery where id='"
                                + delivery['delivery'] + "') d"))
 assert delivery_row['artifact_id'] == final_artifact and delivery_row['status'] == 'READY'
 evidence['delivery'] = {**delivery, 'record': delivery_row}

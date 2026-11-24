@@ -32,7 +32,7 @@ class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        jdbc.execute("CREATE TABLE IF NOT EXISTS audit_records ("
+        jdbc.execute("CREATE TABLE IF NOT EXISTS policy.audit_records ("
                 + "id varchar(64) primary key,"
                 + "actor_type varchar(50) not null,"
                 + "actor_id varchar(100),"
@@ -50,7 +50,7 @@ class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("TRUNCATE TABLE audit_records CASCADE");
+        dsl.execute("TRUNCATE TABLE policy.audit_records CASCADE");
     }
 
     @Test
@@ -231,29 +231,29 @@ class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
 
     private void runBackfill() {
         String[] rules = {
-                "UPDATE audit_records SET category = 'ADMIN_AUDIT' WHERE category IS NULL AND action LIKE 'ADMIN_%'",
-                "UPDATE audit_records SET category = 'RENDER' WHERE category IS NULL AND (action LIKE 'RENDER_%' OR action = 'ARTIFACT_CREATED' OR action = 'ARTIFACT_TOMBSTONED' OR resource_type = 'RENDER_JOB')",
-                "UPDATE audit_records SET category = 'DATA_GOVERNANCE' WHERE category IS NULL AND action LIKE 'PROBLEMATIC_DATA_%'",
-                "UPDATE audit_records SET category = 'FEATURE_FLAG' WHERE category IS NULL AND (action LIKE 'FEATURE_FLAG_%' OR resource_type = 'FEATURE_FLAG')",
-                "UPDATE audit_records SET category = 'ENTITLEMENT' WHERE category IS NULL AND (action LIKE 'ENTITLEMENT_%' OR resource_type = 'ENTITLEMENT')",
-                "UPDATE audit_records SET category = 'NLQ' WHERE category IS NULL AND (action LIKE 'NLQ_%' OR resource_type IN ('NLQ_QUERY', 'NLQ_REPORT'))",
-                "UPDATE audit_records SET category = 'PROVIDER_HEALTH' WHERE category IS NULL AND (action LIKE 'PROVIDER_%' OR resource_type = 'PROVIDER_HEALTH')",
-                "UPDATE audit_records SET category = 'IDENTITY' WHERE category IS NULL AND (action IN ('VIEW_DASHBOARD', 'SUBMIT_FEEDBACK') OR resource_type IN ('DASHBOARD', 'FEEDBACK'))",
-                "UPDATE audit_records SET category = 'API_REQUEST' WHERE category IS NULL AND (action LIKE 'API_%' OR action = 'REQUEST_RECEIVED' OR resource_type = 'API_REQUEST')",
-                "UPDATE audit_records SET category = 'EXTENSION' WHERE category IS NULL AND action LIKE 'EXTENSION_%'",
-                "UPDATE audit_records SET category = 'EXTENSION_ROUTING' WHERE category IS NULL AND action LIKE 'ROUTING_RULE_%'",
-                "UPDATE audit_records SET category = 'EXTENSION_RESOURCE' WHERE category IS NULL AND (action LIKE 'RESOURCE_LIMIT_%' OR action LIKE 'ROLLBACK_POINT_%')",
-                "UPDATE audit_records SET category = 'PERMISSION' WHERE category IS NULL AND action IN ('ROLE_ASSIGN', 'ROLE_REVOKE', 'MEMBER_ADD', 'MEMBER_REMOVE')",
-                "UPDATE audit_records SET category = 'CONFIG' WHERE category IS NULL AND action IN ('WORKSPACE_CREATE', 'WORKSPACE_UPDATE', 'GROUP_CREATE')",
-                "UPDATE audit_records SET category = 'PROMPT' WHERE category IS NULL AND resource_type = 'PROMPT'",
-                "UPDATE audit_records SET category = 'POLICY' WHERE category IS NULL AND resource_type = 'POLICY'",
-                "UPDATE audit_records SET category = 'SANDBOX' WHERE category IS NULL AND action LIKE 'SANDBOX_%'",
+                "UPDATE policy.audit_records SET category = 'ADMIN_AUDIT' WHERE category IS NULL AND action LIKE 'ADMIN_%'",
+                "UPDATE policy.audit_records SET category = 'RENDER' WHERE category IS NULL AND (action LIKE 'RENDER_%' OR action = 'ARTIFACT_CREATED' OR action = 'ARTIFACT_TOMBSTONED' OR resource_type = 'RENDER_JOB')",
+                "UPDATE policy.audit_records SET category = 'DATA_GOVERNANCE' WHERE category IS NULL AND action LIKE 'PROBLEMATIC_DATA_%'",
+                "UPDATE policy.audit_records SET category = 'FEATURE_FLAG' WHERE category IS NULL AND (action LIKE 'FEATURE_FLAG_%' OR resource_type = 'FEATURE_FLAG')",
+                "UPDATE policy.audit_records SET category = 'ENTITLEMENT' WHERE category IS NULL AND (action LIKE 'ENTITLEMENT_%' OR resource_type = 'ENTITLEMENT')",
+                "UPDATE policy.audit_records SET category = 'NLQ' WHERE category IS NULL AND (action LIKE 'NLQ_%' OR resource_type IN ('NLQ_QUERY', 'NLQ_REPORT'))",
+                "UPDATE policy.audit_records SET category = 'PROVIDER_HEALTH' WHERE category IS NULL AND (action LIKE 'PROVIDER_%' OR resource_type = 'PROVIDER_HEALTH')",
+                "UPDATE policy.audit_records SET category = 'IDENTITY' WHERE category IS NULL AND (action IN ('VIEW_DASHBOARD', 'SUBMIT_FEEDBACK') OR resource_type IN ('DASHBOARD', 'FEEDBACK'))",
+                "UPDATE policy.audit_records SET category = 'API_REQUEST' WHERE category IS NULL AND (action LIKE 'API_%' OR action = 'REQUEST_RECEIVED' OR resource_type = 'API_REQUEST')",
+                "UPDATE policy.audit_records SET category = 'EXTENSION' WHERE category IS NULL AND action LIKE 'EXTENSION_%'",
+                "UPDATE policy.audit_records SET category = 'EXTENSION_ROUTING' WHERE category IS NULL AND action LIKE 'ROUTING_RULE_%'",
+                "UPDATE policy.audit_records SET category = 'EXTENSION_RESOURCE' WHERE category IS NULL AND (action LIKE 'RESOURCE_LIMIT_%' OR action LIKE 'ROLLBACK_POINT_%')",
+                "UPDATE policy.audit_records SET category = 'PERMISSION' WHERE category IS NULL AND action IN ('ROLE_ASSIGN', 'ROLE_REVOKE', 'MEMBER_ADD', 'MEMBER_REMOVE')",
+                "UPDATE policy.audit_records SET category = 'CONFIG' WHERE category IS NULL AND action IN ('WORKSPACE_CREATE', 'WORKSPACE_UPDATE', 'GROUP_CREATE')",
+                "UPDATE policy.audit_records SET category = 'PROMPT' WHERE category IS NULL AND resource_type = 'PROMPT'",
+                "UPDATE policy.audit_records SET category = 'POLICY' WHERE category IS NULL AND resource_type = 'POLICY'",
+                "UPDATE policy.audit_records SET category = 'SANDBOX' WHERE category IS NULL AND action LIKE 'SANDBOX_%'",
         };
         for (String sql : rules) {
             dsl.execute(sql);
         }
 
         // Backfill remaining NULL to UNKNOWN
-        dsl.execute("UPDATE audit_records SET category = 'UNKNOWN' WHERE category IS NULL");
+        dsl.execute("UPDATE policy.audit_records SET category = 'UNKNOWN' WHERE category IS NULL");
     }
 }

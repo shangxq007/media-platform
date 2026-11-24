@@ -50,19 +50,19 @@ class SourceVisualOwnershipIntegrityIT {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         dsl = database.dsl();
         // production-equivalent Artifact-keyed DDL (consolidated V1 shape)
-        dsl.execute("create table artifact (id varchar(64) primary key)");
-        dsl.execute("create table media_stream (id varchar(64) primary key, "
+        dsl.execute("create table artifacts.artifact (id varchar(64) primary key)");
+        dsl.execute("create table media.media_stream (id varchar(64) primary key, "
                 + "artifact_id varchar(64) not null, stream_index int not null, stream_kind varchar(16) not null, "
-                + "constraint fk_ms_artifact foreign key (artifact_id) references artifact(id) on delete restrict, "
+                + "constraint fk_ms_artifact foreign key (artifact_id) references artifacts.artifact(id) on delete restrict, "
                 + "constraint uq_ms_id_artifact unique (id, artifact_id))");
-        dsl.execute("create table source_visual_description_snapshot (media_stream_id varchar(64) not null, "
+        dsl.execute("create table media.source_visual_description_snapshot (media_stream_id varchar(64) not null, "
                 + "artifact_id varchar(64) not null, canonical_payload text not null, "
                 + "created_at timestamp not null default current_timestamp, "
                 + "constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id), "
-                + "constraint fk_svd_artifact foreign key (artifact_id) references artifact(id), "
-                + "constraint fk_source_visual_snapshot_stream foreign key (media_stream_id) references media_stream(id), "
+                + "constraint fk_svd_artifact foreign key (artifact_id) references artifacts.artifact(id), "
+                + "constraint fk_source_visual_snapshot_stream foreign key (media_stream_id) references media.media_stream(id), "
                 + "constraint fk_svd_stream_artifact foreign key (media_stream_id, artifact_id) "
-                + "references media_stream (id, artifact_id))");
+                + "references media.media_stream (id, artifact_id))");
         dsl.execute("""
                 create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
                 begin
@@ -78,8 +78,8 @@ class SourceVisualOwnershipIntegrityIT {
                 + "source_visual_description_snapshot for each row "
                 + "execute function trg_fn_svd_snapshot_immutable()");
 
-        dsl.execute("insert into artifact (id) values ('artifact-X'), ('artifact-Z')");
-        dsl.execute("insert into media_stream (id, artifact_id, stream_index, stream_kind) "
+        dsl.execute("insert into artifacts.artifact (id) values ('artifact-X'), ('artifact-Z')");
+        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind) "
                 + "values ('stream-A', 'artifact-X', 0, 'VIDEO'), ('stream-B', 'artifact-Z', 0, 'VIDEO')");
     }
 
@@ -90,19 +90,19 @@ class SourceVisualOwnershipIntegrityIT {
 
     @BeforeEach
     void resetState() {
-        dsl.execute("delete from source_visual_description_snapshot");
+        dsl.execute("delete from media.source_visual_description_snapshot");
     }
 
     @Test
     void v7DirectSqlArtifactRebindRejected() {
-        dsl.execute("insert into source_visual_description_snapshot "
+        dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_A.value(), "artifact-X", payload());
         // direct SQL rebind S from artifact-X to artifact-Z must be rejected by the
         // immutability trigger (CIP2F: no historical rebind)
         org.jooq.exception.DataAccessException ex = assertThrows(
                 org.jooq.exception.DataAccessException.class,
-                () -> dsl.execute("update source_visual_description_snapshot "
+                () -> dsl.execute("update media.source_visual_description_snapshot "
                         + "set artifact_id = ? where media_stream_id = ?",
                         "artifact-Z", STREAM_A.value()));
         assertTrue(ex.getMessage().contains("SOURCE_VISUAL_SNAPSHOT_IMMUTABLE"),
@@ -111,7 +111,7 @@ class SourceVisualOwnershipIntegrityIT {
 
     @Test
     void v7DirectSqlPayloadRewriteRejected() {
-        dsl.execute("insert into source_visual_description_snapshot "
+        dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_A.value(), "artifact-X", payload());
         String different = "format=source-visual-v1\nextent=640x480\npar=1/1\n"
@@ -120,7 +120,7 @@ class SourceVisualOwnershipIntegrityIT {
                 + "orient=NORMAL\nscan=progressive\nhdr=absent\n";
         org.jooq.exception.DataAccessException ex = assertThrows(
                 org.jooq.exception.DataAccessException.class,
-                () -> dsl.execute("update source_visual_description_snapshot "
+                () -> dsl.execute("update media.source_visual_description_snapshot "
                         + "set canonical_payload = ? where media_stream_id = ?",
                         different, STREAM_A.value()));
         assertTrue(ex.getMessage().contains("SOURCE_VISUAL_SNAPSHOT_IMMUTABLE"),
@@ -129,19 +129,19 @@ class SourceVisualOwnershipIntegrityIT {
 
     @Test
     void independentStreamSnapshotsCoexist() {
-        dsl.execute("insert into source_visual_description_snapshot "
+        dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_A.value(), "artifact-X", payload());
         String other = "format=source-visual-v1\nextent=3840x2160\npar=1/1\n"
                 + "sample=RGB|INTERLEAVED|10|NONE|UNSPECIFIED|false\n"
                 + "color=parametric|wellknown:BT2020|PQ|BT2020_NCL|LIMITED\nalpha=NO_ALPHA\n"
                 + "orient=NORMAL\nscan=progressive\nhdr=absent\n";
-        dsl.execute("insert into source_visual_description_snapshot "
+        dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_B.value(), "artifact-Z", other);
-        assertEquals(2, dsl.fetchOne("select count(*) from source_visual_description_snapshot")
+        assertEquals(2, dsl.fetchOne("select count(*) from media.source_visual_description_snapshot")
                 .get(0, Long.class), "each stream keeps its own immutable snapshot");
-        String x = dsl.fetchOne("select canonical_payload from source_visual_description_snapshot "
+        String x = dsl.fetchOne("select canonical_payload from media.source_visual_description_snapshot "
                 + "where media_stream_id = ? and artifact_id = ?", STREAM_A.value(), "artifact-X")
                 .get(0, String.class);
         assertEquals(payload(), x, "snapshot X unchanged after the second stream insert");
@@ -162,37 +162,37 @@ class SourceVisualOwnershipIntegrityIT {
     @Test
     void d1CrossStreamArtifactMismatchRejected() {
         // stream-A belongs to artifact-X; declaring artifact-Z (stream-B's artifact) must be rejected
-        expectReject(() -> dsl.execute("insert into source_visual_description_snapshot "
+        expectReject(() -> dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_A.value(), "artifact-Z", payload()), "D1");
     }
 
     @Test
     void d2NonexistentArtifactRejected() {
-        expectReject(() -> dsl.execute("insert into source_visual_description_snapshot "
+        expectReject(() -> dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_A.value(), "artifact-ghost", payload()), "D2");
     }
 
     @Test
     void d3NonexistentStreamRejected() {
-        expectReject(() -> dsl.execute("insert into source_visual_description_snapshot "
+        expectReject(() -> dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 "stream-ghost", "artifact-X", payload()), "D3");
     }
 
     @Test
     void d4ValidOwnershipInsertSucceeds() {
-        dsl.execute("insert into source_visual_description_snapshot "
+        dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_A.value(), "artifact-X", payload());
-        assertEquals(1, dsl.fetchOne("select count(*) from source_visual_description_snapshot "
+        assertEquals(1, dsl.fetchOne("select count(*) from media.source_visual_description_snapshot "
                 + "where media_stream_id = ?", STREAM_A.value()).get(0, Long.class),
                 "valid artifact-keyed ownership insert must succeed");
-        dsl.execute("insert into source_visual_description_snapshot "
+        dsl.execute("insert into media.source_visual_description_snapshot "
                 + "(media_stream_id, artifact_id, canonical_payload) values (?, ?, ?)",
                 STREAM_B.value(), "artifact-Z", payload());
-        assertEquals(2, dsl.fetchOne("select count(*) from source_visual_description_snapshot")
+        assertEquals(2, dsl.fetchOne("select count(*) from media.source_visual_description_snapshot")
                 .get(0, Long.class));
     }
 

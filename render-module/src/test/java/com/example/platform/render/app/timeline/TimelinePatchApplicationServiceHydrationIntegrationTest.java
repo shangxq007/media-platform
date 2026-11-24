@@ -36,9 +36,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
+import static com.example.platform.typedschema.jooq.generated.render.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -212,7 +212,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         insertProduct(productId);
 
         assertThrows(org.jooq.exception.IntegrityConstraintViolationException.class,
-                () -> dsl.execute("insert into timeline_revision "
+                () -> dsl.execute("insert into timeline.timeline_revision "
                                 + "(id, tenant_id, project_id, revision_number, snapshot_id, "
                                 + "internal_revision, content_hash, schema_version, source, created_at) "
                                 + "values (?, ?, ?, 1, ?, 1, ?, 'timeline-1.0', 'fixture-negative', now())",
@@ -504,9 +504,9 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
 
 
     private Optional<String> payloadOf(String snapshotId) {
-        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
-                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
-                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
-                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
+        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
+                .fetchOne(com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
     }
 }

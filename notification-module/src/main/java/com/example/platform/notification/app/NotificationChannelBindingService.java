@@ -1,6 +1,6 @@
 package com.example.platform.notification.app;
 
-import static com.example.platform.typedschema.jooq.generated.tables.NotificationChannelBinding.NOTIFICATION_CHANNEL_BINDING;
+import static com.example.platform.typedschema.jooq.generated.notification.tables.NotificationChannelBinding.NOTIFICATION_CHANNEL_BINDING;
 
 import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;

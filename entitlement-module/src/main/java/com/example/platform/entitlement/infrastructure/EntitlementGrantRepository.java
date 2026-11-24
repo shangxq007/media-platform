@@ -22,7 +22,7 @@ public class EntitlementGrantRepository {
 
     public EntitlementGrantView insert(EntitlementGrantCommand command, Instant now) {
         int inserted = jdbc.update("""
-                INSERT INTO entitlement_grant
+                INSERT INTO entitlement.entitlement_grant
                     (id, tenant_id, subject_type, subject_id, bundle_code, quota_profile_code,
                      source_type, source_ref, grant_status, effective_at, expires_at,
                      version, created_at, updated_at)
@@ -39,7 +39,7 @@ public class EntitlementGrantRepository {
     public EntitlementGrantView transition(
             EntitlementGrantCommand command, String nextStatus, Instant nextExpiry) {
         int updated = jdbc.update("""
-                UPDATE entitlement_grant
+                UPDATE entitlement.entitlement_grant
                 SET grant_status = ?, expires_at = ?, version = version + 1, updated_at = ?
                 WHERE id = ? AND tenant_id = ? AND subject_type = ? AND subject_id = ?
                   AND grant_status = 'ACTIVE' AND version = ?
@@ -57,7 +57,7 @@ public class EntitlementGrantRepository {
 
     public Optional<EntitlementGrantView> find(PrincipalRef principal, String grantId) {
         List<EntitlementGrantView> rows = jdbc.query("""
-                SELECT * FROM entitlement_grant
+                SELECT * FROM entitlement.entitlement_grant
                 WHERE id = ? AND tenant_id = ? AND subject_type = ? AND subject_id = ?
                 """, this::map, grantId, principal.tenantId(),
                 principal.principalType().name(), principal.principalId());
@@ -65,13 +65,13 @@ public class EntitlementGrantRepository {
     }
 
     public List<EntitlementGrantView> lockPrincipal(PrincipalRef principal) {
-        return jdbc.query("SELECT * FROM entitlement_grant WHERE tenant_id=? AND subject_type=? AND subject_id=? ORDER BY id FOR SHARE",
+        return jdbc.query("SELECT * FROM entitlement.entitlement_grant WHERE tenant_id=? AND subject_type=? AND subject_id=? ORDER BY id FOR SHARE",
                 this::map, principal.tenantId(), principal.principalType().name(), principal.principalId());
     }
 
     public List<EntitlementGrantView> findActive(PrincipalRef principal, Instant now) {
         return jdbc.query("""
-                SELECT * FROM entitlement_grant
+                SELECT * FROM entitlement.entitlement_grant
                 WHERE tenant_id = ? AND subject_type = ? AND subject_id = ?
                   AND grant_status = 'ACTIVE' AND effective_at <= ?
                   AND (expires_at IS NULL OR expires_at > ?)
@@ -81,7 +81,7 @@ public class EntitlementGrantRepository {
     }
 
     public List<EntitlementGrantView> findAllActive() {
-        return jdbc.query("SELECT * FROM entitlement_grant WHERE grant_status = 'ACTIVE'",
+        return jdbc.query("SELECT * FROM entitlement.entitlement_grant WHERE grant_status = 'ACTIVE'",
                 this::map);
     }
 

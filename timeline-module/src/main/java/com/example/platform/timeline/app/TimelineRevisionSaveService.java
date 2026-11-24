@@ -35,8 +35,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionParent.TIMELINE_REVISION_PARENT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineRevisionParent.TIMELINE_REVISION_PARENT;
 
 /**
  * E1-gated primary save surface for {@link TimelineDocument} revisions.
@@ -515,7 +515,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             String expectedHeadRevisionId,
             String expectedResultStatus) {
         int inserted = tx.execute("""
-                insert into apply_command
+                insert into timeline.apply_command
                     (apply_command_id, plan_digest, fingerprint, status, tenant_id, project_id,
                      command_domain, target_ref_id, expected_head_revision_id, expected_result_status)
                 values (?, ?, ?, 'IN_PROGRESS', ?, ?, ?, ?, ?, ?)
@@ -530,7 +530,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                 select plan_digest, fingerprint, status, tenant_id, project_id, command_domain,
                        target_ref_id, expected_head_revision_id, expected_result_status,
                        result_revision_id, result_content_hash, result_status
-                from apply_command where apply_command_id = ?
+                from timeline.apply_command where apply_command_id = ?
                 """, command.commandId());
         if (existing == null
                 || !command.planDigest().equals(existing.get("plan_digest", String.class))
@@ -560,7 +560,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             org.jooq.DSLContext tx, String commandId,
             String revisionId, String timelineContentHash, String resultStatus) {
         int updated = tx.execute("""
-                update apply_command
+                update timeline.apply_command
                 set status = 'COMPLETED', result_revision_id = ?, result_content_hash = ?,
                     result_status = ?, completed_at = current_timestamp
                 where apply_command_id = ? and status = 'IN_PROGRESS'

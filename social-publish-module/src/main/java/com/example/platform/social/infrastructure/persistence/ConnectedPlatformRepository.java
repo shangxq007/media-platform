@@ -26,7 +26,7 @@ public class ConnectedPlatformRepository {
     public ConnectedPlatform save(ConnectedPlatform platform) {
         TenantGuard.assertSameTenant(platform.tenantId());
         String sql = """
-                INSERT INTO social_connected_platform (id, tenant_id, user_id, platform_type, platform_user_id,
+                INSERT INTO publication.social_connected_platform (id, tenant_id, user_id, platform_type, platform_user_id,
                     platform_username, status, binding_version, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
@@ -41,13 +41,13 @@ public class ConnectedPlatformRepository {
     public List<ConnectedPlatform> findByTenantAndUser(String tenantId, String userId) {
         tenantId = TenantGuard.tenantOrDefault(tenantId);
         return jdbc.query(
-                "SELECT * FROM social_connected_platform WHERE tenant_id = ? AND user_id = ? ORDER BY created_at DESC",
+                "SELECT * FROM publication.social_connected_platform WHERE tenant_id = ? AND user_id = ? ORDER BY created_at DESC",
                 rowMapper, tenantId, userId);
     }
 
     public Optional<ConnectedPlatform> findByTenantUserAndPlatform(String tenantId, String userId, String platformType) {
         List<ConnectedPlatform> results = jdbc.query(
-                "SELECT * FROM social_connected_platform WHERE tenant_id = ? AND user_id = ? AND platform_type = ?",
+                "SELECT * FROM publication.social_connected_platform WHERE tenant_id = ? AND user_id = ? AND platform_type = ?",
                 rowMapper, tenantId, userId, platformType);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
@@ -55,13 +55,13 @@ public class ConnectedPlatformRepository {
     public Optional<ConnectedPlatform> findById(String id) {
         String tenantId = TenantGuard.requireTenantId();
         List<ConnectedPlatform> results = jdbc.query(
-                "SELECT * FROM social_connected_platform WHERE id = ? AND tenant_id = ?", rowMapper, id, tenantId);
+                "SELECT * FROM publication.social_connected_platform WHERE id = ? AND tenant_id = ?", rowMapper, id, tenantId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     /** Held only during the short dispatch authorization transaction, never during provider IO. */
     public Optional<ConnectedPlatform> lockById(String id) {
-        var rows = jdbc.query("SELECT * FROM social_connected_platform WHERE id=? AND tenant_id=? FOR UPDATE",
+        var rows = jdbc.query("SELECT * FROM publication.social_connected_platform WHERE id=? AND tenant_id=? FOR UPDATE",
                 rowMapper, id, TenantGuard.requireTenantId());
         return rows.stream().findFirst();
     }
@@ -70,11 +70,11 @@ public class ConnectedPlatformRepository {
             String tenantId, String actorId, String projectId) {
         return jdbc.query("""
                 SELECT a.id, a.platform_username, a.platform_type, a.status, a.binding_version
-                FROM social_connected_platform a
+                FROM publication.social_connected_platform a
                 WHERE a.tenant_id = ? AND a.user_id = ? AND a.status = 'ACTIVE'
                   AND EXISTS (
                       SELECT 1
-                      FROM social_post p
+                      FROM publication.social_post p
                       WHERE p.tenant_id = a.tenant_id
                         AND p.user_id = a.user_id
                         AND p.project_id = ?
@@ -91,12 +91,12 @@ public class ConnectedPlatformRepository {
             long bindingVersion) {
         List<SocialAccountReadModel> rows = jdbc.query("""
                 SELECT a.id, a.platform_username, a.platform_type, a.status, a.binding_version
-                FROM social_connected_platform a
+                FROM publication.social_connected_platform a
                 WHERE a.tenant_id = ? AND a.user_id = ? AND a.id = ?
                   AND a.binding_version = ? AND a.status = 'ACTIVE'
                   AND EXISTS (
                       SELECT 1
-                      FROM social_post p
+                      FROM publication.social_post p
                       WHERE p.tenant_id = a.tenant_id
                         AND p.user_id = a.user_id
                         AND p.project_id = ?
@@ -110,7 +110,7 @@ public class ConnectedPlatformRepository {
     }
 
     public void deleteById(String id) {
-        jdbc.update("DELETE FROM social_connected_platform WHERE id = ?", id);
+        jdbc.update("DELETE FROM publication.social_connected_platform WHERE id = ?", id);
     }
 
     private ConnectedPlatform mapRow(ResultSet rs) throws SQLException {

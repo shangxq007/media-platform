@@ -55,10 +55,10 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         var dispatcher = new OutboxEventDispatcher(service, publisher, OutboxTestEvents.router(), 3, new SimpleMeterRegistry());
         for (String name : java.util.stream.Stream.concat(RetiredEventContractsTest.TYPES.stream(), RetiredEventContractsTest.KEYS.stream()).toList()) {
             String id = service.append(OutboxTestEvents.order("ep29b", "value", null));
-            dsl.execute("update outbox_events set event_type = ? where id = ?", name, id);
+            dsl.execute("update infrastructure.outbox_events set event_type = ? where id = ?", name, id);
             org.junit.jupiter.api.Assertions.assertFalse(dispatcher.processOnce(id), name);
             assertEquals("DEAD_LETTER", service.readEvent(id).get("status"));
-            assertEquals("UNSUPPORTED_EVENT_VERSION", dsl.fetchOne("select last_error_code from outbox_events where id = ?", id).get(0));
+            assertEquals("UNSUPPORTED_EVENT_VERSION", dsl.fetchOne("select last_error_code from infrastructure.outbox_events where id = ?", id).get(0));
         }
         org.mockito.Mockito.verifyNoInteractions(publisher);
     }
@@ -402,7 +402,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertEquals(1, overview.get("processing"));
     }
     private OutboxClaim claim(String id) {
-        dsl.execute("update outbox_events set next_attempt_at=? where id=? and status='FAILED'",java.time.LocalDateTime.now().minusSeconds(1),id);
+        dsl.execute("update infrastructure.outbox_events set next_attempt_at=? where id=? and status='FAILED'",java.time.LocalDateTime.now().minusSeconds(1),id);
         return service.claimForProcessing(id,"fixture").orElseThrow();
     }
     private void ack(String id){assertTrue(service.markProcessed(claim(id)));}

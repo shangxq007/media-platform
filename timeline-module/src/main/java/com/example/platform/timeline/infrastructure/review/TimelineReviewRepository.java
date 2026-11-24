@@ -9,10 +9,10 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.ReviewDecision.REVIEW_DECISION;
-import static com.example.platform.typedschema.jooq.generated.tables.ReviewThread.REVIEW_THREAD;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineComment.TIMELINE_COMMENT;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineReview.TIMELINE_REVIEW;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.ReviewDecision.REVIEW_DECISION;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.ReviewThread.REVIEW_THREAD;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineComment.TIMELINE_COMMENT;
+import static com.example.platform.typedschema.jooq.generated.timeline.tables.TimelineReview.TIMELINE_REVIEW;
 
 
 @Repository

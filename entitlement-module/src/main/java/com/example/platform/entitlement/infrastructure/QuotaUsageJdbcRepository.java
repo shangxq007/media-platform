@@ -33,7 +33,7 @@ public class QuotaUsageJdbcRepository {
         Instant recordedAt = Instant.now();
         String operationId = ("qop_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<String> claimed = jdbc.query("""
-                INSERT INTO quota_usage_operation (
+                INSERT INTO entitlement.quota_usage_operation (
                     id, tenant_id, principal_type, principal_id, workspace_scope,
                     organization_scope, quota_key, period_start, period_end,
                     signed_delta, limit_value, idempotency_key, operation_kind,
@@ -80,7 +80,7 @@ public class QuotaUsageJdbcRepository {
         if (usageAfter != null) {
             BigDecimal usageBefore = usageAfter.subtract(command.signedDelta());
             jdbc.update("""
-                    UPDATE quota_usage_operation
+                    UPDATE entitlement.quota_usage_operation
                     SET outcome = 'APPLIED', usage_before = ?, usage_after = ?, rejection_reason = NULL
                     WHERE id = ?
                     """, usageBefore, usageAfter, operationId);
@@ -89,7 +89,7 @@ public class QuotaUsageJdbcRepository {
                     command.periodStart(), command.periodEnd());
             QuotaUsageRejectionReason rejection = rejectionReason(current, command);
             jdbc.update("""
-                    UPDATE quota_usage_operation
+                    UPDATE entitlement.quota_usage_operation
                     SET outcome = 'REJECTED', usage_before = ?, usage_after = ?, rejection_reason = ?
                     WHERE id = ?
                     """, current, current, rejection.name(), operationId);
@@ -105,7 +105,7 @@ public class QuotaUsageJdbcRepository {
 
     private BigDecimal atomicUpdate(QuotaUsageCommand command, Instant updatedAt) {
         List<BigDecimal> rows = jdbc.query("""
-                UPDATE quota_usage
+                UPDATE entitlement.quota_usage
                 SET usage_value = usage_value + ?,
                     updated_at = ?
                 WHERE tenant_id = ?
@@ -139,7 +139,7 @@ public class QuotaUsageJdbcRepository {
 
     private BigDecimal conditionalInsert(QuotaUsageCommand command, Instant recordedAt) {
         List<BigDecimal> rows = jdbc.query("""
-                INSERT INTO quota_usage (
+                INSERT INTO entitlement.quota_usage (
                     id, tenant_id, principal_type, principal_id, workspace_scope,
                     organization_scope, quota_key, period_start, period_end,
                     usage_value, created_at, updated_at)
@@ -173,7 +173,7 @@ public class QuotaUsageJdbcRepository {
             PrincipalRef principal, String quotaKey, Instant periodStart, Instant periodEnd) {
         List<BigDecimal> rows = jdbc.query("""
                 SELECT usage_value
-                FROM quota_usage
+                FROM entitlement.quota_usage
                 WHERE tenant_id = ?
                   AND principal_type = ?
                   AND principal_id = ?
@@ -204,7 +204,7 @@ public class QuotaUsageJdbcRepository {
                         AND signed_delta = ?
                         AND limit_value = ?
                         AND operation_kind = ?) AS semantic_payload_matches
-                FROM quota_usage_operation
+                FROM entitlement.quota_usage_operation
                 WHERE tenant_id = ?
                   AND principal_type = ?
                   AND principal_id = ?
