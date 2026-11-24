@@ -438,6 +438,8 @@ final class ExecutableTaskCanonicalCodec {
                 .field("start", mediaTime(extent.start()))
                 .field("end", mediaTime(extent.end()))
                 .field("frameRate", frameRate(extent.frameRate()))
+                .field("rasterWidth", Integer.toString(extent.raster().width()))
+                .field("rasterHeight", Integer.toString(extent.raster().height()))
                 .build();
         return optional("RenderExtent", canonical);
     }

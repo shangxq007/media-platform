@@ -66,6 +66,7 @@ public final class OperationPlanner {
             case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
+            case "timeline.composition.aspect.set" -> planCompositionAspect(instance, base, changes);
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
             case "timeline.clip.effect.set" -> planVideoEffectSet(instance, base, changes);
             case "timeline.clip.effect.remove" -> planVideoEffectRemove(instance, base, changes);
@@ -716,6 +717,21 @@ public final class OperationPlanner {
         return rebuild(base, base.getTracks(), newMix, base.getSemanticRelationships());
     }
 
+    private TimelineDocument planCompositionAspect(OperationInstance instance, TimelineDocument base,
+            List<PlannedChange> changes) {
+        if (!(instance.target() instanceof OperationTarget.TimelineTarget)
+                || !(instance.parameters() instanceof OperationParameters.CompositionAspectParameters params)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "A Timeline and composition aspect ratio are required");
+        }
+        var metadata = base.getMetadata();
+        changes.add(new PlannedChange.CompositionAspectChanged(params.aspectRatio()));
+        return new TimelineDocument(base.getSchemaVersion(), base.getTracks(),
+                new com.example.platform.timeline.canonical.TimelineMetadata(
+                        metadata.title(), metadata.description(), metadata.properties(), params.aspectRatio()),
+                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
+                base.getTransitions(), base.getAutomations());
+    }
+
     private TimelineDocument planVideoTransform(OperationInstance inst, TimelineDocument base,
             List<PlannedChange> changes) {
         if (!(inst.parameters() instanceof OperationParameters.VideoTransformParameters params)) {
@@ -751,11 +767,7 @@ public final class OperationPlanner {
         }
         BasicVideoEffect e = params.effect();
         effects.add(new TimelineClipEffect("video-basic-" + clip.getClipId().value(),
-                BasicVideoEffect.EFFECT_KEY, Map.of(
-                        "brightness", e.brightness(), "contrast", e.contrast(),
-                        "saturation", e.saturation(), "grayscale", e.grayscale(),
-                        "fadeInSeconds", e.fadeInSeconds(), "fadeOutSeconds", e.fadeOutSeconds(),
-                        "enabled", e.enabled())));
+                BasicVideoEffect.EFFECT_KEY, e.toParameters()));
         TimelineClip updated = new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
                 clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                 clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),

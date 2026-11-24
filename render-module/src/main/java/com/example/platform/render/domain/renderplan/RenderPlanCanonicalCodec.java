@@ -242,6 +242,8 @@ public final class RenderPlanCanonicalCodec {
         s(sb, mediaTimeCanonical(extent.start()));
         s(sb, mediaTimeCanonical(extent.end()));
         s(sb, frameRateCanonical(extent.frameRate()));
+        s(sb, Integer.toString(extent.raster().width()));
+        s(sb, Integer.toString(extent.raster().height()));
         return sb.toString();
     }
 

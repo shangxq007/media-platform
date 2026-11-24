@@ -74,6 +74,11 @@ public final class FfmpegCpuRenderLowerer implements PlanLowerer<FfmpegCpuRender
         ExecutableTaskMembership membership = task.memberships().getFirst();
         var unit = membership.physicalPlanUnit();
         FfmpegCpuRenderPlan.Operation operation = operationOf(unit.operationKey());
+        if (unit.propagatedExtent() != null && !unit.propagatedExtent().raster().equals(
+                com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT)) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                    "FFmpeg CPU requires the default formal output raster");
+        }
         requireDeclaredCapabilities(unit.capabilityRequirementRefs(), operation);
         if (unit.typedOutputs().size() != 1 || task.authoritativeOutputIds().size() != 1) {
             throw new ProviderNativeExecutionFailure(

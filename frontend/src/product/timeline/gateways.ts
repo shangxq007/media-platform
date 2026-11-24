@@ -163,7 +163,7 @@ export interface AssetSourcePin {
 }
 
 export interface AssetGateway {
-  listSourcePins(tenantId: string, projectId: ProjectId): Promise<GatewayResult<readonly AssetSourcePin[]>>
+  listSourcePins(tenantId: string, projectId: ProjectId, signal?: AbortSignal): Promise<GatewayResult<readonly AssetSourcePin[]>>
   uploadSource(tenantId: string, projectId: ProjectId, file: File, idempotencyKey: string,
     onProgress?: (percentage: number) => void): Promise<GatewayResult<AssetSourcePin>>
   readSourceContent(tenantId: string, projectId: string, artifactId: string, signal?: AbortSignal): Promise<GatewayResult<Blob>>

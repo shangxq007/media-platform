@@ -110,7 +110,7 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
             }
             MediaTime duration = plan.compositeDuration().orElseThrow();
             var canvasRate = plan.outputFrameRate().orElse(FrameRate.of(30, 1));
-            StringBuilder filter = new StringBuilder("color=c=black:s=320x240:r=")
+            StringBuilder filter = new StringBuilder("color=c=black:s=" + defaultRaster() + ":r=")
                     .append(canvasRate.numerator()).append('/').append(canvasRate.denominator())
                     .append(":d=").append(seconds(duration)).append("[canvas];");
             for (int i = 0; i < plan.compositeInputs().size(); i++) {
@@ -144,6 +144,10 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
             var rate = plan.outputFrameRate().orElseThrow();
             arguments.add("-r");
             arguments.add(rate.numerator() + "/" + rate.denominator());
+        }
+        if (plan.operation() == FfmpegCpuRenderPlan.Operation.ENCODE) {
+            var raster = com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT;
+            arguments.addAll(List.of("-vf", "scale=" + raster.width() + ":" + raster.height() + ",setsar=1"));
         }
         arguments.add("-an");
         arguments.add("-map_metadata");
@@ -200,7 +204,7 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
         arguments.add("-f");
         arguments.add("lavfi");
         arguments.add("-i");
-        arguments.add("color=c=0x00000000:s=320x240:r="
+        arguments.add("color=c=0x00000000:s=" + defaultRaster() + ":r="
                 + rate.numerator() + "/" + rate.denominator() + ",format=rgba");
         arguments.add("-vf");
         arguments.add("drawtext=fontfile=" + escapeDrawtextPath(raster.fontFile())
@@ -240,6 +244,11 @@ public final class FfmpegCpuRenderAdapter implements RuntimeAdapter<FfmpegCpuRen
     }
 
     /** Exact rational seconds, deterministic plain-decimal rendering. */
+    private static String defaultRaster() {
+        var raster = com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT;
+        return raster.width() + "x" + raster.height();
+    }
+
     private static String seconds(MediaTime time) {
         return BigDecimal.valueOf(time.ticks())
                 .divide(BigDecimal.valueOf(time.timeScale()), SECONDS_SCALE, RoundingMode.HALF_UP)

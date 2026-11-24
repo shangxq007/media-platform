@@ -111,7 +111,7 @@ public final class VerifiedTimelineRevisionFactory {
         var tracks = document.getTracks().stream()
                 .map(track -> new VerifiedTimelineRevision.Track(track.trackId(), track.type())).toList();
         return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
-                document.getTransitions());
+                document.getTransitions(), document.getMetadata().effectiveCompositionAspectRatio());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

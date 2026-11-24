@@ -48,7 +48,7 @@ class OperationPlannerFieldPreservationTest {
     @Test
     void moveReplaceClipRebuildPreservesUntouchedFields() {
         TimelineDocument base = RichTimelineDocument.rich();
-        OperationInstance inst = instance(OperationDefinition.V1.MOVE, clipTarget("clip-1"),
+        OperationInstance inst = instance(OperationDefinition.V1.MOVE, clipTarget("clip-3"),
                 new OperationParameters.MoveParameters(MediaTime.ofMillis(500), false));
 
         TimelineDocument candidate = plan(inst, base);

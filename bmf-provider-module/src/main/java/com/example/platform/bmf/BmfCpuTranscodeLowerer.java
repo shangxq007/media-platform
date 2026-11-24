@@ -78,7 +78,9 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                 : Optional.empty();
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), operation,
                 task.requiredRuntimeInputs().getFirst().inputId(),
-                task.authoritativeOutputIds().getFirst(), window);
+                task.authoritativeOutputIds().getFirst(), window, List.of(), Optional.empty(), Optional.empty(),
+                unit.propagatedExtent() == null ? com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT
+                        : unit.propagatedExtent().raster());
     }
 
     private static BmfCpuTranscodePlan multitrackPlan(ExecutableTask task,
@@ -100,9 +102,16 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                 throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                         "BMF multitrack composition requires exact audio or video placement");
             }
+            var placement = placement(timed.transform());
+            double scaledWidth = Math.ceil(extent.raster().width() * placement.scaleX());
+            double scaledHeight = Math.ceil(extent.raster().height() * placement.scaleY());
+            if (!timed.audio() && scaledWidth * scaledHeight > 8_294_400) {
+                throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+                        "BMF scaled composition input exceeds its intermediate raster budget");
+            }
             inputs.add(new BmfCpuTranscodePlan.TimedInput(input.inputId(), timed.start().subtract(extent.start()),
                     timed.end().subtract(extent.start()), timed.layer(), timed.audio(),
-                    timed.gainLinear(), timed.muted(), timed.balanceValue(), timed.transform(),
+                    timed.gainLinear(), timed.muted(), timed.balanceValue(), placement,
                     timed.effect(), timed.start().subtract(timed.authoredStart()),
                     timed.authoredEnd().subtract(timed.authoredStart()),
                     timed.dissolve().map(RenderDependency.Dissolve::duration).orElse(MediaTime.ZERO)));
@@ -120,7 +129,18 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
         }
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), BmfOperation.MULTITRACK_COMPOSITE,
                 inputs.getFirst().inputId(), task.authoritativeOutputIds().getFirst(), Optional.empty(),
-                List.copyOf(inputs), Optional.of(extent.end().subtract(extent.start())), Optional.of(extent.frameRate()));
+                List.copyOf(inputs), Optional.of(extent.end().subtract(extent.start())), Optional.of(extent.frameRate()), extent.raster());
+    }
+
+    private static BmfCpuTranscodePlan.VideoPlacement placement(
+            com.example.platform.timeline.semantics.effect.VideoTransform transform) {
+        double unit = com.example.platform.timeline.semantics.effect.VideoTransform.UNIT;
+        return new BmfCpuTranscodePlan.VideoPlacement(
+                transform.positionXMicros() / unit, transform.positionYMicros() / unit,
+                transform.scaleXMicros() / unit, transform.scaleYMicros() / unit,
+                transform.rotationMicroDegrees() / unit, transform.cropLeftMicros() / unit,
+                transform.cropRightMicros() / unit, transform.cropTopMicros() / unit,
+                transform.cropBottomMicros() / unit, transform.opacityMicros() / unit);
     }
 
     private static boolean isMultiInputComposite(
@@ -193,7 +213,7 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), BmfOperation.COMPOSITE,
                 timed.getFirst().inputId(), task.authoritativeOutputIds().getFirst(),
                 Optional.empty(), java.util.List.copyOf(timed), Optional.of(duration),
-                Optional.of(extent.frameRate()));
+                Optional.of(extent.frameRate()), extent.raster());
     }
 
     private static Optional<BmfCpuTranscodePlan.SourceWindow> sourceWindow(

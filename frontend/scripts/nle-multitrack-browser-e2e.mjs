@@ -99,7 +99,7 @@ try {
   }
   const sources = {}
   for (const file of ['video-a.mp4', 'video-b.mp4', 'video-c.mp4', 'video-d.mp4',
-    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav', 'video-embed.mp4']) sources[file] = await upload(file)
+    'audio-a.wav', 'audio-b.wav', 'audio-c.wav', 'audio-d.wav', 'video-embed.mp4', 'composition-pattern.mp4']) sources[file] = await upload(file)
   record('EIGHT_SOURCES_UPLOADED_IN_WORKBENCH')
 
   const addClip = async (file, trackId, start, end, sourceEnd = null) => {
@@ -179,6 +179,8 @@ try {
     assert.equal(route.mute.muted, mute)
     assert.equal(route.balance.value, pan)
   }
+  const transformFields = ['positionXMicros', 'positionYMicros', 'scaleXMicros', 'scaleYMicros',
+    'rotationMicroDegrees', 'cropLeftMicros', 'cropRightMicros', 'cropTopMicros', 'cropBottomMicros', 'opacityMicros']
   const applyTransform = async (clipId, t) => {
     await field('Clip').selectOption(clipId)
     const values = {
@@ -200,16 +202,17 @@ try {
     const transformed = (await snapshot(current.revisionId)).tracks
       .flatMap(track => track.clips).find(clip => clip.clipId === clipId).transform
     for (const [key, value] of Object.entries(values)) {
-      const property = { 'Video position X': 'positionX', 'Video position Y': 'positionY',
-        'Video scale X': 'scaleX', 'Video scale Y': 'scaleY', 'Video rotation': 'rotationDegrees',
-        'Video opacity': 'opacity', 'Video crop left': 'cropLeft', 'Video crop right': 'cropRight',
-        'Video crop top': 'cropTop', 'Video crop bottom': 'cropBottom' }[key]
-      assert(Math.abs(transformed[property] - value) < 1e-9, `${clipId} ${property}`)
+      const property = { 'Video position X': 'positionXMicros', 'Video position Y': 'positionYMicros',
+        'Video scale X': 'scaleXMicros', 'Video scale Y': 'scaleYMicros', 'Video rotation': 'rotationMicroDegrees',
+        'Video opacity': 'opacityMicros', 'Video crop left': 'cropLeftMicros', 'Video crop right': 'cropRightMicros',
+        'Video crop top': 'cropTopMicros', 'Video crop bottom': 'cropBottomMicros' }[key]
+      assert.equal(transformed.format, 'composition-transform-micro-v1')
+      assert.equal(transformed[property], Math.round(value * 1_000_000), clipId + ' ' + property)
     }
   }
-  await applyTransform(videoB, { positionX: 220, positionY: 160, scaleX: 0.3, scaleY: 0.3,
+  await applyTransform(videoB, { positionX: 0.6875, positionY: 0.666667, scaleX: 0.3, scaleY: 0.3,
     rotationDegrees: 0, cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 1 })
-  await applyTransform(videoD, { positionX: 20, positionY: 20, scaleX: 0.5, scaleY: 0.5,
+  await applyTransform(videoD, { positionX: 0.0625, positionY: 0.083333, scaleX: 0.5, scaleY: 0.5,
     rotationDegrees: 45, cropLeft: 0.2, cropRight: 0.8, cropTop: 0.2, cropBottom: 0.8, opacity: 0.5 })
   // Reset is a local editor action; applying identity afterwards is not necessary here.
   await field('Clip').selectOption(videoA)
@@ -445,15 +448,14 @@ try {
     assert.equal(route.balance.value, pan)
   }
   const reloadedClips = reloaded.tracks.flatMap(track => track.clips)
-  for (const [clipId, expected] of [[videoB, [220, 160, 0.3, 0.3, 0, 0, 1, 0, 1, 1]],
+  for (const [clipId, expected] of [[videoB, [0.6875, 0.666667, 0.3, 0.3, 0, 0, 1, 0, 1, 1]],
     [videoC, [0, 0, 1, 1, 0, 0, 1, 0, 1, 1]],
-    [videoD, [20, 20, 0.5, 0.5, 45, 0.2, 0.8, 0.2, 0.8, 0.5]]]) {
+    [videoD, [0.0625, 0.083333, 0.5, 0.5, 45, 0.2, 0.8, 0.2, 0.8, 0.5]]]) {
     const clip = reloadedClips.find(item => item.clipId === clipId)
     const t = clip.transform
-    const actual = [t.positionX, t.positionY, t.scaleX, t.scaleY, t.rotationDegrees,
-      t.cropLeft, t.cropRight, t.cropTop, t.cropBottom, t.opacity]
-    actual.forEach((value, index) => assert(Math.abs(value - expected[index]) < 1e-9,
-      `${clipId} transform[${index}]`))
+    const actual = t === undefined ? [0, 0, 1, 1, 0, 0, 1, 0, 1, 1]
+      : transformFields.map(property => t[property] / 1_000_000)
+    assert.deepEqual(actual, expected, clipId + ' reloaded transform')
   }
   report.revisionId = current.revisionId
   report.projectId = project
@@ -525,10 +527,10 @@ try {
   assert(rightPeaks[880] > leftPeaks[880] * 1.5, 'A3 pan right')
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY')
 
-  const formalOutput = async (revisionId, startMillis, endMillis, label) => {
+  const formalOutput = async (revisionId, startMillis, endMillis, label, width = 320, height = 240) => {
     const submitted = await page.request.post(base + '/api/render-jobs', {
       headers: { ...headers, 'Idempotency-Key': label },
-      data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: 24, frameRateDenominator: 1 },
+      data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: 24, frameRateDenominator: 1, width, height },
         profile: 'default', outputFormat: 'MP4' },
     })
     assert.equal(submitted.status(), 201, await submitted.text())
@@ -668,8 +670,119 @@ try {
   report.embedded.render = { jobId: embeddedJob.renderJobId, artifactId: embeddedResult.finalArtifactId,
     audio: embeddedRenderAudio }
   record('EMBEDDED_VIDEO_AUDIO_FORMAL_RENDER')
-  report.status = 'PASS'
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY_WITH_EMBEDDED_AUDIO')
+
+  const batch = async (batchId, operations) => {
+    const response = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+      headers, data: { batchId, baseRevisionId: current.revisionId, baseContentHash: current.contentHash, operations },
+    })
+    assert(response.ok(), await response.text())
+    current = await head()
+  }
+  await batch('remove-dissolve-for-pattern', [{ definitionId: 'timeline.transition.cross-dissolve.delete',
+    target: { clipId: videoB }, parameters: { transitionId: 'transition-v2-v3' } }])
+  for (const clipId of [videoA, videoB, videoC, videoD, embeddedClip]) await deleteClip(clipId)
+  const pattern = await addClip('composition-pattern.mp4', 'track-1', '0', '2', '2')
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  const transform = { positionX: 0.127123, positionY: 0.117321, scaleX: 0.5, scaleY: 0.5,
+    rotationDegrees: 30, cropLeft: 0.125, cropRight: 0.875, cropTop: 0.125, cropBottom: 0.75, opacity: 0.8 }
+  await applyTransform(pattern, transform)
+  await applyEffect(pattern, { brightness: 0.14, contrast: 1.25, saturation: 0.65, grayscale: false,
+    fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true })
+  await rejectBatch('reject-pixel-transform-format', [{ definitionId: 'timeline.clip.transform.set',
+    target: { clipId: pattern }, parameters: { positionX: 40, positionY: 20 } }], 'Unsupported composition transform format')
+  const invalidRaster = await page.request.post(base + '/api/render-jobs', {
+    headers: { ...headers, 'Idempotency-Key': 'reject-odd-raster' },
+    data: { revisionId: current.revisionId, extent: { startMillis: 0, endMillis: 2000,
+      frameRateNumerator: 24, frameRateDenominator: 1, width: 641, height: 480 }, profile: 'default', outputFormat: 'MP4' },
+  })
+  assert.equal(invalidRaster.status(), 400, await invalidRaster.text())
+  const rejectedAspect = await page.request.post(base + '/api/render-jobs', {
+    headers: { ...headers, 'Idempotency-Key': 'reject-raster-aspect' },
+    data: { revisionId: current.revisionId, extent: { startMillis: 0, endMillis: 2000,
+      frameRateNumerator: 24, frameRateDenominator: 1, width: 240, height: 320 }, profile: 'default', outputFormat: 'MP4' },
+  })
+  assert.equal(rejectedAspect.ok(), false, await rejectedAspect.text())
+  assert.equal((await head()).revisionId, current.revisionId)
+
+  const composition = report.composition = { outputs: [], samples: [], rasterRejections: [invalidRaster.status(), rejectedAspect.status()] }
+  const render = async (label, end, width = 320, height = 240) => {
+    const delivered = await formalOutput(current.revisionId, 0, end, label, width, height)
+    const [video] = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-select_streams', 'v:0',
+      '-count_frames', '-show_entries', 'stream=width,height,nb_read_frames,duration', '-of', 'json', delivered.path])).streams
+    assert.equal(video.width, width)
+    assert.equal(video.height, height)
+    assert.equal(Number(video.nb_read_frames), end * 24 / 1000)
+    assert(Math.abs(Number(video.duration) - end / 1000) < 1 / 24)
+    composition.outputs.push({ ...delivered, label, video })
+    record('FORMAL_COMPOSITION_' + label)
+    return delivered
+  }
+  const probes = [[5, 5], [42, 29], [112, 68], [133, 92], [148, 118], [163, 131]]
+  const width320 = await render('single-transformed', 2000)
+  const width640 = await render('landscape-double-resolution', 2000, 640, 480)
+  assert.equal(width320.revisionId, width640.revisionId)
+  await seek(0.5)
+  const previewPixels = await canvas.evaluate((element, positions) => positions.map(([x,y]) =>
+    [...element.getContext('2d').getImageData(x,y,1,1).data].slice(0,3)), probes)
+  const singlePixels = probes.map(([x,y]) => pixel(width320.path, 0.5, x, y))
+  const doublePixels = probes.map(([x,y]) => pixel(width640.path, 0.5, x*2, y*2))
+  for (let index = 0; index < probes.length; index++) {
+    const low = singlePixels[index], high = doublePixels[index], preview = previewPixels[index]
+    composition.samples.push({ label: 'preview-and-resolution', position: probes[index], low, high, preview,
+      previewDelta: maxDelta(low, preview), resolutionDelta: maxDelta(low, high) })
+    assert(maxDelta(low, high) <= 24, 'resolution conformance ' + JSON.stringify(composition.samples.at(-1)))
+    assert(maxDelta(low, preview) <= 24, 'pattern Preview/Render conformance ' + JSON.stringify(composition.samples.at(-1)))
+  }
+  assert(singlePixels.slice(0,2).every(rgb => Math.max(...rgb) <= 8), 'off-frame and rotated corner must be black')
+  assert(new Set(singlePixels.slice(2).map(rgb => rgb.join(','))).size >= 3, 'nonuniform source must retain distinct interior samples')
+
+  await addTrack('VIDEO', 'track-composition-empty', 'composition-empty-track')
+  const empty = await render('empty-track-invariant', 2000)
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  await applyAudio(pattern, 1, true, 0)
+  const mutedComposition = await render('muted-route-invariant', 2000)
+  const compareGeometry = (name, a, b, time) => {
+    const deltas = probes.map(([x,y]) => maxDelta(pixel(a.path, time, x, y), pixel(b.path, time, x, y)))
+    composition.samples.push({ label: name, time, deltas })
+    assert(Math.max(...deltas) <= 6, name + ' changed geometry: ' + deltas.join(','))
+  }
+  compareGeometry('empty-track', width320, empty, 0.5)
+  compareGeometry('muted-route', width320, mutedComposition, 0.5)
+  const second = await addClip('composition-pattern.mp4', 'track-1', '2', '4', '2')
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  await applyTransform(second, transform)
+  const sameTrack = await render('multiple-clips-one-track', 4000)
+  const relocate = await page.request.post(base + scope + '/timeline-operations/clips/apply', {
+    headers, data: { type: 'MOVE_CLIP', baseRevisionId: current.revisionId, baseContentHash: current.contentHash,
+      clipId: second, destinationTrackId: 'track-composition-empty', delta: '2/1', absolute: true,
+      commandId: 'composition-equivalent-relocation' },
+  })
+  assert(relocate.ok(), await relocate.text())
+  current = await head()
+  const separateTracks = await render('equivalent-two-tracks', 4000)
+  compareGeometry('equivalent-shapes-first-clip', sameTrack, separateTracks, 0.5)
+  compareGeometry('equivalent-shapes-second-clip', sameTrack, separateTracks, 2.5)
+
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  await field('Composition aspect ratio').selectOption('PORTRAIT_3_4')
+  current = await waitRevision(current.revisionId)
+  assert.equal((await snapshot(current.revisionId)).metadata.compositionAspectRatio, 'PORTRAIT_3_4')
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  assert.equal(await field('Composition aspect ratio').inputValue(), 'PORTRAIT_3_4')
+  const portrait = await render('portrait-composition', 4000, 240, 320)
+  const portraitPixels = [[5,5], [114,148], [135,162]].map(([x,y]) => pixel(portrait.path, 0.5, x, y))
+  assert(Math.max(...portraitPixels[0]) <= 8)
+  assert(portraitPixels.slice(1).some(rgb => Math.max(...rgb) > 32))
+  composition.samples.push({ label: 'portrait', positions: [[5,5], [114,148], [135,162]], portraitPixels })
+  report.status = 'PASS'
+  record('CANONICAL_COMPOSITION_CONFORMANCE')
+
 } catch (error) {
   report.status = 'FAIL'
   report.error = String(error)

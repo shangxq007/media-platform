@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
-import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
+import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, videoTransformParameters, type CompositionAspectRatio, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
@@ -38,6 +38,7 @@ function geometryOf(clips: ReturnType<typeof projectSnapshotJson>['clips']): Cli
 export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhead = 0,
   selectedTrackId, onSelectTrack }: Props) {
   const project = useProjectContext()
+  const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>('LANDSCAPE_4_3')
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
   const [transforms, setTransforms] = useState<Record<string, ProjectedVideoTransform>>({})
@@ -95,6 +96,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
       const rows = geometryOf(projection.clips)
       if (owned !== generation.current) return
+      setAspectRatio(projection.compositionAspectRatio)
       setTracks(projection.tracks)
       setAudioRoutes(projection.audioRoutes)
       setTransforms(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.transform])))
@@ -104,7 +106,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
       if (owned === generation.current) {
-        setTracks([]); setClips([]); setActionFailed(false)
+        setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setActionFailed(true)
         setMessage(error instanceof Error ? error.message : 'Clip readback failed.')
       }
     }
@@ -287,23 +289,15 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
 
   async function applyTransform() {
     if (!head || !project.tenantId || !active || busy) return
-    if (![tx, ty, sx, sy, rotation, cropLeft, cropRight, cropTop, cropBottom, opacity].every(Number.isFinite)
-        || sx <= 0 || sy <= 0 || sx > 10 || sy > 10
-        || opacity < 0 || opacity > 1
-        || cropLeft < 0 || cropRight > 1 || cropTop < 0 || cropBottom > 1
-        || cropLeft >= cropRight || cropTop >= cropBottom) {
-      setActionFailed(true); setMessage('Invalid video transform: scale must be (0,10], opacity [0,1], crop must be a non-empty normalized rectangle.')
-      return
-    }
-    const fingerprint = JSON.stringify([project.projectId, active.clipId, 'VIDEO_TRANSFORM',
-      tx, ty, sx, sy, rotation, cropLeft, cropRight, cropTop, cropBottom, opacity, head.revisionId])
-    keys.current[fingerprint] ??= crypto.randomUUID()
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
+      const parameters = videoTransformParameters({ positionX: tx, positionY: ty, scaleX: sx, scaleY: sy,
+        rotationDegrees: rotation, cropLeft, cropRight, cropTop, cropBottom, opacity })
+      const fingerprint = JSON.stringify([project.projectId, active.clipId, parameters, head.revisionId])
+      keys.current[fingerprint] ??= crypto.randomUUID()
       const accepted = await FormalRenderAPI.applyVideoTransform(project.tenantId, project.projectId, {
         baseRevisionId: head.revisionId, baseContentHash: head.contentHash, clipId: active.clipId,
-        positionX: tx, positionY: ty, scaleX: sx, scaleY: sy, rotationDegrees: rotation,
-        cropLeft, cropRight, cropTop, cropBottom, opacity, commandId: keys.current[fingerprint] })
+        parameters, commandId: keys.current[fingerprint] })
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
@@ -311,6 +305,26 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       await onRevisionChanged()
       setMessage(`Video transform applied at revision ${authoritative.revisionId}.`)
     } catch (error) { handleFailure(error, 'Video transform', null, true) }
+    finally { setBusy(false) }
+  }
+
+  async function applyAspect(next: CompositionAspectRatio) {
+    if (!head || !project.tenantId || busy || next === aspectRatio) return
+    const fingerprint = JSON.stringify([project.projectId, head.revisionId, 'composition-aspect', next])
+    keys.current[fingerprint] ??= crypto.randomUUID()
+    setBusy(true); setMessage(''); setActionFailed(false)
+    try {
+      const accepted = await FormalRenderAPI.setCompositionAspect(project.tenantId, project.projectId, {
+        baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+        aspectRatio: next, commandId: keys.current[fingerprint] })
+      const authoritative = await FormalRenderAPI.head(project.projectId)
+      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
+        throw headMismatch()
+      }
+      await onRevisionChanged()
+      setAspectRatio(next)
+      setMessage('Composition aspect ratio saved.')
+    } catch (error) { handleFailure(error, 'Composition aspect ratio', null, true) }
     finally { setBusy(false) }
   }
 
@@ -707,11 +721,18 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
+    <label>Composition aspect ratio
+      <select value={aspectRatio} disabled={!head || !project.tenantId || busy}
+        onChange={event => void applyAspect(event.target.value as CompositionAspectRatio)}>
+        <option value="LANDSCAPE_4_3">Landscape 4:3</option>
+        <option value="PORTRAIT_3_4">Portrait 3:4</option>
+      </select>
+    </label>
     {active && activeTrack?.type === 'VIDEO' && <fieldset className="ff-nle-transform-controls" aria-label="Video transform controls" disabled={!head || !project.tenantId || busy}>
       <legend>Video transform · {active.clipId}</legend>
       <div className="ff-nle-transform-grid">
-        <label>Position X <Input aria-label="Video position X" type="number" step={1} value={tx} onChange={event => setTx(Number(event.target.value))} /></label>
-        <label>Position Y <Input aria-label="Video position Y" type="number" step={1} value={ty} onChange={event => setTy(Number(event.target.value))} /></label>
+        <label>Position X (canvas fraction) <Input aria-label="Video position X" type="number" step={0.000001} value={tx} onChange={event => setTx(Number(event.target.value))} /></label>
+        <label>Position Y (canvas fraction) <Input aria-label="Video position Y" type="number" step={0.000001} value={ty} onChange={event => setTy(Number(event.target.value))} /></label>
         <label>Scale X <Input aria-label="Video scale X" type="number" step={0.05} value={sx} onChange={event => setSx(Number(event.target.value))} /></label>
         <label>Scale Y <Input aria-label="Video scale Y" type="number" step={0.05} value={sy} onChange={event => setSy(Number(event.target.value))} /></label>
         <label>Rotation° <Input aria-label="Video rotation" type="number" step={1} value={rotation} onChange={event => setRotation(Number(event.target.value))} /></label>
@@ -723,7 +744,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       </div>
       <Button type="button" disabled={!head || !active || busy} onClick={() => void applyTransform()}>Apply video transform</Button>
       <Button type="button" disabled={busy} onClick={resetTransform}>Reset transform</Button>
-      <p role="status">Canonical transform: position {activeTransform.positionX.toFixed(0)},{activeTransform.positionY.toFixed(0)} · scale {activeTransform.scaleX.toFixed(2)},{activeTransform.scaleY.toFixed(2)} · rotation {activeTransform.rotationDegrees.toFixed(0)}° · opacity {activeTransform.opacity.toFixed(2)}</p>
+      <p role="status">Canonical transform: position {activeTransform.positionX.toFixed(6)},{activeTransform.positionY.toFixed(6)} · scale {activeTransform.scaleX.toFixed(2)},{activeTransform.scaleY.toFixed(2)} · rotation {activeTransform.rotationDegrees.toFixed(0)}° · opacity {activeTransform.opacity.toFixed(2)}</p>
     </fieldset>}
     {active && activeTrack?.type === 'VIDEO' && <fieldset className="ff-nle-effect-controls" aria-label="Video effect controls" disabled={!head || !project.tenantId || busy}>
       <legend>Video effect · {active.clipId}</legend>

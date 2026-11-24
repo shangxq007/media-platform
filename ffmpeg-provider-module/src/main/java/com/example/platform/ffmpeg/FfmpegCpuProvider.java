@@ -35,7 +35,7 @@ public final class FfmpegCpuProvider {
     public static final ProviderId PROVIDER_ID = ProviderId.of("ffmpeg");
     public static final ProviderImplementationId IMPLEMENTATION_ID =
             ProviderImplementationId.of("ffmpeg.cpu.native-pull.v1");
-    public static final ProviderVersion VERSION = ProviderVersion.of("1.2.0");
+    public static final ProviderVersion VERSION = ProviderVersion.of("1.3.0");
     public static final ProviderExecutionContractVersion EXECUTION_CONTRACT_VERSION =
             ProviderExecutionContractVersion.of(1, 2);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =

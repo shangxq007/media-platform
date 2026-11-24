@@ -47,38 +47,86 @@ export const IDENTITY_VIDEO_TRANSFORM: ProjectedVideoTransform = {
   cropLeft: 0, cropRight: 1, cropTop: 0, cropBottom: 1, opacity: 1,
 }
 
-function projectTransform(value: unknown): ProjectedVideoTransform {
-  if (!value || typeof value !== 'object') return IDENTITY_VIDEO_TRANSFORM
-  const t = value as Record<string, unknown>
-  const number = (key: string, fallback: number) =>
-    typeof t[key] === 'number' && Number.isFinite(t[key]) ? t[key] as number : fallback
-  return {
-    positionX: number('positionX', 0), positionY: number('positionY', 0),
-    scaleX: number('scaleX', 1), scaleY: number('scaleY', 1),
-    rotationDegrees: number('rotationDegrees', 0),
-    cropLeft: number('cropLeft', 0), cropRight: number('cropRight', 1),
-    cropTop: number('cropTop', 0), cropBottom: number('cropBottom', 1),
-    opacity: number('opacity', 1),
+const TRANSFORM_FIELDS = {
+  positionX: 'positionXMicros', positionY: 'positionYMicros',
+  scaleX: 'scaleXMicros', scaleY: 'scaleYMicros', rotationDegrees: 'rotationMicroDegrees',
+  cropLeft: 'cropLeftMicros', cropRight: 'cropRightMicros',
+  cropTop: 'cropTopMicros', cropBottom: 'cropBottomMicros', opacity: 'opacityMicros',
+} as const
+const UNIT = 1_000_000
+const FORMAT = 'composition-transform-micro-v1'
+
+function object(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid ' + label)
+  return value as Record<string, unknown>
+}
+
+function entries(value: unknown, label: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error('Invalid ' + label)
+  return value
+}
+
+function text(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('Invalid ' + label)
+  return value
+}
+
+function projectedNumber(value: unknown, label: string, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    throw new Error('Invalid ' + label)
   }
+  return value
+}
+
+export function videoTransformParameters(draft: ProjectedVideoTransform): Record<string, number | string> {
+  const encoded = Object.fromEntries(Object.entries(TRANSFORM_FIELDS).map(([property, wire]) => {
+    const value = draft[property as keyof ProjectedVideoTransform]
+    if (!Number.isFinite(value)) throw new Error('Invalid transform ' + property)
+    return [wire, Math.round(value * UNIT)]
+  }))
+  const parameters = { ...encoded, format: FORMAT }
+  projectTransform(parameters)
+  return parameters
+}
+
+function projectTransform(value: unknown): ProjectedVideoTransform {
+  if (value == null) return IDENTITY_VIDEO_TRANSFORM
+  const fields = object(value, 'Timeline transform')
+  if (fields.format !== FORMAT || Object.keys(fields).length !== 11) {
+    throw new Error('Unsupported Timeline transform format')
+  }
+  const exact = (property: keyof ProjectedVideoTransform, min: number, max: number) => {
+    const v = projectedNumber(fields[TRANSFORM_FIELDS[property]], property, min * UNIT, max * UNIT)
+    if (!Number.isInteger(v)) throw new Error('Nonintegral Timeline transform ' + property)
+    return v / UNIT
+  }
+  const transform = {
+    positionX: exact('positionX', -16, 16), positionY: exact('positionY', -16, 16),
+    scaleX: exact('scaleX', 1 / UNIT, 10), scaleY: exact('scaleY', 1 / UNIT, 10),
+    rotationDegrees: exact('rotationDegrees', -180, 180 - 1 / UNIT),
+    cropLeft: exact('cropLeft', 0, 1), cropRight: exact('cropRight', 0, 1),
+    cropTop: exact('cropTop', 0, 1), cropBottom: exact('cropBottom', 0, 1),
+    opacity: exact('opacity', 0, 1),
+  }
+  if (transform.cropLeft >= transform.cropRight || transform.cropTop >= transform.cropBottom) {
+    throw new Error('Invalid Timeline crop rectangle')
+  }
+  return transform
 }
 
 function projectEffect(value: unknown): ProjectedVideoEffect {
   if (value == null) return IDENTITY_VIDEO_EFFECT
-  if (!Array.isArray(value)) throw new Error('Invalid Timeline effects')
-  const effects = value.filter(item => item && typeof item === 'object' && item.effectKey === 'video.basic')
+  const effects = entries(value, 'Timeline effects')
   if (!effects.length) return IDENTITY_VIDEO_EFFECT
-  if (effects.length !== 1) throw new Error('Conflicting basic video effects')
-  const p = (effects[0] as { parameters?: Record<string, unknown> }).parameters
-  if (!p || Object.keys(p).length !== 7 || typeof p.grayscale !== 'boolean' || typeof p.enabled !== 'boolean') {
+  if (effects.length !== 1) throw new Error('Unsupported Timeline effect stack')
+  const entry = object(effects[0], 'Timeline effect')
+  if (entry.effectKey !== 'video.basic') throw new Error('Unsupported Timeline effect definition')
+  const p = object(entry.parameters, 'basic video effect parameters')
+  if (p.format !== 'rgb-basic-v1' || Object.keys(p).length !== 8 || typeof p.grayscale !== 'boolean' || typeof p.enabled !== 'boolean') {
     throw new Error('Invalid basic video effect parameters')
   }
-  const number = (key: string, min: number, max = Infinity) => {
-    const value = p[key]
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
-      throw new Error(`Invalid basic video effect ${key}`)
-    }
-    return value
-  }
+  const number = (key: string, min: number, max = Infinity) =>
+    projectedNumber(p[key], 'basic video effect ' + key, min, max)
   return { brightness: number('brightness', -1, 1), contrast: number('contrast', 0, 2),
     saturation: number('saturation', 0, 2), grayscale: p.grayscale,
     fadeInSeconds: number('fadeInSeconds', 0), fadeOutSeconds: number('fadeOutSeconds', 0), enabled: p.enabled }
@@ -103,7 +151,7 @@ export interface ProjectedClip {
 export interface ProjectedTrack {
   readonly trackId: string
   readonly name: string
-  readonly type: string
+  readonly type: 'VIDEO' | 'AUDIO'
   readonly clips: readonly ProjectedClip[]
 }
 
@@ -115,105 +163,104 @@ export interface ProjectedAudioRoute {
   readonly pan: number
 }
 
+export type CompositionAspectRatio = 'LANDSCAPE_4_3' | 'PORTRAIT_3_4'
+
 export interface TimelineProjection {
+  readonly compositionAspectRatio: CompositionAspectRatio
   readonly tracks: readonly ProjectedTrack[]
   readonly clips: readonly ProjectedClip[]
   readonly audioRoutes: readonly ProjectedAudioRoute[]
   readonly transitions: readonly ProjectedTransition[]
 }
 
-const IDENTITY: Rational = { numerator: 1n, denominator: 1n }
-
-function safeRational(value: unknown): Rational | null {
-  if (typeof value !== 'string') return null
-  return parseRational(value)
+function exactTime(value: unknown, label: string): Rational {
+  const time = typeof value === 'string' ? parseRational(value) : null
+  if (!time || time.numerator < 0n || time.denominator <= 0n) throw new Error('Invalid ' + label)
+  return time
 }
 
-/** Projects a parsed canonical Timeline document; malformed clips are omitted, never invented. */
+function projectClip(value: unknown, trackId: string): ProjectedClip {
+  const clip = object(value, 'Timeline clip')
+  if (clip.sourceKind !== 'MEDIA_STREAM') throw new Error('Unsupported Timeline clip source')
+  const start = exactTime(clip.startTime, 'clip start')
+  const end = exactTime(clip.endTime, 'clip end')
+  const sourceStart = exactTime(clip.trimStart, 'source start')
+  const sourceEnd = exactTime(clip.trimEnd, 'source end')
+  if (compare(start, end) >= 0 || compare(sourceStart, sourceEnd) >= 0) throw new Error('Invalid clip range')
+  const mapping = object(clip.temporalMapping, 'Timeline temporal mapping')
+  if (mapping.kind !== 'CONSTANT_RATE' || (mapping.direction !== 'FORWARD' && mapping.direction !== 'REVERSE')) {
+    throw new Error('Unsupported Timeline temporal mapping')
+  }
+  const rate = object(mapping.rate, 'Timeline playback rate')
+  const numerator = projectedNumber(rate.numerator, 'playback rate numerator', 1, Number.MAX_SAFE_INTEGER)
+  const denominator = projectedNumber(rate.denominator, 'playback rate denominator', 1, Number.MAX_SAFE_INTEGER)
+  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) throw new Error('Inexact Timeline rate')
+  const contentDigest = text(clip.contentDigest, 'clip content digest')
+  if (!/^[a-f0-9]{64}$/.test(contentDigest)) throw new Error('Invalid clip content digest')
+  return {
+    clipId: text(clip.clipId, 'clip identity'), trackId, start, end, sourceStart, sourceEnd,
+    artifactId: text(clip.artifactId, 'clip artifact'), contentDigest,
+    mediaStreamId: text(clip.mediaStreamId, 'clip media stream'),
+    rate: { numerator: BigInt(numerator), denominator: BigInt(denominator) },
+    direction: mapping.direction, transform: projectTransform(clip.transform), effect: projectEffect(clip.effects),
+  }
+}
+
+/** Reject unsupported semantics at the read-only projection boundary. */
 export function projectTimeline(document: unknown): TimelineProjection {
-  const rawTracks = (document as { tracks?: unknown } | null)?.tracks
-  const rawMix = (document as { audioMix?: { routes?: unknown } } | null)?.audioMix
-  const audioRoutes: ProjectedAudioRoute[] = []
-  if (rawMix && Array.isArray(rawMix.routes)) {
-    for (const rawRoute of rawMix.routes) {
-      if (!rawRoute || typeof rawRoute !== 'object') continue
-      const route = rawRoute as { input?: { trackId?: unknown; clipId?: unknown }; gain?: { linear?: unknown }; mute?: { muted?: unknown }; balance?: { value?: unknown } }
-      const trackId = typeof route.input?.trackId === 'string' ? route.input.trackId : ''
-      const clipId = typeof route.input?.clipId === 'string' ? route.input.clipId : ''
-      if (!trackId || !clipId) continue
-      const gain = typeof route.gain?.linear === 'number' && Number.isFinite(route.gain.linear)
-        && route.gain.linear >= 0 && route.gain.linear <= 2 ? route.gain.linear : 1
-      const pan = typeof route.balance?.value === 'number' && Number.isFinite(route.balance.value)
-        && route.balance.value >= -1 && route.balance.value <= 1 ? route.balance.value : 0
-      audioRoutes.push({ trackId, clipId, gain, mute: route.mute?.muted === true, pan })
+  const root = object(document, 'Timeline snapshot')
+  if (root.schemaVersion !== 'timeline-1.0') throw new Error('Unsupported Timeline schema version')
+  for (const field of ['automations', 'textElements']) {
+    if (root[field] !== undefined && entries(root[field], field).length) {
+      throw new Error('Unsupported Timeline preview semantics: ' + field)
     }
   }
-  const transitions: ProjectedTransition[] = []
-  const rawTransitions = (document as { transitions?: unknown } | null)?.transitions
-  const incomingTransitions = new Set<string>()
-  if (rawTransitions != null && !Array.isArray(rawTransitions)) throw new Error('Invalid Timeline transitions')
-  if (Array.isArray(rawTransitions)) {
-    for (const raw of rawTransitions) {
-      if (!raw || typeof raw !== 'object') throw new Error('Invalid Timeline transition')
-      const t = raw as Record<string, unknown>
-      const duration = safeRational(t.duration)
-      if (typeof t.transitionId !== 'string' || !t.transitionId
-          || typeof t.outgoingClipId !== 'string' || typeof t.incomingClipId !== 'string'
-          || t.outgoingClipId === t.incomingClipId || !duration || duration.numerator <= 0n
-          || t.transitionDefinitionId !== 'video.cross-dissolve' || t.transitionDefinitionVersion !== '1.0'
-          || t.mediaType !== 'VIDEO' || t.alignment !== 'START_AT_INCOMING' || t.temporalPolicy !== 'OVERLAP_TIMELINE'
-          || (t.parameters as { curve?: unknown } | undefined)?.curve !== 'LINEAR') {
-        throw new Error('Unsupported Timeline transition')
-      }
-      if (incomingTransitions.has(t.incomingClipId)) throw new Error('Conflicting incoming Timeline transitions')
-      incomingTransitions.add(t.incomingClipId)
-      transitions.push({ transitionId: t.transitionId, outgoingClipId: t.outgoingClipId,
-        incomingClipId: t.incomingClipId, duration })
+  const metadata = root.metadata == null ? {} : object(root.metadata, 'Timeline metadata')
+  const aspect = metadata.compositionAspectRatio ?? 'LANDSCAPE_4_3'
+  if (aspect !== 'LANDSCAPE_4_3' && aspect !== 'PORTRAIT_3_4') throw new Error('Unsupported composition aspect ratio')
+  const tracks: ProjectedTrack[] = entries(root.tracks, 'Timeline tracks').map(raw => {
+    const track = object(raw, 'Timeline track')
+    if (track.type !== 'VIDEO' && track.type !== 'AUDIO') throw new Error('Unsupported Timeline track type')
+    const trackId = text(track.trackId, 'track identity')
+    return { trackId, name: typeof track.name === 'string' ? track.name : trackId, type: track.type,
+      clips: entries(track.clips, 'track clips').map(clip => projectClip(clip, trackId)) }
+  })
+  const clips = tracks.flatMap(track => track.clips)
+  if (new Set(tracks.map(track => track.trackId)).size !== tracks.length ||
+      new Set(clips.map(clip => clip.clipId)).size !== clips.length) throw new Error('Duplicate Timeline identity')
+
+  const rawMix = root.audioMix === undefined ? { routes: [] } : object(root.audioMix, 'Timeline audio mix')
+  const audioRoutes = entries(rawMix.routes, 'Timeline audio routes').map(raw => {
+    const route = object(raw, 'Timeline audio route')
+    const input = object(route.input, 'audio route input')
+    const trackId = text(input.trackId, 'audio route track')
+    const clipId = text(input.clipId, 'audio route clip')
+    if (!clips.some(clip => clip.trackId === trackId && clip.clipId === clipId)) throw new Error('Unmatched audio route')
+    const mute = object(route.mute, 'audio route mute').muted
+    if (typeof mute !== 'boolean') throw new Error('Invalid audio route mute')
+    return { trackId, clipId, mute,
+      gain: projectedNumber(object(route.gain, 'audio route gain').linear, 'audio route gain', 0, 2),
+      pan: projectedNumber(object(route.balance, 'audio route balance').value, 'audio route balance', -1, 1) }
+  })
+
+  const incoming = new Set<string>()
+  const transitions = entries(root.transitions === undefined ? [] : root.transitions, 'Timeline transitions').map(raw => {
+    const t = object(raw, 'Timeline transition')
+    const transitionId = text(t.transitionId, 'transition identity')
+    const outgoingClipId = text(t.outgoingClipId, 'outgoing clip')
+    const incomingClipId = text(t.incomingClipId, 'incoming clip')
+    const duration = exactTime(t.duration, 'transition duration')
+    if (outgoingClipId === incomingClipId || duration.numerator <= 0n || incoming.has(incomingClipId)
+        || !clips.some(clip => clip.clipId === incomingClipId) || !clips.some(clip => clip.clipId === outgoingClipId)
+        || t.transitionDefinitionId !== 'video.cross-dissolve' || t.transitionDefinitionVersion !== '1.0'
+        || t.mediaType !== 'VIDEO' || t.alignment !== 'START_AT_INCOMING' || t.temporalPolicy !== 'OVERLAP_TIMELINE'
+        || object(t.parameters, 'transition parameters').curve !== 'LINEAR') {
+      throw new Error('Unsupported Timeline transition')
     }
-  }
-  const tracks: ProjectedTrack[] = []
-  if (!Array.isArray(rawTracks)) return { tracks, clips: [], audioRoutes, transitions }
-  for (const rawTrack of rawTracks) {
-    if (!rawTrack || typeof rawTrack !== 'object') continue
-    const track = rawTrack as Record<string, unknown>
-    const trackId = typeof track.trackId === 'string' ? track.trackId : ''
-    if (!trackId) continue
-    const clips: ProjectedClip[] = []
-    const rawClips = Array.isArray(track.clips) ? track.clips : []
-    for (const rawClip of rawClips) {
-      if (!rawClip || typeof rawClip !== 'object') continue
-      const clip = rawClip as Record<string, unknown>
-      const clipId = typeof clip.clipId === 'string' ? clip.clipId : ''
-      const start = safeRational(clip.startTime)
-      const end = safeRational(clip.endTime)
-      const sourceStart = safeRational(clip.trimStart)
-      const sourceEnd = safeRational(clip.trimEnd)
-      if (!clipId || !start || !end || !sourceStart || !sourceEnd) continue
-      const mapping = clip.temporalMapping as { rate?: { numerator?: number; denominator?: number }; direction?: string } | undefined
-      const numerator = mapping?.rate?.numerator
-      const denominator = mapping?.rate?.denominator
-      const rate = Number.isSafeInteger(numerator) && Number.isSafeInteger(denominator)
-        && (numerator as number) > 0 && (denominator as number) > 0
-        ? { numerator: BigInt(numerator as number), denominator: BigInt(denominator as number) }
-        : IDENTITY
-      clips.push({
-        clipId, trackId, start, end, sourceStart, sourceEnd, rate,
-        artifactId: typeof clip.artifactId === 'string' ? clip.artifactId : '',
-        contentDigest: typeof clip.contentDigest === 'string' ? clip.contentDigest : '',
-        mediaStreamId: typeof clip.mediaStreamId === 'string' ? clip.mediaStreamId : '',
-        direction: mapping?.direction === 'REVERSE' ? 'REVERSE' : 'FORWARD',
-        transform: projectTransform(clip.transform),
-        effect: projectEffect(clip.effects),
-      })
-    }
-    tracks.push({
-      trackId,
-      name: typeof track.name === 'string' ? track.name : trackId,
-      type: typeof track.type === 'string' ? track.type.toUpperCase() : 'VIDEO',
-      clips,
-    })
-  }
-  return { tracks, clips: tracks.flatMap(track => track.clips), audioRoutes, transitions }
+    incoming.add(incomingClipId)
+    return { transitionId, outgoingClipId, incomingClipId, duration }
+  })
+  return { compositionAspectRatio: aspect, tracks, clips, audioRoutes, transitions }
 }
 
 export function projectSnapshotJson(canonicalTimelineJson: string): TimelineProjection {
@@ -232,9 +279,9 @@ export function audioRouteFor(projection: TimelineProjection, trackId: string, c
   return projection.audioRoutes.find(route => route.trackId === trackId && route.clipId === clipId) ?? null
 }
 
-/** First track that can host a video clip (falls back to the first track). */
+/** First track that can host a video clip. */
 export function firstVideoTrack(projection: TimelineProjection): ProjectedTrack | null {
-  return projection.tracks.find(track => track.type === 'VIDEO') ?? projection.tracks[0] ?? null
+  return projection.tracks.find(track => track.type === 'VIDEO') ?? null
 }
 
 /** End of the latest clip in the projection, used as a default append position. */

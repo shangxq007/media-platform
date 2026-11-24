@@ -16,9 +16,17 @@ public class RenderSubmissionIdempotencyService {
 
     public static String requestHash(String revisionId, long startMillis, long endMillis,
             int rateNumerator, int rateDenominator, String profile, String outputFormat) {
+        return requestHash(revisionId, startMillis, endMillis, rateNumerator, rateDenominator,
+                profile, outputFormat, com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT);
+    }
+
+    public static String requestHash(String revisionId, long startMillis, long endMillis,
+            int rateNumerator, int rateDenominator, String profile, String outputFormat,
+            com.example.platform.render.domain.renderplan.RenderRaster raster) {
         var rate = com.example.platform.shared.time.FrameRate.of(rateNumerator, rateDenominator);
         String canonical = String.join("\n", revisionId, Long.toString(startMillis), Long.toString(endMillis),
-                rate.numerator() + "/" + rate.denominator(), profile, outputFormat);
+                rate.numerator() + "/" + rate.denominator(), profile, outputFormat,
+                Integer.toString(raster.width()), Integer.toString(raster.height()));
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(canonical.getBytes(StandardCharsets.UTF_8)));

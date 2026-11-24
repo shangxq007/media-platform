@@ -31,7 +31,8 @@ class VideoTransformOperationPlanningTest {
     @Test
     void transformOperationPersistsAndSurvivesMoveTrimAndSplit() {
         TimelineDocument base = timeline();
-        VideoTransform transform = new VideoTransform(10, 20, 0.5, 0.5, 90, 0.2, 0.8, 0.2, 0.8, 0.5);
+        VideoTransform transform = new VideoTransform(31_250, 83_333, 500_000, 500_000, 90_000_000,
+                200_000, 800_000, 200_000, 800_000, 500_000);
         OperationPlan plan = plan(base, OperationDefinition.V3.SET_VIDEO_TRANSFORM,
                 new OperationParameters.VideoTransformParameters(transform), "clip-a");
         TimelineClip transformed = plan.candidateTimeline().getTracks().getFirst().clips().getFirst();
@@ -71,6 +72,55 @@ class VideoTransformOperationPlanningTest {
                 "parameter-digest", "invocation"), REV, trimmed.candidateTimeline());
         assertThat(split.candidateTimeline().getTracks().getFirst().clips())
                 .allSatisfy(clip -> assertThat(clip.getTransform()).isEqualTo(transform));
+    }
+
+    @Test
+    void authoredTransformMustReachTheLogicalGraphInASingleTrack() {
+        TimelineDocument base = timeline();
+        VideoTransform transform = new VideoTransform(31_250, 83_333, 500_000, 500_000, 90_000_000,
+                200_000, 800_000, 200_000, 800_000, 500_000);
+        var changed = plan(base, OperationDefinition.V3.SET_VIDEO_TRANSFORM,
+                new OperationParameters.VideoTransformParameters(transform), "clip-a").candidateTimeline();
+        var revision = TestPlans.revisionWithContext(changed, DIGESTER.digest(changed),
+                TestPlans.effectSnapshot(List.of(), List.of()));
+        var verified = VerifiedTimelineRevisionFactory.verified(revision, DIGESTER);
+        var planning = TestPlans.inputWithTimeline(verified);
+        var withSource = new RenderPlanningInput(planning.authoredSnapshot(), planning.request(),
+                new SourceResolutionInput(java.util.Map.of(
+                        new com.example.platform.shared.identity.ArtifactId("artifact-a"), RenderSourceResolutionState.RESOLVED)),
+                planning.capabilities());
+        var materialization = new DefaultRenderMaterializer().materialize(withSource);
+        assertThat(materialization.edges().stream().map(RenderDependencyEdge::dependency))
+                .anySatisfy(dependency -> {
+                    assertThat(dependency).isInstanceOf(RenderDependency.TimedTrackInput.class);
+                    assertThat(((RenderDependency.TimedTrackInput) dependency).transform())
+                            .isEqualTo(transform);
+                });
+    }
+
+    @Test
+    void canonicalGeometryAndAspectSurviveSerializationWithTheSameDigest() {
+        TimelineDocument base = timeline();
+        var transform = new VideoTransform(175_031, -125_123, 500_000, 500_000, 17_250_000,
+                125_000, 875_000, 0, 1_000_000, 800_000);
+        var changed = plan(base, OperationDefinition.V3.SET_VIDEO_TRANSFORM,
+                new OperationParameters.VideoTransformParameters(transform), "clip-a").candidateTimeline();
+        var aspect = new OperationPlanner().plan(new OperationInstance(
+                OperationDefinition.V3.SET_COMPOSITION_ASPECT.definitionId(),
+                OperationDefinition.V3.SET_COMPOSITION_ASPECT.version(), REV, DIGESTER.digest(changed),
+                new OperationTarget.TimelineTarget("timeline"),
+                new OperationParameters.CompositionAspectParameters(
+                        com.example.platform.timeline.canonical.CompositionAspectRatio.PORTRAIT_3_4),
+                "parameter-digest", "invocation"), REV, changed).candidateTimeline();
+        String serialized = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.serialize(aspect);
+        assertThat(serialized).contains("composition-transform-micro-v1", "175031", "PORTRAIT_3_4");
+        var reloaded = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.deserialize(serialized);
+        assertThat(reloaded.getTracks().getFirst().clips().getFirst().getTransform()).isEqualTo(transform);
+        assertThat(DIGESTER.digest(reloaded)).isEqualTo(DIGESTER.digest(aspect));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                com.example.platform.timeline.app.TimelineDocumentJsonSerializer.deserialize(
+                        serialized.replace("composition-transform-micro-v1", "output-pixel")))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private static OperationPlan plan(TimelineDocument base, OperationDefinition definition,

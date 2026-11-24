@@ -39,6 +39,7 @@ public final class VerifiedTimelineRevision {
     private final List<MediaClip> clips;
     private final List<Track> tracks;
     private final AudioMix audioMix;
+    private final com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio;
 
     record Track(String id, TrackType type) {}
     private final List<TextElement> textElements;
@@ -51,13 +52,15 @@ public final class VerifiedTimelineRevision {
             List<Track> tracks,
             AudioMix audioMix,
             List<TextElement> textElements,
-            List<CanonicalTransition> transitions) {
+            List<CanonicalTransition> transitions,
+            com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
         this.revision = Objects.requireNonNull(revision, "revision");
         this.clips = List.copyOf(clips);
         this.tracks = List.copyOf(tracks);
         this.audioMix = Objects.requireNonNull(audioMix, "audioMix");
         this.textElements = List.copyOf(textElements);
         this.transitions = List.copyOf(transitions);
+        this.aspectRatio = Objects.requireNonNull(aspectRatio);
     }
 
     /** Factory-only construction path (see {@link VerifiedTimelineRevisionFactory}). */
@@ -67,8 +70,9 @@ public final class VerifiedTimelineRevision {
             List<Track> tracks,
             AudioMix audioMix,
             List<TextElement> textElements,
-            List<CanonicalTransition> transitions) {
-        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements, transitions);
+            List<CanonicalTransition> transitions,
+            com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
+        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements, transitions, aspectRatio);
     }
 
     public TimelineRevisionReference revision() {
@@ -85,6 +89,10 @@ public final class VerifiedTimelineRevision {
 
     int layer(String id) {
         return tracks.indexOf(track(id));
+    }
+
+    com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio() {
+        return aspectRatio;
     }
 
     public AudioMix audioMix() {

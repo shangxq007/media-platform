@@ -118,12 +118,15 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.TransitionDeleteParameters td) {
             return "transition-delete(" + td.transitionId() + ")";
         }
+        if (p instanceof OperationParameters.CompositionAspectParameters aspect) {
+            return "composition-aspect(" + aspect.aspectRatio().name() + ")";
+        }
         if (p instanceof OperationParameters.VideoTransformParameters vt) {
             var t = vt.transform();
-            return "video-transform(" + t.positionX() + "," + t.positionY() + ","
-                    + t.scaleX() + "," + t.scaleY() + "," + t.rotationDegrees() + ","
-                    + t.cropLeft() + "," + t.cropRight() + "," + t.cropTop() + "," + t.cropBottom()
-                    + "," + t.opacity() + ")";
+            return "video-transform(" + t.positionXMicros() + "," + t.positionYMicros() + ","
+                    + t.scaleXMicros() + "," + t.scaleYMicros() + "," + t.rotationMicroDegrees() + ","
+                    + t.cropLeftMicros() + "," + t.cropRightMicros() + "," + t.cropTopMicros() + "," + t.cropBottomMicros()
+                    + "," + t.opacityMicros() + ")";
         }
         if (p instanceof OperationParameters.AudioGainParameters g) {
             return "gain(" + g.gain().linear() + ")";

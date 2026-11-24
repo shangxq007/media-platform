@@ -88,7 +88,7 @@ describe('runtime NLE operation workspace', () => {
   it('shows canonical track groups and uses their selection for the editor', async () => {
     vi.spyOn(FormalRenderAPI, 'snapshot').mockResolvedValue({
       schemaVersion: 'timeline-1.0',
-      canonicalTimelineJson: JSON.stringify({ tracks: [
+      canonicalTimelineJson: JSON.stringify({ schemaVersion: 'timeline-1.0', tracks: [
         { trackId: 'base', type: 'VIDEO', name: 'Camera', clips: [] },
         { trackId: 'top', type: 'VIDEO', name: 'Overlay', clips: [] },
         { trackId: 'audio', type: 'AUDIO', name: 'Voice', clips: [] },
@@ -372,8 +372,7 @@ describe('runtime NLE operation workspace', () => {
     expect((await screen.findAllByText('revision-R0')).length).toBeGreaterThan(0)
     fillManualPin()
     fireEvent.click(screen.getByRole('button', { name: 'Preview operation' }))
-    await screen.findByRole('alert')
-    expect(screen.getByText('STALE_BASE_REVISION')).toBeTruthy()
+    expect((await screen.findByText('STALE_BASE_REVISION')).closest('[role=alert]')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reload HEAD for re-preview' })).toBeTruthy()
     expect(screen.queryByText(/Server accepted revision/)).toBeNull()
   })

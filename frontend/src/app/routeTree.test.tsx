@@ -108,7 +108,8 @@ describe('runtime route registration and deep-link restoration', () => {
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Timeline editor' })).toBeTruthy())
     expect(await screen.findByText('revision-R0')).toBeTruthy()
-    expect(screen.getByText('ASSET GATEWAY · UNAVAILABLE')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source media' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Upload source' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('renders the Workspace to Projects entry without synthesizing a Project selection', async () => {

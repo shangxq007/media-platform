@@ -80,6 +80,13 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
 
         var revision = input.verifiedRevision();
+        var raster = request.extent().raster();
+        if (!revision.aspectRatio().matches(raster.width(), raster.height())) {
+            diagnostics.add(RenderPlanningDiagnostic.diagnostic(
+                    RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED, RenderDiagnosticSeverity.ERROR,
+                    "Output raster must match the authored composition aspect ratio"));
+            return new RenderMaterializationResult(nodes, edges, diagnostics);
+        }
         AudioMix audioMix = revision.audioMix();
         boolean hasAudioTracks = clips.stream().anyMatch(clip ->
                 revision.track(clip.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO);
@@ -91,14 +98,16 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         t -> new RenderDependency.Dissolve(t.transitionId(), t.outgoingClipId(),
                                 t.incomingClipId(), t.duration())));
         boolean hasBasicEffects = clips.stream().anyMatch(clip -> clip.effect().enabled() && !clip.effect().identity());
-        boolean timedTracks = hasAudioTracks || hasAudioRoutes || hasBasicEffects || !dissolvesByIncoming.isEmpty()
+        boolean hasTransform = clips.stream().anyMatch(clip -> !clip.transform().equals(
+                com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
+        boolean timedTracks = hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
                 || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
         boolean multiClip = clips.size() > 1 || timedTracks;
-        if ((hasBasicEffects || !dissolvesByIncoming.isEmpty())
+        if ((hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty())
                 && !hasExactEditorialFrameGrid(clips, request.extent())) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
                     RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED, RenderDiagnosticSeverity.ERROR,
-                    "Effect and dissolve renders require clip and output boundaries aligned to the output frame rate"));
+                    "Editorial composition requires clip and output boundaries aligned to the output frame rate"));
             return new RenderMaterializationResult(nodes, edges, diagnostics);
         }
         if (multiClip) {
@@ -393,7 +402,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         RenderDependency.TimedTrackInput.video(start, end,
                                                 revision.layer(clip.trackId()),
-                                                VideoTransformSpec.from(clip.transform()),
+                                                clip.transform(),
                                                 VideoEffectSpec.from(clip.effect()),
                                                 clip.timelineRange().start(), clip.timelineRange().end(),
                                                 Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())))));

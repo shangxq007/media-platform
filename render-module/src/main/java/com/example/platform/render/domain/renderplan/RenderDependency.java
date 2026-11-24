@@ -111,7 +111,7 @@ public sealed interface RenderDependency permits
                            com.example.platform.audio.domain.mix.AudioGain gain,
                            com.example.platform.audio.domain.mix.AudioMute mute,
                            com.example.platform.audio.domain.mix.StereoBalance balance,
-                           VideoTransformSpec transform,
+                           com.example.platform.timeline.semantics.effect.VideoTransform transform,
                            VideoEffectSpec effect,
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
@@ -123,7 +123,7 @@ public sealed interface RenderDependency permits
             if (gain == null) gain = com.example.platform.audio.domain.mix.AudioGain.defaultGain();
             if (mute == null) mute = com.example.platform.audio.domain.mix.AudioMute.defaultMute();
             if (balance == null) balance = com.example.platform.audio.domain.mix.StereoBalance.neutral();
-            if (transform == null) transform = VideoTransformSpec.IDENTITY;
+            java.util.Objects.requireNonNull(transform, "transform");
             if (effect == null) effect = VideoEffectSpec.IDENTITY;
             java.util.Objects.requireNonNull(authoredStart, "authoredStart");
             java.util.Objects.requireNonNull(authoredEnd, "authoredEnd");
@@ -138,7 +138,7 @@ public sealed interface RenderDependency permits
         }
 
         public static TimedTrackInput video(com.example.platform.shared.time.MediaTime start,
-                com.example.platform.shared.time.MediaTime end, int layer, VideoTransformSpec transform,
+                com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
                 VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
                 com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve) {
             return new TimedTrackInput(start, end, layer, false,
@@ -154,7 +154,7 @@ public sealed interface RenderDependency permits
                                com.example.platform.audio.domain.mix.AudioGain gain,
                                com.example.platform.audio.domain.mix.AudioMute mute,
                                com.example.platform.audio.domain.mix.StereoBalance balance) {
-            this(start, end, layer, audio, gain, mute, balance, VideoTransformSpec.IDENTITY);
+            this(start, end, layer, audio, gain, mute, balance, com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY);
         }
 
         /** Compatibility constructor: identity effect/transition with explicit transform. */
@@ -163,7 +163,7 @@ public sealed interface RenderDependency permits
                                com.example.platform.audio.domain.mix.AudioGain gain,
                                com.example.platform.audio.domain.mix.AudioMute mute,
                                com.example.platform.audio.domain.mix.StereoBalance balance,
-                               VideoTransformSpec transform) {
+                               com.example.platform.timeline.semantics.effect.VideoTransform transform) {
             this(start, end, layer, audio, gain, mute, balance, transform,
                     VideoEffectSpec.IDENTITY, start, end, java.util.Optional.empty());
         }
@@ -175,7 +175,7 @@ public sealed interface RenderDependency permits
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
                     com.example.platform.audio.domain.mix.StereoBalance.neutral(),
-                    VideoTransformSpec.IDENTITY, VideoEffectSpec.IDENTITY, start, end, java.util.Optional.empty());
+                    com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY, VideoEffectSpec.IDENTITY, start, end, java.util.Optional.empty());
         }
 
         public double gainLinear() { return gain.linear(); }
@@ -186,9 +186,9 @@ public sealed interface RenderDependency permits
             var t = transform;
             return "TIMED_TRACK_INPUT:" + start + ":" + end + ":" + layer + ":" + audio
                     + ":" + gainLinear() + ":" + muted() + ":" + balanceValue()
-                    + ":" + t.positionX() + ":" + t.positionY() + ":" + t.scaleX() + ":" + t.scaleY()
-                    + ":" + t.rotationDegrees() + ":" + t.cropLeft() + ":" + t.cropRight()
-                    + ":" + t.cropTop() + ":" + t.cropBottom() + ":" + t.opacity()
+                    + ":" + t.positionXMicros() + ":" + t.positionYMicros() + ":" + t.scaleXMicros() + ":" + t.scaleYMicros()
+                    + ":" + t.rotationMicroDegrees() + ":" + t.cropLeftMicros() + ":" + t.cropRightMicros()
+                    + ":" + t.cropTopMicros() + ":" + t.cropBottomMicros() + ":" + t.opacityMicros()
                     + ":" + effect.brightness() + ":" + effect.contrast() + ":" + effect.saturation()
                     + ":" + effect.grayscale() + ":" + effect.fadeInSeconds() + ":"
                     + effect.fadeOutSeconds() + ":" + effect.enabled()

@@ -8,7 +8,7 @@ class BmfVideoEffectTransitionGraphTest {
     @Test
     void graphExecutesEffectsFadesAndCrossDissolve() {
         String graph = BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM;
-        assertThat(graph).contains("'eq'", "'hue'", "'fade'", "dissolve_duration", "colorchannelmixer");
+        assertThat(graph) .contains("'lutrgb'", "0.299, 0.587, 0.114", "'fade'", "dissolve_duration", "colorchannelmixer");
     }
 
     @Test

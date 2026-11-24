@@ -38,6 +38,7 @@ public sealed interface OperationParameters permits
         OperationParameters.AudioMuteParameters,
         OperationParameters.StereoBalanceParameters,
         OperationParameters.VideoTransformParameters,
+        OperationParameters.CompositionAspectParameters,
         OperationParameters.VideoEffectParameters,
         OperationParameters.TransitionCreateParameters,
         OperationParameters.TransitionUpdateParameters,
@@ -235,6 +236,14 @@ public sealed interface OperationParameters permits
     record TransitionDeleteParameters(String transitionId) implements OperationParameters {
         public TransitionDeleteParameters {
             if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("transitionId required");
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record CompositionAspectParameters(com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio)
+            implements OperationParameters {
+        public CompositionAspectParameters {
+            java.util.Objects.requireNonNull(aspectRatio, "composition aspect ratio");
         }
     }
 

@@ -32,7 +32,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             import sys
             import bmf
             ff = importlib.import_module('bmf.builder.ff_filter')
-            source, output, operation, start, duration = sys.argv[1:6]
+            source, output, operation, start, duration, raster = sys.argv[1:7]
             print('BMF_GRAPH_START ' + operation, flush=True)
             streams = bmf.graph().decode({'input_path': source})
             audio_params = {'codec': 'aac', 'sample_rate': 48000, 'channels': 2}
@@ -48,6 +48,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 video = streams['video']
                 if float(duration) > 0:
                     video = ff.setpts(ff.trim(video, start=start, duration=duration), 'PTS-STARTPTS')
+                if operation in ('encode', 'encode-multitrack'):
+                    video = ff.scale(video, raster)
+                    video = ff.ff_filter(video, 'setsar', '1')
                 audio = streams['audio'] if operation == 'encode-multitrack' else None
                 video.encode(audio, options).run()
             if not os.path.isfile(output) or os.path.getsize(output) == 0:
@@ -71,14 +74,14 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             inputs = sys.argv[2:2 + count]
             output = sys.argv[2 + count]
             duration = sys.argv[3 + count]
-            rate = sys.argv[4 + count]
+            rate, raster = sys.argv[4 + count:6 + count]
             print('BMF_GRAPH_START composite inputs=' + str(count), flush=True)
             graph = bmf.graph()
             clips = []
             for path in inputs:
                 video = graph.decode({'input_path': path})['video']
                 video = ff.setpts(video, 'PTS-STARTPTS')
-                video = ff.scale(video, '320x240')
+                video = ff.scale(video, raster)
                 video = ff.fps(video, rate)
                 # BMF drops the final frame of every decoded/normalized segment; holding exactly one
                 # frame restores the authored frame count without duplicating visible content.
@@ -103,14 +106,16 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             ff = importlib.import_module('bmf.builder.ff_filter')
             count = int(sys.argv[1])
             paths = sys.argv[2:2 + count]
-            output, duration, rate = sys.argv[2 + count:5 + count]
-            placements = [value.split(',') for value in sys.argv[5 + count:]]
+            output, duration, rate, raster = sys.argv[2 + count:6 + count]
+            canvas_width, canvas_height = map(int, raster.split('x'))
+            placements = [value.split(',') for value in sys.argv[6 + count:]]
             graph = bmf.graph()
             print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
 
             def transformed(video, placement, fx):
                 # kind,start,end,gain,mute,pan,posx,posy,scalex,scaley,rot,cropl,cropr,cropt,cropb,opacity,fx
-                px, py = float(placement[6]), float(placement[7])
+                px = round(float(placement[6]) * canvas_width)
+                py = round(float(placement[7]) * canvas_height)
                 sx, sy = float(placement[8]), float(placement[9])
                 rot = float(placement[10])
                 cl, cr = float(placement[11]), float(placement[12])
@@ -121,20 +126,30 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 fade_in, fade_out = float(fx[4]), float(fx[5])
                 effect_enabled = fx[6] == '1'
                 authored_duration, dissolve_duration = float(fx[8]), float(fx[9])
-                # Canonical order: clip-local effects -> crop -> scale -> rotate ->
-                # position -> opacity -> fade/transition alpha.
-                if effect_enabled:
-                    if grayscale:
-                        video = ff.ff_filter(video, 'hue', 's=0')
-                    if abs(brightness) > 0.000001 or abs(contrast - 1) > 0.000001 or abs(saturation - 1) > 0.000001:
-                        video = ff.ff_filter(video, 'eq', 'brightness=' + str(brightness)
-                                             + ':contrast=' + str(contrast) + ':saturation=' + str(saturation))
-                video = ff.ff_filter(video, 'crop', 'w=iw*' + str(cr - cl)
-                                     + ':h=ih*' + str(cb - ct) + ':x=iw*' + str(cl) + ':y=ih*' + str(ct))
-                width = max(2, int(round(320 * sx)))
-                height = max(2, int(round(240 * sy)))
-                video = ff.ff_filter(video, 'scale', str(width) + 'x' + str(height))
                 video = ff.ff_filter(video, 'format', 'rgba')
+                if effect_enabled:
+                    if brightness != 0 or contrast != 1:
+                        value = '(val*' + str(1 + brightness) + '-127.5)*' + str(contrast) + '+127.5'
+                        video = ff.ff_filter(video, 'lutrgb',
+                                             'r=' + value + ':g=' + value + ':b=' + value)
+                    saturation = 0 if grayscale else saturation
+                    if saturation != 1:
+                        weights = (0.299, 0.587, 0.114)
+                        coefficients = []
+                        for output_channel, out_name in enumerate('rgb'):
+                            for input_channel, in_name in enumerate('rgb'):
+                                coefficient = (1 - saturation) * weights[input_channel]
+                                if input_channel == output_channel:
+                                    coefficient += saturation
+                                coefficients.append(out_name + in_name + '=' + str(coefficient))
+                        video = ff.ff_filter(video, 'colorchannelmixer', ':'.join(coefficients))
+                video = ff.ff_filter(video, 'crop', 'w=max(1,round(iw*' + str(cr - cl)
+                                     + ')):h=max(1,round(ih*' + str(cb - ct) + ')):x=round(iw*' + str(cl)
+                                     + '):y=round(ih*' + str(ct) + '):exact=1')
+                width = max(1, int(round(canvas_width * sx)))
+                height = max(1, int(round(canvas_height * sy)))
+                video = ff.ff_filter(video, 'scale', str(width) + 'x' + str(height))
+                video = ff.ff_filter(video, 'setsar', '1')
                 if abs(rot) > 0.000001:
                     angle = str(rot) + '*PI/180'
                     video = ff.ff_filter(video, 'rotate', 'angle=' + angle
@@ -157,10 +172,10 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                             if placement[0] == 'V']
             if video_inputs:
                 base = graph.decode({'input_path': video_inputs[0][0]})['video']
-                canvas = ff.ff_filter(ff.scale(base, '320x240'), 'fps', rate)
+                canvas = ff.ff_filter(ff.scale(base, raster), 'fps', rate)
             else:
                 waveform = graph.decode({'input_path': paths[0]})['audio']
-                canvas = ff.ff_filter(waveform, 'showwaves', 's=320x240:r=' + rate)
+                canvas = ff.ff_filter(waveform, 'showwaves', 's=' + raster + ':r=' + rate)
             canvas = ff.ff_filter(canvas, 'drawbox', color='black', t='fill')
             canvas = ff.ff_filter(canvas, 'tpad', stop_duration=duration, stop_mode='clone')
             canvas = ff.trim(canvas, duration=duration)
@@ -175,7 +190,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 clip, px, py = transformed(clip, placement, fx)
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
                 visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
-                canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible)
+                canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
             audio_inputs = []
             for path, placement in zip(paths, placements):
@@ -245,7 +260,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         ProviderNativeOutputFiles.RENDER_OUTPUT,
                         plan.operation().operationKey(),
                         window.map(value -> seconds(value.start())).orElse("0"),
-                        window.map(value -> seconds(value.duration())).orElse("0")))
+                        window.map(value -> seconds(value.duration())).orElse("0"), rasterToken(plan)))
                 : compositeInvocation(plan);
         var command = new ExecutionCommand(context.executableTaskId(), context.providerBindingPin(),
                 context.platformExecutionAttemptId(), context.platformOwnershipGeneration(), 0, invocation);
@@ -267,19 +282,24 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         arguments.add(seconds(plan.compositeDuration().orElseThrow()));
         var rate = plan.compositeFrameRate().orElseThrow();
         arguments.add(rate.numerator() + "/" + rate.denominator());
+        arguments.add(rasterToken(plan));
         if (multitrack) {
             for (var input : plan.compositeInputs()) {
                 var t = input.transform();
                 arguments.add((input.audio() ? "A" : "V") + "," + seconds(input.start()) + ","
                         + seconds(input.end()) + "," + input.gain() + ","
                         + (input.mute() ? "1" : "0") + "," + input.balance() + ","
-                        + t.positionX() + "," + t.positionY() + "," + t.scaleX() + ","
-                        + t.scaleY() + "," + t.rotationDegrees() + "," + t.cropLeft() + ","
-                        + t.cropRight() + "," + t.cropTop() + "," + t.cropBottom() + ","
+                        + t.x() + "," + t.y() + "," + t.scaleX() + ","
+                        + t.scaleY() + "," + t.degrees() + "," + t.left() + ","
+                        + t.right() + "," + t.top() + "," + t.bottom() + ","
                         + t.opacity() + "," + fxToken(input));
             }
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
+    }
+
+    private static String rasterToken(BmfCpuTranscodePlan plan) {
+        return plan.raster().width() + "x" + plan.raster().height();
     }
 
     public static String materializedInputToken(ExecutionInputId inputId) {

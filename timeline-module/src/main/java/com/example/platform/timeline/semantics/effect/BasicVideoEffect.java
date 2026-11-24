@@ -17,6 +17,7 @@ public record BasicVideoEffect(
         boolean enabled) {
 
     public static final String EFFECT_KEY = "video.basic";
+    public static final String FORMAT = "rgb-basic-v1";
     public static final BasicVideoEffect IDENTITY = new BasicVideoEffect(0, 1, 1, false, 0, 0, true);
 
     public BasicVideoEffect {
@@ -41,8 +42,9 @@ public record BasicVideoEffect(
 
     /** The stored video.basic R1 operation parameters. */
     public static BasicVideoEffect fromParameters(Map<String, Object> parameters) {
-        if (!parameters.keySet().equals(Set.of("brightness", "contrast", "saturation", "grayscale",
+        if (!parameters.keySet().equals(Set.of("format", "brightness", "contrast", "saturation", "grayscale",
                 "fadeInSeconds", "fadeOutSeconds", "enabled"))
+                || !FORMAT.equals(parameters.get("format"))
                 || !(parameters.get("brightness") instanceof Number brightness)
                 || !(parameters.get("contrast") instanceof Number contrast)
                 || !(parameters.get("saturation") instanceof Number saturation)
@@ -54,6 +56,12 @@ public record BasicVideoEffect(
         }
         return new BasicVideoEffect(brightness.doubleValue(), contrast.doubleValue(), saturation.doubleValue(),
                 grayscale, fadeIn.doubleValue(), fadeOut.doubleValue(), enabled);
+    }
+
+    public Map<String, Object> toParameters() {
+        return Map.of("format", FORMAT, "brightness", brightness, "contrast", contrast,
+                "saturation", saturation, "grayscale", grayscale, "fadeInSeconds", fadeInSeconds,
+                "fadeOutSeconds", fadeOutSeconds, "enabled", enabled);
     }
 
     private static void requireFinite(double value, String name) {

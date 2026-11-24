@@ -22,6 +22,7 @@ public sealed interface PlannedChange permits
         PlannedChange.RelationshipAdded,
         PlannedChange.GroupMembershipUpdated,
         PlannedChange.AudioMixReplaced,
+        PlannedChange.CompositionAspectChanged,
         PlannedChange.TextElementAdded,
         PlannedChange.TextElementRemoved,
         PlannedChange.TextElementReplaced {
@@ -78,6 +79,11 @@ public sealed interface PlannedChange permits
         public boolean primary() {
             return false;
         }
+    }
+
+    record CompositionAspectChanged(com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio)
+            implements PlannedChange {
+        @Override public boolean primary() { return true; }
     }
 
     /** AUDIO operations: replaced canonical AudioMix. */

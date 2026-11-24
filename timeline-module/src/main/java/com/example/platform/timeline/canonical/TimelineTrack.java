@@ -18,5 +18,9 @@ public record TimelineTrack(
         if (type == null) type = TrackType.VIDEO;
         if (clips == null) clips = List.of();
         clips = List.copyOf(clips);
+        if (type != TrackType.VIDEO && clips.stream().anyMatch(clip -> !clip.getTransform().equals(
+                com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY))) {
+            throw new IllegalArgumentException("Video transform requires a video track");
+        }
     }
 }

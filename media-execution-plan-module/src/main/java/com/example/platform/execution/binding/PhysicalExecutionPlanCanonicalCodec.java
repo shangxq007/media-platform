@@ -70,7 +70,7 @@ import java.util.Optional;
  */
 public final class PhysicalExecutionPlanCanonicalCodec {
 
-    public static final String FORMAT = "p25a.physical-execution-plan.v2";
+    public static final String FORMAT = "p25a.physical-execution-plan.v3";
 
     private PhysicalExecutionPlanCanonicalCodec() {
     }
@@ -554,16 +554,16 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio()))
                     .field("gain", Double.toString(timed.gainLinear())).field("mute", Boolean.toString(timed.muted()))
                     .field("balance", Double.toString(timed.balanceValue()))
-                    .field("tx", Double.toString(timed.transform().positionX()))
-                    .field("ty", Double.toString(timed.transform().positionY()))
-                    .field("sx", Double.toString(timed.transform().scaleX()))
-                    .field("sy", Double.toString(timed.transform().scaleY()))
-                    .field("rot", Double.toString(timed.transform().rotationDegrees()))
-                    .field("cl", Double.toString(timed.transform().cropLeft()))
-                    .field("cr", Double.toString(timed.transform().cropRight()))
-                    .field("ct", Double.toString(timed.transform().cropTop()))
-                    .field("cb", Double.toString(timed.transform().cropBottom()))
-                    .field("opacity", Double.toString(timed.transform().opacity()))
+                    .field("tx", Integer.toString(timed.transform().positionXMicros()))
+                    .field("ty", Integer.toString(timed.transform().positionYMicros()))
+                    .field("sx", Integer.toString(timed.transform().scaleXMicros()))
+                    .field("sy", Integer.toString(timed.transform().scaleYMicros()))
+                    .field("rot", Integer.toString(timed.transform().rotationMicroDegrees()))
+                    .field("cl", Integer.toString(timed.transform().cropLeftMicros()))
+                    .field("cr", Integer.toString(timed.transform().cropRightMicros()))
+                    .field("ct", Integer.toString(timed.transform().cropTopMicros()))
+                    .field("cb", Integer.toString(timed.transform().cropBottomMicros()))
+                    .field("opacity", Integer.toString(timed.transform().opacityMicros()))
                     .field("brightness", Double.toString(timed.effect().brightness()))
                     .field("contrast", Double.toString(timed.effect().contrast()))
                     .field("saturation", Double.toString(timed.effect().saturation()))
@@ -602,12 +602,12 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain"))),
                     com.example.platform.audio.domain.mix.AudioMute.of(reader.fieldBoolean("mute")),
                     com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance"))),
-                    new com.example.platform.render.domain.renderplan.VideoTransformSpec(
-                            Double.parseDouble(reader.field("tx")), Double.parseDouble(reader.field("ty")),
-                            Double.parseDouble(reader.field("sx")), Double.parseDouble(reader.field("sy")),
-                            Double.parseDouble(reader.field("rot")), Double.parseDouble(reader.field("cl")),
-                            Double.parseDouble(reader.field("cr")), Double.parseDouble(reader.field("ct")),
-                            Double.parseDouble(reader.field("cb")), Double.parseDouble(reader.field("opacity"))),
+                    new com.example.platform.timeline.semantics.effect.VideoTransform(
+                            Integer.parseInt(reader.field("tx")), Integer.parseInt(reader.field("ty")),
+                            Integer.parseInt(reader.field("sx")), Integer.parseInt(reader.field("sy")),
+                            Integer.parseInt(reader.field("rot")), Integer.parseInt(reader.field("cl")),
+                            Integer.parseInt(reader.field("cr")), Integer.parseInt(reader.field("ct")),
+                            Integer.parseInt(reader.field("cb")), Integer.parseInt(reader.field("opacity"))),
                     new com.example.platform.render.domain.renderplan.VideoEffectSpec(
                             Double.parseDouble(reader.field("brightness")), Double.parseDouble(reader.field("contrast")),
                             Double.parseDouble(reader.field("saturation")), reader.fieldBoolean("grayscale"),
@@ -634,14 +634,20 @@ public final class PhysicalExecutionPlanCanonicalCodec {
     // ---------- exact time / extent / node kind ----------
 
     private static String extent(RenderExtent extent) {
-        return time("RenderExtent", extent.start(), extent.end(), extent.frameRate());
+        return new CanonicalWriter().tag("RenderExtent")
+                .scalar(time("RenderTiming", extent.start(), extent.end(), extent.frameRate()))
+                .exactLong(extent.raster().width()).exactLong(extent.raster().height()).build();
     }
 
     private static RenderExtent extent(FrameReader reader) {
         reader.requireTag("RenderExtent");
-        MediaTime start = time(reader);
-        MediaTime end = time(reader);
-        return new RenderExtent(start, end, frameRate(reader));
+        FrameReader timing = reader.nested();
+        timing.requireTag("RenderTiming");
+        MediaTime start = time(timing);
+        MediaTime end = time(timing);
+        FrameRate rate = frameRate(timing);
+        return new RenderExtent(start, end, rate, new com.example.platform.render.domain.renderplan.RenderRaster(
+                Math.toIntExact(reader.exactLong()), Math.toIntExact(reader.exactLong())));
     }
 
     private static String window(RenderSampleWindow window) {

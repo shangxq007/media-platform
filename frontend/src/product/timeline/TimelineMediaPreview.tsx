@@ -4,8 +4,9 @@ import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { toSeconds } from './trim'
 import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
-import { audioRouteFor, projectSnapshotJson, type ProjectedClip, type TimelineProjection } from './timeline-projection'
+import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
+import { projectId as validateProjectId } from './types'
 
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
 interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mute: boolean; pan: number }
@@ -19,6 +20,7 @@ interface PreviewSession {
   mixer?: GainNode
   analyser?: AnalyserNode
   projection?: TimelineProjection
+  colorSurface?: HTMLCanvasElement
   duration: number
   cursor: number
   origin: number
@@ -52,6 +54,23 @@ function loadVideo(media: HTMLVideoElement, url: string, signal: AbortSignal) {
 }
 
 /** Playback derived from the exact canonical revision. */
+/** RGB code values, brightness then contrast, followed by BT.601 luma saturation. */
+function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideoEffect) {
+  const gain = 1 + effect.brightness
+  const saturation = effect.grayscale ? 0 : effect.saturation
+  const adjust = (channel: number) =>
+    Math.min(255, Math.max(0, Math.round((channel * gain - 127.5) * effect.contrast + 127.5)))
+  for (let offset = 0; offset < samples.length; offset += 4) {
+    const red = adjust(samples[offset])
+    const green = adjust(samples[offset + 1])
+    const blue = adjust(samples[offset + 2])
+    const luma = 0.299 * red + 0.587 * green + 0.114 * blue
+    samples[offset] = luma + saturation * (red - luma)
+    samples[offset + 1] = luma + saturation * (green - luma)
+    samples[offset + 2] = luma + saturation * (blue - luma)
+  }
+}
+
 export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
   head: CanonicalHeadReference | null
   tenantId: string | null
@@ -84,8 +103,16 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
 
   function draw(session: PreviewSession, forceSeek = false) {
     const target = canvas.current
-    const context = target?.getContext('2d')
-    if (!target || !context) return
+    if (!target) return
+    const portrait = session.projection?.compositionAspectRatio === 'PORTRAIT_3_4'
+    const width = portrait ? 240 : 320
+    const height = portrait ? 320 : 240
+    if (target.width !== width || target.height !== height) {
+      target.width = width
+      target.height = height
+    }
+    const context = target.getContext('2d')
+    if (!context) return
     const time = rationalTime(session.cursor)
     const clips = session.projection ? activeClipsAt(session.projection, time) : []
     const top = clips.length ? clips[clips.length - 1] : null
@@ -124,8 +151,12 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
       const transitionAlpha = transition
         ? Math.min(1, Math.max(0, (now - clipStart) / toSeconds(transition.duration))) : 1
       const t = clip.transform
-      const sourceWidth = media.videoWidth || 320
-      const sourceHeight = media.videoHeight || 240
+      const sourceWidth = media.videoWidth
+      const sourceHeight = media.videoHeight
+      if (!sourceWidth || !sourceHeight) {
+        fail(session, new Error('Source video dimensions are unavailable.'))
+        return
+      }
       const sx = sourceWidth * t.cropLeft
       const sy = sourceHeight * t.cropTop
       const sw = Math.max(1, sourceWidth * (t.cropRight - t.cropLeft))
@@ -135,17 +166,29 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
       const radians = t.rotationDegrees * Math.PI / 180
       const rotatedWidth = Math.abs(dw * Math.cos(radians)) + Math.abs(dh * Math.sin(radians))
       const rotatedHeight = Math.abs(dw * Math.sin(radians)) + Math.abs(dh * Math.cos(radians))
-      context.save()
-      context.globalAlpha = t.opacity * fadeIn * fadeOut * transitionAlpha
+      let sample: CanvasImageSource = media
       if (effect && (effect.brightness !== 0 || effect.contrast !== 1
           || effect.saturation !== 1 || effect.grayscale)) {
-        context.filter = `brightness(${1 + effect.brightness}) contrast(${effect.contrast}) `
-          + `saturate(${effect.saturation})${effect.grayscale ? ' grayscale(1)' : ''}`
+        const surface = session.colorSurface ??= document.createElement('canvas')
+        if (surface.width !== sourceWidth || surface.height !== sourceHeight) {
+          surface.width = sourceWidth
+          surface.height = sourceHeight
+        }
+        const colorContext = surface.getContext('2d', { willReadFrequently: true })
+        if (!colorContext) { fail(session, new Error('Preview color surface unavailable.')); return }
+        colorContext.clearRect(0, 0, sourceWidth, sourceHeight)
+        colorContext.drawImage(media, 0, 0)
+        const frame = colorContext.getImageData(0, 0, sourceWidth, sourceHeight)
+        applyBasicVideoColor(frame.data, effect)
+        colorContext.putImageData(frame, 0, 0)
+        sample = surface
       }
-      // Position is the top-left of the rotated output frame, matching BMF rotate+overlay.
-      context.translate(t.positionX + rotatedWidth / 2, t.positionY + rotatedHeight / 2)
+      context.save()
+      context.globalAlpha = t.opacity * fadeIn * fadeOut * transitionAlpha
+      context.translate(t.positionX * target.width + rotatedWidth / 2,
+        t.positionY * target.height + rotatedHeight / 2)
       context.rotate(radians)
-      context.drawImage(media, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh)
+      context.drawImage(sample, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh)
       context.restore()
     }
   }
@@ -178,6 +221,27 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
         // Embedded video audio is opt-in through an explicit canonical AudioRoute.
         // No video-track-count heuristic silently adds or drops audio.
         const audioClips = [...audioTracks.flatMap(track => track.clips), ...routedVideoClips]
+        const scopedSources = projection.clips.length ? await assetGateway.listSourcePins(tenant, validateProjectId(projectId), signal) : null
+        if (signal.aborted) return
+        if (scopedSources && !scopedSources.ok) throw new Error(scopedSources.message)
+        const verifiedSources = new Map(scopedSources?.value.map(source => [String(source.artifactId), source]))
+        for (const track of projection.tracks) {
+          for (const clip of track.clips) {
+            const source = verifiedSources.get(clip.artifactId)
+            const selected = source?.streams.filter(stream => stream.kind === track.type)
+            if (!source || source.contentDigest !== clip.contentDigest || selected?.length !== 1
+                || selected[0].streamId !== clip.mediaStreamId) {
+              throw new Error('Preview does not support the selected source stream for ' + clip.clipId)
+            }
+          }
+        }
+        for (const clip of audioClips) {
+          const streams = verifiedSources.get(clip.artifactId)?.streams.filter(stream => stream.kind === 'AUDIO')
+          if (streams?.length !== 1 || clip.direction !== 'FORWARD'
+              || clip.rate.numerator !== clip.rate.denominator) {
+            throw new Error('Preview does not support the selected audio stream or mapping for ' + clip.clipId)
+          }
+        }
         const artifacts = new Set([...videoClips, ...audioClips].map(clip => clip.artifactId))
         const blobs = new Map<string, Blob>()
         for (const id of artifacts) {

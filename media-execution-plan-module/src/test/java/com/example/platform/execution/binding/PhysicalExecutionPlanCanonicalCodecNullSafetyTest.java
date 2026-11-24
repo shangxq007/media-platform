@@ -88,7 +88,7 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
                 "transition-1", "outgoing", "incoming", TWO);
         var dependency = com.example.platform.render.domain.renderplan.RenderDependency.TimedTrackInput.video(
                 start, end, 1,
-                com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY,
                 new com.example.platform.render.domain.renderplan.VideoEffectSpec(0, 1, 1, true, 0.5, 0.5, true),
                 TWO, MediaTime.ofMillis(4500), java.util.Optional.of(dissolve));
         var input = new InputBinding(new ExecutionInputId("input-clip"), "composite",
@@ -100,7 +100,7 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
         byte[] bytes = PhysicalExecutionPlanCanonicalCodec.encode(plan);
         assertThat(PhysicalExecutionPlanCanonicalCodec.decode(bytes)).isEqualTo(plan);
         String oldTag = new String(bytes, java.nio.charset.StandardCharsets.UTF_8)
-                .replace("p25a.physical-execution-plan.v2", "p25a.physical-execution-plan.v1");
+                .replace("p25a.physical-execution-plan.v3", "p25a.physical-execution-plan.v2");
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                 PhysicalExecutionPlanCanonicalCodec.decode(oldTag.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .isInstanceOf(UnsupportedPersistedConstructException.class);

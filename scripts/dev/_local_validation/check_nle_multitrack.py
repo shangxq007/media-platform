@@ -86,6 +86,7 @@ auxiliary_deliveries = list(browser['partial']) + [
      'finalArtifactId': browser['embedded']['render']['artifactId'],
      'revisionId': browser['embedded']['revisionId'], 'path': str(output / 'embedded-output.mp4')},
 ]
+auxiliary_deliveries.extend(browser['composition']['outputs'])
 auxiliary_facts = []
 for delivered in auxiliary_deliveries:
     render_job_id = delivered['renderJobId']
@@ -94,7 +95,7 @@ for delivered in auxiliary_deliveries:
     plan = fact['binding'].pop('plan')
     candidate_data = fact['binding'].pop('candidates')
     pins = '\n'.join(base64.b64decode(line).decode() for line in candidate_data.splitlines() if line)
-    assert 'bmf.cpu.v1' in pins and '1.1.0' in pins and 'ffmpeg.cpu.native-pull.v1' not in pins
+    assert 'bmf.cpu.v1' in pins and '1.2.0' in pins and 'ffmpeg.cpu.native-pull.v1' not in pins
     assert fact['revision'] == delivered['revisionId']
     assert fact['execution']['task_attempt_id']
     assert fact['binding']['planDigest'] == fact['execution']['plan_digest']
@@ -104,9 +105,9 @@ for delivered in auxiliary_deliveries:
     assert path.parent == output and path.suffix == '.mp4'
     sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
     assert sha256 == fact['master']['content_digest'].split(':')[-1]
-    assert 'p25a.physical-execution-plan.v2' in plan
+    assert 'p25a.physical-execution-plan.v3' in plan
     fact.update(jobId=render_job_id, workflowId=completed_workflow(render_job_id),
-                temporal='COMPLETED', actualProvider='bmf.cpu.v1', providerVersion='1.1.0',
+                temporal='COMPLETED', actualProvider='bmf.cpu.v1', providerVersion='1.2.0',
                 deliveryId=delivered.get('deliveryId'), artifactSha256=sha256)
     auxiliary_facts.append(fact)
 (output / 'bmf-auxiliary-formal-binding.json').write_text(json.dumps(auxiliary_facts, indent=2))

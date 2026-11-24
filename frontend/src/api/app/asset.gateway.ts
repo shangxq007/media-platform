@@ -36,9 +36,9 @@ function contentPath(tenantId: string, projectId: string, artifactId: string) {
 }
 
 export const assetGateway: AssetGateway = {
-  async listSourcePins(tenantId, projectId) {
+  async listSourcePins(tenantId, projectId, signal) {
     try {
-      const response = await versionlessApi.get(path(tenantId, projectId))
+      const response = await versionlessApi.get(path(tenantId, projectId), { signal })
       const parsed = Source.array().safeParse(response.data)
       if (!parsed.success) return responseValidationFailure('Source browser response did not contain accepted Artifact pins.')
       return { ok: true, value: parsed.data.map(pin) }

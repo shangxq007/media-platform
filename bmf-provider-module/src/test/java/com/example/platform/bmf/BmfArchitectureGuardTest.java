@@ -151,7 +151,9 @@ class BmfArchitectureGuardTest {
         assertThat(instanceFields).extracting(Field::getName)
                 .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin", "operation",
                         "inputId", "outputId", "sourceWindow",
-                        "compositeInputs", "compositeDuration", "compositeFrameRate");
+                        "compositeInputs", "compositeDuration", "compositeFrameRate", "raster");
+        assertThat(BmfCpuTranscodePlan.VideoPlacement.class.getRecordComponents())
+                .allSatisfy(component -> assertThat(component.getType()).isEqualTo(double.class));
         for (Field field : instanceFields) {
             assertThat(field.getName().toLowerCase())
                     .as("provider-local plan component must not leak graph/canonical authority")

@@ -130,17 +130,11 @@ public final class TimelineBatchCommandMapper {
                     OperationParameters.TrimParameters.TrimEdge.valueOf(
                             requiredText(parameters, "edge")),
                     time(parameters, "delta"));
+            case "timeline.composition.aspect.set" -> new OperationParameters.CompositionAspectParameters(
+                    com.example.platform.timeline.canonical.CompositionAspectRatio.valueOf(
+                            requiredText(parameters, "aspectRatio")));
             case "timeline.clip.transform.set" -> new OperationParameters.VideoTransformParameters(
-                    new VideoTransform(requiredDouble(parameters, "positionX"),
-                            requiredDouble(parameters, "positionY"),
-                            requiredDouble(parameters, "scaleX"),
-                            requiredDouble(parameters, "scaleY"),
-                            requiredDouble(parameters, "rotationDegrees"),
-                            requiredDouble(parameters, "cropLeft"),
-                            requiredDouble(parameters, "cropRight"),
-                            requiredDouble(parameters, "cropTop"),
-                            requiredDouble(parameters, "cropBottom"),
-                            requiredDouble(parameters, "opacity")));
+                    VideoTransform.fromParameters(parameters));
             case "timeline.clip.effect.set" -> new OperationParameters.VideoEffectParameters(
                     new BasicVideoEffect(requiredDouble(parameters, "brightness"),
                             requiredDouble(parameters, "contrast"),

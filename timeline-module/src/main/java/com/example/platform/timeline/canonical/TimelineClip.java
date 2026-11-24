@@ -87,7 +87,6 @@ public class TimelineClip {
     @JsonProperty("effects")
     private final List<TimelineClipEffect> effects;
 
-    @JsonProperty("transform")
     private final VideoTransform transform;
 
     /** Convenience constructor: identity temporal mapping (1/1 FORWARD). */
@@ -200,5 +199,12 @@ public class TimelineClip {
     public MediaTime getTrimStart() { return trimStart; }
     public MediaTime getTrimEnd() { return trimEnd; }
     public List<TimelineClipEffect> getEffects() { return effects; }
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public VideoTransform getTransform() { return transform; }
+
+    @JsonProperty("transform")
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    VideoTransform authoredTransform() {
+        return transform.equals(VideoTransform.IDENTITY) ? null : transform;
+    }
 }

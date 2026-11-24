@@ -4,6 +4,7 @@ import { FormalRenderAPI, type RenderResult } from '../../api/formal-render'
 import { DeliveryAPI, type Delivery } from '../../api/delivery'
 import { renderReadSource } from '../../api/render-jobs'
 import type { RenderJobSummary } from '../../contracts/app/render-job'
+import type { CompositionAspectRatio } from './timeline-projection'
 import type { CanonicalHeadReference } from './gateways'
 import { useProjectContext } from '../../foundation/projectContext'
 
@@ -14,15 +15,20 @@ function save(blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
-export function NleRenderPanel({ head, timelineEndMillis = 3000 }: {
+export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = 'LANDSCAPE_4_3' }: {
   head: CanonicalHeadReference | null
   timelineEndMillis?: number
+  aspectRatio?: CompositionAspectRatio
 }) {
   const project = useProjectContext()
   const [startMillis, setStartMillis] = useState(0)
   const [requestedEnd, setEndMillis] = useState<number | null>(null)
   const endMillis = requestedEnd ?? timelineEndMillis
   const [fps, setFps] = useState(24)
+  const [raster, setRaster] = useState<{ aspect: CompositionAspectRatio; width: number; height: number } | null>(null)
+  const portrait = aspectRatio === 'PORTRAIT_3_4'
+  const width = raster?.aspect === aspectRatio ? raster.width : portrait ? 240 : 320
+  const height = raster?.aspect === aspectRatio ? raster.height : portrait ? 320 : 240
   const [jobs, setJobs] = useState<RenderJobSummary[]>([])
   const [job, setJob] = useState<RenderResult | null>(null)
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
@@ -66,7 +72,7 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000 }: {
   function submit() {
     if (!head || !project.tenantId) return
     const intent = { revisionId: head.revisionId, extent: { startMillis, endMillis,
-      frameRateNumerator: fps, frameRateDenominator: 1 }, outputFormat: 'MP4' as const, profile: 'default' }
+      frameRateNumerator: fps, frameRateDenominator: 1, width, height }, outputFormat: 'MP4' as const, profile: 'default' }
     void run(async () => {
       const accepted = await FormalRenderAPI.submit(intent, key([project.projectId, intent]))
       const current = await FormalRenderAPI.result(project.tenantId!, project.projectId, accepted.renderJobId)
@@ -85,6 +91,10 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000 }: {
     <label>Output start (ms) <Input type="number" min={0} value={startMillis} onChange={event => setStartMillis(Number(event.target.value))} /></label>
     <label>Output end (ms) <Input type="number" min={1} value={endMillis} onChange={event => setEndMillis(Number(event.target.value))} /></label>
     <label>Frame rate <Input type="number" min={1} value={fps} onChange={event => setFps(Number(event.target.value))} /></label>
+    <label>Output width <Input type="number" min={16} max={1920} step={2} value={width}
+      onChange={event => setRaster({ aspect: aspectRatio, width: Number(event.target.value), height })} /></label>
+    <label>Output height <Input type="number" min={16} max={1920} step={2} value={height}
+      onChange={event => setRaster({ aspect: aspectRatio, width, height: Number(event.target.value) })} /></label>
     <Button type="button" disabled={!head || !project.tenantId || busy || endMillis <= 0 || endMillis <= startMillis || startMillis < 0 || fps <= 0} onClick={submit}>Submit RenderJob</Button>
     </div>
     <Button type="button" disabled={busy} onClick={() => void refresh()}>Refresh jobs</Button>

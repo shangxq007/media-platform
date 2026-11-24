@@ -19,7 +19,7 @@ import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
-import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timeline-projection'
+import { projectSnapshotJson, timelineEnd, type CompositionAspectRatio, type ProjectedTrack } from './timeline-projection'
 import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
@@ -180,6 +180,8 @@ export function NleWorkspace({
   const [confirmed, setConfirmed] = useState(false)
   const [readbackRetrying, setReadbackRetrying] = useState(false)
   const [applyOwnershipRelease, setApplyOwnershipRelease] = useState(0)
+  const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>('LANDSCAPE_4_3')
+  const [projectionError, setProjectionError] = useState<string | null>(null)
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [previewTime, setPreviewTime] = useState(0)
   const [initializing, setInitializing] = useState(false)
@@ -252,16 +254,22 @@ export function NleWorkspace({
 
   useEffect(() => {
     let active = true
-    if (!state.server.head) { setTracks([]); setAppendStart('0/1'); return }
+    if (!state.server.head) { setTracks([]); setAppendStart('0/1'); setProjectionError(null); return }
     void (async () => {
       try {
         const snapshot = await FormalRenderAPI.snapshot(project.projectId, state.server.head!.revisionId)
         if (!active) return
         const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
+        setAspectRatio(projection.compositionAspectRatio)
+        setProjectionError(null)
         setTracks(projection.tracks)
         setAppendStart(formatRational(timelineEnd(projection)))
-      } catch {
-        if (active) { setTracks([]); setAppendStart('0/1') }
+      } catch (error) {
+        if (active) {
+          setTracks([])
+          setAppendStart('0/1')
+          setProjectionError(error instanceof Error ? error.message : 'Timeline projection unavailable.')
+        }
       }
     })()
     return () => { active = false }
@@ -513,7 +521,8 @@ export function NleWorkspace({
           {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
         </Panel>
         <Panel title="Render and delivery" className="ff-operation-panel">
-          <NleRenderPanel head={state.server.head} timelineEndMillis={Math.ceil(
+          {projectionError && <p role="alert">{projectionError}</p>}
+          <NleRenderPanel head={projectionError ? null : state.server.head} aspectRatio={aspectRatio} timelineEndMillis={Math.ceil(
             1000 * toSeconds(parseRational(appendStart) ?? { numerator: 0n, denominator: 1n })
           )} />
         </Panel>

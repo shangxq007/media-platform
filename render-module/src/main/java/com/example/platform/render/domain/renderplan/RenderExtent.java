@@ -5,20 +5,26 @@ import com.example.platform.shared.time.MediaTime;
 import java.util.Objects;
 
 /**
- * Exact render extent (C9): half-open [start, end) temporal interval plus an exact
+ * Exact render extent (C9): half-open [start, end) temporal interval plus a requested raster and an exact
  * rational frame rate. Execution request/planning semantics — NOT authored
  * Timeline semantics. start < end REQUIRED (else invalid).
  *
  * @param start     extent start (inclusive, exact)
  * @param end       extent end (exclusive, exact)
  * @param frameRate exact rational frame rate
+ * @param raster output dimensions
  */
-public record RenderExtent(MediaTime start, MediaTime end, FrameRate frameRate) {
+public record RenderExtent(MediaTime start, MediaTime end, FrameRate frameRate, RenderRaster raster) {
+
+    public RenderExtent(MediaTime start, MediaTime end, FrameRate frameRate) {
+        this(start, end, frameRate, RenderRaster.DEFAULT);
+    }
 
     public RenderExtent {
         Objects.requireNonNull(start, "start");
         Objects.requireNonNull(end, "end");
         Objects.requireNonNull(frameRate, "frameRate");
+        Objects.requireNonNull(raster, "raster");
         // NOTE: start < end is NOT enforced here. RenderExtent is a plain value
         // object; the planner validates the extent (C9) and emits an
         // INVALID_RENDER_EXTENT diagnostic when start >= end. Validating here

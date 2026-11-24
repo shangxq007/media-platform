@@ -17,6 +17,7 @@
 | OD-009 | Git integration, push and protected-work cleanup require explicit Owner authorization. | ACTIVE | Repository/worktrees/remote | Fast-forward only unless explicitly authorized. |
 | OD-010 | Independent review and real E2E evidence are required for product acceptance. | ACTIVE | Product tasks | A review session with no verdict is not APPROVE. |
 | OD-011 | Embedded video audio participates only through an explicit Canonical AudioRoute. | ACTIVE | Multi-video timelines | No implicit mixing of all video sources; explicit route avoids double-counting. |
+| OD-012 | Canonical composition uses a versioned, fixed-point, resolution-independent space. Canonical Operation authors aspect and transform. Render requests specify a separate compatible output raster. | ACTIVE | Timeline, NLE preview, planning and native projection | Unsupported composition, raster and effect semantics fail closed. |
 
 ## Change control
 

@@ -17,7 +17,7 @@ shutil.copytree(W/'scripts/startup',out/'bootstrap-source',dirs_exist_ok=True)
 c=json.loads((R/'07-runtime/local-context.json').read_text()); old=json.loads((Path((R/'07-runtime/final-db-job.txt').read_text().strip())/'binding.json').read_text());old.update(scratch=str(out),identity=birth(c['pid']),container_id=c['container_id'],network_namespace=c['network_namespace'],user_namespace=c['user_namespace'],ca=c['ca'],run=c['run'],attempt=c['attempt'])
 b=out/'binding.json';b.write_text(json.dumps(old));b.chmod(0o600)
 for n in ['plugins','workspace','staging','work','object-store','local-storage','cover-work','materialized','oidc']:(out/n).mkdir()
-shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.2.0.jar',out/'plugins')
+shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.3.0.jar',out/'plugins')
 if prior and (prior/'source-metadata.json').exists() and '--fresh' not in sys.argv:
  assert not any(p.is_symlink() for p in (prior/'object-store').rglob('*'))
  shutil.copytree(prior/'object-store',out/'object-store',dirs_exist_ok=True,symlinks=True)

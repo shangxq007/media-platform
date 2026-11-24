@@ -128,7 +128,7 @@ class BmfCpuTranscodeSeamsTest {
         assertThat(invocation.arguments()).containsExactly("-s", "-c",
                 BmfCpuRuntimeAdapter.GRAPH_PROGRAM,
                 BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID),
-                "platform-provider-output.bin", "decode", "1.5", "2.5");
+                "platform-provider-output.bin", "decode", "1.5", "2.5", "320x240");
         assertFailure(() -> adapter.adapt(plan,
                 runtimeContext(new ExecutableTaskId("b".repeat(64)))),
                 ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH);
@@ -197,14 +197,15 @@ class BmfCpuTranscodeSeamsTest {
                 INPUT_ID, OUTPUT_ID, Optional.empty(),
                 List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, MediaTime.ofMillis(2000)),
                         new BmfCpuTranscodePlan.TimedInput(second, MediaTime.ofMillis(2000), MediaTime.ofMillis(3000))),
-                Optional.of(MediaTime.ofMillis(3000)), Optional.of(FrameRate.of(24, 1)));
+                Optional.of(MediaTime.ofMillis(3000)), Optional.of(FrameRate.of(24, 1)),
+                com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT);
         var bundle = adapter.adapt(plan, runtimeContext(TASK_ID));
         var invocation = (ProcessInvocationSpec) bundle.commands().getFirst().invocationSpec();
         assertThat(invocation.arguments()).containsExactly("-s", "-c",
                 BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM, "2",
                 BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID),
                 BmfCpuRuntimeAdapter.materializedInputToken(second),
-                "platform-provider-output.bin", "3", "24/1");
+                "platform-provider-output.bin", "3", "24/1", "320x240");
     }
 
     @Test
@@ -218,7 +219,7 @@ class BmfCpuTranscodeSeamsTest {
         var tracks = unit.typedInputs();
         var timeline = List.of(
                 RenderDependency.TimedTrackInput.video(MediaTime.ofMillis(1500), MediaTime.ofMillis(3500), 1,
-                        com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                        com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY,
                         com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
                         MediaTime.ofMillis(1000), MediaTime.ofMillis(4000),
                         Optional.of(new RenderDependency.Dissolve(
@@ -237,7 +238,7 @@ class BmfCpuTranscodeSeamsTest {
         assertThat(invocation.arguments()).containsExactly("-s", "-c", BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM,
                 "4", "@platform-materialized-input:in-1", "@platform-materialized-input:in-0",
                 "@platform-materialized-input:in-2", "@platform-materialized-input:in-3",
-                "platform-provider-output.bin", "3", "24/1",
+                "platform-provider-output.bin", "3", "24/1", "320x240",
                 "V,0,2,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;2;0",
                 "V,0.5,2.5,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0.5;3;1.25",
                 "A,0,1.5,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;1.5;0",

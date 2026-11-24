@@ -5,12 +5,11 @@ import { RENDER_JOB_STATUSES } from '../contracts/app/render-job'
 
 const id = z.string().min(1)
 const part = (value: string) => encodeURIComponent(id.parse(value))
-export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number }; outputFormat: 'MP4'; profile: string }
+export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number; width?: number; height?: number }; outputFormat: 'MP4'; profile: string }
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
 export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
 export interface VideoTransformCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
-  positionX: number; positionY: number; scaleX: number; scaleY: number; rotationDegrees: number;
-  cropLeft: number; cropRight: number; cropTop: number; cropBottom: number; opacity: number; commandId: string }
+  parameters: Record<string, number | string>; commandId: string }
 export interface VideoEffectCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
   brightness: number; contrast: number; saturation: number; grayscale: boolean;
   fadeInSeconds: number; fadeOutSeconds: number; enabled: boolean; commandId: string }
@@ -61,18 +60,20 @@ export const FormalRenderAPI = {
     const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Video transform',
       operations: [{ definitionId: 'timeline.clip.transform.set',
-        target: { clipId: command.clipId }, parameters: {
-          positionX: command.positionX, positionY: command.positionY,
-          scaleX: command.scaleX, scaleY: command.scaleY,
-          rotationDegrees: command.rotationDegrees,
-          cropLeft: command.cropLeft, cropRight: command.cropRight,
-          cropTop: command.cropTop, cropBottom: command.cropBottom,
-          opacity: command.opacity } }] }
-    const value = z.object({ status: z.enum(['APPLIED', 'NO_OP']), newRevisionId: id.nullable().optional(), newContentHash: id })
-      .parse(await request(c => versionlessApi.post(
-        `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/apply`, body, c), signal))
-    return { revisionId: value.newRevisionId ?? command.baseRevisionId, contentHash: value.newContentHash }
+        target: { clipId: command.clipId }, parameters: command.parameters }] }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
   },
+  async setCompositionAspect(tenant: string, project: string, command: {
+    baseRevisionId: string; baseContentHash: string; commandId: string;
+    aspectRatio: 'LANDSCAPE_4_3' | 'PORTRAIT_3_4'
+  }, signal?: AbortSignal) {
+    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+      baseContentHash: command.baseContentHash, message: 'Set composition aspect ratio',
+      operations: [{ definitionId: 'timeline.composition.aspect.set',
+        parameters: { aspectRatio: command.aspectRatio } }] }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
+  },
+
   async applyVideoEffect(tenant: string, project: string, command: VideoEffectCommand, signal?: AbortSignal) {
     const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Video effect',

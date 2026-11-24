@@ -48,7 +48,7 @@ public class RevisionRenderSubmissionService {
             if (key != null) {
                 String hash = RenderSubmissionIdempotencyService.requestHash(request.revisionId(), request.extent().startMillis(),
                         request.extent().endMillis(), request.extent().frameRateNumerator(), request.extent().frameRateDenominator(),
-                        request.profile(), request.outputFormat().name());
+                        request.profile(), request.outputFormat().name(), extent.raster());
                 if (incremental != null) {
                     var canonical=new com.example.platform.execution.planning.CanonicalWriter().tag("incremental-render.request.v1")
                             .field("target",hash).field("referenceJob",incremental.referenceRenderJobId())

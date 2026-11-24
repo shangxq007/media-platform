@@ -76,6 +76,7 @@ public final class OperationPlanDigest {
             case PlannedChange.RelationshipAdded r -> "rel-add(" + r.relationship().kind() + ")";
             case PlannedChange.GroupMembershipUpdated g -> "group(" + g.groupId().value() + ","
                     + g.remainingMembers().stream().map(m -> m.value()).sorted().toList() + ")";
+            case PlannedChange.CompositionAspectChanged a -> "composition-aspect(" + a.aspectRatio() + ")";
             case PlannedChange.AudioMixReplaced a -> "audio(" + a.summary() + ")";
             case PlannedChange.TextElementAdded r -> "text-add(" + r.textElementId().value() + ")";
             case PlannedChange.TextElementRemoved r -> "text-remove(" + r.textElementId().value() + ")";

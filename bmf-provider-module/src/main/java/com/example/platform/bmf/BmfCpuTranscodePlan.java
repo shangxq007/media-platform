@@ -26,7 +26,8 @@ public record BmfCpuTranscodePlan(
         Optional<SourceWindow> sourceWindow,
         java.util.List<TimedInput> compositeInputs,
         Optional<MediaTime> compositeDuration,
-        Optional<com.example.platform.shared.time.FrameRate> compositeFrameRate)
+        Optional<com.example.platform.shared.time.FrameRate> compositeFrameRate,
+        com.example.platform.render.domain.renderplan.RenderRaster raster)
         implements ProviderNativeExecutionPlan {
 
     /**
@@ -36,12 +37,12 @@ public record BmfCpuTranscodePlan(
      */
     public record TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
-                             com.example.platform.render.domain.renderplan.VideoTransformSpec transform,
+                             VideoPlacement transform,
                              com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {
             this(inputId, start, end, 0, false, 1.0, false, 0.0,
-                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                    VideoPlacement.IDENTITY,
                     com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
                     MediaTime.ZERO, end.subtract(start), MediaTime.ZERO);
         }
@@ -49,7 +50,7 @@ public record BmfCpuTranscodePlan(
         /** Compatibility shape for video-only timed inputs. */
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio) {
             this(inputId, start, end, layer, audio, 1.0, false, 0.0,
-                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                    VideoPlacement.IDENTITY,
                     com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
                     MediaTime.ZERO, end.subtract(start), MediaTime.ZERO);
         }
@@ -57,7 +58,7 @@ public record BmfCpuTranscodePlan(
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                           double gain, boolean mute, double balance) {
             this(inputId, start, end, layer, audio, gain, mute, balance,
-                    com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                    VideoPlacement.IDENTITY,
                     com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
                     MediaTime.ZERO, end.subtract(start), MediaTime.ZERO);
         }
@@ -87,6 +88,12 @@ public record BmfCpuTranscodePlan(
         }
     }
 
+    /** Native scalar projection of the validated canonical transform. */
+    public record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
+                                 double left, double right, double top, double bottom, double opacity) {
+        static final VideoPlacement IDENTITY = new VideoPlacement(0, 0, 1, 1, 0, 0, 1, 0, 1, 1);
+    }
+
     /** Exact authored source interval for a DECODE unit. */
     public record SourceWindow(MediaTime start, MediaTime duration) {
         public SourceWindow {
@@ -104,7 +111,8 @@ public record BmfCpuTranscodePlan(
             ExecutionInputId inputId,
             ExecutionOutputId outputId) {
         this(executableTaskId, providerBindingPin, BmfOperation.TRANSCODE, inputId, outputId,
-                Optional.empty(), java.util.List.of(), Optional.empty(), Optional.empty());
+                Optional.empty(), java.util.List.of(), Optional.empty(), Optional.empty(),
+                com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT);
     }
 
     /** Compatibility shape for the single-input plan with an optional decode window. */
@@ -115,7 +123,8 @@ public record BmfCpuTranscodePlan(
             ExecutionOutputId outputId,
             Optional<SourceWindow> sourceWindow) {
         this(executableTaskId, providerBindingPin, operation, inputId, outputId, sourceWindow,
-                java.util.List.of(), Optional.empty(), Optional.empty());
+                java.util.List.of(), Optional.empty(), Optional.empty(),
+                com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT);
     }
 
     public BmfCpuTranscodePlan {
@@ -125,6 +134,7 @@ public record BmfCpuTranscodePlan(
         Objects.requireNonNull(inputId, "inputId");
         Objects.requireNonNull(outputId, "outputId");
         Objects.requireNonNull(sourceWindow, "sourceWindow");
+        Objects.requireNonNull(raster, "raster");
         if (!BmfCpuProvider.BINDING.equals(providerBindingPin)) {
             throw new IllegalArgumentException("BMF render unit requires the exact provider binding");
         }

@@ -7,6 +7,7 @@
             "colorimage",
             "extension :: domain",
             "render :: renderplan",
+            "timeline :: effect",
             "shared :: capability",
             "shared :: digest",
             "shared :: identity",

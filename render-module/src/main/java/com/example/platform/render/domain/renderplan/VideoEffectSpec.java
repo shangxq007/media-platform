@@ -16,17 +16,8 @@ public record VideoEffectSpec(
     public static final VideoEffectSpec IDENTITY = new VideoEffectSpec(0, 1, 1, false, 0, 0, true);
 
     public VideoEffectSpec {
-        if (Double.isNaN(brightness) || Double.isInfinite(brightness)
-                || Double.isNaN(contrast) || Double.isInfinite(contrast)
-                || Double.isNaN(saturation) || Double.isInfinite(saturation)
-                || Double.isNaN(fadeInSeconds) || Double.isInfinite(fadeInSeconds)
-                || Double.isNaN(fadeOutSeconds) || Double.isInfinite(fadeOutSeconds)) {
-            throw new IllegalArgumentException("video effect values must be finite");
-        }
-        if (brightness < -1 || brightness > 1 || contrast < 0 || contrast > 2
-                || saturation < 0 || saturation > 2 || fadeInSeconds < 0 || fadeOutSeconds < 0) {
-            throw new IllegalArgumentException("video effect values out of range");
-        }
+        new BasicVideoEffect(brightness, contrast, saturation, grayscale,
+                fadeInSeconds, fadeOutSeconds, enabled);
     }
 
     public static VideoEffectSpec from(BasicVideoEffect effect) {
