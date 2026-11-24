@@ -33,7 +33,7 @@ class RenderReadHttpTest extends PostgresTestContainerSupport {
     final ObjectMapper mapper = new ObjectMapper();
     final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     @BeforeEach void seed() {
-        jdbc.execute("TRUNCATE TABLE render.render_job, project, workspace_member, workspace, tenant, user_role_assignment, role_permission, permission, role CASCADE");
+        jdbc.execute("TRUNCATE TABLE render.render_job, identity.project, identity.workspace_member, identity.workspace, identity.tenant, identity.user_role_assignment, identity.role_permission, identity.permission, identity.role CASCADE");
         jdbc.execute("insert into identity.tenant(id,name,status,created_at) values('read-tenant','Read test','ACTIVE',now()),('foreign-tenant','Foreign','ACTIVE',now())");
         jdbc.execute("insert into identity.workspace(id,tenant_id,name,status,created_at,updated_at) values ('read-workspace','read-tenant','Read scope','ACTIVE',now(),now()),('foreign-workspace','foreign-tenant','Foreign scope','ACTIVE',now(),now())");
         jdbc.execute("insert into identity.project(id,tenant_id,workspace_id,name,status,created_at) values('read-project','read-tenant','read-workspace','Readable','ACTIVE',now()),('empty-project','read-tenant','read-workspace','Empty','ACTIVE',now()),('hidden-project','read-tenant','read-workspace','Hidden','ACTIVE',now()),('foreign-project','foreign-tenant','foreign-workspace','Foreign','ACTIVE',now())");

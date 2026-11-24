@@ -14,7 +14,7 @@ from local_runtime import sandbox_prefix
 prior=Path((R/'07-runtime/current-apps.txt').read_text().strip()) if (R/'07-runtime/current-apps.txt').exists() else None
 out=R/'07-runtime'/('apps-'+str(time.time_ns()));out.mkdir(mode=0o700)
 shutil.copytree(W/'scripts/startup',out/'bootstrap-source',dirs_exist_ok=True)
-c=json.loads((R/'07-runtime/local-context.json').read_text()); old=json.loads((Path((R/'07-runtime/final-db-job.txt').read_text().strip())/'binding.json').read_text());old.update(scratch=str(out),identity=birth(c['pid']),container_id=c['container_id'],network_namespace=c['network_namespace'],user_namespace=c['user_namespace'],ca=c['ca'],run=c['run'],attempt=c['attempt'])
+c=json.loads((R/'07-runtime/local-context.json').read_text()); old=json.loads((R/'07-runtime/binding.json').read_text());old.update(scratch=str(out),identity=birth(c['pid']),container_id=c['container_id'],network_namespace=c['network_namespace'],user_namespace=c['user_namespace'],ca=c['ca'],run=c['run'],attempt=c['attempt'])
 b=out/'binding.json';b.write_text(json.dumps(old));b.chmod(0o600)
 for n in ['plugins','workspace','staging','work','object-store','local-storage','cover-work','materialized','oidc']:(out/n).mkdir()
 shutil.copy(R/'03-build/outputs/_ffmpeg-provider-module/libs/ffmpeg-provider-plugin-1.3.0.jar',out/'plugins')
@@ -61,7 +61,7 @@ if combined:
 for role in roles:
  e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role=='api-ffmpeg' else role.upper()}
  runtime_db_role = 'mp_worker' if role=='worker' else 'mp_api'
- e.update(SPRING_DATASOURCE_USERNAME=runtime_db_role, SPRING_DATASOURCE_PASSWORD=(priv/(runtime_db_role+'-password')).read_text())
+ e.update(SPRING_DATASOURCE_USERNAME=runtime_db_role, SPRING_DATASOURCE_PASSWORD=(R/'07-runtime/private-correction'/(runtime_db_role+'-password')).read_text())
  if role=='api-ffmpeg':
   e.update(SERVER_PORT='18082',PLATFORM_RENDER_MEDIA_PROVIDER='ffmpeg')
  p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
@@ -147,6 +147,7 @@ finally:
   except ChildProcessError:break
  (out/'complete.json').write_text(json.dumps({'all_children_reaped':True,'status':{n:p.returncode for n,p in processes.items()}}))
  for log in logs:log.close()
- for name in commands:
-  assert pwd not in (out/(name+'.log')).read_text()
+ for role in roles:
+  password=json.loads((out/(role+'-env.json')).read_text())['SPRING_DATASOURCE_PASSWORD']
+  assert all(password not in (out/(name+'.log')).read_text() for name in commands)
  print(out,flush=True)

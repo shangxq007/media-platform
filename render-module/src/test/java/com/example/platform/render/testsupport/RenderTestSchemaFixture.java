@@ -372,15 +372,15 @@ public final class RenderTestSchemaFixture {
 
         dsl.execute("create unique index if not exists ux_timeline_revision_project_num "
                 + "on timeline_revision(project_id, revision_number)");
-        dsl.execute("alter table timeline_snapshot add constraint "
+        dsl.execute("alter table timeline.timeline_snapshot add constraint "
                 + "fk_timeline_snapshot_semantic_revision foreign key "
                 + "(tenant_id, project_id, semantic_revision_id) references "
                 + "timeline_revision(tenant_id, project_id, id)");
-        dsl.execute("alter table artifact_pin add constraint "
+        dsl.execute("alter table artifacts.artifact_pin add constraint "
                 + "fk_artifact_pin_revision foreign key "
                 + "(tenant_id, project_id, revision_id) references "
                 + "timeline_revision(tenant_id, project_id, id)");
-        dsl.execute("alter table artifact_pin add constraint "
+        dsl.execute("alter table artifacts.artifact_pin add constraint "
                 + "fk_artifact_pin_project foreign key (tenant_id, project_id) "
                 + "references identity.project(tenant_id, id)");
         dsl.execute("""
@@ -500,25 +500,25 @@ public final class RenderTestSchemaFixture {
         dsl.execute("""
             TRUNCATE TABLE
                 timeline.apply_command,
-                timeline_revision_ref,
-                timeline_revision_parent,
-                project_revision_counter,
-                timeline_revision,
-                timeline_snapshot,
-                media_probe_observation,
-                media_stream,
+                timeline.timeline_revision_ref,
+                timeline.timeline_revision_parent,
+                timeline.project_revision_counter,
+                timeline.timeline_revision,
+                timeline.timeline_snapshot,
+                media.media_probe_observation,
+                media.media_stream,
                 media_asset_artifact,
                 media_asset,
-                artifact_pin,
-                artifact_replica,
-                artifact,
-                client_export_session,
-                quota_usage_operation,
-                quota_usage,
-                render_job_status_history,
-                render_job,
-                product,
-                project
+                artifacts.artifact_pin,
+                artifacts.artifact_replica,
+                artifacts.artifact,
+                render.client_export_session,
+                entitlement.quota_usage_operation,
+                entitlement.quota_usage,
+                render.render_job_status_history,
+                render.render_job,
+                render.product,
+                identity.project
             RESTART IDENTITY CASCADE
         """);
     }

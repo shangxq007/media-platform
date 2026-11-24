@@ -89,7 +89,7 @@ public class WorkflowRunStore {
     public void insert(Run run) {
         jdbc.update(
                 "insert into"
-                    + " workflow_run(id,tenant_id,workspace_id,project_id,request_key,request_digest,actor_json,definition_id,definition_version,workflow_plan_digest,plan_json,inputs_json,bindings_json,status)"
+                    + " workflow.workflow_run(id,tenant_id,workspace_id,project_id,request_key,request_digest,actor_json,definition_id,definition_version,workflow_plan_digest,plan_json,inputs_json,bindings_json,status)"
                     + " values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 run.id(),
                 run.tenantId(),

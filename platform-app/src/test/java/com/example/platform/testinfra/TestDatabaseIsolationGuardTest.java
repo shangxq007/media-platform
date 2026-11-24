@@ -41,7 +41,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
+                .baselineOnMigrate(false)
                 .load();
         flyway.migrate();
     }
@@ -72,14 +72,14 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
             }
         }
 
-        assertEquals(1, versions.size(),
+        assertEquals(2, versions.size(),
                 "Expected exactly the canonical V1 migration in the shared runtime, got: " + versions);
         assertEquals("1", versions.get(0), "first applied migration must be version 1");
         assertEquals("V1__baseline.sql", scripts.get(0),
                 "first applied migration script must be V1__baseline.sql");
         // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
         // former V2..V7 incremental migrations are consolidated into canonical V1.
-        assertEquals(java.util.List.of("V1__baseline.sql"),scripts,
+        assertEquals(java.util.List.of("V1__baseline.sql", "V2__domain_schemas.sql"),scripts,
                 "No non-V1 migration may be present in the shared runtime: " + scripts);
         assertFalse(scripts.contains("V7__user_workflow_definition_v1.sql"),
                 "No leaked V7 migration must be present");

@@ -4,7 +4,7 @@ The API and Worker share one PostgreSQL 18 database. Flyway applies the ordered 
 `platform-app/src/main/resources/db/migration`. V1 is immutable. Its SHA-256 is
 `f6755e0663596721fa824cb436a5ed548475213fda11d3655e0899fcdce3e580`, with Flyway checksum
 `-1975529748`. V2 moves the existing application objects into domain schemas in one transaction.
-The migration history stays in `public.flyway_schema_history`.
+The Flyway beforeMigrate callback checks an installed V1 against the frozen PostgreSQL 18 catalog before relocation. Flyway also validates the applied migration checksum. The migration history stays in `public.flyway_schema_history`.
 
 Provision the migration owner and distinct API, Worker and verification logins before rollout.
 None of these logins needs cluster administration. Give the migration owner ownership of the
@@ -17,7 +17,7 @@ Run the flyway bootstrap profile with the application jar and this command:
 java -Dloader.main=com.example.platform.DatabaseMigration -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher
 ```
 
-Apply `scripts/database/grant-runtime.sql` as the migration owner. Configure the API and Worker
+The migration entry applies `platform-app/src/main/resources/db/roles/runtime.sql` as the migration owner. Configure the API and Worker
 with their respective database credentials. Both validate the installed history before serving.
 They do not receive the migration credential. The role boundary is per process. Application
 authorization still scopes each tenant and project.
@@ -64,3 +64,5 @@ different catalog. Preserve the source database, its history and its backups.
 
 The single code generator introspects the final catalog. Regenerate using
 `typed-schema-module/regenerate-jooq-schema.sh` and compare both generation passes.
+
+Local Compose provisions a dedicated `pgdata18` volume for fresh PostgreSQL 18. Existing PostgreSQL 16 volumes require a separately authorized logical transfer.

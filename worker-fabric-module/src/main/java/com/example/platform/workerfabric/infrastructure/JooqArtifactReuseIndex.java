@@ -123,8 +123,8 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
             DSLContext tx = DSL.using(configuration);
             boolean completionExists = tx.fetchExists(
                     DSL.selectOne()
-                            .from("wf_completion_event")
-                            .join("wf_execution_attempt")
+                            .from("worker_fabric.wf_completion_event")
+                            .join("worker_fabric.wf_execution_attempt")
                             .on(DSL.field("wf_execution_attempt.attempt_id")
                                     .eq(DSL.field("wf_completion_event.attempt_id")))
                             .where(DSL.field("wf_completion_event.completion_event_id").eq(
@@ -196,8 +196,8 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
     private static boolean currentOwner(DSLContext tx, ReusableArtifactRecord candidate) {
         return tx.fetchExists(
                 DSL.selectOne()
-                        .from("wf_task_ownership")
-                        .join("wf_execution_attempt")
+                        .from("worker_fabric.wf_task_ownership")
+                        .join("worker_fabric.wf_execution_attempt")
                         .on(DSL.field("wf_execution_attempt.task_id", String.class)
                                 .eq(DSL.field("wf_task_ownership.task_id", String.class)))
                         .where(DSL.field("wf_task_ownership.task_id")
@@ -220,7 +220,7 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
             ReusableArtifactRecord candidate) {
         return tx.fetchExists(
                 DSL.selectOne()
-                        .from("artifact")
+                        .from("artifacts.artifact")
                         .where(DSL.field("id").eq(candidate.artifactPin().artifactId().value()))
                         .and(DSL.field("tenant_id").eq(candidate.tenantId()))
                         .and(DSL.field("state").eq("AVAILABLE"))

@@ -113,8 +113,8 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         String scopedUrl = scopedJdbcUrl(schema);
         flyway = Flyway.configure()
                 .dataSource(scopedUrl, username(), password())
-                .schemas(schema)
-                .defaultSchema(schema)
+                .schemas("public")
+                .defaultSchema("public")
                 .createSchemas(true)
                 .locations("classpath:db/migration")
                 .load();
@@ -135,9 +135,9 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
     @BeforeEach
     void resetCanonicalRows() {
         jdbc.execute("""
-                truncate table infrastructure.outbox_events, audit_records, notification_delivery, notification_event, apply_command, artifact_pin, timeline_revision_parent,
-                    timeline_revision_ref, timeline_revision, timeline_snapshot,
-                    project_revision_counter, project, artifact, tenant cascade
+                truncate table infrastructure.outbox_events, policy.audit_records, notification.notification_delivery, notification.notification_event, timeline.apply_command, artifacts.artifact_pin, timeline.timeline_revision_parent,
+                    timeline.timeline_revision_ref, timeline.timeline_revision, timeline.timeline_snapshot,
+                    timeline.project_revision_counter, identity.project, artifacts.artifact, identity.tenant cascade
                 """);
         jdbc.update("insert into identity.tenant(id,name,status,created_at) values ('ta','A','ACTIVE',now())");
         jdbc.update("insert into identity.tenant(id,name,status,created_at) values ('tb','B','ACTIVE',now())");
@@ -203,7 +203,8 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         var applied = Arrays.stream(flyway.info().applied())
                 .filter(info -> info.getVersion() != null)
                 .toList();
-        assertEquals(1, applied.size(), "exact single consolidated V1 inventory");
+        assertEquals(2, applied.size(), "canonical V1 and domain V2");
+        assertEquals("V2__domain_schemas.sql", applied.get(1).getScript());
         assertEquals("1", applied.get(0).getVersion().getVersion());
         assertEquals("V1__baseline.sql", applied.get(0).getScript());
     }
@@ -260,8 +261,8 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
                         null,
                         document("forged", "track-forged")));
 
-        assertEquals(0L, count("timeline_revision", project));
-        assertEquals(0L, count("timeline_snapshot", project));
+        assertEquals(0L, count("timeline.timeline_revision", project));
+        assertEquals(0L, count("timeline.timeline_snapshot", project));
         assertEquals(0, jdbc.queryForObject(
                 "select count(*) from timeline.timeline_revision_ref where project_id = ?",
                 Integer.class, project));
@@ -840,10 +841,10 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
 
     private static CanonicalState canonicalState(String projectId) {
         return new CanonicalState(
-                count("timeline_snapshot", projectId),
-                count("timeline_revision", projectId),
-                count("timeline_revision_parent", projectId),
-                count("apply_command", projectId),
+                count("timeline.timeline_snapshot", projectId),
+                count("timeline.timeline_revision", projectId),
+                count("timeline.timeline_revision_parent", projectId),
+                count("timeline.apply_command", projectId),
                 revisionRefHead(projectId),
                 jdbc.queryForObject(
                         "select next_revision_number from timeline.project_revision_counter where project_id = ?",

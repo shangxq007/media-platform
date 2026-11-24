@@ -1,5 +1,7 @@
 package com.example.platform;
 
+import com.example.platform.runtime.FlywayConfiguration;
+
 import com.example.platform.datasource.DataSourceConfiguration;
 import com.example.platform.runtime.FfmpegWorkerPluginConfiguration;
 import com.example.platform.runtime.PlatformRuntimeRoleGuard;

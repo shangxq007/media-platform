@@ -127,7 +127,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
     void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_billable_insert ON billable_usage");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_billable_insert_for_test()");
-        jdbc.execute("TRUNCATE TABLE billing.billable_usage, observed_runtime_usage");
+        jdbc.execute("TRUNCATE TABLE billing.billable_usage, billing.observed_runtime_usage");
         rules.clear();
         rules.register(millisecondsToSeconds("runtime-duration", "v1"));
         audit.reset();
@@ -269,7 +269,7 @@ class UsageMeteringAuthorityPostgresTest extends PostgresTestContainerSupport {
                 $$ LANGUAGE plpgsql
                 """);
         jdbc.execute("""
-                CREATE TRIGGER fail_billable_insert BEFORE INSERT ON billable_usage
+                CREATE TRIGGER fail_billable_insert BEFORE INSERT ON billing.billable_usage
                 FOR EACH ROW EXECUTE FUNCTION fail_billable_insert_for_test()
                 """);
 

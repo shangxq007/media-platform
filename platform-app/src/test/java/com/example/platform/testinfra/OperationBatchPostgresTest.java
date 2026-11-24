@@ -114,8 +114,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         String scopedUrl = scopedJdbcUrl(SCHEMA);
         flyway = Flyway.configure()
                 .dataSource(scopedUrl, username(), password())
-                .schemas(SCHEMA)
-                .defaultSchema(SCHEMA)
+                .schemas("public")
+                .defaultSchema("public")
                 .createSchemas(true)
                 .locations("classpath:db/migration")
                 .load();
@@ -136,10 +136,10 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     @BeforeEach
     void resetRows() {
         jdbc.execute("""
-                truncate table infrastructure.outbox_events, audit_records, notification_delivery, notification_event,
-                    apply_command, artifact_pin, timeline_revision_parent, timeline_revision_ref,
-                    timeline_revision, timeline_snapshot, project_revision_counter, project,
-                    artifact, tenant cascade
+                truncate table infrastructure.outbox_events, policy.audit_records, notification.notification_delivery, notification.notification_event,
+                    timeline.apply_command, artifacts.artifact_pin, timeline.timeline_revision_parent, timeline.timeline_revision_ref,
+                    timeline.timeline_revision, timeline.timeline_snapshot, timeline.project_revision_counter, identity.project,
+                    artifacts.artifact, identity.tenant cascade
                 """);
         jdbc.update("insert into identity.tenant(id,name,status,created_at) values (?,'A','ACTIVE',now())", TENANT);
         jdbc.update("insert into identity.project(id,tenant_id,name,created_at) values (?,?,'Batch',now())",
@@ -200,8 +200,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(BatchCommitResult.APPLIED, result.status());
         assertNotEquals(base.revisionId(), result.newRevisionId());
         assertEquals(base.revisionId(), result.parentRevisionId());
-        assertEquals(2, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
         assertEquals(result.newRevisionId(), head());
         assertEquals(base.revisionId(), parentOf(result.newRevisionId()));
 
@@ -244,8 +244,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(1, failure.stepIndex());
         assertTrue(failure.code() == BatchErrorCode.STEP_RESOLUTION_FAILED
                 || failure.code() == BatchErrorCode.STEP_PLAN_FAILED);
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(0, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
         assertEquals(base.revisionId(), head());
     }
 
@@ -258,21 +258,21 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
         assertEquals(BatchErrorCode.STEP_VALIDATION_FAILED, failure.code());
         assertEquals(0, failure.stepIndex());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(0, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
     }
 
     @Test
     void staleExpectedHeadLosesTheRefCasWithoutWriting() {
         TimelineRevision base = saveRevision(twoClipDocument());
         commit("batch-first", base, move(base, "clip-a", "1/1"), null);
-        assertEquals(2, count("timeline_revision"));
+        assertEquals(2, count("timeline.timeline_revision"));
 
         BatchException failure = assertThrows(BatchException.class,
                 () -> commit("batch-stale", base, move(base, "clip-a", "2/1"), null));
         assertEquals(BatchErrorCode.STALE_BASE_REVISION, failure.code());
-        assertEquals(2, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
     }
 
     @Test
@@ -306,8 +306,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
             assertEquals(1, applied);
             assertEquals(1, stale);
         }
-        assertEquals(2, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
     }
 
     @Test
@@ -320,8 +320,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
         assertEquals(first.newRevisionId(), second.newRevisionId());
         assertTrue(second.replayed());
-        assertEquals(2, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
     }
 
     @Test
@@ -333,7 +333,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         BatchException failure = assertThrows(BatchException.class,
                 () -> commit(batchId, base, move(base, "clip-a", "2/1"), null));
         assertEquals(BatchErrorCode.COMMAND_ID_CONFLICT, failure.code());
-        assertEquals(2, count("timeline_revision"));
+        assertEquals(2, count("timeline.timeline_revision"));
     }
 
     @Test
@@ -344,8 +344,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
         assertEquals(BatchCommitResult.NO_OP, result.status());
         assertNull(result.newRevisionId());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
         assertEquals("NO_OP", jdbc.queryForObject(
                 "select result_status from timeline.apply_command where apply_command_id = 'batch-noop'",
                 String.class));
@@ -360,8 +360,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 () -> commit("batch-denied", base, move(base, "clip-a", "1/1"), null));
 
         assertEquals(BatchErrorCode.AUTHORIZATION_DENIED, failure.code());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(0, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
     }
 
     @Test
@@ -377,7 +377,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 () -> commit("batch-text", base, text, null));
 
         assertEquals(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, failure.code());
-        assertEquals(1, count("timeline_revision"));
+        assertEquals(1, count("timeline.timeline_revision"));
     }
 
     @Test
@@ -415,7 +415,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         BatchCommitResult result = commitThree("batch-split-move-trim", base, split, moveRight, trimRight);
 
         assertEquals(BatchCommitResult.APPLIED, result.status());
-        assertEquals(2, count("timeline_revision"));
+        assertEquals(2, count("timeline.timeline_revision"));
         assertEquals(result.newRevisionId(), head());
         TimelineDocument committed = saveService.findPayloadDocument(TENANT, result.newRevisionId())
                 .orElseThrow();
@@ -452,8 +452,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
         assertEquals(BatchErrorCode.STEP_PLAN_FAILED, failure.code());
         assertEquals(0, failure.stepIndex());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(0, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
     }
 
     @Test
@@ -479,8 +479,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         BatchCommitResult result = commit("batch-group", base, create, remove, null);
 
         assertEquals(BatchCommitResult.NO_OP, result.status());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
         assertEquals(base.revisionId(), head());
     }
 
@@ -508,8 +508,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         BatchCommitResult result = commit("batch-sync", base, create, remove, null);
 
         assertEquals(BatchCommitResult.NO_OP, result.status());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
     }
 
     @Test
@@ -526,7 +526,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         BatchCommitResult result = commit("batch-audio", base, gain, null);
 
         assertEquals(BatchCommitResult.APPLIED, result.status());
-        assertEquals(2, count("timeline_revision"));
+        assertEquals(2, count("timeline.timeline_revision"));
         TimelineDocument committed = saveService.findPayloadDocument(TENANT, result.newRevisionId())
                 .orElseThrow();
         assertEquals(0.5, committed.getAudioMix().routes().get(0).gain().linear());
@@ -545,8 +545,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(BatchCommitResult.NO_OP, second.status());
         assertTrue(second.replayed());
         assertNull(second.newRevisionId());
-        assertEquals(1, count("timeline_revision"));
-        assertEquals(1, count("apply_command"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
     }
 
     @Test
@@ -565,7 +565,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 () -> commit("batch-cross", base, foreign, null));
 
         assertEquals(BatchErrorCode.CROSS_AGGREGATE_BATCH_UNSUPPORTED, failure.code());
-        assertEquals(1, count("timeline_revision"));
+        assertEquals(1, count("timeline.timeline_revision"));
     }
 
     // ---- fixtures ----

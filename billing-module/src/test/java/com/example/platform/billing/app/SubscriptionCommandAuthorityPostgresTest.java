@@ -95,7 +95,7 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
 
     @BeforeEach
     void reset() {
-        jdbc.execute("TRUNCATE billing.subscription_command, subscription_contract, subscription_plan CASCADE");
+        jdbc.execute("TRUNCATE billing.subscription_command, billing.subscription_contract, billing.subscription_plan CASCADE");
         authority.createPlan("basic", "Basic", "", "MONTHLY", 1000, "USD", Map.of());
         authority.createPlan("pro", "Pro", "", "MONTHLY", 3000, "USD", Map.of());
     }
@@ -110,8 +110,8 @@ class SubscriptionCommandAuthorityPostgresTest extends PostgresTestContainerSupp
 
         assertEquals(first.commandId(), replay.commandId());
         assertEquals(first.contract(), replay.contract());
-        assertEquals(1L, count("subscription_contract"));
-        assertEquals(1L, count("subscription_command"));
+        assertEquals(1L, count("billing.subscription_contract"));
+        assertEquals(1L, count("billing.subscription_command"));
         assertThrows(IllegalStateException.class,
                 () -> authority.execute(create(principal, "contract-b", "pro", "same-key")));
     }

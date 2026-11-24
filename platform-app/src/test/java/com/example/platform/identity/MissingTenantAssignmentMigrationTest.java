@@ -26,8 +26,8 @@ class MissingTenantAssignmentMigrationTest extends AccountResourceExecutionAccep
     })
     void missingTenantUpgradePreservesHistory(String scope, String tenantState, boolean inferred) throws Exception {
         String schema = "missing_tenant_" + UUID.randomUUID().toString().replace("-", "");
-        var config = Flyway.configure().dataSource(jdbc.getDataSource()).schemas(schema)
-                .defaultSchema(schema).locations("classpath:db/migration");
+        var config = Flyway.configure().dataSource(jdbc.getDataSource()).schemas("public")
+                .defaultSchema("public").locations("classpath:db/migration");
         config.target("1").load().migrate();
         boolean missing = tenantState.equals("missing");
         String role = jdbc.queryForObject("select role_id from identity.user_role_assignment where user_id=? and workspace_id=? limit 1", String.class, member, wsA);
@@ -52,12 +52,12 @@ class MissingTenantAssignmentMigrationTest extends AccountResourceExecutionAccep
             String previousSchema = connection.getSchema();
             try {
                 connection.setSchema(schema);
-                var dsl = DSL.using(connection, SQLDialect.POSTGRES, new Settings().withRenderSchema(false));
+                var dsl = DSL.using(connection, SQLDialect.POSTGRES, new Settings());
                 var roles = new RoleRepository(dsl);
                 var permissions = new PermissionService(roles);
                 assertEquals(!alreadyUnresolved, roles.findUserRoleAssignmentsByUserId(member).stream().anyMatch(a -> assignment.equals(a.id())));
                 assertScopePermissions(permissions, scope, !alreadyUnresolved);
-                if (missing) assertEquals(0, dsl.fetchCount(DSL.table("tenant")));
+                if (missing) assertEquals(0, dsl.fetchCount(DSL.table("identity.tenant")));
 
                 assertEquals(1, config.target(MigrationVersion.LATEST).load().migrate().migrationsExecuted);
                 var after = row(schema, assignment);

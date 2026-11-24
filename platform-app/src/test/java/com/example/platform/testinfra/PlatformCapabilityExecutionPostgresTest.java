@@ -83,9 +83,9 @@ class PlatformCapabilityExecutionPostgresTest {
             assertThrows(com.example.platform.shared.web.PlatformException.class,()->w.tx(()->restarted.admit(plan("stable","source-b","0.25","media.cover-image"))));
             assertThrows(com.example.platform.shared.web.PlatformException.class,()->w.tx(()->restarted.admit(plan("stable","source-a","0.5","media.cover-image"))));
             var distinct=w.tx(()->restarted.admit(plan("stable","source-a","0.25","media.thumbnail")));
-            assertNotEquals(accepted.executionId(),distinct.executionId());assertEquals(2,w.count("platform_execution_admission"));
-            assertEquals(2,w.count("outbox_events"));assertEquals(0,w.count("platform_execution_result"));assertEquals(0,w.count("quota_usage_operation"));
-            assertEquals(2,w.count("render_job")); // Fixture's two Render jobs; capability admission creates none.
+            assertNotEquals(accepted.executionId(),distinct.executionId());assertEquals(2,w.count("execution.platform_execution_admission"));
+            assertEquals(2,w.count("infrastructure.outbox_events"));assertEquals(0,w.count("execution.platform_execution_result"));assertEquals(0,w.count("entitlement.quota_usage_operation"));
+            assertEquals(2,w.count("render.render_job")); // Fixture's two Render jobs; capability admission creates none.
         }
     }
     @Test void concurrentAdmissionHasExactlyOneDurableWinnerAndDispatchEvent() throws Exception {
@@ -101,16 +101,16 @@ class PlatformCapabilityExecutionPostgresTest {
             var futures=new ArrayList<Future<PlatformExecutionAdmissionPort.CapabilityExecution>>();for(int i=0;i<4;i++)futures.add(pool.submit(call));
             assertTrue(ready.await(5,TimeUnit.SECONDS));start.countDown();int winners=0;
             for(var f:futures){var result=f.get(10,TimeUnit.SECONDS);assertEquals(plan.executionId(),result.executionId());if(result.newlyAdmitted())winners++;}
-            assertEquals(1,winners,"new durable admission winners");assertEquals(1,w.count("platform_execution_admission"),"schema-owned execution count");assertEquals(1,w.count("outbox_events"),"same-schema outbox count");
+            assertEquals(1,winners,"new durable admission winners");assertEquals(1,w.count("execution.platform_execution_admission"),"schema-owned execution count");assertEquals(1,w.count("infrastructure.outbox_events"),"same-schema outbox count");
         }
     }
     @Test void outboxFailureRollsBackAcceptanceAndRetryCreatesOneRecord() throws Exception {
         try(var w=new World()) {
             var plan=plan("dispatch","source-a","0.25","media.cover-image");var owner=w.owner(w.db);
             w.db.execute("create function reject_capability_dispatch() returns trigger language plpgsql as $$ begin raise exception 'synthetic owned dispatch failure'; end $$");
-            w.db.execute("create trigger reject_capability_dispatch before insert on outbox_events for each row execute function reject_capability_dispatch()");
-            var rejected=assertThrows(org.jooq.exception.DataAccessException.class,()->w.tx(()->owner.admit(plan)));assertTrue(rejected.getMessage().contains("synthetic owned dispatch failure"));assertEquals(0,w.count("platform_execution_admission"));assertEquals(0,w.count("outbox_events"));
-            w.db.execute("drop trigger reject_capability_dispatch on outbox_events");w.tx(()->owner.admit(plan));assertEquals(1,w.count("platform_execution_admission"));assertEquals(1,w.count("outbox_events"));
+            w.db.execute("create trigger reject_capability_dispatch before insert on infrastructure.outbox_events for each row execute function reject_capability_dispatch()");
+            var rejected=assertThrows(org.jooq.exception.DataAccessException.class,()->w.tx(()->owner.admit(plan)));assertTrue(rejected.getMessage().contains("synthetic owned dispatch failure"));assertEquals(0,w.count("execution.platform_execution_admission"));assertEquals(0,w.count("infrastructure.outbox_events"));
+            w.db.execute("drop trigger reject_capability_dispatch on outbox_events");w.tx(()->owner.admit(plan));assertEquals(1,w.count("execution.platform_execution_admission"));assertEquals(1,w.count("infrastructure.outbox_events"));
         }
     }
     @Test void cancelledStaleAndCrossProjectPublicationNeverReachArtifactCommit() throws Exception {
@@ -124,7 +124,7 @@ class PlatformCapabilityExecutionPostgresTest {
             assertThrows(com.example.platform.shared.web.PlatformException.class,()->w.tx(()->owner.retry("tenant-a","project-a",plan.executionId(),1)));
             assertThrows(IllegalArgumentException.class,()->w.tx(()->owner.cancel("tenant-a","project-b",plan.executionId(),1)));
             assertTrue(owner.find("tenant-a","project-b",plan.executionId()).isEmpty());
-            assertEquals(0,calls.get());assertEquals(0,w.count("artifact"));assertEquals(0,w.count("platform_execution_result"));assertEquals(0,w.count("quota_usage_operation"));
+            assertEquals(0,calls.get());assertEquals(0,w.count("artifacts.artifact"));assertEquals(0,w.count("execution.platform_execution_result"));assertEquals(0,w.count("entitlement.quota_usage_operation"));
             assertEquals(PlatformExecutionState.CANCELLED,owner.find("tenant-a","project-a",plan.executionId()).orElseThrow().state());
         }
     }
@@ -139,7 +139,7 @@ class PlatformCapabilityExecutionPostgresTest {
             assertThrows(com.example.platform.shared.web.PlatformException.class,()->w.tx(()-> {try{return owner.publish("tenant-a","project-a",plan.executionId(),1,task,null,()->{calls.incrementAndGet();throw new java.io.IOException();});}catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}}));
             assertEquals(0,calls.get());assertFalse(owner.find("tenant-a","project-a",plan.executionId()).orElseThrow().retryBlocked());
             var begun=w.tx(()->owner.begin("tenant-a","project-a",plan.executionId(),2));assertEquals(begun.handle(),w.tx(()->owner.begin("tenant-a","project-a",plan.executionId(),2)).handle());
-            assertEquals(2,w.count("outbox_events"));assertEquals(0,w.count("platform_execution_result"));assertEquals(0,w.count("quota_usage_operation"));
+            assertEquals(2,w.count("infrastructure.outbox_events"));assertEquals(0,w.count("execution.platform_execution_result"));assertEquals(0,w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void uncertainPhysicalOutcomePersistsBlockedRetryAcrossServiceRestart() throws Exception {
@@ -149,7 +149,7 @@ class PlatformCapabilityExecutionPostgresTest {
             var restarted=w.owner(w.db);var failed=restarted.find("tenant-a","project-a",plan.executionId()).orElseThrow();
             assertTrue(failed.retryBlocked());assertEquals(PlatformExecutionState.FAILED,failed.state());
             assertThrows(com.example.platform.shared.web.PlatformException.class,()->w.tx(()->restarted.retry("tenant-a","project-a",plan.executionId(),1)));
-            assertEquals(1,w.count("outbox_events"));assertEquals(0,w.count("platform_execution_result"));assertEquals(0,w.count("artifact"));
+            assertEquals(1,w.count("infrastructure.outbox_events"));assertEquals(0,w.count("execution.platform_execution_result"));assertEquals(0,w.count("artifacts.artifact"));
         }
     }
     @Test void retiredPurposeTablesAndSnapshotStoreAreAbsentFromTheActualSchema() throws Exception {
@@ -157,8 +157,8 @@ class PlatformCapabilityExecutionPostgresTest {
             for(String table:List.of("cover_image_task","media_thumbnail_task","wf_provider_candidate_snapshot"))
                 assertNull(w.db.fetchOne("select to_regclass(?)",table).get(0),table+" must not retain a task or candidate authority");
             var owner=w.owner(w.db);var accepted=w.tx(()->owner.admit(plan("single-owner","source-a","0.25","media.cover-image")));
-            assertEquals(1,w.count("platform_execution_admission"));assertEquals(0,w.count("platform_execution_result"));
-            assertEquals(2,w.count("render_job"));assertEquals("source-a",accepted.plan().request().source().artifactId().value());
+            assertEquals(1,w.count("execution.platform_execution_admission"));assertEquals(0,w.count("execution.platform_execution_result"));
+            assertEquals(2,w.count("render.render_job"));assertEquals("source-a",accepted.plan().request().source().artifactId().value());
         }
     }
     @Test void persistedResultRejectsMismatchedNativeTaskAndGeneration() throws Exception {
@@ -173,9 +173,9 @@ class PlatformCapabilityExecutionPostgresTest {
                         """,plan.executionId(),wrongTask?"d".repeat(64):GraphRenderLifecycleIT.TASK,wrongTask?1:2,"invalid-pair-"+wrongTask);
                     return null;
                 }));
-                assertEquals("23503",failure.sqlState());assertEquals(0,w.count("platform_execution_result"));
+                assertEquals("23503",failure.sqlState());assertEquals(0,w.count("execution.platform_execution_result"));
             }
-            assertEquals(0,w.count("quota_usage_operation"));assertEquals(PlatformExecutionState.ADMITTED,owner.find("tenant-a","project-a",plan.executionId()).orElseThrow().state());
+            assertEquals(0,w.count("entitlement.quota_usage_operation"));assertEquals(PlatformExecutionState.ADMITTED,owner.find("tenant-a","project-a",plan.executionId()).orElseThrow().state());
         }
     }
 

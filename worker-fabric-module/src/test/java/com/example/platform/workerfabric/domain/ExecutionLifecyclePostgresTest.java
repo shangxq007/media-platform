@@ -156,7 +156,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(result).isEqualTo(new RequestWorkResult.Rejected(
                 retryRequest.requestWorkId(),
                 RequestWorkFailureReason.WORKER_RUNTIME_UNHEALTHY));
-        assertThat(count("wf_execution_attempt")).isOne();
+        assertThat(count("worker_fabric.wf_execution_attempt")).isOne();
     }
 
     @Test
@@ -267,7 +267,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
                         staleCompletion,
                         new ArtifactCommitEvidence(new com.example.platform.shared.identity.ArtifactId("artifact-r2-stale"))))
                 .isEqualTo(CompletionDecision.STALE_ATTEMPT_REJECTED);
-        assertThat(count("wf_completion_event")).isZero();
+        assertThat(count("worker_fabric.wf_completion_event")).isZero();
     }
 
     @Test
@@ -323,7 +323,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
             """);
         dsl.execute("""
             create trigger wf_test_fail_runtime_replacement
-            before insert on wf_runtime_registration
+            before insert on worker_fabric.wf_runtime_registration
             for each row execute function wf_test_fail_runtime_replacement()
             """);
         try {
@@ -394,7 +394,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(taskClaimable(grant.executableTaskId().sha256Hex())).isTrue();
         assertThat(activeLeaseCount(grant.executableTaskId().sha256Hex())).isZero();
         assertThat(reservationState(grant)).isEqualTo(ReservationState.RECOVERY_HOLD);
-        assertThat(count("wf_completion_event")).isOne();
+        assertThat(count("worker_fabric.wf_completion_event")).isOne();
     }
 
     @Test
@@ -445,7 +445,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(first).isEqualTo(LeaseExpiryResult.OWNERSHIP_LOST_RECOVERY_HOLD);
         assertThat(duplicate).isEqualTo(LeaseExpiryResult.ALREADY_PROCESSED_NOOP);
         assertThat(reservationState(grant)).isEqualTo(ReservationState.RECOVERY_HOLD);
-        assertThat(count("wf_execution_attempt")).isOne();
+        assertThat(count("worker_fabric.wf_execution_attempt")).isOne();
     }
 
     @Test
@@ -467,9 +467,9 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(lifecycle.recordLocalAdmission(decline(grant, Optional.empty())))
                 .isEqualTo(LocalAdmissionResult.DECLINED_RECOVERY_HOLD);
 
-        assertThat(count("wf_execution_attempt")).isOne();
+        assertThat(count("worker_fabric.wf_execution_attempt")).isOne();
         assertThat(attemptState(grant.attempt().id())).isEqualTo(ExecutionAttemptState.ABANDONED);
-        assertThat(count("wf_local_admission")).isOne();
+        assertThat(count("worker_fabric.wf_local_admission")).isOne();
     }
 
     @Test
@@ -481,7 +481,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         assertThat(activeLeaseCount(grant.executableTaskId().sha256Hex())).isZero();
         assertThat(taskClaimable(grant.executableTaskId().sha256Hex())).isTrue();
         assertThat(reservationState(grant)).isEqualTo(ReservationState.RECOVERY_HOLD);
-        assertThat(count("wf_execution_assignment")).isOne();
+        assertThat(count("worker_fabric.wf_execution_assignment")).isOne();
     }
 
     @Test
@@ -521,7 +521,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
         AssignmentGrant current = retry("a6-new", 216);
 
         assertThat(current.attempt().id()).isNotEqualTo(old.attempt().id());
-        assertThat(count("wf_execution_attempt")).isEqualTo(2);
+        assertThat(count("worker_fabric.wf_execution_attempt")).isEqualTo(2);
     }
 
     @Test
@@ -546,7 +546,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
     @Test
     void a9BackendLocalRetryDoesNotCreatePlatformAttempt() {
         AssignmentGrant grant = grant("a9", 219);
-        int before = count("wf_execution_attempt");
+        int before = count("worker_fabric.wf_execution_attempt");
 
         BackendLocalRetryResult result = lifecycle.recordBackendLocalRetry(new BackendLocalRetry(
                 grant.attempt().id(),
@@ -556,7 +556,7 @@ class ExecutionLifecyclePostgresTest extends PostgresTestContainerSupport {
 
         assertThat(result)
                 .isEqualTo(BackendLocalRetryResult.ACKNOWLEDGED_WITHOUT_PLATFORM_ATTEMPT);
-        assertThat(count("wf_execution_attempt")).isEqualTo(before);
+        assertThat(count("worker_fabric.wf_execution_attempt")).isEqualTo(before);
     }
 
     private AssignmentGrant expireThenRetrySource(String suffix, long taskIdentity) {

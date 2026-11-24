@@ -96,8 +96,8 @@ report("CACHE_AS_ARTIFACT_EXISTENCE_AUTHORITY_COUNT", cache_authority,
 
 index = read("worker-fabric-module/src/main/java/com/example/platform/workerfabric/infrastructure/JooqArtifactReuseIndex.java")
 eviction_delete = 0 if (
-    "delete from wf_artifact_reuse_index" in index
-    and not re.search(r"delete\s+from\s+artifact\b", index, re.I)) else 1
+    "delete from worker_fabric.wf_artifact_reuse_index" in index
+    and not re.search(r"delete\s+from\s+(?:"?artifacts"?\.)?"?artifact\b", index, re.I)) else 1
 report("CACHE_EVICTION_DIRECT_ARTIFACT_DELETE_AUTHORITY_COUNT", eviction_delete,
        ["JooqArtifactReuseIndex.java"] if eviction_delete else [])
 

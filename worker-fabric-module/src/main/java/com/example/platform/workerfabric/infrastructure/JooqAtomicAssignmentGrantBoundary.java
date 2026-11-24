@@ -630,7 +630,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         if (hostRegistration == null) {
             boolean hostKnown = tx.fetchExists(
                     DSL.selectOne()
-                            .from("wf_host_registration")
+                            .from("worker_fabric.wf_host_registration")
                             .where(DSL.field("physical_host_id")
                                     .eq(request.physicalHostId().value()))
                             .and(DSL.field("active").eq(true)));
@@ -661,7 +661,7 @@ public class JooqAtomicAssignmentGrantBoundary implements AtomicAssignmentGrantB
         if (runtimeRegistration == null) {
             boolean runtimeKnown = tx.fetchExists(
                     DSL.selectOne()
-                            .from("wf_runtime_registration")
+                            .from("worker_fabric.wf_runtime_registration")
                             .where(DSL.field("worker_runtime_id")
                                     .eq(request.workerRuntimeId().value()))
                             .and(DSL.field("active").eq(true)));

@@ -71,13 +71,13 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         var jdbc = new JdbcTemplate(dataSource);
-        jdbc.execute("TRUNCATE TABLE billing.credit_wallet_command, credit_transaction, credit_reservation, credit_wallet CASCADE");
+        jdbc.execute("TRUNCATE TABLE billing.credit_wallet_command, billing.credit_transaction, billing.credit_reservation, billing.credit_wallet CASCADE");
         jdbc.execute("TRUNCATE TABLE billing.billing_ledger_entry CASCADE");
         jdbc.execute("TRUNCATE TABLE billing.subscription_contract CASCADE");
         jdbc.execute("TRUNCATE TABLE billing.subscription_command CASCADE");
         jdbc.execute("TRUNCATE TABLE billing.subscription_plan CASCADE");
-        jdbc.execute("TRUNCATE TABLE billing.billable_usage, observed_runtime_usage");
-        jdbc.execute("TRUNCATE TABLE billing.custom_pricing_rule, pricing_rule, discount_policy");
+        jdbc.execute("TRUNCATE TABLE billing.billable_usage, billing.observed_runtime_usage");
+        jdbc.execute("TRUNCATE TABLE billing.custom_pricing_rule, billing.pricing_rule, billing.discount_policy");
 
         subscriptionBillingService = new SubscriptionBillingService(new SubscriptionJdbcRepository(jdbc));
         observations = new ObservedRuntimeUsageJdbcRepository(jdbc);

@@ -26,7 +26,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
     static void database() {
         String schema = isolatedSchemaName();
         Flyway.configure().dataSource(jdbcUrl(), username(), password())
-                .schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
+                .schemas("public").defaultSchema("public").locations("classpath:db/migration").load().migrate();
         jdbc = new JdbcTemplate(new DriverManagerDataSource(
                 jdbcUrl() + (jdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema,
                 username(), password()));

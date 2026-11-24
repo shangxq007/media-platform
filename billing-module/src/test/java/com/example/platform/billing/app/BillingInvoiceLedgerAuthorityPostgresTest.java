@@ -131,7 +131,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
     void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_invoice_ledger_insert ON billing_ledger_entry");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_invoice_ledger_for_test()");
-        jdbc.execute("TRUNCATE billing.billing_invoice_command, billing_ledger_entry, invoice_line_item, billing_invoice, rated_usage_record");
+        jdbc.execute("TRUNCATE billing.billing_invoice_command, billing.billing_ledger_entry, billing.invoice_line_item, billing.billing_invoice, billing.rated_usage_record");
         persistRated("rated-1", 2, 10, "USD");
         persistRated("rated-issue", 2, 10, "USD");
         persistRated("rated-concurrent", 1, 7, "USD");
@@ -251,7 +251,7 @@ class BillingInvoiceLedgerAuthorityPostgresTest extends PostgresTestContainerSup
                 BEGIN RAISE EXCEPTION 'ledger failure'; END; $$ LANGUAGE plpgsql
                 """);
         jdbc.execute("""
-                CREATE TRIGGER fail_invoice_ledger_insert BEFORE INSERT ON billing_ledger_entry
+                CREATE TRIGGER fail_invoice_ledger_insert BEFORE INSERT ON billing.billing_ledger_entry
                 FOR EACH ROW EXECUTE FUNCTION fail_invoice_ledger_for_test()
                 """);
 

@@ -142,7 +142,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_outbox ON payment_outbox");
         jdbc.execute("DROP TRIGGER IF EXISTS fail_payment_refund_projection ON payment_transaction");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_payment_test()");
-        jdbc.execute("TRUNCATE payment.payment_refund, payment_outbox, provider_webhook_receipt, payment_command, payment_transaction");
+        jdbc.execute("TRUNCATE payment.payment_refund, payment.payment_outbox, payment.provider_webhook_receipt, payment.payment_command, payment.payment_transaction");
         provider.reset();
     }
 
@@ -177,7 +177,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         pool.shutdownNow();
         org.junit.jupiter.api.Assertions.assertTrue(successes >= 1);
         assertEquals(1, provider.checkoutCalls.get());
-        assertEquals(1, count("payment_transaction"));
+        assertEquals(1, count("payment.payment_transaction"));
         assertEquals(PaymentState.PENDING,
                 authority.find(principal("tenant-a"), "txn-checkout-duplicate").orElseThrow().state());
     }
@@ -231,8 +231,8 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         assertEquals(PaymentState.SETTLED, one.get(10, TimeUnit.SECONDS).state());
         assertEquals(PaymentState.SETTLED, two.get(10, TimeUnit.SECONDS).state());
         pool.shutdownNow();
-        assertEquals(1, count("provider_webhook_receipt"));
-        assertEquals(1, count("payment_outbox"));
+        assertEquals(1, count("payment.provider_webhook_receipt"));
+        assertEquals(1, count("payment.payment_outbox"));
         assertEquals(pending.version() + 1,
                 jdbc.queryForObject("SELECT version FROM payment.payment_transaction WHERE id='txn-webhook'", Long.class));
         assertThrows(IllegalStateException.class, () -> authority.applyWebhook(webhook(
@@ -246,7 +246,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         installFailureTrigger("fail_payment_outbox", "payment_outbox", "BEFORE", "INSERT");
         assertThrows(RuntimeException.class, () -> authority.applyWebhook(webhook(
                 pending, "evt-rollback", 1, PaymentState.SETTLED, "digest-rollback", pending.version())));
-        assertEquals(0, count("provider_webhook_receipt"));
+        assertEquals(0, count("payment.provider_webhook_receipt"));
         assertEquals(PaymentState.PENDING,
                 authority.find(principal("tenant-a"), "txn-rollback").orElseThrow().state());
     }
@@ -318,7 +318,7 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
         pool.shutdownNow();
         org.junit.jupiter.api.Assertions.assertTrue(successes >= 1);
         assertEquals(1, provider.refundCalls.get());
-        assertEquals(1, count("payment_refund"));
+        assertEquals(1, count("payment.payment_refund"));
         assertEquals(300, authority.refund(command).refundedAmount().amountMinor());
     }
 

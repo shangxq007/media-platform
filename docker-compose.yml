@@ -8,8 +8,12 @@ services:
       POSTGRES_DB: platform
       POSTGRES_USER: platform
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be supplied by the local bootstrap}
+      SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?Supply the migration password}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Supply the API password}
+      WORKER_DATASOURCE_PASSWORD: ${WORKER_DATASOURCE_PASSWORD:?Supply the Worker password}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata18:/var/lib/postgresql
+      - ./scripts/database/compose-roles.sql:/docker-entrypoint-initdb.d/010_roles.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -17,6 +21,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["java", "-Dloader.main=com.example.platform.DatabaseMigration", "-cp", "/app/app.jar", "org.springframework.boot.loader.launch.PropertiesLauncher"]
+    environment:
+      SPRING_FLYWAY_URL: jdbc:postgresql://db:5432/platform
+      SPRING_FLYWAY_USER: mp_migrator
+      SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?Supply the migration password}
+    depends_on:
+      db:
+        condition: service_healthy
 
   app:
     build:
@@ -27,19 +44,16 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/platform
-      SPRING_DATASOURCE_USERNAME: platform
+      SPRING_DATASOURCE_USERNAME: mp_api
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD must be supplied by the local bootstrap}
-      SPRING_FLYWAY_URL: ${SPRING_FLYWAY_URL:?SPRING_FLYWAY_URL must be supplied by the local bootstrap}
-      SPRING_FLYWAY_USER: ${SPRING_FLYWAY_USER:?SPRING_FLYWAY_USER must be supplied by the local bootstrap}
-      SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?SPRING_FLYWAY_PASSWORD must be supplied by the local bootstrap}
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be supplied by the local bootstrap}
       APP_STORAGE_LOCAL_ROOT: /data/storage
     volumes:
       - app-storage:/data/storage
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
-  pgdata:
+  pgdata18:
   app-storage:

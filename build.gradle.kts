@@ -376,8 +376,12 @@ tasks.register("verifyJooqGeneratedSources") {
         for (domain in domains) {
             val className = domain.name.split("_").joinToString("") { it.replaceFirstChar(Char::uppercase) }
             val rootFiles = domain.listFiles().orEmpty().filter { it.isFile }.map { it.name }.toSet()
-            val required = setOf("$className.java", "Keys.java", "Tables.java")
-            require(rootFiles.containsAll(required) && (rootFiles - required - "Indexes.java").isEmpty()) {
+            val tableFiles = domain.resolve("tables").listFiles().orEmpty().filter { it.isFile }
+            val required = buildSet {
+                addAll(listOf("$className.java", "Keys.java", "Tables.java"))
+                if (tableFiles.any { "Indexes." in it.readText() }) add("Indexes.java")
+            }
+            require(rootFiles == required) {
                 "Unexpected generated schema layout in ${domain.name}: $rootFiles"
             }
             val tables = domain.resolve("tables").listFiles().orEmpty().filter { it.isFile }.map { it.name }.toSet()

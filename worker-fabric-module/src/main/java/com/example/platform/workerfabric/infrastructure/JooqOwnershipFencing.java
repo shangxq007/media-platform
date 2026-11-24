@@ -59,7 +59,7 @@ final class JooqOwnershipFencing {
         }
         return tx.fetchExists(
                 DSL.selectOne()
-                        .from("wf_task_ownership")
+                        .from("worker_fabric.wf_task_ownership")
                         .where(DSL.field("task_id").eq(lease.get("task_id", String.class)))
                         .and(DSL.field("current_generation")
                                 .eq(lease.get("generation", Long.class)))

@@ -192,7 +192,7 @@ class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
         runBackfill();
 
         long nullCount = dsl.fetchCount(
-                DSL.table("audit_records"),
+                DSL.table("policy.audit_records"),
                 DSL.field("category").isNull());
 
         assertEquals(0, nullCount,
@@ -203,7 +203,7 @@ class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
 
     private void insertRecord(String id, String actorType, String action,
                                String resourceType, String resourceId, String category) {
-        dsl.insertInto(DSL.table("audit_records"))
+        dsl.insertInto(DSL.table("policy.audit_records"))
                 .columns(
                         DSL.field("id"),
                         DSL.field("actor_type"),
@@ -224,7 +224,7 @@ class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
 
     private String getCategory(String id) {
         return dsl.select(DSL.field("category"))
-                .from(DSL.table("audit_records"))
+                .from(DSL.table("policy.audit_records"))
                 .where(DSL.field("id").eq(id))
                 .fetchOne(0, String.class);
     }

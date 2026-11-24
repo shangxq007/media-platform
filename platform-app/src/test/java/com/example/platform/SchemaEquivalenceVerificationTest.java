@@ -61,8 +61,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .schemas(SCHEMA)
-                .defaultSchema(SCHEMA)
+                .schemas("public")
+                .defaultSchema("public")
                 .load();
         var result = flyway.migrate();
         assertTrue(result.migrationsExecuted >= 1, "At least one migration should execute");
@@ -73,7 +73,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         // (timeline_revision_ref, apply_command, timeline_revision_parent,
         // project_revision_counter, source_visual_description_snapshot, ownership
         // FKs/UNIQUEs, immutable snapshot trigger). ONE pre-release migration.
-        assertEquals(1, info.all().length, "exact single consolidated V1 inventory");
+        assertEquals(2, info.all().length, "exact canonical migration inventory");
+        assertEquals("V2__domain_schemas.sql", info.all()[1].getScript());
         assertEquals("1", info.all()[0].getVersion().getVersion());
         assertEquals("V1__baseline.sql", info.all()[0].getScript());
         deployed = true;
@@ -357,28 +358,28 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
             }
         }
         try (Connection conn = createDataSource().getConnection(); Statement statement = conn.createStatement()) {
-            statement.execute("SET search_path TO \"" + SCHEMA + "\"");
-            assertEquals(9, count(statement, "commerce_product"));
-            assertEquals(9, count(statement, "commercial_offering"));
-            assertEquals(9, count(statement, "pricing_rule"));
-            assertEquals(6, count(statement, "subscription_plan"));
+            assertEquals(9, count(statement, "commerce.commerce_product"));
+            assertEquals(9, count(statement, "commerce.commercial_offering"));
+            assertEquals(9, count(statement, "billing.pricing_rule"));
+            assertEquals(6, count(statement, "billing.subscription_plan"));
         }
     }
 
     @Test
     @Order(10)
-    @DisplayName("V1: no active V2-V5 migrations")
-    void noActiveV2ToV5() {
+    @DisplayName("Only the canonical V1 and domain V2 are active")
+    void exactMigrationInventory() {
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .schemas(SCHEMA)
-                .defaultSchema(SCHEMA)
+                .schemas("public")
+                .defaultSchema("public")
                 .load();
         var info = flyway.info();
         // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
         // exactly one canonical V1 migration; no incremental V2..V7.
-        assertEquals(1, info.all().length, "only canonical consolidated V1 should be active");
+        assertEquals(2, info.all().length, "exact canonical migration inventory");
+        assertEquals("2", info.all()[1].getVersion().getVersion());
         assertEquals("1", info.all()[0].getVersion().getVersion());
     }
 
@@ -391,10 +392,23 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
 
     // === Helper methods (all scoped to the isolated schema) ===
 
+    private static String namespace(Connection conn, String table) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "select schemaname from pg_catalog.pg_tables where tablename=? and schemaname not like 'pg_%'")) {
+            stmt.setString(1, table);
+            try (ResultSet rows = stmt.executeQuery()) {
+                assertTrue(rows.next(), "Missing table " + table);
+                String owner = rows.getString(1);
+                assertFalse(rows.next(), "Multiple application schemas own " + table);
+                return owner;
+            }
+        }
+    }
+
     private static Set<String> getTables() throws SQLException {
         Set<String> tables = new TreeSet<>();
         try (Connection conn = createDataSource().getConnection()) {
-            ResultSet rs = conn.getMetaData().getTables(null, SCHEMA, null, new String[]{"TABLE"});
+            ResultSet rs = conn.getMetaData().getTables(null, null, null, new String[]{"TABLE"});
             while (rs.next()) tables.add(rs.getString("TABLE_NAME").toLowerCase());
         }
         return tables;
@@ -405,7 +419,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
     private static Map<String, ColumnInfo> getTableColumns(String tableName) throws SQLException {
         Map<String, ColumnInfo> result = new TreeMap<>();
         try (Connection conn = createDataSource().getConnection()) {
-            ResultSet rs = conn.getMetaData().getColumns(null, SCHEMA, tableName, null);
+            ResultSet rs = conn.getMetaData().getColumns(null, namespace(conn, tableName), tableName, null);
             while (rs.next()) {
                 String col = rs.getString("COLUMN_NAME").toLowerCase();
                 String type = rs.getString("TYPE_NAME").toLowerCase();
@@ -420,7 +434,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
     private static List<String> getPrimaryKeys(String tableName) throws SQLException {
         List<String> result = new ArrayList<>();
         try (Connection conn = createDataSource().getConnection()) {
-            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, SCHEMA, tableName);
+            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, namespace(conn, tableName), tableName);
             while (rs.next()) result.add(rs.getString("COLUMN_NAME").toLowerCase());
         }
         Collections.sort(result);
@@ -431,7 +445,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         Set<String> result = new TreeSet<>();
         try (Connection conn = createDataSource().getConnection()) {
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rs = meta.getIndexInfo(null, SCHEMA, tableName, false, false);
+            ResultSet rs = meta.getIndexInfo(null, namespace(conn, tableName), tableName, false, false);
             while (rs.next()) {
                 String indexName = rs.getString("INDEX_NAME");
                 if (indexName != null) result.add(indexName.toLowerCase());
@@ -444,7 +458,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         Set<String> result = new TreeSet<>();
         try (Connection conn = createDataSource().getConnection()) {
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rs = meta.getIndexInfo(null, SCHEMA, tableName, false, false);
+            ResultSet rs = meta.getIndexInfo(null, namespace(conn, tableName), tableName, false, false);
             while (rs.next()) {
                 String indexName = rs.getString("INDEX_NAME");
                 String col = rs.getString("COLUMN_NAME");
@@ -469,9 +483,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
                 "FROM information_schema.table_constraints tc " +
                 "JOIN information_schema.key_column_usage kcu " +
                 "  ON tc.constraint_name=kcu.constraint_name AND tc.table_schema=kcu.table_schema " +
-                "WHERE tc.constraint_type='UNIQUE' AND tc.table_schema=? " +
+                "WHERE tc.constraint_type='UNIQUE' AND tc.table_schema NOT IN ('public','information_schema','pg_catalog') " +
                 "GROUP BY tc.table_name, tc.constraint_name ORDER BY tc.table_name")) {
-            ps.setString(1, SCHEMA);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) result.add(rs.getString(1) + "." + rs.getString(2));
         }
@@ -487,8 +500,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
              PreparedStatement ps = conn.prepareStatement(
                 "SELECT c.relname, pg_get_constraintdef(pc.oid) FROM pg_constraint pc " +
                 "JOIN pg_class c ON pc.conrelid = c.oid " +
-                "WHERE pc.contype='c' AND pc.connamespace=?::regnamespace ORDER BY 1, 2")) {
-            ps.setString(1, SCHEMA);
+                "WHERE pc.contype='c' AND pc.connamespace NOT IN ('pg_catalog'::regnamespace,'public'::regnamespace) ORDER BY 1, 2")) {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) result.add(rs.getString(1) + "|" + rs.getString(2));
         }

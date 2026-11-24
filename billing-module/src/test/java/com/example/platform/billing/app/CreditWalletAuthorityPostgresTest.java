@@ -114,7 +114,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
         jdbc.execute("DROP FUNCTION IF EXISTS fail_credit_transaction_for_test()");
         jdbc.execute("DROP TRIGGER IF EXISTS fail_credit_command ON credit_wallet_command");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_credit_command_for_test()");
-        jdbc.execute("TRUNCATE billing.credit_wallet_command, credit_transaction, credit_reservation, credit_wallet");
+        jdbc.execute("TRUNCATE billing.credit_wallet_command, billing.credit_transaction, billing.credit_reservation, billing.credit_wallet");
     }
 
     @Test
@@ -249,7 +249,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
                 BEGIN RAISE EXCEPTION 'transaction failure'; END; $$ LANGUAGE plpgsql
                 """);
         jdbc.execute("""
-                CREATE TRIGGER fail_credit_transaction BEFORE INSERT ON credit_transaction
+                CREATE TRIGGER fail_credit_transaction BEFORE INSERT ON billing.credit_transaction
                 FOR EACH ROW EXECUTE FUNCTION fail_credit_transaction_for_test()
                 """);
         assertThrows(RuntimeException.class, () -> service.execute(
@@ -266,7 +266,7 @@ class CreditWalletAuthorityPostgresTest extends PostgresTestContainerSupport {
                 BEGIN RAISE EXCEPTION 'audit failure'; END; $$ LANGUAGE plpgsql
                 """);
         jdbc.execute("""
-                CREATE TRIGGER fail_credit_command BEFORE INSERT ON credit_wallet_command
+                CREATE TRIGGER fail_credit_command BEFORE INSERT ON billing.credit_wallet_command
                 FOR EACH ROW EXECUTE FUNCTION fail_credit_command_for_test()
                 """);
         assertThrows(RuntimeException.class, () -> service.execute(

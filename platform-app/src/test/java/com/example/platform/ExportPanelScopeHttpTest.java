@@ -136,7 +136,7 @@ class ExportPanelScopeHttpTest extends FederationOwnerReadsHttpTest {
  @Test void actualOwnerDatabaseFailureDoesNotFabricatePanelAndRecoversWithoutWrites() throws Exception {
   var a=actor();String ws=workspace(a),p=project(a,ws);var expected=durableState();
   successfulPanel(a,p,ws);
-  db.execute("alter table render_job rename to ep22_correction_hidden_render_job");
+  db.execute("alter table render.render_job rename to ep22_correction_hidden_render_job");
   try {
    clearInvocations(decisions);
    var response=gql(a,panel(p),ws);var body=json.readTree(response.body());

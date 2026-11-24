@@ -30,12 +30,12 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
  @EnableTransactionManagement(proxyTargetClass=true) static class Transactions {}
  @BeforeAll static void setup(){
   admin=createDataSource();new JdbcTemplate(admin).execute("create schema "+SCHEMA);
-  Flyway.configure().dataSource(jdbcUrl(),username(),password()).locations("classpath:db/migration").schemas(SCHEMA).defaultSchema(SCHEMA).load().migrate();
+  Flyway.configure().dataSource(jdbcUrl(),username(),password()).locations("classpath:db/migration").schemas("public").defaultSchema("public").load().migrate();
   var ds=new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+SCHEMA,username(),password());jdbc=new JdbcTemplate(ds);
   context=new AnnotationConfigApplicationContext();context.register(Transactions.class);
   context.registerBean(JdbcTemplate.class,()->jdbc);
   context.registerBean("transactionManager",DataSourceTransactionManager.class,()->new DataSourceTransactionManager(ds));
-  context.registerBean(DSLContext.class,()->DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings().withRenderSchema(false)));
+  context.registerBean(DSLContext.class,()->DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings()));
   context.registerBean(CanonicalActorResolver.class,()->()->Optional.of(CanonicalActor.user(actor.get(),"tenant",Set.of("EDITOR"),"fixture")));
   context.registerBean(AuthorizationDecisionPort.class,()->request->{
    if(denied)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"denied by owner");
@@ -81,22 +81,22 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   assertEquals(1L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,id));
  }
  @Test void deniedWrongRevisionAndForgedAuthorCannotWrite(){
-  long before=count("timeline_review");denied=true;assertThrows(RuntimeException.class,this::create);denied=false;
+  long before=count("timeline.timeline_review");denied=true;assertThrows(RuntimeException.class,this::create);denied=false;
   var reviews=context.getBean(TimelineReviews.class);
   assertThrows(IllegalArgumentException.class,()->reviews.createReview("project","other-revision","server-actor","x","x"));
   assertThrows(IllegalArgumentException.class,()->reviews.createReview("project","project-revision","forged","x","x"));
-  TenantContext.set("foreign");assertThrows(RuntimeException.class,this::create);assertEquals(before,count("timeline_review"));
+  TenantContext.set("foreign");assertThrows(RuntimeException.class,this::create);assertEquals(before,count("timeline.timeline_review"));
  }
  @Test void appendFailureRollsBackReviewAndDecision(){
-  long before=count("timeline_review");doThrow(new IllegalStateException("append failed")).when(outbox).append(any());assertThrows(IllegalStateException.class,this::create);assertEquals(before,count("timeline_review"));reset(outbox);
-  String id=create();long decisions=count("review_decision");doThrow(new IllegalStateException("append failed")).when(outbox).append(any());
-  assertThrows(IllegalStateException.class,()->context.getBean(TimelineReviews.class).approve(id,"server-actor"));assertEquals("OPEN",jdbc.queryForObject("select status from timeline.timeline_review where id=?",String.class,id));assertEquals(decisions,count("review_decision"));
+  long before=count("timeline.timeline_review");doThrow(new IllegalStateException("append failed")).when(outbox).append(any());assertThrows(IllegalStateException.class,this::create);assertEquals(before,count("timeline.timeline_review"));reset(outbox);
+  String id=create();long decisions=count("timeline.review_decision");doThrow(new IllegalStateException("append failed")).when(outbox).append(any());
+  assertThrows(IllegalStateException.class,()->context.getBean(TimelineReviews.class).approve(id,"server-actor"));assertEquals("OPEN",jdbc.queryForObject("select status from timeline.timeline_review where id=?",String.class,id));assertEquals(decisions,count("timeline.review_decision"));
  }
  @Test void scopeThreadsAndClosedTransitionsAreCheckedByOwner(){
   String id=create();var reviews=context.getBean(TimelineReviews.class);assertTrue(reviews.getReview("other","tenant",id).isEmpty());
-  var comments=context.getBean(TimelineComments.class);long before=count("timeline_comment");
+  var comments=context.getBean(TimelineComments.class);long before=count("timeline.timeline_comment");
   assertThrows(IllegalArgumentException.class,()->comments.addComment(id,"other-revision",null,null,"server-actor","bad"));
-  assertThrows(IllegalArgumentException.class,()->comments.addComment(id,"project-revision","foreign-thread",null,"server-actor","bad"));assertEquals(before,count("timeline_comment"));
+  assertThrows(IllegalArgumentException.class,()->comments.addComment(id,"project-revision","foreign-thread",null,"server-actor","bad"));assertEquals(before,count("timeline.timeline_comment"));
   reviews.reject(id);assertThrows(ReviewConflictException.class,()->reviews.approve(id,"server-actor"));
  }
  @Test void httpContractPreservesDtoAuthorizationAndConflictStatus()throws Exception {
@@ -115,7 +115,7 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
 
  @Test void retiredAndMalformedDurableTimelineInputsAreExplicitlyDeadLettered()throws Exception {
   String review=create();context.getBean(TimelineReviews.class).approve(review,"server-actor");
-  long audits=count("audit_records"),notifications=count("notification_event");int n=0;
+  long audits=count("policy.audit_records"),notifications=count("notification.notification_event");int n=0;
   List<String> old=new ArrayList<>(List.of("review.created","review.approved","review.rejected","review.changes_requested","review.comment.added","review.thread.resolved","timeline.merged","timeline.restored","timeline.revision.created"));
   for(String name:TimelineEventBoundaryTest.OLD)old.add("com.example.platform.shared.events."+name);
   for(String type:old){
@@ -131,16 +131,16 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values ('malformed-timeline','timeline_review',?,'timeline.review.approved',1,?,'PENDING',0,3,now())",review,tree.toString());
   assertFalse(context.getBean(OutboxEventDispatcher.class).processOnce("malformed-timeline"));
   assertEquals("MALFORMED_EVENT_PAYLOAD",jdbc.queryForObject("select last_error_code from infrastructure.outbox_events where id='malformed-timeline'",String.class));
-  assertEquals(audits,count("audit_records"));assertEquals(notifications,count("notification_event"));
+  assertEquals(audits,count("policy.audit_records"));assertEquals(notifications,count("notification.notification_event"));
  }
 
  @Test void commentAndResolutionFactsPreserveRollbackAndDistinctAcceptedTransitions() {
   String review=create();var comments=context.getBean(TimelineComments.class);
   var anchor=new com.example.platform.timeline.diff.merge.EntityRef(com.example.platform.timeline.diff.merge.EntityKind.CLIP,"review-anchor");
-  long beforeComments=count("timeline_comment"),beforeThreads=count("review_thread");
+  long beforeComments=count("timeline.timeline_comment"),beforeThreads=count("timeline.review_thread");
   doThrow(new IllegalStateException("comment append rejected")).when(outbox).append(argThat(a->a.type()==com.example.platform.timeline.api.event.TimelineOutboxEvents.REVIEW_COMMENTADDED));
   assertThrows(IllegalStateException.class,()->comments.addComment(review,"project-revision",null,anchor,"server-actor","text"));
-  assertEquals(beforeComments,count("timeline_comment"));assertEquals(beforeThreads,count("review_thread"));reset(outbox);
+  assertEquals(beforeComments,count("timeline.timeline_comment"));assertEquals(beforeThreads,count("timeline.review_thread"));reset(outbox);
   var comment=comments.addComment(review,"project-revision",null,anchor,"server-actor","text");
   dispatchSubject(comment.commentId());
   assertEquals(1L,jdbc.queryForObject("select count(*) from policy.audit_records where resource_id=?",Long.class,comment.commentId()));

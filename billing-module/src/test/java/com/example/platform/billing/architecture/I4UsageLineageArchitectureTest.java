@@ -87,8 +87,8 @@ class I4UsageLineageArchitectureTest {
         assertFalse(Pattern.compile("create\\s+table\\s+render_usage_record\\b")
                 .matcher(schema).find());
         assertTrue(schema.contains("quantity_base_units bigint"));
-        assertTrue(schema.contains("before update or delete on observed_runtime_usage"));
-        assertTrue(schema.contains("before update or delete on billable_usage"));
+        assertTrue(schema.contains("before update or delete on billing.observed_runtime_usage"));
+        assertTrue(schema.contains("before update or delete on billing.billable_usage"));
         assertFalse(Files.exists(RENDER_MAIN.resolve(
                 "infrastructure/queue/UsageRecordRepository.java")));
     }

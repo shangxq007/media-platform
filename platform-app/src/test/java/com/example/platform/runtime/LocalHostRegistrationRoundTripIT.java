@@ -55,27 +55,12 @@ class LocalHostRegistrationRoundTripIT {
     @BeforeAll
     static void setup() throws Exception {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-        Path migrationDir = locateMigrationDir();
-        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        database.migrateApplication();
         dsl = database.dsl();
         boundary = new JooqWorkerFabricRegistrationBoundary(dsl);
     }
 
-    private static void applyMigration(Path path) throws Exception {
-        database.executeScript(Files.readString(path));
-    }
 
-    private static Path locateMigrationDir() {
-        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        while (dir != null) {
-            Path candidate = dir.resolve("platform-app/src/main/resources/db/migration");
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-            dir = dir.getParent();
-        }
-        throw new IllegalStateException("cannot locate db/migration directory");
-    }
 
     @Test
     void registrationTicksAreDurableIdempotentAndGenerationAdvancing() {
@@ -102,7 +87,7 @@ class LocalHostRegistrationRoundTripIT {
 
         loop.registerOnce();
 
-        assertEquals(1, dsl.fetchCount(DSL.table("wf_host_registration")), "one host registration row");
+        assertEquals(1, dsl.fetchCount(DSL.table("worker_fabric.wf_host_registration")), "one host registration row");
         String incarnation = hostIncarnation();
         assertNotNull(incarnation);
         assertTrue(dsl.fetchOne("select active from worker_fabric.wf_host_registration where physical_host_id = ?",
@@ -147,11 +132,11 @@ class LocalHostRegistrationRoundTripIT {
 
         loop.registerOnce();
 
-        assertEquals(1, dsl.fetchCount(DSL.table("wf_host_registration")),
+        assertEquals(1, dsl.fetchCount(DSL.table("worker_fabric.wf_host_registration")),
                 "second tick is idempotent: one durable row for the stable incarnation");
         assertEquals(incarnation, hostIncarnation(), "incarnation identity is stable across ticks");
         assertEquals(2L, generation(incarnation).value(), "second tick advances the generation to 2");
-        assertEquals(1, dsl.fetchCount(DSL.table("wf_runtime_registration")),
+        assertEquals(1, dsl.fetchCount(DSL.table("worker_fabric.wf_runtime_registration")),
                 "runtime registration is upserted for the bounded local runtime");
     }
 

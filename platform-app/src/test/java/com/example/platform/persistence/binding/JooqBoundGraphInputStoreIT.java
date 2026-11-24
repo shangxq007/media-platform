@@ -88,27 +88,12 @@ class JooqBoundGraphInputStoreIT {
     @BeforeAll
     static void setup() throws Exception {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-        Path migrationDir = locateMigrationDir();
-        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        database.migrateApplication();
         dsl = database.dsl();
         store = new JooqBoundGraphInputStore(dsl);
     }
 
-    private static void applyMigration(Path path) throws Exception {
-        database.executeScript(Files.readString(path));
-    }
 
-    private static Path locateMigrationDir() {
-        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        while (dir != null) {
-            Path candidate = dir.resolve("platform-app/src/main/resources/db/migration");
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-            dir = dir.getParent();
-        }
-        throw new IllegalStateException("cannot locate db/migration directory");
-    }
 
     @Test
     void migrationCreatesRenderBindingInputsWithUniqueJobKeyAndPlanBytes() {
@@ -153,7 +138,7 @@ class JooqBoundGraphInputStoreIT {
         BoundGraphInputs second = inputsForBoundPlan("job-upsert-v2");
         assertThrows(IllegalStateException.class, () -> store.save(second, "tenant-a", "job-upsert"));
 
-        assertEquals(1, dsl.fetchCount(DSL.table("render_binding_inputs"),
+        assertEquals(1, dsl.fetchCount(DSL.table("render.render_binding_inputs"),
                 DSL.field("tenant_id").eq("tenant-a").and(DSL.field("render_job_id").eq("job-upsert"))));
         assertEquals(first.physicalPlan().planId(), store.load(reference).physicalPlan().planId());
     }
@@ -183,11 +168,11 @@ class JooqBoundGraphInputStoreIT {
 
     private boolean columnExists(String table, String column) {
         return dsl.fetchCount(DSL.table("information_schema.columns"),
-                DSL.field("table_schema").eq(database.name()).and(DSL.field("table_name").eq(table)).and(DSL.field("column_name").eq(column))) > 0;
+                DSL.field("table_schema").eq("render").and(DSL.field("table_name").eq(table)).and(DSL.field("column_name").eq(column))) > 0;
     }
 
     private boolean indexExists(String indexName) {
-        return dsl.fetchCount(DSL.table("pg_indexes"), DSL.field("schemaname").eq(database.name()).and(DSL.field("indexname").eq(indexName))) > 0;
+        return dsl.fetchCount(DSL.table("pg_indexes"), DSL.field("schemaname").eq("render").and(DSL.field("indexname").eq(indexName))) > 0;
     }
 
     // ---------- fixture (mirrors media-execution-plan bounded V1 codec fixture) ----------

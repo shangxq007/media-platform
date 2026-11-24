@@ -62,7 +62,7 @@ class UsageIngestionTransactionTest extends PostgresTestContainerSupport {
             BEGIN IF NEW.payload::jsonb->>'tenantId'='ep28a-outbox-failure' THEN RAISE EXCEPTION 'controlled EP28A outbox rejection'; END IF;
             RETURN NEW; END $$
             """);
-        jdbc.execute("CREATE TRIGGER ep28a_reject_outbox BEFORE INSERT ON outbox_events FOR EACH ROW EXECUTE FUNCTION ep28a_reject_outbox()");
+        jdbc.execute("CREATE TRIGGER ep28a_reject_outbox BEFORE INSERT ON infrastructure.outbox_events FOR EACH ROW EXECUTE FUNCTION ep28a_reject_outbox()");
         try {
             assertThrows(org.jooq.exception.DataAccessException.class,()->emission.emit(observation));
             counts(tenant,0);

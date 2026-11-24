@@ -32,11 +32,11 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
 
     @Test
     @Order(1)
-    @DisplayName("V1: canonical V1 migrates a clean database using only the consolidated V1")
+    @DisplayName("Canonical V1 and its domain relocation migrate a clean database")
     void v1_deploysFromCleanDatabase() {
         Flyway flyway = Flyway.configure()
                 .dataSource(scopedJdbcUrl(SCHEMA), username(), password())
-                .schemas(SCHEMA).defaultSchema(SCHEMA).createSchemas(true)
+                .schemas("public").defaultSchema("public").createSchemas(true)
                 .locations("classpath:db/migration")
                 .load();
         var result = flyway.migrate();
@@ -46,18 +46,21 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
 
     @Test
     @Order(2)
-    @DisplayName("V1: flyway_schema_history contains exactly one canonical V1 row (GCR-2 consolidation)")
+    @DisplayName("Flyway history preserves canonical V1 followed by domain relocation")
     void flywayHistoryExactlyOneV1() throws Exception {
         assertTrue(deployed);
         try (Connection conn = openConnection(SCHEMA)) {
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(
-                         "select version, script from flyway_schema_history where type = 'SQL' order by installed_rank")) {
+                         "select version, script from public.flyway_schema_history where type = 'SQL' order by installed_rank")) {
                 assertTrue(rs.next(), "flyway_schema_history must contain at least one row");
                 assertEquals("1", rs.getString("version"), "first migration version must be 1");
                 assertEquals("V1__baseline.sql", rs.getString("script"),
                         "script must be the canonical consolidated V1 baseline");
-                assertFalse(rs.next(), "only one consolidated canonical V1 is authorized");
+                assertTrue(rs.next(), "domain relocation must be applied");
+                assertEquals("2", rs.getString("version"));
+                assertEquals("V2__domain_schemas.sql", rs.getString("script"));
+                assertFalse(rs.next(), "unexpected migration");
             }
         }
     }
@@ -68,11 +71,11 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
     void allFourW2TablesExist() throws Exception {
         assertTrue(deployed);
         Set<String> tables = getTables();
-        assertTrue(tables.contains("user_workflow_definition"), "user_workflow_definition required");
-        assertTrue(tables.contains("user_workflow_definition_version"),
+        assertTrue(tables.contains("workflow.user_workflow_definition"), "user_workflow_definition required");
+        assertTrue(tables.contains("workflow.user_workflow_definition_version"),
                 "user_workflow_definition_version required");
-        assertTrue(tables.contains("user_workflow_definition_node"), "user_workflow_definition_node required");
-        assertTrue(tables.contains("user_workflow_definition_edge"), "user_workflow_definition_edge required");
+        assertTrue(tables.contains("workflow.user_workflow_definition_node"), "user_workflow_definition_node required");
+        assertTrue(tables.contains("workflow.user_workflow_definition_edge"), "user_workflow_definition_edge required");
     }
 
     @Test
@@ -144,7 +147,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
 
         List<String> pkTables = new ArrayList<>();
         try (Connection conn = openConnection(SCHEMA)) {
-            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, SCHEMA, null);
+            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, "workflow", null);
             while (rs.next()) {
                 String table = rs.getString("TABLE_NAME").toLowerCase();
                 if (table.startsWith("user_workflow_definition")) {
@@ -163,7 +166,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
         try (Connection conn = openConnection(SCHEMA);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                     "select indexdef from pg_indexes where schemaname = '"+SCHEMA+"' and tablename = 'user_workflow_definition_edge' "
+                     "select indexdef from pg_indexes where schemaname = 'workflow' and tablename = 'user_workflow_definition_edge' "
                              + "and indexdef ilike '%unique%'")) {
             List<String> uniqueDefs = new ArrayList<>();
             while (rs.next()) uniqueDefs.add(rs.getString("indexdef"));
@@ -178,10 +181,10 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
     void preW2TablesPreserved() throws Exception {
         assertTrue(deployed);
         Set<String> tables = getTables();
-        assertTrue(tables.contains("render_job"), "pre-W2 render_job must remain");
-        assertTrue(tables.contains("notification_preference"),
+        assertTrue(tables.contains("render.render_job"), "pre-W2 render_job must remain");
+        assertTrue(tables.contains("notification.notification_preference"),
                 "pre-W2 notification_preference must remain");
-        assertTrue(tables.contains("outbox_events"), "pre-W2 outbox_events must remain");
+        assertTrue(tables.contains("infrastructure.outbox_events"), "pre-W2 outbox_events must remain");
     }
 
     // === Helper methods (same convention as SchemaEquivalenceVerificationTest) ===
@@ -189,8 +192,8 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
     private Set<String> getTables() throws SQLException {
         Set<String> tables = new TreeSet<>();
         try (Connection conn = openConnection(SCHEMA)) {
-            ResultSet rs = conn.getMetaData().getTables(null, SCHEMA, null, new String[]{"TABLE"});
-            while (rs.next()) tables.add(rs.getString("TABLE_NAME").toLowerCase());
+            ResultSet rs = conn.getMetaData().getTables(null, null, null, new String[]{"TABLE"});
+            while (rs.next()) tables.add(rs.getString("TABLE_SCHEM") + "." + rs.getString("TABLE_NAME"));
         }
         return tables;
     }
@@ -198,7 +201,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
     private void assertColumn(String table, String name, String type, boolean nullable) throws SQLException {
         Map<String, ColumnInfo> columns = new TreeMap<>();
         try (Connection conn = openConnection(SCHEMA)) {
-            ResultSet rs = conn.getMetaData().getColumns(null, SCHEMA, table, null);
+            ResultSet rs = conn.getMetaData().getColumns(null, "workflow", table, null);
             while (rs.next()) {
                 String col = rs.getString("COLUMN_NAME").toLowerCase();
                 // DatabaseMetaData reports the base type name (e.g. "varchar"); map it to

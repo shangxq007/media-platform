@@ -146,7 +146,7 @@ try:
  for name in ['server.key','server.crt']:command('copy-'+name,B+['cp',str(priv/name),cid+':/var/lib/postgresql/'+name],environment=E)
  command('cert-owner',B+['exec','--user','root',cid,'chown','postgres:postgres','/var/lib/postgresql/server.key','/var/lib/postgresql/server.crt'],environment=E)
  admin=B+['exec','-i','--user','postgres',cid,'psql','-X','-v','ON_ERROR_STOP=1','-U','mp_owner','-d','mp_f8'];pw=secrets.token_urlsafe(32);pwf=priv/'test-password-a2';pwf.write_text(pw);pwf.chmod(0o600)
- statements=["ALTER SYSTEM SET ssl='on'","ALTER SYSTEM SET ssl_cert_file='/var/lib/postgresql/server.crt'","ALTER SYSTEM SET ssl_key_file='/var/lib/postgresql/server.key'","CREATE ROLE mp_test_canon_a2 LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '"+pw+"'","CREATE DATABASE mp_f8_canon_a2 OWNER mp_owner TEMPLATE template0","REVOKE ALL ON DATABASE mp_f8_canon_a2 FROM PUBLIC","GRANT CONNECT,CREATE,TEMP ON DATABASE mp_f8_canon_a2 TO mp_test_canon_a2"]
+ statements=["ALTER SYSTEM SET ssl='on'","ALTER SYSTEM SET ssl_cert_file='/var/lib/postgresql/server.crt'","ALTER SYSTEM SET ssl_key_file='/var/lib/postgresql/server.key'","CREATE ROLE mp_test_canon_a2 LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '"+pw+"'","CREATE DATABASE mp_f8_canon_a2 OWNER mp_test_canon_a2 TEMPLATE template0","REVOKE ALL ON DATABASE mp_f8_canon_a2 FROM PUBLIC","GRANT CONNECT,CREATE,TEMP ON DATABASE mp_f8_canon_a2 TO mp_test_canon_a2"]
  for role in ('mp_api', 'mp_worker', 'mp_readonly'):
   password=secrets.token_urlsafe(32)
   secret=priv/(role+'-password')
@@ -166,10 +166,11 @@ try:
  d=inspect(cid);pid=d['State']['Pid'];sys.path.insert(0,str(W/'scripts/testinfra'));from controlled_launch import birth
  c={'container_id':cid,'run':'canon','attempt':'a2','database':'mp_f8_canon_a2','role':'mp_test_canon_a2','pid':pid,'network_namespace':os.readlink('/proc/'+str(pid)+'/ns/net'),'user_namespace':os.readlink('/proc/'+str(pid)+'/ns/user'),'ca':str(priv/'ca.crt'),'password_file':str(pwf),'volume':volume};(R/'07-runtime/local-context.json').write_text(json.dumps(c));binding={k:c[k] for k in ['container_id','network_namespace','user_namespace','ca','run','attempt']};binding.update(identity=birth(pid),source=str(source_copy),runtime_dirs=[str(R/'03-build/outputs'),str(R/'03-build/gradle-home/caches/modules-2/files-2.1'),str(source_copy)],scratch=str(R/'04-tests'),launch='local-validation');bf=R/'07-runtime/binding.json';bf.write_text(json.dumps(binding));bf.chmod(0o600)
  tid=command('create-temporal',prefix+B+['run','-d','--pull=never','--name','f8-temporal-'+run,'--label','media-platform.f8-run='+run,'--network=container:'+cid,'--pids-limit=128','--ulimit=core=0:0','--env','GOMEMLIMIT=512MiB','--env','GOMAXPROCS=2','docker.io/temporalio/temporal:latest','server','start-dev','--ip','127.0.0.1','--namespace','f8-pg18-'+run,'--db-filename','/tmp/temporal.sqlite'],environment=E);(R/'07-runtime/temporal-id').write_text(tid)
- command('pg18', ['python3','-I','-B',str(source_copy/'scripts/test-infra'),'pg18-local','--binding',str(bf),'--password-file',str(pwf),'--classpath-file',str(R/'03-build/platform-app-test-classpath.txt'),'--output',str(R/'04-tests/pg18')],timeout=360);(R/'07-runtime/final-db-job.txt').write_text(str(R/'04-tests/pg18'))
- # The controlled migration owns all application objects. API and Worker get only their DML grants.
- grant_sql=(source_copy/'scripts/database/grant-runtime.sql').read_text()
- command('runtime-grants',admin[:-1]+['mp_f8_canon_a2'],input='SET ROLE mp_test_canon_a2;\n'+grant_sql,environment=E)
+ sys.path.insert(0,str(HELP))
+ from postgres_suite import run_postgres_suite
+ pg18_suite_ok=run_postgres_suite(R, source_copy, binding, admin, E, command)
+ (R/'07-runtime/final-db-job.txt').write_text(str(R/'04-tests/pg18'))
+ command('migrate-application',['python3','-B',str(HELP/'migrate_database.py')])
  clients=subprocess.Popen(['python3','-B',str(HELP/'run_apps.py'),'--fresh','--bootstrap',*(['--combined'] if a.combined_smoke else [])],env=env,stdout=(R/'apps-driver.stdout').open('w'),stderr=(R/'apps-driver.stderr').open('w'))
  for _ in range(120):
   current=R/'07-runtime/current-apps.txt'
@@ -225,6 +226,8 @@ finally:
   d=json.loads(command('inspect-volume',B+['volume','inspect',volume],environment=E))[0];assert d['Name']==volume and d['Labels']['media-platform.f8-run']==run;command('remove-volume',B+['volume','rm',volume],environment=E);(R/'cleanup.json').write_text(json.dumps({'result':'PASS','exact_containers':[tid,cid],'exact_volume':volume,'clients_complete':True,'zero_sessions':True}))
 
 # Overall success is published only after all owned resources have been closed and cleaned.
+if not pg18_suite_ok:
+ raise RuntimeError("PostgreSQL class suite failed; see 04-tests/pg18/result.json")
 if a.services_only:
  service=json.loads((R/'services-health.json').read_text());cleanup=json.loads((R/'cleanup.json').read_text());assert service['result']=='PASS' and cleanup['result']=='PASS'
  (R/'services-result.json').write_text(json.dumps({**service,'cleanup':'PASS','nle_isolation':'NOT_VERIFIED'}))

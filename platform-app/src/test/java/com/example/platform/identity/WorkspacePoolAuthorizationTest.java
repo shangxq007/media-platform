@@ -142,7 +142,7 @@ class WorkspacePoolAuthorizationTest extends WorkspaceAuthorityHttpTest {
         String ws=setupPool();var before=state(ws);String fault="ir_pool_fault_"+UUID.randomUUID().toString().replace("-","");
         jdbc.execute("create function "+fault+"() returns trigger language plpgsql as $$ begin raise exception 'controlled pool audit failure'; return new; end $$");
         try {
-            jdbc.execute("create trigger "+fault+" before insert on audit_records for each row when (new.resource_id='"+ws+"' and new.action='workspace.pool.allocated') execute function "+fault+"()");
+            jdbc.execute("create trigger "+fault+" before insert on policy.audit_records for each row when (new.resource_id='"+ws+"' and new.action='workspace.pool.allocated') execute function "+fault+"()");
             var response=call("POST",poolPath(ws)+"/allocate",allocation(member),creator);
             assertEquals(500,response.statusCode(),response.body());assertEquals(before,state(ws));
         } finally {

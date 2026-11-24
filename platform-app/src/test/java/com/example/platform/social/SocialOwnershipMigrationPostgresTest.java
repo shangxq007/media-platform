@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.*;
 class SocialOwnershipMigrationPostgresTest extends PostgresTestContainerSupport {
     @Test void deliveredSchemaUpgradesWithoutLosingHistoricalRowsOrRetryEvidence() {
         String schema=isolatedSchemaName();
-        var config=Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration");
+        var config=Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration");
         config.target("7").load().migrate();
         var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
         for(String status:new String[]{"DRAFT","SCHEDULED","PUBLISHED","PUBLISHING","FAILED"})

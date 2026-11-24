@@ -53,7 +53,7 @@ class MarketplaceArchiveIntegrationTest extends MarketplaceTestSupport {
   var body=Map.of("commandId","archive-fault","expectedVersion",4,"transition","ARCHIVE");
   String path=root()+"/listings/"+id+"/transitions";var before=state();
   jdbc.execute("create function archive_receipt_fault() returns trigger language plpgsql as $$ begin if NEW.command_id='archive-fault' then raise exception 'injected archive receipt failure'; end if; return NEW; end $$");
-  jdbc.execute("create trigger archive_receipt_fault before insert on marketplace_command for each row execute function archive_receipt_fault()");
+  jdbc.execute("create trigger archive_receipt_fault before insert on marketplace.marketplace_command for each row execute function archive_receipt_fault()");
   try {assertThat(http(user,"POST",path,body).statusCode()).isEqualTo(500);assertThat(state()).isEqualTo(before);
    assertThat(jdbc.queryForObject("select status from marketplace.marketplace_listing where id=?",String.class,id)).isEqualTo("PUBLISHED");
   } finally {jdbc.execute("drop trigger archive_receipt_fault on marketplace_command");jdbc.execute("drop function archive_receipt_fault()");}
@@ -83,7 +83,7 @@ class MarketplaceArchiveIntegrationTest extends MarketplaceTestSupport {
   // Hold the receipt insertion after Media mutation, then observe the version writer
   // blocked on that row. The advisory latch is test synchronization, not production logic.
   jdbc.execute("create function archive_receipt_latch() returns trigger language plpgsql as $$ begin if NEW.command_id='archive-first' then perform pg_advisory_xact_lock(715290020); end if; return NEW; end $$");
-  jdbc.execute("create trigger archive_receipt_latch before insert on marketplace_command for each row execute function archive_receipt_latch()");
+  jdbc.execute("create trigger archive_receipt_latch before insert on marketplace.marketplace_command for each row execute function archive_receipt_latch()");
   try(var latch=context.getBean(javax.sql.DataSource.class).getConnection();var pool=Executors.newFixedThreadPool(2)) {
    latch.createStatement().execute("select pg_advisory_lock(715290020)");
    var archive=pool.submit(()->http(user,"POST",root()+"/listings/"+id+"/transitions",Map.of("commandId","archive-first","expectedVersion",4,"transition","ARCHIVE")));

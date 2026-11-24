@@ -72,7 +72,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
             $$
             """);
         dsl.execute("""
-            create trigger wf_test_fail_lease_insert before insert on wf_task_lease
+            create trigger wf_test_fail_lease_insert before insert on worker_fabric.wf_task_lease
             for each row execute function wf_test_fail_lease_insert()
             """);
         var runtime = TaskCTestFixture.runtime("d1");
@@ -319,7 +319,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                                 .filter(result -> !result.granted())
                                 .findFirst().orElseThrow().requestWorkId(),
                         RequestWorkFailureReason.GRANT_CONFLICT));
-        assertThat(count("wf_reservation")).isOne();
+        assertThat(count("worker_fabric.wf_reservation")).isOne();
         assertThat(dsl.fetchOne(
                 "select sum(cpu_millicores)::bigint from worker_fabric.wf_reservation where state = 'ACTIVE'")
                 .get(0, Long.class)).isEqualTo(5_000L);
@@ -376,7 +376,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
         assertThat(result).isEqualTo(new RequestWorkResult.Rejected(
                 request.requestWorkId(),
                 RequestWorkFailureReason.WORKER_RUNTIME_NOT_REGISTERED));
-        assertThat(count("wf_execution_assignment")).isZero();
+        assertThat(count("worker_fabric.wf_execution_assignment")).isZero();
     }
 
     @Test
@@ -401,7 +401,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
 
         assertThat(result).isEqualTo(new RequestWorkResult.Rejected(
                 request.requestWorkId(), RequestWorkFailureReason.REGISTRATION_STALE));
-        assertThat(count("wf_execution_assignment")).isZero();
+        assertThat(count("worker_fabric.wf_execution_assignment")).isZero();
     }
 
     @Test
@@ -415,9 +415,9 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
                 List.of(TaskCTestFixture.candidate(307).candidate()));
 
         assertThat(result).isInstanceOf(RequestWorkResult.Granted.class);
-        assertThat(count("wf_host_registration")).isOne();
-        assertThat(count("wf_runtime_registration")).isOne();
-        assertThat(count("wf_host_resource_snapshot")).isOne();
+        assertThat(count("worker_fabric.wf_host_registration")).isOne();
+        assertThat(count("worker_fabric.wf_runtime_registration")).isOne();
+        assertThat(count("worker_fabric.wf_host_resource_snapshot")).isOne();
     }
 
     private static List<RequestWorkResult> raceDifferentTasks(
@@ -505,13 +505,13 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
             int leases,
             int resolutions,
             int ownerships) {
-        assertThat(count("wf_execution_ownership_generation")).isEqualTo(generations);
-        assertThat(count("wf_execution_attempt")).isEqualTo(attempts);
-        assertThat(count("wf_execution_assignment")).isEqualTo(assignments);
-        assertThat(count("wf_reservation")).isEqualTo(reservations);
-        assertThat(count("wf_task_lease")).isEqualTo(leases);
-        assertThat(count("wf_request_work_resolution")).isEqualTo(resolutions);
-        assertThat(count("wf_task_ownership")).isEqualTo(ownerships);
+        assertThat(count("worker_fabric.wf_execution_ownership_generation")).isEqualTo(generations);
+        assertThat(count("worker_fabric.wf_execution_attempt")).isEqualTo(attempts);
+        assertThat(count("worker_fabric.wf_execution_assignment")).isEqualTo(assignments);
+        assertThat(count("worker_fabric.wf_reservation")).isEqualTo(reservations);
+        assertThat(count("worker_fabric.wf_task_lease")).isEqualTo(leases);
+        assertThat(count("worker_fabric.wf_request_work_resolution")).isEqualTo(resolutions);
+        assertThat(count("worker_fabric.wf_task_ownership")).isEqualTo(ownerships);
     }
 
     private static int count(String table) {

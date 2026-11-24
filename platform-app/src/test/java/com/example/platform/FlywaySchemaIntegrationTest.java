@@ -19,7 +19,7 @@ class FlywaySchemaIntegrationTest extends PostgresTestContainerSupport {
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
+                .baselineOnMigrate(false)
                 .load();
         flyway.migrate();
     }

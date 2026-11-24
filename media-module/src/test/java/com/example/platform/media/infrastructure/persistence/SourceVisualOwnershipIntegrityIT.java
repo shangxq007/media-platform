@@ -49,38 +49,17 @@ class SourceVisualOwnershipIntegrityIT {
     static void setup() throws Exception {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
         dsl = database.dsl();
-        // production-equivalent Artifact-keyed DDL (consolidated V1 shape)
-        dsl.execute("create table artifacts.artifact (id varchar(64) primary key)");
-        dsl.execute("create table media.media_stream (id varchar(64) primary key, "
-                + "artifact_id varchar(64) not null, stream_index int not null, stream_kind varchar(16) not null, "
-                + "constraint fk_ms_artifact foreign key (artifact_id) references artifacts.artifact(id) on delete restrict, "
-                + "constraint uq_ms_id_artifact unique (id, artifact_id))");
-        dsl.execute("create table media.source_visual_description_snapshot (media_stream_id varchar(64) not null, "
-                + "artifact_id varchar(64) not null, canonical_payload text not null, "
-                + "created_at timestamp not null default current_timestamp, "
-                + "constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id), "
-                + "constraint fk_svd_artifact foreign key (artifact_id) references artifacts.artifact(id), "
-                + "constraint fk_source_visual_snapshot_stream foreign key (media_stream_id) references media.media_stream(id), "
-                + "constraint fk_svd_stream_artifact foreign key (media_stream_id, artifact_id) "
-                + "references media.media_stream (id, artifact_id))");
-        dsl.execute("""
-                create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
-                begin
-                    if new.media_stream_id is distinct from old.media_stream_id
-                       or new.artifact_id is distinct from old.artifact_id
-                       or new.canonical_payload is distinct from old.canonical_payload then
-                        raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE';
-                    end if;
-                    return new;
-                end;
-                $$ language plpgsql""");
-        dsl.execute("create trigger trg_svd_snapshot_immutable before update on "
-                + "source_visual_description_snapshot for each row "
-                + "execute function trg_fn_svd_snapshot_immutable()");
-
-        dsl.execute("insert into artifacts.artifact (id) values ('artifact-X'), ('artifact-Z')");
-        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind) "
-                + "values ('stream-A', 'artifact-X', 0, 'VIDEO'), ('stream-B', 'artifact-Z', 0, 'VIDEO')");
+        database.migrateApplication();
+        dsl.execute("insert into identity.tenant(id,name,created_at) values ('media-test','Media test',now())");
+        for (String artifact : java.util.List.of("artifact-X", "artifact-Z")) {
+            dsl.execute("""
+                    insert into artifacts.artifact(id, tenant_id, content_digest, byte_length, media_type,
+                        artifact_kind, state, created_at)
+                    values (?, 'media-test', repeat('a', 64), 1, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', now())
+                    """, artifact);
+        }
+        dsl.execute("insert into media.media_stream (id, artifact_id, stream_index, stream_kind, timebase_num, timebase_den) "
+                + "values ('stream-A', 'artifact-X', 0, 'VIDEO', 1, 1000), ('stream-B', 'artifact-Z', 0, 'VIDEO', 1, 1000)");
     }
 
     @AfterAll

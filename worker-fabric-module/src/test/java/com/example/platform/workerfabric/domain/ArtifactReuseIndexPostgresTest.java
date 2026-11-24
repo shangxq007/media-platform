@@ -67,7 +67,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
     @BeforeEach
     void resetAuthority() {
         AssignmentGrantPostgresFixture.truncate(dsl);
-        dsl.execute("truncate table worker_fabric.wf_artifact_reuse_index, artifact cascade");
+        dsl.execute("truncate table worker_fabric.wf_artifact_reuse_index, artifacts.artifact cascade");
         dsl.execute(
                 """
                 insert into artifacts.artifact (
@@ -108,7 +108,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
         assertThat(index.evict(TENANT, REUSE_KEY)).isTrue();
         assertThat(index.lookup(TENANT, REUSE_KEY)).isEmpty();
         assertThat(dsl.fetchExists(
-                DSL.selectOne().from("artifact").where(DSL.field("id").eq(ARTIFACT_ID.value()))))
+                DSL.selectOne().from("artifacts.artifact").where(DSL.field("id").eq(ARTIFACT_ID.value()))))
                 .isTrue();
     }
 
@@ -132,7 +132,7 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
         assertThat(index.purgePendingBefore(NOW.plusSeconds(1))).isOne();
         assertThat(index.lookup(TENANT, REUSE_KEY)).isEmpty();
         assertThat(dsl.fetchExists(
-                DSL.selectOne().from("artifact").where(DSL.field("id").eq(ARTIFACT_ID.value()))))
+                DSL.selectOne().from("artifacts.artifact").where(DSL.field("id").eq(ARTIFACT_ID.value()))))
                 .isTrue();
     }
 

@@ -122,7 +122,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
 
     private com.example.platform.timeline.version.TimelineRevisionSemanticContext storeRevctx(
             String project, String tenant, String revisionId, TimelineRevisionSemanticContext ctx) {
-        if (dsl.fetchCount(dsl.selectOne().from("timeline_revision")
+        if (dsl.fetchCount(dsl.selectOne().from("timeline.timeline_revision")
                 .where(org.jooq.impl.DSL.field("id", String.class).eq(revisionId))) == 0) {
             com.example.platform.render.testsupport.RenderTestSchemaFixture
                     .insertCanonicalRevisionFixture(dsl, tenant, project, revisionId);

@@ -42,10 +42,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
     @BeforeAll
     static void startDatabaseAuthority() throws Exception {
         schema=com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
-        try(var input=AtomicAssignmentGrantValidityPostgresTest.class.getResourceAsStream("/db/migration/V1__baseline.sql")) {
-            if(input==null)throw new IllegalStateException("canonical V1 missing");
-            schema.executeScript(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
-        }
+        schema.migrateApplication();
         var config=new com.zaxxer.hikari.HikariConfig();
         config.setJdbcUrl(PROVIDER.scopedJdbcUrl(schema.name()));
         config.setUsername(PROVIDER.username());config.setPassword(PROVIDER.secret());
@@ -140,7 +137,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
 
         assertThat(second).isInstanceOf(RequestWorkResult.NoWork.class);
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
-        assertThat(count("wf_execution_assignment")).isOne();
+        assertThat(count("worker_fabric.wf_execution_assignment")).isOne();
     }
 
     @Test
@@ -173,7 +170,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
             List<RequestWorkResult> results = List.of(first.get(), second.get());
             assertThat(results).filteredOn(RequestWorkResult::granted).isEmpty();
             assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
-            assertThat(count("wf_execution_assignment")).isOne();
+            assertThat(count("worker_fabric.wf_execution_assignment")).isOne();
         } finally {
             executor.shutdownNow();
         }
@@ -187,7 +184,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         runtimeRegistration(runtime, runtime.requestWork().workerRuntimeIncarnationId().value(),
                 FIXED_CLOCK.instant());
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).contains(granted.grant());
-        assertThat(count("wf_runtime_registration")).isOne();
+        assertThat(count("worker_fabric.wf_runtime_registration")).isOne();
     }
 
     @Test
@@ -199,13 +196,13 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
         assertThat(dsl.fetchOne("select active from worker_fabric.wf_task_lease where lease_id = ?",
                 granted.grant().lease().id().value()).get(0, Boolean.class)).isFalse();
-        assertThat(count("wf_runtime_registration")).isEqualTo(2);
+        assertThat(count("worker_fabric.wf_runtime_registration")).isEqualTo(2);
         assertThatThrownBy(() -> runtimeRegistration(runtime,
                 runtime.requestWork().workerRuntimeIncarnationId().value(), FIXED_CLOCK.instant().plusSeconds(1)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("superseded");
         assertThat(currentIncarnation(runtime)).isEqualTo("replacement");
-        assertThat(count("wf_runtime_registration")).isEqualTo(2);
+        assertThat(count("worker_fabric.wf_runtime_registration")).isEqualTo(2);
     }
 
     @Test
@@ -242,7 +239,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
         }
         assertThat(currentIncarnation(runtime)).isEqualTo("race-replacement");
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
-        assertThat(count("wf_execution_assignment")).isOne();
+        assertThat(count("worker_fabric.wf_execution_assignment")).isOne();
     }
 
     @Test
@@ -268,7 +265,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
                 FIXED_CLOCK.instant());
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
         assertThat(dsl.fetchOne("select active from worker_fabric.wf_task_lease").get(0, Boolean.class)).isFalse();
-        assertThat(count("wf_runtime_registration")).isOne();
+        assertThat(count("worker_fabric.wf_runtime_registration")).isOne();
     }
 
     @Test
@@ -289,7 +286,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("superseded");
         assertThat(currentIncarnation(runtime)).isEqualTo("after-disconnect");
         assertThat(boundary(dsl).findCurrentGrant(granted.taskId())).isEmpty();
-        assertThat(count("wf_runtime_registration")).isEqualTo(2);
+        assertThat(count("worker_fabric.wf_runtime_registration")).isEqualTo(2);
     }
 
     private static String currentIncarnation(TaskCTestFixture.RuntimeFixture runtime) {
@@ -339,7 +336,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
                 assertThat(decision).isEqualTo(CompletionDecision.COMPLETED);return expected;
             });}catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}
         });
-        assertThat(result).isSameAs(expected);assertThat(count("native_publication_probe")).isOne();assertThat(count("wf_completion_event")).isOne();
+        assertThat(result).isSameAs(expected);assertThat(count("native_publication_probe")).isOne();assertThat(count("worker_fabric.wf_completion_event")).isOne();
         assertThat(boundary(dsl).findCurrentGrant(candidate.task().id())).isEmpty();
         assertThat(dsl.fetch("select state from worker_fabric.wf_reservation").getValues("state",String.class)).containsOnly("RELEASED");
     }
@@ -357,8 +354,8 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
                 throw new java.io.IOException("synthetic callback failure");
             });}catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}
         })).isInstanceOf(java.io.UncheckedIOException.class).hasMessageContaining("synthetic callback failure");
-        assertThat(count("artifact")).isZero();
-        assertThat(count("native_publication_probe")).isZero();assertThat(count("wf_completion_event")).isZero();
+        assertThat(count("artifacts.artifact")).isZero();
+        assertThat(count("native_publication_probe")).isZero();assertThat(count("worker_fabric.wf_completion_event")).isZero();
         assertThat(boundary(dsl).findCurrentGrant(candidate.task().id())).contains(granted.grant());
         assertThat(dsl.fetch("select state from worker_fabric.wf_reservation").getValues("state",String.class)).containsOnly("ACTIVE");
     }
@@ -371,7 +368,7 @@ class AtomicAssignmentGrantValidityPostgresTest extends PostgresTestContainerSup
             try{return publication.commit(candidate.task().id(),execution,()->{calls.incrementAndGet();throw new java.io.IOException("must not enter");});}
             catch(java.io.IOException e){throw new java.io.UncheckedIOException(e);}
         })).isInstanceOf(IllegalStateException.class).hasMessageContaining("no longer current");
-        assertThat(calls.get()).isZero();assertThat(count("native_publication_probe")).isZero();assertThat(count("wf_completion_event")).isZero();
+        assertThat(calls.get()).isZero();assertThat(count("native_publication_probe")).isZero();assertThat(count("worker_fabric.wf_completion_event")).isZero();
     }
 
     private record Granted(

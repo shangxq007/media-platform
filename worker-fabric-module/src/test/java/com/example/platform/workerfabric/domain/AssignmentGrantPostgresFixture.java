@@ -16,24 +16,24 @@ final class AssignmentGrantPostgresFixture {
         Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrations)
-                .baselineOnMigrate(true)
+                .defaultSchema("public").baselineOnMigrate(false)
                 .load()
                 .migrate();
     }
 
     static void truncate(DSLContext dsl) {
         dsl.execute("""
-            truncate table worker_fabric.wf_completion_event, wf_execution_observation,
-                wf_physical_release_confirmation, wf_local_admission,
-                wf_request_work_resolution, wf_task_ownership,
-                wf_task_lease_reservation, wf_task_lease, wf_reservation_device,
-                wf_reservation, wf_execution_assignment_device, wf_execution_assignment,
-                wf_execution_attempt, wf_execution_ownership_generation,
-                wf_execution_backend_selection, wf_runtime_registration,
-                wf_host_resource_snapshot_device, wf_host_resource_snapshot,
-                wf_host_snapshot_generation_authority,
-                wf_worker_runtime_connection, wf_physical_host_connection,
-                wf_host_registration cascade
+            truncate table worker_fabric.wf_completion_event, worker_fabric.wf_execution_observation,
+                worker_fabric.wf_physical_release_confirmation, worker_fabric.wf_local_admission,
+                worker_fabric.wf_request_work_resolution, worker_fabric.wf_task_ownership,
+                worker_fabric.wf_task_lease_reservation, worker_fabric.wf_task_lease, worker_fabric.wf_reservation_device,
+                worker_fabric.wf_reservation, worker_fabric.wf_execution_assignment_device, worker_fabric.wf_execution_assignment,
+                worker_fabric.wf_execution_attempt, worker_fabric.wf_execution_ownership_generation,
+                worker_fabric.wf_execution_backend_selection, worker_fabric.wf_runtime_registration,
+                worker_fabric.wf_host_resource_snapshot_device, worker_fabric.wf_host_resource_snapshot,
+                worker_fabric.wf_host_snapshot_generation_authority,
+                worker_fabric.wf_worker_runtime_connection, worker_fabric.wf_physical_host_connection,
+                worker_fabric.wf_host_registration cascade
             """);
     }
 

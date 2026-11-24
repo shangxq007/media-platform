@@ -49,7 +49,7 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
+                .baselineOnMigrate(false)
                 .load();
         flyway.migrate();
         var ds = new org.springframework.jdbc.datasource.DriverManagerDataSource();

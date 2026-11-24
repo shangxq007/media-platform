@@ -923,7 +923,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
     private void requireOwnedProject(String tenantId, String projectId) {
         if (tenantId == null || tenantId.isBlank()
                 || projectId == null || projectId.isBlank()
-                || dsl.fetchExists(DSL.selectOne().from("project")
+                || dsl.fetchExists(DSL.selectOne().from("identity.project")
                         .where(DSL.field("id", String.class).eq(projectId))
                         .and(DSL.field("tenant_id", String.class).eq(tenantId))) == false) {
             throw new IllegalArgumentException(

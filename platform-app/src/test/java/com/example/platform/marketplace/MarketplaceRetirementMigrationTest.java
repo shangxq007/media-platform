@@ -14,7 +14,7 @@ class MarketplaceRetirementMigrationTest extends PostgresTestContainerSupport {
  @Test void exactTopLevelIntentAndSharedEligibilityPreserveAllOtherBytesAndState() {
   String schema=isolatedSchemaName();var admin=new JdbcTemplate(createDataSource());admin.execute("create schema "+schema);
   try {
-   Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("5").load().migrate();
+   Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration").target("5").load().migrate();
    var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
    var expected=new LinkedHashMap<String,Expected>();
    for(var payload:List.of(
@@ -51,7 +51,7 @@ class MarketplaceRetirementMigrationTest extends PostgresTestContainerSupport {
       for(String task:List.of("PENDING","RUNNING","RETRY","COMPLETED","FAILED"))
        seed(jdbc,expected,"{\"reason\":\"asset.archived\"}",type,scope[0],scope[1],job,task,
         type.equals("SEARCH_REINDEX")&&!("tenant".equals(scope[0])&&"project".equals(scope[1]))&&List.of("PENDING","RUNNING","RETRY").contains(job));
-   Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
+   Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration").load().migrate();
    for(var e:expected.entrySet()) {
     var afterJob=jdbc.queryForMap("select * from execution.platform_job where id=?",e.getKey());
     var afterTask=jdbc.queryForMap("select * from execution.platform_task where job_id=?",e.getKey());

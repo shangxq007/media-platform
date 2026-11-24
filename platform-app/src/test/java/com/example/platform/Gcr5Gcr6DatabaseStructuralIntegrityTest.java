@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * relations pass, cross-owner/cross-revision references fail closed at the
  * database level, and canonical history is not destroyed by accidental cascade.
  *
- * Uses the exact canonical V1 schema (no fixture SQL).
+ * Exercises the original constraints after canonical Flyway migration.
  */
 class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSupport {
 
@@ -31,45 +31,10 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
 
     @BeforeAll
     static void createSchema() throws Exception {
-        schemaName = isolatedSchemaName();
-        dataSource = PROVIDER.dataSourceForSchema(schemaName,MANUAL_MAX_POOL_SIZE,MANUAL_MIN_IDLE);
+        org.flywaydb.core.Flyway.configure().dataSource(jdbcUrl(), username(), password())
+                .defaultSchema("public").locations("classpath:db/migration").load().migrate();
+        dataSource = createDataSource();
         jdbc = new JdbcTemplate(dataSource);
-        // Apply the canonical V1 schema directly (single source of truth).
-        var sql = new String(
-                Gcr5Gcr6DatabaseStructuralIntegrityTest.class.getClassLoader()
-                        .getResourceAsStream("db/migration/V1__baseline.sql")
-                        .readAllBytes());
-        // GCR5/GCR6: run the canonical V1 inside a UNIQUE isolated logical schema
-        // (never DROP the shared public schema — that would destroy the shared
-        // runtime's flyway history and break sibling tests).
-        jdbc.execute("CREATE SCHEMA " + schemaName);
-        // Split on ';\n' but treat plpgsql $$ ... $$ bodies as atomic.
-        var buffer = new StringBuilder();
-        for (String stmt : sql.split(";\\s*\n")) {
-            if (stmt.isBlank()) continue;
-            buffer.append(stmt).append(";\n");
-            if (buffer.toString().contains("$$") && !isBalanced(buffer.toString())) {
-                continue; // inside a plpgsql function body — keep accumulating
-            }
-            jdbc.execute(buffer.toString());
-            buffer.setLength(0);
-        }
-        if (buffer.length() > 0) {
-            jdbc.execute(buffer.toString());
-        }
-    }
-
-    /** Unique logical schema for this class — isolated from the shared public schema. */
-    private static String schemaName;
-
-    private static boolean isBalanced(String s) {
-        int count = 0;
-        int idx = 0;
-        while ((idx = s.indexOf("$$", idx)) >= 0) {
-            count++;
-            idx += 2;
-        }
-        return count % 2 == 0;
     }
 
     private static void assertForeignKeyViolation(Executable executable, String message) {

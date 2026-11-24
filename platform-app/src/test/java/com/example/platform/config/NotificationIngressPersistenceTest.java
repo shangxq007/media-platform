@@ -76,7 +76,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     private final NotificationInboundEvent event = new NotificationInboundEvent("render.job.created", "job-ep20", Map.of("renderJobId", "job-ep20"));
 
     @BeforeEach void prepare() {
-        dsl.execute("TRUNCATE infrastructure.outbox_events, notification_event, notification_delivery");
+        dsl.execute("TRUNCATE infrastructure.outbox_events, notification.notification_event, notification.notification_delivery");
         reset(provider); reset(rawOutbox);
         when(provider.channel()).thenReturn("TEST");
         when(provider.providerCode()).thenReturn("TEST");
@@ -85,18 +85,18 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     }
     @AfterEach void clearTenant() { TenantContext.clear(); }
     private int count(String table) { return dsl.fetchCount(DSL.table(table)); }
-    private String id() { return dsl.select(DSL.field("id", String.class)).from("outbox_events").fetchSingleInto(String.class); }
+    private String id() { return dsl.select(DSL.field("id", String.class)).from("infrastructure.outbox_events").fetchSingleInto(String.class); }
 
     @Test void typedIngressReconstructsAndDeliversOnceForRepeatedProcessedKey() {
         assertEquals(1, context.getBeansOfType(NotificationEventPublisher.class).size());
         ingress.publish(event, "ep20-notification");
         String id = id();
         ingress.publish(event, "ep20-notification");
-        assertEquals(1, count("outbox_events"));
+        assertEquals(1, count("infrastructure.outbox_events"));
         assertTrue(dispatcher.processOnce(id));
         assertEquals("PROCESSED", outbox.readEvent(id).get("status"));
-        assertEquals(1, count("notification_event"));
-        assertEquals(1, count("notification_delivery"));
+        assertEquals(1, count("notification.notification_event"));
+        assertEquals(1, count("notification.notification_delivery"));
         assertEquals(event.eventType(), dsl.fetchOne("select event_type from notification.notification_event").get(0));
         ingress.publish(event, "ep20-notification");
         assertFalse(dispatcher.processOnce(id));
@@ -105,19 +105,19 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     @Test void missingTenantAndKeyScopeCollisionRejectWithoutAnotherRow() {
         TenantContext.clear();
         assertThrows(RuntimeException.class, () -> ingress.publish(event, "key"));
-        assertEquals(0, count("outbox_events"));
+        assertEquals(0, count("infrastructure.outbox_events"));
         TenantContext.set("ep20-tenant"); ingress.publish(event, "key");
         TenantContext.set("other-tenant");
         assertThrows(IllegalArgumentException.class, () -> ingress.publish(event, "key"));
         TenantContext.set("ep20-tenant");
         assertThrows(IllegalArgumentException.class, () -> ingress.publish(new NotificationInboundEvent("test", "different-subject", Map.of()), "key"));
-        assertEquals(1, count("outbox_events"));
+        assertEquals(1, count("infrastructure.outbox_events"));
     }
     @Test void callerRollbackLeavesNoOrphanAppend() {
         assertThrows(IllegalStateException.class, () -> new TransactionTemplate(tx).execute(status -> {
             ingress.publish(event, "rolled-back"); throw new IllegalStateException("rollback domain transaction");
         }));
-        assertEquals(0, count("outbox_events"));
+        assertEquals(0, count("infrastructure.outbox_events"));
     }
     @Test void providerExceptionRollsBackNotificationRowsAndOutboxRecordsFailure() {
         when(provider.send(any())).thenThrow(new IllegalStateException("isolated provider unavailable"));
@@ -125,22 +125,22 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         String id=id();
         assertFalse(dispatcher.processOnce(id));
         assertEquals("FAILED", outbox.readEvent(id).get("status"));
-        assertEquals(0, count("notification_event"));
-        assertEquals(0, count("notification_delivery"));
+        assertEquals(0, count("notification.notification_event"));
+        assertEquals(0, count("notification.notification_delivery"));
     }
     @Test void noKeyKeepsIndependentNotificationsDistinct() {
         ingress.publish(event, null); ingress.publish(event, null);
-        assertEquals(2, count("outbox_events"));
-        for(String id:dsl.select(DSL.field("id",String.class)).from("outbox_events").fetchInto(String.class))assertTrue(dispatcher.processOnce(id));
-        assertEquals(2,count("notification_event"));assertEquals(2,count("notification_delivery"));verify(provider,times(2)).send(any());
+        assertEquals(2, count("infrastructure.outbox_events"));
+        for(String id:dsl.select(DSL.field("id",String.class)).from("infrastructure.outbox_events").fetchInto(String.class))assertTrue(dispatcher.processOnce(id));
+        assertEquals(2,count("notification.notification_event"));assertEquals(2,count("notification.notification_delivery"));verify(provider,times(2)).send(any());
     }
     @Test void postClaimReadFailureDoesNotStrandProcessing() {
         ingress.publish(event,"read-failure");String id=id();
         doThrow(new IllegalStateException("read after claim failed")).when(rawOutbox).readClaimedEvent(any(OutboxClaim.class));
         Throwable escaped=null;try{dispatcher.processOnce(id);}catch(RuntimeException failure){escaped=failure;}
         assertEquals("FAILED",dsl.fetchValue("select status from infrastructure.outbox_events where id=?",id),"durable claim stranded after read failure: "+escaped);
-        assertEquals(0,count("notification_event"));assertEquals(0,count("notification_delivery"));
-        reset(rawOutbox);due(id);assertTrue(dispatcher.processOnce(id));assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));
+        assertEquals(0,count("notification.notification_event"));assertEquals(0,count("notification.notification_delivery"));
+        reset(rawOutbox);due(id);assertTrue(dispatcher.processOnce(id));assertEquals(1,count("notification.notification_event"));assertEquals(1,count("notification.notification_delivery"));
     }
     @Test void consumerCommitThenAcknowledgmentFailureReplaysOneLocalNotification() {
         ingress.publish(event,"ack-failure");String id=id();
@@ -155,7 +155,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         assertFalse(dispatcher.processOnce(id));assertEquals("FAILED",outbox.readEvent(id).get("status"));
         dsl.execute("update infrastructure.outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);
         assertTrue(dispatcher.processOnce(id));assertEquals("PROCESSED",outbox.readEvent(id).get("status"));
-        assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));verify(provider,times(1)).send(any());
+        assertEquals(1,count("notification.notification_event"));assertEquals(1,count("notification.notification_delivery"));verify(provider,times(1)).send(any());
     }
     private void due(String id){dsl.execute("update infrastructure.outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);}
     private void expire(String id){var table=com.example.platform.typedschema.jooq.generated.infrastructure.tables.OutboxEvents.OUTBOX_EVENTS;
@@ -187,7 +187,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
             } finally{release.countDown();}
             assertTrue(result.get(5,java.util.concurrent.TimeUnit.SECONDS));
         }
-        assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));
+        assertEquals(1,count("notification.notification_event"));assertEquals(1,count("notification.notification_delivery"));
     }
     @Test void concurrentDuplicateListenerTransactionsUseTheSameDurableIdentity() throws Exception {
         ingress.publish(event,"concurrent");String id=id();var ready=new java.util.concurrent.CountDownLatch(2);var start=new java.util.concurrent.CountDownLatch(1);
@@ -200,20 +200,20 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
             }catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}finally{TenantContext.clear();}}));
             assertTrue(ready.await(5,java.util.concurrent.TimeUnit.SECONDS));start.countDown();for(var future:futures)future.get(10,java.util.concurrent.TimeUnit.SECONDS);
         } finally{start.countDown();}
-        assertTrue(dispatcher.processOnce(id));assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));verify(provider,times(1)).send(any());
+        assertTrue(dispatcher.processOnce(id));assertEquals(1,count("notification.notification_event"));assertEquals(1,count("notification.notification_delivery"));verify(provider,times(1)).send(any());
     }
     @Test void listenerRollbackCanRetryAndUncertainProviderResultIsNotRelabeled() {
         ingress.publish(event,"rollback-retry");String id=id();when(provider.send(any())).thenThrow(new IllegalStateException("provider unavailable"));
-        assertFalse(dispatcher.processOnce(id));assertEquals(0,count("notification_event"));assertEquals(0,count("notification_delivery"));
+        assertFalse(dispatcher.processOnce(id));assertEquals(0,count("notification.notification_event"));assertEquals(0,count("notification.notification_delivery"));
         doReturn(new DeliveryResult("UNCERTAIN","unconfirmed")).when(provider).send(any());due(id);assertTrue(dispatcher.processOnce(id));
-        assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));assertEquals("UNCERTAIN",dsl.fetchValue("select status from notification.notification_delivery"));
+        assertEquals(1,count("notification.notification_event"));assertEquals(1,count("notification.notification_delivery"));assertEquals("UNCERTAIN",dsl.fetchValue("select status from notification.notification_delivery"));
         assertFalse(dispatcher.processOnce(id));verify(provider,times(2)).send(any());
     }
     @Test void durableIdentityRequiresMatchingTenantAndIsRetiredAfterDispatch() {
         ingress.publish(event,"scope");String id=id();TenantContext.set("other");
         assertThrows(RuntimeException.class,()->com.example.platform.outbox.api.event.OutboxDeliveryContext.run(
                 new com.example.platform.outbox.api.event.OutboxDeliveryContext.Delivery(id,"ep20-tenant"),()->context.getBean(NotificationEventHandler.class).handle(event)));
-        assertEquals(0,count("notification_event"));TenantContext.set("ep20-tenant");assertTrue(dispatcher.processOnce(id));
+        assertEquals(0,count("notification.notification_event"));TenantContext.set("ep20-tenant");assertTrue(dispatcher.processOnce(id));
         assertThrows(IllegalStateException.class,com.example.platform.outbox.api.event.OutboxDeliveryContext::require);
     }
     @Test void terminatedClaimantIsRecoveredByANewDispatcher() throws Exception {
@@ -236,7 +236,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
             restarted.retryDueEvents();assertEquals("FAILED",outbox.readEvent(id).get("status"));due(id);assertTrue(restarted.processOnce(id));
         }
         assertFalse(outbox.markProcessed(new OutboxClaim(id,token)));
-        assertEquals("PROCESSED",outbox.readEvent(id).get("status"));assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));
+        assertEquals("PROCESSED",outbox.readEvent(id).get("status"));assertEquals(1,count("notification.notification_event"));assertEquals(1,count("notification.notification_delivery"));
     }
     @Test void retiredUnfencedMutationApisAreAbsent() {
         assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("markProcessed",String.class));
@@ -244,6 +244,6 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("quarantine",String.class,String.class,String.class));
         assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("lockForProcessing",String.class,String.class));
         assertThrows(IllegalStateException.class,()->context.getBean(NotificationEventHandler.class).handle(event));
-        assertEquals(0,count("notification_event"));
+        assertEquals(0,count("notification.notification_event"));
     }
 }

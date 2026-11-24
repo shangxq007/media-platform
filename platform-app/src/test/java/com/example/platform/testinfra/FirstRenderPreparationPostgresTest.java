@@ -102,7 +102,7 @@ class FirstRenderPreparationPostgresTest {
                     new RenderPlanningEntryService(),new PhysicalPlanningEntryService(),new ProviderBindingEntryService(),lifecycle);
             if("BOUND_GRAPH_SAVE".equals(fault)) {
                 db.execute("create function reject_bound_graph_save() returns trigger language plpgsql as $$ begin raise exception 'synthetic save failure'; end $$");
-                db.execute("create trigger reject_bound_graph_save before insert on render_binding_inputs for each row execute function reject_bound_graph_save()");
+                db.execute("create trigger reject_bound_graph_save before insert on render.render_binding_inputs for each row execute function reject_bound_graph_save()");
             }
             when(starter.start(any(),any(),any())).thenReturn(true);
             save=new RenderBoundGraphService(new JooqBoundGraphInputStore(db),lifecycle);
@@ -120,7 +120,7 @@ class FirstRenderPreparationPostgresTest {
             assertEquals(code,job.get("error_message"));assertNull(job.get("graph_preparation_deadline"));
             assertEquals(1,world.db.fetchOne("select count(*) from render.render_job_status_history where job_id=? and to_status='FAILED' and error_code=?",job.get("id"),code).get(0,Integer.class));
             assertEquals(1,world.db.fetchOne("select count(*) from infrastructure.outbox_events where aggregate_id=? and event_type='render.job.failed'",job.get("id")).get(0,Integer.class));
-            assertEquals(0,world.count("quota_usage_operation"));
+            assertEquals(0,world.count("entitlement.quota_usage_operation"));
             verifyNoInteractions(starter);
         }
         public void close() throws Exception { world.close(); }
@@ -135,7 +135,7 @@ class FirstRenderPreparationPostgresTest {
         try(var s=new Scenario("BINDING")){assertThrows(RuntimeException.class,s::plan);s.assertFailed("BINDING");}
     }
     @Test void databaseSaveFailureUsesRenderOwnerAndNeverStartsWorkflow() throws Exception {
-        try(var s=new Scenario("BOUND_GRAPH_SAVE")){var plan=s.plan();assertThrows(RuntimeException.class,()->s.save.save(plan));s.assertFailed("BOUND_GRAPH_SAVE");assertEquals(0,s.world.count("render_binding_inputs"));}
+        try(var s=new Scenario("BOUND_GRAPH_SAVE")){var plan=s.plan();assertThrows(RuntimeException.class,()->s.save.save(plan));s.assertFailed("BOUND_GRAPH_SAVE");assertEquals(0,s.world.count("render.render_binding_inputs"));}
     }
     @Test void crashedPreparationIsRecoveredAfterDurableDeadlineButNotBeforeIt() throws Exception {
         try(var s=new Scenario("NONE")) {
@@ -150,7 +150,7 @@ class FirstRenderPreparationPostgresTest {
             assertEquals("FAILED",s.job().get("status"));
             assertEquals("GRAPH_PREPARATION_BINDING_TIMEOUT",s.job().get("error_message"));
             assertThrows(RuntimeException.class,()->s.save.save(plan));
-            verifyNoInteractions(s.starter);assertEquals(0,s.world.count("render_graph_execution"));
+            verifyNoInteractions(s.starter);assertEquals(0,s.world.count("render.render_graph_execution"));
         }
     }
     @Test void actualBeginDisarmsPreparationRecoveryAndLateFailureCannotOverwriteExecution() throws Exception {
@@ -164,7 +164,7 @@ class FirstRenderPreparationPostgresTest {
             s.lifecycle.begin(TENANT,plan.renderJobId(),bound.planRef(),bound.planDigest(),bound.expectedExecutableTaskGraphDigest(),task);
             s.lifecycle.failPreparation(TENANT,plan.renderJobId(),PreparationStage.DISPATCH);
             assertEquals("EXECUTING",s.job().get("status"));assertNull(s.job().get("graph_preparation_deadline"));
-            assertEquals(0,s.world.count("quota_usage_operation"));
+            assertEquals(0,s.world.count("entitlement.quota_usage_operation"));
         }
     }
     static TimelineDocument document() {

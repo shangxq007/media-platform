@@ -59,7 +59,7 @@ class AuditServiceTest extends PostgresTestContainerSupport {
         assertTrue(id.startsWith("aud_"));
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("audit_records"))
+                .from(DSL.table("policy.audit_records"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -76,7 +76,7 @@ class AuditServiceTest extends PostgresTestContainerSupport {
                 Map.of("key", "value"), AuditCategory.CONFIG);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("audit_records"))
+                .from(DSL.table("policy.audit_records"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -90,7 +90,7 @@ class AuditServiceTest extends PostgresTestContainerSupport {
                 Map.of("key", "value"), null);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("audit_records"))
+                .from(DSL.table("policy.audit_records"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -155,7 +155,7 @@ class AuditServiceTest extends PostgresTestContainerSupport {
         String id = service.record("user", "u-1", "action", "resource", "r-1", null);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("audit_records"))
+                .from(DSL.table("policy.audit_records"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 

@@ -27,7 +27,7 @@ class SocialSchedulerCompositionPostgresTest extends PostgresTestContainerSuppor
     static class Assembly {}
     @BeforeAll static void migrate() {
         String schema = isolatedSchemaName();
-        Flyway.configure().dataSource(jdbcUrl(), username(), password()).schemas(schema).defaultSchema(schema)
+        Flyway.configure().dataSource(jdbcUrl(), username(), password()).schemas("public").defaultSchema("public")
                 .locations("classpath:db/migration").load().migrate();
         jdbc = new JdbcTemplate(new DriverManagerDataSource(jdbcUrl() + (jdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema, username(), password()));
     }

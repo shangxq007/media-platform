@@ -67,7 +67,7 @@ class JooqArtifactCommitServiceProvenanceValidationTest extends PostgresTestCont
 
     @BeforeEach
     void cleanCanonicalTables() {
-        dsl.execute("TRUNCATE TABLE artifacts.artifact_relation, artifact_replica, artifact CASCADE");
+        dsl.execute("TRUNCATE TABLE artifacts.artifact_relation, artifacts.artifact_replica, artifacts.artifact CASCADE");
     }
 
     @Test

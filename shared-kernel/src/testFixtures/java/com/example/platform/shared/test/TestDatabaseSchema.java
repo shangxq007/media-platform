@@ -23,12 +23,15 @@ public final class TestDatabaseSchema implements AutoCloseable {
     }
     public String name() { return name; }
     public Connection connection() { return connection; }
-    /** Generated public tables render into this class's schema, matching JDBC search_path. */
+    /** Business tables retain their real domain schemas. The local schema holds only test scratch objects. */
     public org.jooq.DSLContext dsl() {
-        var settings=new org.jooq.conf.Settings().withRenderMapping(
-            new org.jooq.conf.RenderMapping().withSchemata(
-                new org.jooq.conf.MappedSchema().withInput("public").withOutput(name)));
-        return org.jooq.impl.DSL.using(connection,org.jooq.SQLDialect.POSTGRES,settings);
+        return org.jooq.impl.DSL.using(connection,org.jooq.SQLDialect.POSTGRES);
+    }
+
+    public void migrateApplication() {
+        var provider = TestDatabaseConnectionProvider.fromControlledLaunch();
+        org.flywaydb.core.Flyway.configure().dataSource(provider.jdbcUrl(), provider.username(), provider.secret())
+                .defaultSchema("public").locations("classpath:db/migration").validateOnMigrate(true).load().migrate();
     }
     /** Trusted baseline SQL only. PostgreSQL JDBC parses dollar-quoted/multi-statement SQL.
      * Any SQL failure fails setup; no psql/container shell, URL or credential override.

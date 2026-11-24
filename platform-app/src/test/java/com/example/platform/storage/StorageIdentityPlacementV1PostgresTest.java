@@ -98,8 +98,8 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .schemas(SCHEMA)
-                .defaultSchema(SCHEMA)
+                .schemas("public")
+                .defaultSchema("public")
                 .load()
                 .migrate();
 

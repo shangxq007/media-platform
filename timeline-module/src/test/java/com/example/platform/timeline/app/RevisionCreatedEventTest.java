@@ -83,7 +83,7 @@ class RevisionCreatedEventTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
-        dsl.execute("truncate table infrastructure.outbox_events, project, product cascade");
+        dsl.execute("truncate table infrastructure.outbox_events, identity.project, render.product cascade");
         TenantContext.set(TENANT);
         service = new TimelineRevisionSaveService(
                 dsl,

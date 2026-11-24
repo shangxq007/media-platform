@@ -176,7 +176,7 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         String fault="scope_fault_"+UUID.randomUUID().toString().replace("-","");
         jdbc.execute("create function "+fault+"() returns trigger language plpgsql as $$ begin raise exception 'controlled context persistence failure'; return new; end $$");
         try {
-            jdbc.execute("create trigger "+fault+" before insert on render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+fault+"()");
+            jdbc.execute("create trigger "+fault+" before insert on render.render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+fault+"()");
             assertEquals(500,callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)).statusCode());
             assertEquals(jobsBefore,count("select count(*) from render.render_job where tenant_id=?",tenant));
             assertEquals(0,count("select count(*) from render.render_execution_context where tenant_id=?",tenant));assertEquals(quotaBefore,count("select count(*) from entitlement.quota_usage"));
@@ -197,20 +197,20 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
     }
     @Test void migrationPreservesAmbiguousHistoryAndOnlyConvertsKnownScopeEncodings() {
         String schema="scope_migration_"+UUID.randomUUID().toString().replace("-","");
-        var flyway=org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas(schema).defaultSchema(schema)
+        var flyway=org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas("public").defaultSchema("public")
                 .locations("classpath:db/migration").target("1").load();flyway.migrate();
         jdbc.update("insert into "+schema+".tenant(id,name,status,created_at) values ('tenant-old','Old','ACTIVE',now())");
         jdbc.update("insert into "+schema+".\"user\"(id,tenant_id,username,email,role,status,created_at) values ('member-old','tenant-old','old','same@test.invalid','MEMBER','ACTIVE',now())");
         jdbc.update("insert into "+schema+".project(id,tenant_id,name,status,created_at) values ('project-old','tenant-old','Old','ACTIVE',now())");
         jdbc.update("insert into "+schema+".workspace(id,tenant_id,name,status,created_at,updated_at) values ('workspace-old','tenant-old','Old','ACTIVE',now(),now())");
         jdbc.update("insert into "+schema+".user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('role-old','tenant-old','project-old','member-old','role',now()),('tenant-role','tenant-old','tenant-old','member-old','role',now())");
-        org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
+        org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas("public").defaultSchema("public").locations("classpath:db/migration").load().migrate();
         assertEquals(0,count("select count(*) from "+schema+".account"));
         assertEquals(1,count("select count(*) from "+schema+".\"user\" where id='member-old' and account_id is null"));
         assertEquals(1,count("select count(*) from "+schema+".project where id='project-old' and workspace_id is null"));
         assertEquals(1,count("select count(*) from "+schema+".user_role_assignment where id='role-old' and project_id='project-old' and workspace_id is null"));
         assertEquals(1,count("select count(*) from "+schema+".user_role_assignment where id='tenant-role' and project_id is null and workspace_id is null"));
-        assertEquals(0,org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate().migrationsExecuted);
+        assertEquals(0,org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas("public").defaultSchema("public").locations("classpath:db/migration").load().migrate().migrationsExecuted);
     }
 
     @Test void subscriptionBeneficiaryIsTenantAndBillingManagementDoesNotGrantContent() throws Exception {

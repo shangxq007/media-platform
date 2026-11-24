@@ -11,7 +11,7 @@ class MarketplaceMigrationTest extends PostgresTestContainerSupport {
     @Test void historicalListingAndReviewEvidenceSurviveWhileInvalidPendingPreparationStops() {
         String schema=isolatedSchemaName();var admin=new JdbcTemplate(createDataSource());admin.execute("create schema "+schema);
         try {
-            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("5").load().migrate();
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration").target("5").load().migrate();
             var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
             jdbc.update("insert into identity.tenant(id,name,status,created_at) values ('tenant','tenant','ACTIVE',now())");
             jdbc.update("insert into identity.project(id,tenant_id,name,status,created_at) values ('historical-project','tenant','Historical','ACTIVE',now())");
@@ -23,7 +23,7 @@ class MarketplaceMigrationTest extends PostgresTestContainerSupport {
                 jdbc.update("insert into execution.platform_job(id,job_type,aggregate_type,aggregate_id,tenant_id,project_id,status,payload_json,created_at) values (?,'MARKETPLACE_PREPARE','ASSET','asset',null,null,?,'{\"assetId\":\"asset\"}',now())",job,job.equals("pending")?"PENDING":"COMPLETED");
                 jdbc.update("insert into execution.platform_task(id,job_id,task_type,capability,status,created_at) values (?,?,'PACKAGE','PACKAGE',?,now())","task-"+job,job,job.equals("pending")?"PENDING":"COMPLETED");
             }
-            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("6").load().migrate();
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration").target("6").load().migrate();
             assertThat(jdbc.queryForObject("select admitted_at is null from marketplace.marketplace_listing where id='listing'",Boolean.class)).isTrue();
             assertThat(jdbc.queryForObject("select legacy_snapshot->>'title' from marketplace.marketplace_listing where id='listing'",String.class)).isEqualTo("Historical title");
             assertThat(jdbc.queryForObject("select legacy_snapshot->>'status' from marketplace.marketplace_listing where id='listing'",String.class)).isEqualTo("PUBLISHED");
@@ -40,12 +40,12 @@ class MarketplaceMigrationTest extends PostgresTestContainerSupport {
     @Test void retiredPendingEnvelopesAreExplicitlyDeadLetteredWithoutRewritingEvidence() {
         String schema=isolatedSchemaName();var admin=new JdbcTemplate(createDataSource());admin.execute("create schema "+schema);
         try {
-            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("6").load().migrate();
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration").target("6").load().migrate();
             var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
             String payload="{\"envelopeVersion\":1,\"tenantId\":\"tenant\",\"eventType\":\"asset.published\",\"eventVersion\":1,\"aggregateType\":\"ASSET\",\"aggregateId\":\"asset\",\"payload\":{\"assetId\":\"asset\",\"assetVersion\":\"v1\",\"assetType\":\"MEDIA\",\"projectId\":\"project\",\"publishStatus\":\"PUBLISHED\"}}";
             for(String status:java.util.List.of("PENDING","FAILED","PROCESSING","PROCESSED"))
                 jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,created_at,idempotency_key,locked_by,locked_at) values (?,'ASSET','asset','asset.published',1,?,?,now(),?,'old-claim',now())",status,payload,status,"key-"+status);
-            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas("public").defaultSchema("public").locations("classpath:db/migration").load().migrate();
             for(String status:java.util.List.of("PENDING","FAILED","PROCESSING")) {
                 var row=jdbc.queryForMap("select * from infrastructure.outbox_events where id=?",status);
                 assertThat(row.get("status")).isEqualTo("DEAD_LETTER");assertThat(row.get("payload")).isEqualTo(payload);

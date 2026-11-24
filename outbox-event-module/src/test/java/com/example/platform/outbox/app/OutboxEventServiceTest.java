@@ -71,7 +71,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertTrue(id.startsWith("obx_"));
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -111,7 +111,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
         assertEquals(id1, id2);
 
-        int count = dsl.fetchCount(DSL.table("outbox_events"));
+        int count = dsl.fetchCount(DSL.table("infrastructure.outbox_events"));
         assertEquals(1, count);
     }
 
@@ -122,7 +122,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         String id2 = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         assertTrue(!id1.equals(id2));
-        int count = dsl.fetchCount(DSL.table("outbox_events"));
+        int count = dsl.fetchCount(DSL.table("infrastructure.outbox_events"));
         assertEquals(2, count);
     }
 
@@ -133,7 +133,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         ack(id);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -148,7 +148,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         fail(id, "TEST", "test error");
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -166,7 +166,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         fail(id, "TEST", "test error");
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -181,7 +181,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         service.markDeadLetter(id, "test reason");
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -196,7 +196,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         service.markDeadLetter(id, "test reason");
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -247,7 +247,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         ack(id);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -262,7 +262,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         fail(id, "TIMEOUT", "Connection timed out");
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -281,7 +281,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         fail(id, "ERR", "e3");
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -297,7 +297,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
         fail(id, "ERR", "e1");
         List<Map<String, Object>> rows1 = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
         java.time.LocalDateTime next1 = ((java.sql.Timestamp) rows1.get(0).get("next_attempt_at")).toLocalDateTime();
@@ -306,7 +306,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         try { Thread.sleep(10); } catch (InterruptedException ignored) {}
         fail(id, "ERR", "e2");
         List<Map<String, Object>> rows2 = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
         java.time.LocalDateTime next2 = ((java.sql.Timestamp) rows2.get(0).get("next_attempt_at")).toLocalDateTime();
@@ -322,7 +322,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         String id2 = service.append(OutboxTestEvents.order("ord-1", "v2", "idem-proc-1"));
 
         assertEquals(id1, id2);
-        int count = dsl.fetchCount(DSL.table("outbox_events"));
+        int count = dsl.fetchCount(DSL.table("infrastructure.outbox_events"));
         assertEquals(1, count);
     }
 
@@ -332,11 +332,11 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         String id2 = service.append(OutboxTestEvents.order("ord-1", "v2", "idem-pend-1"));
 
         assertEquals(id1, id2);
-        int count = dsl.fetchCount(DSL.table("outbox_events"));
+        int count = dsl.fetchCount(DSL.table("infrastructure.outbox_events"));
         assertEquals(1, count);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id1))
                 .fetchMaps();
         assertEquals("PENDING", rows.get(0).get("status"));
@@ -352,7 +352,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertTrue(locked.isPresent());
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 
@@ -374,7 +374,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     @Test
     void resetDueFailedEventsResetsExpiredEvents() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
-        dsl.update(DSL.table("outbox_events"))
+        dsl.update(DSL.table("infrastructure.outbox_events"))
                 .set(DSL.field("status"), "FAILED")
                 .set(DSL.field("next_attempt_at"), OffsetDateTime.now().minusSeconds(60))
                 .set(DSL.field("retry_count"), 1)
@@ -385,7 +385,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertEquals(1, reset);
 
         List<Map<String, Object>> rows = dsl.select()
-                .from(DSL.table("outbox_events"))
+                .from(DSL.table("infrastructure.outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
 

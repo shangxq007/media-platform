@@ -70,8 +70,8 @@ public final class PromptTestSchemaFixture {
         dsl.execute("""
             TRUNCATE TABLE
                 prompt.prompt_execution_run,
-                prompt_template_version,
-                prompt_template
+                prompt.prompt_template_version,
+                prompt.prompt_template
             RESTART IDENTITY CASCADE
         """);
     }

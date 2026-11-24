@@ -53,7 +53,7 @@ class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainerSup
         dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
         
         OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(DSL.table("tenant_litellm_virtual_key"))
+        dsl.insertInto(DSL.table("infrastructure.tenant_litellm_virtual_key"))
                 .columns(
                         DSL.field("tenant_id"),
                         DSL.field("virtual_key"),

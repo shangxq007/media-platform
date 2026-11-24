@@ -87,13 +87,13 @@ class PlatformCapabilityTerminalRacePostgresTest {
                 assertTrue(callbackEntered.await(4,TimeUnit.SECONDS));
                 cancellation = pool.submit(() -> connection(w,cancelPid,(owner,db) -> owner.cancel("tenant-a","project-a",f.plan().executionId(),1)));
                 waitForActualDatabaseLock(w.db,cancelPid,publisherPid);
-                assertFalse(cancellation.isDone()); assertEquals(0, w.count("artifact")); assertEquals(0,w.count("platform_execution_result"));
+                assertFalse(cancellation.isDone()); assertEquals(0, w.count("artifacts.artifact")); assertEquals(0,w.count("execution.platform_execution_result"));
             } finally { release.countDown(); }
             assertSame(f.result(),publication.get(8,TimeUnit.SECONDS));
             assertEquals(PlatformExecutionState.COMPLETED,cancellation.get(8,TimeUnit.SECONDS).state());
-            assertEquals(1,callbacks.get()); assertEquals(1,w.count("artifact")); assertEquals(1,w.count("platform_execution_result"));
+            assertEquals(1,callbacks.get()); assertEquals(1,w.count("artifacts.artifact")); assertEquals(1,w.count("execution.platform_execution_result"));
             assertEquals(1,w.db.fetchOne("select count(*) from worker_fabric.wf_completion_event where task_id=?",f.task().sha256Hex()).get(0,Integer.class));
-            assertEquals(1,w.count("quota_usage_operation"));
+            assertEquals(1,w.count("entitlement.quota_usage_operation"));
             assertEquals(0, w.db.fetchOne("select signed_delta from entitlement.quota_usage_operation").get(0, java.math.BigDecimal.class).compareTo(java.math.BigDecimal.ONE));
             var saved = w.db.fetchOne("select attempt_id,native_task_id,native_generation,ownership_generation,artifact_id from execution.platform_execution_result where execution_id=?",f.plan().executionId());
             assertEquals("race-attempt",saved.get(0)); assertEquals(f.task().sha256Hex(),saved.get(1));
@@ -102,7 +102,7 @@ class PlatformCapabilityTerminalRacePostgresTest {
             assertThrows(com.example.platform.workerfabric.domain.CapabilityExecutionCompletionPort.AlreadyCompleted.class,
                     () -> w.tx(() -> { try { return w.owner(w.db).publish("tenant-a","project-a",f.plan().executionId(),1,f.task(),f.execution(),() -> nativeCallbackFixture(w.db,f,callbacks)); }
                     catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); } }));
-            assertEquals(1,callbacks.get()); assertEquals(1,w.count("quota_usage_operation"));
+            assertEquals(1,callbacks.get()); assertEquals(1,w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void cancellationWinsTheRealRowLockAndWaitingPublicationCannotReachItsCallback() throws Exception {
@@ -123,8 +123,8 @@ class PlatformCapabilityTerminalRacePostgresTest {
             var waitingPublication = publication;
             var rejected = assertThrows(ExecutionException.class,() -> waitingPublication.get(8,TimeUnit.SECONDS));
             assertInstanceOf(CancellationException.class,rejected.getCause());
-            assertEquals(0,callbacks.get()); assertEquals(0,w.count("artifact")); assertEquals(0,w.count("platform_execution_result"));
-            assertEquals(0,w.count("quota_usage_operation")); assertEquals(0,w.count("wf_completion_event"));
+            assertEquals(0,callbacks.get()); assertEquals(0,w.count("artifacts.artifact")); assertEquals(0,w.count("execution.platform_execution_result"));
+            assertEquals(0,w.count("entitlement.quota_usage_operation")); assertEquals(0,w.count("worker_fabric.wf_completion_event"));
             assertEquals(PlatformExecutionState.CANCELLED,w.owner(w.db).find("tenant-a","project-a",f.plan().executionId()).orElseThrow().state());
         }
     }

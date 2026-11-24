@@ -27,7 +27,15 @@ class GraphRenderLifecycleIT {
         final RenderJobRepository jobs;
         World() throws Exception {
             TenantContext.set("tenant-a");schema=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-            for(String file:List.of("V1__baseline.sql"))try(var input=getClass().getResourceAsStream("/db/migration/"+file)){schema.executeScript(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));}
+            schema.migrateApplication();
+            var provider = TestDatabaseConnectionProvider.fromControlledLaunch();
+            if (!provider.isIsolatedLocalResource() || !"pgsuite".equals(provider.runId()))
+                throw new IllegalStateException("Graph fixture requires a fresh class-owned PG18 database");
+            schema.dsl().execute("""
+                    truncate identity.tenant, artifacts.artifact, render.render_job, infrastructure.outbox_events,
+                             entitlement.quota_usage, entitlement.quota_usage_operation,
+                             execution.platform_execution_result, execution.platform_execution_admission cascade
+                    """);
             db=schema.dsl();
             db.execute("insert into identity.tenant(id,name,created_at) values('tenant-a','test',current_timestamp),('tenant-b','other',current_timestamp)");
             db.execute("insert into identity.project(id,tenant_id,name,created_at) values('project-a','tenant-a','test',current_timestamp),('project-b','tenant-b','other',current_timestamp)");
@@ -60,9 +68,9 @@ class GraphRenderLifecycleIT {
             var e=w.begin();assertEquals("EXECUTING",w.state());assertEquals(e,w.begin());w.ready(e);
             var accepted=w.tx(()->w.owner.complete(e,w.output()));
             assertEquals("artifact-final",accepted.artifactId().value());assertEquals("COMPLETED",w.state());
-            assertEquals(1,w.count("quota_usage_operation"));assertEquals(6,w.count("outbox_events"));
-            assertEquals(1,w.db.fetchCount(org.jooq.impl.DSL.table("outbox_events"),org.jooq.impl.DSL.field("event_type").eq("render.job.completed")));
-            assertEquals(accepted,w.tx(()->w.owner.complete(e,w.output())));assertEquals(1,w.count("quota_usage_operation"));assertEquals(6,w.count("outbox_events"));
+            assertEquals(1,w.count("entitlement.quota_usage_operation"));assertEquals(6,w.count("infrastructure.outbox_events"));
+            assertEquals(1,w.db.fetchCount(org.jooq.impl.DSL.table("infrastructure.outbox_events"),org.jooq.impl.DSL.field("event_type").eq("render.job.completed")));
+            assertEquals(accepted,w.tx(()->w.owner.complete(e,w.output())));assertEquals(1,w.count("entitlement.quota_usage_operation"));assertEquals(6,w.count("infrastructure.outbox_events"));
             var status=w.owner.find("tenant-a","project-a","job-a").orElseThrow();assertEquals("artifact-final",status.finalArtifactId());assertEquals("COMPLETED",status.status());
         }
     }
@@ -70,10 +78,10 @@ class GraphRenderLifecycleIT {
         try(var w=new World()) {
             var e=w.begin();w.ready(e);
             w.db.execute("create function reject_completion() returns trigger language plpgsql as $$ begin if new.event_type='render.job.completed' then raise exception 'synthetic terminal outbox fault'; end if;return new;end $$");
-            w.db.execute("create trigger reject_completion before insert on outbox_events for each row execute function reject_completion()");
+            w.db.execute("create trigger reject_completion before insert on infrastructure.outbox_events for each row execute function reject_completion()");
             assertThrows(org.jooq.exception.DataAccessException.class,()->w.tx(()->w.owner.complete(e,w.output())));
-            assertEquals("EXECUTING",w.state());assertNull(w.owner.find("tenant-a","project-a","job-a").orElseThrow().finalArtifactId());assertEquals(0,w.count("quota_usage_operation"));assertEquals(3,w.count("outbox_events"));
-            w.db.execute("drop trigger reject_completion on outbox_events");w.tx(()->w.owner.complete(e,w.output()));assertEquals("COMPLETED",w.state());assertEquals(1,w.count("quota_usage_operation"));
+            assertEquals("EXECUTING",w.state());assertNull(w.owner.find("tenant-a","project-a","job-a").orElseThrow().finalArtifactId());assertEquals(0,w.count("entitlement.quota_usage_operation"));assertEquals(3,w.count("infrastructure.outbox_events"));
+            w.db.execute("drop trigger reject_completion on outbox_events");w.tx(()->w.owner.complete(e,w.output()));assertEquals("COMPLETED",w.state());assertEquals(1,w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void staleGraphAttemptGenerationAndOutputCannotConsumeQuotaOrPublish() throws Exception {
@@ -83,7 +91,7 @@ class GraphRenderLifecycleIT {
             assertThrows(IllegalArgumentException.class,()->w.tx(()->w.owner.complete(stale,w.output())));
             assertThrows(IllegalArgumentException.class,()->w.tx(()->w.owner.complete(e,new Output(TASK,"old-task-attempt",2,"artifact-final"))));
             assertThrows(IllegalArgumentException.class,()->w.tx(()->{w.owner.bindOutput(e,new Output(TASK,"task-attempt-1",1,"different-artifact"));return null;}));
-            assertEquals("EXECUTING",w.state());assertEquals(0,w.count("quota_usage_operation"));assertEquals(3,w.count("outbox_events"));
+            assertEquals("EXECUTING",w.state());assertEquals(0,w.count("entitlement.quota_usage_operation"));assertEquals(3,w.count("infrastructure.outbox_events"));
         }
     }
     @Test void wrongTenantProjectJobAndIntermediateArtifactNeverBecomeFinal() throws Exception {
@@ -92,20 +100,20 @@ class GraphRenderLifecycleIT {
             w.artifact("artifact-final","tenant-b","project-b","job-b","RENDER_MASTER");
             assertThrows(IllegalArgumentException.class,()->w.tx(()->w.owner.complete(e,w.output())));
             TenantContext.set("tenant-b");assertThrows(RuntimeException.class,()->w.owner.find("tenant-a","project-a","job-a"));TenantContext.set("tenant-a");
-            assertTrue(w.owner.find("tenant-a","project-b","job-a").isEmpty());assertEquals(0,w.count("quota_usage_operation"));assertEquals("EXECUTING",w.state());
+            assertTrue(w.owner.find("tenant-a","project-b","job-a").isEmpty());assertEquals(0,w.count("entitlement.quota_usage_operation"));assertEquals("EXECUTING",w.state());
         }
-        try(var w=new World()) {var e=w.begin();w.tx(()->{w.owner.bindOutput(e,w.output());return null;});w.artifact("artifact-final","tenant-a","project-a","job-a","DERIVED_MEDIA");assertThrows(IllegalStateException.class,()->w.tx(()->w.owner.complete(e,w.output())));assertEquals(0,w.count("quota_usage_operation"));}
+        try(var w=new World()) {var e=w.begin();w.tx(()->{w.owner.bindOutput(e,w.output());return null;});w.artifact("artifact-final","tenant-a","project-a","job-a","DERIVED_MEDIA");assertThrows(IllegalStateException.class,()->w.tx(()->w.owner.complete(e,w.output())));assertEquals(0,w.count("entitlement.quota_usage_operation"));}
     }
     @Test void failureAndCancellationAreTerminalAndRejectLateSuccess() throws Exception {
         for(boolean cancelled:List.of(false,true))try(var w=new World()) {
             var e=w.begin();w.ready(e);w.tx(()->{w.owner.fail("tenant-a","job-a","plan-ref",PLAN,GRAPH,cancelled);return null;});
-            assertEquals(cancelled?"CANCELLED":"FAILED",w.state());int facts=w.count("outbox_events");
+            assertEquals(cancelled?"CANCELLED":"FAILED",w.state());int facts=w.count("infrastructure.outbox_events");
             assertThrows(IllegalArgumentException.class,()->w.tx(()->w.owner.complete(e,w.output())));
-            w.tx(()->{w.owner.fail("tenant-a","job-a","plan-ref",PLAN,GRAPH,cancelled);return null;});assertEquals(facts,w.count("outbox_events"));assertEquals(0,w.count("quota_usage_operation"));
+            w.tx(()->{w.owner.fail("tenant-a","job-a","plan-ref",PLAN,GRAPH,cancelled);return null;});assertEquals(facts,w.count("infrastructure.outbox_events"));assertEquals(0,w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void dispatchOrPreparationFailureLeavesVisibleFailedJobInsteadOfQueued() throws Exception {
-        try(var w=new World()) {w.tx(()->{w.owner.fail("tenant-a","job-a","plan-ref",PLAN,GRAPH,false);return null;});assertEquals("FAILED",w.state());assertEquals(0,w.count("quota_usage_operation"));assertEquals(2,w.count("outbox_events"));}
+        try(var w=new World()) {w.tx(()->{w.owner.fail("tenant-a","job-a","plan-ref",PLAN,GRAPH,false);return null;});assertEquals("FAILED",w.state());assertEquals(0,w.count("entitlement.quota_usage_operation"));assertEquals(2,w.count("infrastructure.outbox_events"));}
     }
     @Test void sourceFactsAreScopedIdempotentAndImmutable() throws Exception {
         try (var w = new World()) {

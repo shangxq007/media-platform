@@ -136,8 +136,7 @@ class MediaTaskExecuteTaskIntegrationTest {
     @BeforeAll
     static void setup() throws Exception {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-        Path migrationDir = locateMigrationDir();
-        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        database.migrateApplication();
         DSLContext dsl = database.dsl();
         store = new JooqBoundGraphInputStore(dsl);
     }
@@ -381,18 +380,5 @@ class MediaTaskExecuteTaskIntegrationTest {
                         ProviderStaticCompatibility.LoweringSupport.SUPPORTED));
     }
 
-    private static Path locateMigrationDir() {
-        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        while (current != null && !Files.exists(current.resolve("settings.gradle.kts"))) {
-            current = current.getParent();
-        }
-        if (current == null) {
-            throw new IllegalStateException("repository root not found");
-        }
-        return current.resolve("platform-app/src/main/resources/db/migration");
-    }
 
-    private static void applyMigration(Path path) throws Exception {
-        database.executeScript(Files.readString(path));
-    }
 }

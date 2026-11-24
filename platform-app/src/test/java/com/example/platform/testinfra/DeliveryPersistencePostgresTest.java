@@ -27,7 +27,7 @@ class DeliveryPersistencePostgresTest {
             w.artifact("artifact-a","tenant-a","project-a","job-a","RENDER_MASTER");var repo=new DeliveryRepository(w.db);
             assertThrows(RuntimeException.class,()->repo.insert(record("cross","tenant-b","project-b","job-b","artifact-a")));
             assertThrows(RuntimeException.class,()->w.tx(()->{repo.insert(record("rolled-back","tenant-a","project-a","job-a","artifact-a"));throw new IllegalStateException("bounded transaction interruption");}));
-            assertEquals(0,w.count("delivery"));
+            assertEquals(0,w.count("publication.delivery"));
         }
     }
 }

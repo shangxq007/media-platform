@@ -153,7 +153,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
     void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_rated_insert ON rated_usage_record");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_rated_insert_for_test()");
-        jdbc.execute("TRUNCATE billing.rated_usage_record, billable_usage, discount_policy, custom_pricing_rule, pricing_rule");
+        jdbc.execute("TRUNCATE billing.rated_usage_record, billing.billable_usage, billing.discount_policy, billing.custom_pricing_rule, billing.pricing_rule");
         audit.reset();
         pricing.saveRule(rule("GLOBAL", "rule-api", "api", 1, 5, "USD",
                 EFFECTIVE.minusSeconds(60), null));
@@ -290,7 +290,7 @@ class CommercialPricingRatingAuthorityPostgresTest extends PostgresTestContainer
                 BEGIN RAISE EXCEPTION 'rated persistence failure'; END; $$ LANGUAGE plpgsql
                 """);
         jdbc.execute("""
-                CREATE TRIGGER fail_rated_insert BEFORE INSERT ON rated_usage_record
+                CREATE TRIGGER fail_rated_insert BEFORE INSERT ON billing.rated_usage_record
                 FOR EACH ROW EXECUTE FUNCTION fail_rated_insert_for_test()
                 """);
         assertThrows(RuntimeException.class, () -> rating.rate(new RateUsageCommand(

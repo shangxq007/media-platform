@@ -67,7 +67,7 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
     @BeforeEach
     void reset() {
         createTables();
-        jdbc.execute("TRUNCATE entitlement.entitlement_command_audit, workspace_member_entitlement_grant, entitlement_grant CASCADE");
+        jdbc.execute("TRUNCATE entitlement.entitlement_command_audit, entitlement.workspace_member_entitlement_grant, entitlement.entitlement_grant CASCADE");
         cache.clear();
     }
 
@@ -81,8 +81,8 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
 
         assertEquals(first.commandId(), replay.commandId());
         assertEquals(first.grant(), replay.grant());
-        assertEquals(1L, count("entitlement_grant"));
-        assertEquals(1L, count("entitlement_command_audit"));
+        assertEquals(1L, count("entitlement.entitlement_grant"));
+        assertEquals(1L, count("entitlement.entitlement_command_audit"));
         assertThrows(IllegalStateException.class,
                 () -> authority.execute(grant(principal, "grant-b", "feature-b", "same-key", "actor")));
     }
@@ -126,7 +126,7 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
         EntitlementGrantCommand duplicate = grant(principal, "grant-a", "feature-a", "dup", "actor");
         List<EntitlementCommandResult> duplicateResults = concurrently(2, index -> duplicate);
         assertEquals(duplicateResults.get(0).commandId(), duplicateResults.get(1).commandId());
-        assertEquals(1L, count("entitlement_grant"));
+        assertEquals(1L, count("entitlement.entitlement_grant"));
 
         long version = duplicateResults.get(0).grant().version();
         List<Boolean> winners = concurrentlyOutcome(2, index -> transition(principal,
@@ -140,8 +140,8 @@ class EntitlementCommandAuthorityPostgresTest extends PostgresTestContainerSuppo
         PrincipalRef principal = principal("tenant-a", "user-a");
         assertThrows(RuntimeException.class, () -> authority.execute(
                 grant(principal, "grant-a", "feature-a", "rollback", "force-audit-failure")));
-        assertEquals(0L, count("entitlement_grant"));
-        assertEquals(0L, count("entitlement_command_audit"));
+        assertEquals(0L, count("entitlement.entitlement_grant"));
+        assertEquals(0L, count("entitlement.entitlement_command_audit"));
     }
 
     @Test

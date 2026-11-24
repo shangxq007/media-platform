@@ -377,7 +377,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         var root = seedRoot(service, productId, document("base"));
         dsl.execute("create function h7_reject_counter_update() returns trigger language plpgsql as $$ "
                 + "begin raise exception 'counter rejected'; end $$");
-        dsl.execute("create trigger h7_reject_counter before update on project_revision_counter "
+        dsl.execute("create trigger h7_reject_counter before update on timeline.project_revision_counter "
                 + "for each row when (old.project_id = '" + productId + "') "
                 + "execute function h7_reject_counter_update()");
         try {
@@ -402,7 +402,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         long counterBefore = counterValue(productId);
         dsl.execute("create function h7_reject_ref_publication() returns trigger language plpgsql as $$ "
                 + "begin raise exception 'ref publication rejected'; end $$");
-        dsl.execute("create trigger h7_reject_ref after update on timeline_revision_ref "
+        dsl.execute("create trigger h7_reject_ref after update on timeline.timeline_revision_ref "
                 + "for each row when (old.project_id = '" + productId + "') "
                 + "execute function h7_reject_ref_publication()");
         try {

@@ -118,7 +118,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
     void resetTables() {
         jdbc.execute("DROP TRIGGER IF EXISTS quota_audit_forced_failure ON quota_usage_operation");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_quota_audit_for_test()");
-        jdbc.execute("TRUNCATE TABLE entitlement.quota_usage_operation, quota_usage");
+        jdbc.execute("TRUNCATE TABLE entitlement.quota_usage_operation, entitlement.quota_usage");
     }
 
     @Test
@@ -306,7 +306,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                 """);
         jdbc.execute("""
                 CREATE TRIGGER quota_audit_forced_failure
-                BEFORE UPDATE ON quota_usage_operation
+                BEFORE UPDATE ON entitlement.quota_usage_operation
                 FOR EACH ROW EXECUTE FUNCTION fail_quota_audit_for_test()
                 """);
         PrincipalRef principal = principal("tenant-a", "user-a");

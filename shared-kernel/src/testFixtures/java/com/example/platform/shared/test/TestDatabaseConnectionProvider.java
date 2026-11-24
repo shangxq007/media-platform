@@ -32,6 +32,7 @@ public final class TestDatabaseConnectionProvider {
     public String branchId() { return spec.branchId; }
     /** Namespace-bound local resource, not a host localhost fallback. */
     public boolean isIsolatedLocalResource() { return spec.projectId.startsWith("local_") && spec.branchId.equals("ct_"+spec.projectId.substring(6)); }
+    public String attemptId() { return spec.attemptId; }
     public String runId() { return spec.runId; }
     public String driverClassName() { return "org.postgresql.Driver"; }
     public Properties connectionProperties() {

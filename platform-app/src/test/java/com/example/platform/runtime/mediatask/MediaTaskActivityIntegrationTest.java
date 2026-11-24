@@ -84,8 +84,7 @@ class MediaTaskActivityIntegrationTest {
     @BeforeAll
     static void setup() throws Exception {
         database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-        Path migrationDir = locateMigrationDir();
-        applyMigration(migrationDir.resolve("V1__baseline.sql"));
+        database.migrateApplication();
         DSLContext dsl = database.dsl();
         store = new JooqBoundGraphInputStore(dsl);
         // Preparation-only test: the execution collaborators stay unused doubles.
@@ -98,21 +97,7 @@ class MediaTaskActivityIntegrationTest {
                         ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()));
     }
 
-    private static void applyMigration(Path path) throws Exception {
-        database.executeScript(Files.readString(path));
-    }
 
-    private static Path locateMigrationDir() {
-        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        while (dir != null) {
-            Path candidate = dir.resolve("platform-app/src/main/resources/db/migration");
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-            dir = dir.getParent();
-        }
-        throw new IllegalStateException("cannot locate db/migration directory");
-    }
 
     @Test
     void savedBoundGraphSurvivesLoadRederivationAndPreparation() {

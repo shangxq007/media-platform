@@ -1,4 +1,4 @@
-package com.example.platform;
+package com.example.platform.runtime;
 
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
@@ -11,9 +11,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConditionalOnProperty(name = "spring.flyway.enabled", havingValue = "true")
 public class FlywayConfiguration {
-    static FluentConfiguration migrationChain() {
+    public static FluentConfiguration migrationChain() {
         return Flyway.configure().defaultSchema("public").locations("classpath:db/migration")
-                .baselineOnMigrate(false).validateMigrationNaming(true).validateOnMigrate(true);
+                .ignoreMigrationPatterns(new String[0]).baselineOnMigrate(false).validateMigrationNaming(true).validateOnMigrate(true);
     }
 
     @Bean

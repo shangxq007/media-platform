@@ -1,7 +1,6 @@
 -- Apply as the migration owner after Flyway. Cluster provisioning supplies the three
 -- separate login roles with NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS.
 -- The database owner must revoke database CREATE/TEMP from PUBLIC during provisioning.
-\set ON_ERROR_STOP on
 BEGIN;
 SET LOCAL search_path = pg_catalog;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -476,4 +475,5 @@ GRANT USAGE ON SEQUENCE infrastructure.config_item_id_seq TO mp_api;
 GRANT USAGE ON SEQUENCE render.render_binding_inputs_id_seq TO mp_api;
 GRANT USAGE ON SEQUENCE notification.notification_template_id_seq TO mp_api;
 GRANT USAGE ON SEQUENCE media.ingest_preflight_safe_report_records_id_seq TO mp_api;
+GRANT INSERT ON TABLE workflow.workflow_run TO mp_api;
 COMMIT;

@@ -81,7 +81,7 @@ class RevisionRenderPlanningApplicationServicePersistenceIT extends PostgresTest
         Flyway.configure()
                 .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
+                .baselineOnMigrate(false)
                 .load()
                 .migrate();
         dataSource = createDataSource();

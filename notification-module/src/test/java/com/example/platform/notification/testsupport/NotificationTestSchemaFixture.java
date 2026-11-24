@@ -199,15 +199,15 @@ public final class NotificationTestSchemaFixture {
         dsl.execute("""
             TRUNCATE TABLE
                 notification.notification_user_inbox,
-                notification_delivery_record,
-                notification_preference,
-                notification_delivery,
-                notification_record,
-                notification_channel_binding,
-                notification_subscription,
-                notification_template,
-                notification_event_definition,
-                notification_event
+                notification.notification_delivery_record,
+                notification.notification_preference,
+                notification.notification_delivery,
+                notification.notification_record,
+                notification.notification_channel_binding,
+                notification.notification_subscription,
+                notification.notification_template,
+                notification.notification_event_definition,
+                notification.notification_event
             RESTART IDENTITY CASCADE
         """);
     }

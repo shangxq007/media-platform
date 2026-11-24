@@ -26,9 +26,11 @@ class ArtifactCommitRecoveryIT {
     }
     private static TestDatabaseSchema database() throws Exception {
         var database=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-        try(var in=ArtifactCommitRecoveryIT.class.getResourceAsStream("/db/migration/V1__baseline.sql")) {
-            database.executeScript(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
-        }
+        database.migrateApplication();
+        var provider = TestDatabaseConnectionProvider.fromControlledLaunch();
+        if (!provider.isIsolatedLocalResource() || !"pgsuite".equals(provider.runId()))
+            throw new IllegalStateException("Recovery fixture requires a fresh class-owned PG18 database");
+        database.dsl().execute("truncate artifacts.artifact cascade");
         return database;
     }
     @Test void committedReceiptSurvivesRestartAndExactReplayWithoutDuplicateWrites() throws Exception {
@@ -38,9 +40,9 @@ class ArtifactCommitRecoveryIT {
             assertEquals(first,restarted.findByIdempotencyKey("recovery-tenant","recovery-key").orElseThrow());
             assertTrue(restarted.findByIdempotencyKey("other-tenant","recovery-key").isEmpty());
             assertEquals(first,restarted.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW.plusSeconds(10))));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_replica")));
-            assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_relation")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_replica")));
+            assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_relation")));
         }
     }
     @Test void sameKeyCannotAdoptDifferentIdentityDigestOrProvider() throws Exception {
@@ -51,8 +53,8 @@ class ArtifactCommitRecoveryIT {
                     request("artifact-recovery","a".repeat(64),"different-provider",NOW))) {
                 var failure=assertThrows(ArtifactErrorCode.ArtifactDomainException.class,()->owner.commit(invalid));
                 assertTrue(failure.getMessage().contains("ARTIFACT-409-007"));
-                assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
-                assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_replica")));
+                assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact")));
+                assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_replica")));
             }
         }
     }
@@ -61,8 +63,8 @@ class ArtifactCommitRecoveryIT {
             var owner=service(db.dsl());owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW));
             db.dsl().execute("update artifacts.artifact set audit_provenance='{}'::jsonb where id='artifact-recovery'");
             assertThrows(IllegalStateException.class,()->owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW)));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_replica")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_replica")));
         }
     }
     @Test void structuredForgedReceiptEdgeIsRejectedBeforeReplay() throws Exception {
@@ -75,8 +77,8 @@ class ArtifactCommitRecoveryIT {
             db.dsl().execute("update artifacts.artifact set audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1,result,provenanceEdges}',cast(? as jsonb)) where id='artifact-recovery'",mapper.writeValueAsString(List.of(forged)));
             assertThrows(IllegalStateException.class,()->owner.findByIdempotencyKey("recovery-tenant","recovery-key"));
             assertThrows(IllegalStateException.class,()->owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW)));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
-            assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_relation")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact")));
+            assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_relation")));
         }
     }
     @Test void declaredReceiptProvenanceMustStillMatchCanonicalRelations() throws Exception {
@@ -94,8 +96,8 @@ class ArtifactCommitRecoveryIT {
             assertEquals(accepted,service(db.dsl()).findByIdempotencyKey("recovery-tenant","recovery-key").orElseThrow());
             assertEquals(1,db.dsl().execute("delete from artifacts.artifact_relation where source_artifact_id='artifact-recovery'"));
             assertThrows(IllegalStateException.class,()->service(db.dsl()).commit(child));
-            assertEquals(2,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
-            assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_relation")));
+            assertEquals(2,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact")));
+            assertEquals(0,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_relation")));
         }
     }
 
@@ -105,8 +107,8 @@ class ArtifactCommitRecoveryIT {
             db.dsl().execute("update artifacts.artifact set audit_provenance=jsonb_set(audit_provenance,'{artifactCommitV1,request,createdAt}',to_jsonb(cast(? as text))) where id='artifact-recovery'",NOW.plusSeconds(86400).toString());
             assertThrows(IllegalStateException.class,()->owner.findByIdempotencyKey("recovery-tenant","recovery-key"));
             assertThrows(IllegalStateException.class,()->owner.commit(request("artifact-recovery","a".repeat(64),"provider-a",NOW)));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact")));
-            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifact_replica")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact")));
+            assertEquals(1,db.dsl().fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_replica")));
         }
     }
 

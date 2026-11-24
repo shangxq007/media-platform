@@ -62,13 +62,13 @@ class UsageAnomalyPublicationTest extends PostgresTestContainerSupport {
     @Test void databaseAppendFailureLeavesTheDerivedViewUnchangedAndNextObservationCanCommit() {
         String user = prepare();
         var before = detector.getRiskProfile("ep23", user);
-        jdbc.execute("alter table outbox_events add constraint ep23_reject_anomaly check (event_type <> 'audit.usage.anomaly.detected') not valid");
+        jdbc.execute("alter table infrastructure.outbox_events add constraint ep23_reject_anomaly check (event_type <> 'audit.usage.anomaly.detected') not valid");
         try {
             assertThrows(RuntimeException.class, () -> detector.analyzeSubmission("ep23", user, "default", "test"));
             assertEquals(0, observations(user));
             assertSame(before, detector.getRiskProfile("ep23", user));
         } finally {
-            jdbc.execute("alter table outbox_events drop constraint ep23_reject_anomaly");
+            jdbc.execute("alter table infrastructure.outbox_events drop constraint ep23_reject_anomaly");
         }
         detector.analyzeSubmission("ep23", user, "default", "test");
         assertEquals(1, observations(user));

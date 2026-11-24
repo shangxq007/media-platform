@@ -51,8 +51,8 @@ class CompositionAdmissionCoexistencePostgresTest {
             assertEquals(0, repo.findByExecutionId(accepted.executionId()).orElseThrow().quotaChargedUnits().compareTo(BigDecimal.ONE));
             w.tx(() -> { repo.deleteUncharged(accepted.executionId()); return null; });
             assertTrue(repo.findByExecutionId(accepted.executionId()).isPresent());
-            assertEquals(1, w.count("platform_execution_admission"));
-            assertEquals(0, w.count("platform_execution_result")); assertEquals(0, w.count("outbox_events"));
+            assertEquals(1, w.count("execution.platform_execution_admission"));
+            assertEquals(0, w.count("execution.platform_execution_result")); assertEquals(0, w.count("infrastructure.outbox_events"));
         }
     }
     @Test void compositionAdapterCannotReadMutateChargeOrDeleteArtifactExecution() throws Exception {
@@ -68,8 +68,8 @@ class CompositionAdmissionCoexistencePostgresTest {
             assertEquals(accepted.handle(), owner.find("tenant-a", "project-a", accepted.executionId()).orElseThrow().handle());
             var stored = w.db.fetchOne("select state,quota_charged,quota_claimed from execution.platform_execution_admission where execution_id=?", accepted.executionId());
             assertEquals("ADMITTED", stored.get(0)); assertEquals(false, stored.get(1)); assertEquals(false, stored.get(2));
-            assertEquals(1, w.count("platform_execution_admission")); assertEquals(1, w.count("outbox_events"));
-            assertEquals(0, w.count("artifact")); assertEquals(0, w.count("quota_usage_operation"));
+            assertEquals(1, w.count("execution.platform_execution_admission")); assertEquals(1, w.count("infrastructure.outbox_events"));
+            assertEquals(0, w.count("artifacts.artifact")); assertEquals(0, w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void compositionResultsRoundTripWithExactReplayAndRejectConflictingCompletion() throws Exception {
@@ -91,8 +91,8 @@ class CompositionAdmissionCoexistencePostgresTest {
                     "composition-attempt", completion.resultId(), "wrong-receipt", completion.artifactCommitId(), completion.status());
             assertThrows(IllegalArgumentException.class, () -> w.tx(() -> results.record(conflict, 0)));
             assertEquals(completion, results.find(accepted.executionId(), "composition-attempt").orElseThrow());
-            assertEquals(1,w.count("platform_execution_result")); assertEquals(0,w.count("artifact"));
-            assertEquals(0,w.count("quota_usage_operation"));
+            assertEquals(1,w.count("execution.platform_execution_result")); assertEquals(0,w.count("artifacts.artifact"));
+            assertEquals(0,w.count("entitlement.quota_usage_operation"));
         }
     }
     @Test void compositionResultAdapterCannotReadOrOverwriteARealCapabilityOwnersCommittedResult() throws Exception {
@@ -117,7 +117,7 @@ class CompositionAdmissionCoexistencePostgresTest {
                     f.plan().executionId(),"race-attempt","foreign-object","f".repeat(64),99,"foreign-artifact");
             assertThrows(IllegalArgumentException.class, () -> w.tx(() -> {results.recordMaterialized("tenant-a",key,f.plan().requestHash(),output,1);return null;}));
             assertEquals(before,w.db.fetchOne("select * from execution.platform_execution_result where execution_id=?",f.plan().executionId()).intoMap());
-            assertEquals(1,w.count("platform_execution_result")); assertEquals(1,w.count("artifact")); assertEquals(1,w.count("quota_usage_operation"));
+            assertEquals(1,w.count("execution.platform_execution_result")); assertEquals(1,w.count("artifacts.artifact")); assertEquals(1,w.count("entitlement.quota_usage_operation"));
             assertEquals(PlatformExecutionState.COMPLETED,w.owner(w.db).find("tenant-a","project-a",f.plan().executionId()).orElseThrow().state());
         }
     }

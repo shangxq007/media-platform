@@ -188,7 +188,7 @@ class ArtifactCommitMigratedSchemaIntegrationTest extends PostgresTestContainerS
                         PARENT_DIGEST.canonicalValue()))));
 
         // D4: the migrated NOT NULL workspace_id carries the real project scope.
-        assertThat(dsl.select(WORKSPACE_ID).from(org.jooq.impl.DSL.table("artifact"))
+        assertThat(dsl.select(WORKSPACE_ID).from(org.jooq.impl.DSL.table("artifacts.artifact"))
                 .where(DSL.field(DSL.name("id"), String.class).eq(childId))
                 .fetchOne(WORKSPACE_ID)).isEqualTo(PROJECT);
 
@@ -198,7 +198,7 @@ class ArtifactCommitMigratedSchemaIntegrationTest extends PostgresTestContainerS
         assertThat(edgeId).hasSize(64).matches("[0-9a-f]{64}")
                 .isEqualTo(ProvenanceValidator.canonicalEdgeId(
                         new ArtifactId(childId), new ArtifactId(parentId)));
-        assertThat(dsl.fetchCount(org.jooq.impl.DSL.table("artifact_relation"),
+        assertThat(dsl.fetchCount(org.jooq.impl.DSL.table("artifacts.artifact_relation"),
                 DSL.field(DSL.name("id"), String.class).eq(edgeId)
                         .and(DSL.field(DSL.name("source_artifact_id"), String.class).eq(childId))
                         .and(DSL.field(DSL.name("target_artifact_id"), String.class).eq(parentId))

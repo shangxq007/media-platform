@@ -24,7 +24,7 @@ class IdentityScopeCorrectionsTest extends AccountResourceExecutionAcceptanceTes
         long lock=ThreadLocalRandom.current().nextLong(1000000,9999999);
         String hook="ir_"+UUID.randomUUID().toString().replace("-","");
         jdbc.execute("create function "+hook+"() returns trigger language plpgsql as $$ begin perform pg_advisory_xact_lock("+lock+"); return new; end $$");
-        jdbc.execute("create trigger "+hook+" before insert on render_job for each row when (new.tenant_id='"+tenant+"') execute function "+hook+"()");
+        jdbc.execute("create trigger "+hook+" before insert on render.render_job for each row when (new.tenant_id='"+tenant+"') execute function "+hook+"()");
         try(var blocker=jdbc.getDataSource().getConnection();var pool=Executors.newSingleThreadExecutor()) {
             blocker.createStatement().execute("select pg_advisory_lock("+lock+")");
             var body=new HashMap<String,Object>(submitBody(projectA,wsA));body.put("tenantId",tenant);
@@ -105,7 +105,7 @@ class IdentityScopeCorrectionsTest extends AccountResourceExecutionAcceptanceTes
     @org.junit.jupiter.params.provider.CsvSource({"collision,false", "collision,true", "workspace,false", "workspace,true", "project,false", "project,true", "conflict,false", "conflict,true"})
     void correctionHistoricalMigration(String kind,boolean missingTenant) throws Exception {
         String schema="correction_"+UUID.randomUUID().toString().replace("-","");
-        var config=org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration");
+        var config=org.flywaydb.core.Flyway.configure().dataSource(jdbc.getDataSource()).schemas("public").defaultSchema("public").locations("classpath:db/migration");
         config.target("1").load().migrate();
         String role=jdbc.queryForObject("select role_id from identity.user_role_assignment where user_id=? and workspace_id=? limit 1",String.class,member,wsA);
         jdbc.update("insert into "+schema+".tenant(id,name,status,created_at) values (?, 'Legacy','ACTIVE',now()), (?, 'Foreign','ACTIVE',now())",tenant,tenantB);
@@ -145,7 +145,7 @@ class IdentityScopeCorrectionsTest extends AccountResourceExecutionAcceptanceTes
         long quota=count("select count(*) from entitlement.quota_usage_operation");
         String hook="correction_fail_"+UUID.randomUUID().toString().replace("-","");
         jdbc.execute("create function "+hook+"() returns trigger language plpgsql as $$ begin raise exception 'controlled context failure'; end $$");
-        jdbc.execute("create trigger "+hook+" before insert on render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+hook+"()");
+        jdbc.execute("create trigger "+hook+" before insert on render.render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+hook+"()");
         var body=new HashMap<String,Object>(submitBody(projectA,wsA));body.put("tenantId",tenant);
         String path=submitPath(tenant,projectA)+(incremental?"/incremental/submit":"");
         try {
@@ -164,7 +164,7 @@ class IdentityScopeCorrectionsTest extends AccountResourceExecutionAcceptanceTes
         long lock=ThreadLocalRandom.current().nextLong(1000000,9999999);
         String hook="correction_lock_"+UUID.randomUUID().toString().replace("-","");
         jdbc.execute("create function "+hook+"() returns trigger language plpgsql as $$ begin perform pg_advisory_xact_lock("+lock+"); return new; end $$");
-        jdbc.execute("create trigger "+hook+" before insert on render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+hook+"()");
+        jdbc.execute("create trigger "+hook+" before insert on render.render_execution_context for each row when (new.tenant_id='"+tenant+"') execute function "+hook+"()");
         try(var blocker=jdbc.getDataSource().getConnection();var pool=Executors.newFixedThreadPool(2)) {
             blocker.createStatement().execute("select pg_advisory_lock("+lock+")");
             var pending=pool.submit(()->callScope(tenant,member,"POST",submitPath(tenant,projectA),submitBody(projectA,wsA)));

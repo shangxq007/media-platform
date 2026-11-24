@@ -65,7 +65,7 @@ class HealthControllerTest extends PostgresTestContainerSupport {
  @Test void queryFailureIsNotHealthyOrEmptyAndRecoveryWorks() throws Exception {
   // Transactional table rename is visible only to this connection and always rolled back.
   new TransactionTemplate(tm).executeWithoutResult(s->{
-   db.execute("alter table outbox_events rename to ep13_hidden_outbox");
+   db.execute("alter table infrastructure.outbox_events rename to ep13_hidden_outbox");
    assertThrows(org.jooq.exception.DataAccessException.class,()->outbox.snapshot());s.setRollbackOnly();
   });
   assertNotNull(outbox.snapshot());

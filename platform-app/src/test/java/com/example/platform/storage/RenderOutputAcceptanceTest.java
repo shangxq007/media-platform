@@ -65,14 +65,14 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         admin=createDataSource();
         new JdbcTemplate(admin).execute("create schema "+SCHEMA);
         Flyway.configure().dataSource(jdbcUrl(),username(),password()).locations("classpath:db/migration")
-            .schemas(SCHEMA).defaultSchema(SCHEMA).load().migrate();
+            .schemas("public").defaultSchema("public").load().migrate();
         var ds=new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+SCHEMA,username(),password());
         var manager=new DataSourceTransactionManager(ds); tx=new TransactionTemplate(manager);
         jdbc=new JdbcTemplate(ds);
         context=new AnnotationConfigApplicationContext(); context.register(Transactions.class);
         context.registerBean("transactionManager",DataSourceTransactionManager.class,()->manager);
         context.registerBean(JdbcTemplate.class,()->jdbc);
-        context.registerBean(DSLContext.class,()->DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings().withRenderSchema(false)));
+        context.registerBean(DSLContext.class,()->DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings()));
         context.registerBean(Clock.class,Clock::systemUTC);
         context.registerBean(CanonicalStorageObjectIdAllocator.class);
         context.registerBean(JdbcStorageWriteIntentRepository.class);
@@ -265,7 +265,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     }
 
     @Test void retiredOtherDomainDurableContractsAreDeadLetteredWithoutEffects() {
-        long audits=count("audit_records"),notifications=count("notification_event");int n=0;
+        long audits=count("policy.audit_records"),notifications=count("notification.notification_event");int n=0;
         for(String type:List.of("artifact.created","asset.enriched","render.delivery.completed","render.delivery.failed",
             "com.example.platform.shared.events.ArtifactCreatedEvent","com.example.platform.shared.events.AssetEnrichedEvent",
             "com.example.platform.shared.events.AssetRegisteredEvent","com.example.platform.shared.events.AssetMetadataUpdatedEvent",
@@ -274,7 +274,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             String id="other-retired-"+n++;jdbc.update("insert into infrastructure.outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'unused','unused',?,1,'{}','PENDING',0,3,now())",id,type);
             assertFalse(dispatcher.processOnce(id));assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from infrastructure.outbox_events where id=?",String.class,id));
         }
-        assertEquals(audits,count("audit_records"));assertEquals(notifications,count("notification_event"));
+        assertEquals(audits,count("policy.audit_records"));assertEquals(notifications,count("notification.notification_event"));
     }
 
     @Test void reindexIntentTransactionRollbackAndConflictingReplayAreExplicit() {
@@ -292,9 +292,9 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     }
 
     @Test void previewRealWriteReceiptProductAndDuplicateAreAcceptedWithoutCanonicalMediaClaims() throws Exception {
-        long products=count("product"),artifacts=count("artifact"),events=count("outbox_events");
+        long products=count("render.product"),artifacts=count("artifacts.artifact"),events=count("infrastructure.outbox_events");
         var result=preview("preview-real");var replay=preview("preview-real");
-        assertEquals(result,replay);assertEquals(previewBytes().length,result.size());assertEquals(products+1,count("product"));
+        assertEquals(result,replay);assertEquals(previewBytes().length,result.size());assertEquals(products+1,count("render.product"));
         var product=previewProducts.findByAsset(result.mediaId()).getFirst();
         assertEquals(com.example.platform.render.domain.product.ProductStatus.READY,product.status());
         assertEquals("ep04-tenant",product.tenantId());assertNull(product.projectId());
@@ -303,77 +303,77 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         String object=reference.relativePath().split("/")[1];
         assertEquals("CANONICAL_COMMITTED",jdbc.queryForObject("select intent_state from storage.storage_write_intent where object_id=?",String.class,object));
         assertEquals(1,jdbc.queryForObject("select count(*) from storage.storage_object_placement where object_id=? and placement_state='AVAILABLE'",Integer.class,object));
-        assertEquals(artifacts,count("artifact"));assertEquals(events,count("outbox_events"));
+        assertEquals(artifacts,count("artifacts.artifact"));assertEquals(events,count("infrastructure.outbox_events"));
     }
 
     @Test void previewProductRollbackRetainsPhysicalEvidenceAndRetryUsesSamePlacement() throws Exception {
-        long products=count("product"),intents=count("storage_write_intent"),refs=count("storage_reference");
+        long products=count("render.product"),intents=count("storage.storage_write_intent"),refs=count("storage.storage_reference");
         doAnswer(call->{var accepted=call.callRealMethod();
             if(((com.example.platform.render.domain.product.Product)call.getArgument(0)).status()==com.example.platform.render.domain.product.ProductStatus.READY)
                 throw new IllegalStateException("after real READY insert");return accepted;
         }).when(previewProducts).save(any());
         assertThrows(IllegalStateException.class,()->preview("preview-product-failure"));
-        assertEquals(products,count("product"));assertEquals(intents+1,count("storage_write_intent"));assertEquals(refs+1,count("storage_reference"));
+        assertEquals(products,count("render.product"));assertEquals(intents+1,count("storage.storage_write_intent"));assertEquals(refs+1,count("storage.storage_reference"));
         reset(previewProducts);var retry=preview("preview-product-failure");
-        assertEquals(products+1,count("product"));assertEquals(intents+1,count("storage_write_intent"));assertEquals(refs+1,count("storage_reference"));
+        assertEquals(products+1,count("render.product"));assertEquals(intents+1,count("storage.storage_write_intent"));assertEquals(refs+1,count("storage.storage_reference"));
         assertEquals(retry,preview("preview-product-failure"));
     }
 
     @Test void previewIncompletePhysicalWriteRejectsAndResumesOnlyItsOwnIntent() throws Exception {
-        long products=count("product");
+        long products=count("render.product");
         doAnswer(call->{var command=(PutObjectCommand)call.getArgument(0);
             new LocalFsStorageProvider(root.toString()).put(new PutObjectCommand(command.bucket(),command.objectKey(),new byte[]{1},command.contentType()));
             throw new IllegalStateException("partial write fixture");}).when(backend).put(any());
-        assertThrows(IllegalStateException.class,()->preview("preview-partial"));assertEquals(products,count("product"));
+        assertThrows(IllegalStateException.class,()->preview("preview-partial"));assertEquals(products,count("render.product"));
         reset(backend);var retry=preview("preview-partial");var product=previewProducts.findByAsset(retry.mediaId()).getFirst();
         var ref=context.getBean(StorageReferenceStore.class).findById(product.storageReferenceId()).orElseThrow();
         assertArrayEquals(previewBytes(),Files.readAllBytes(Path.of(ref.absolutePath())));
-        assertEquals(products+1,count("product"));
+        assertEquals(products+1,count("render.product"));
     }
 
     @Test void previewPlacementMismatchAndDigestMismatchNeverAcceptProduct() throws Exception {
-        long products=count("product");
+        long products=count("render.product");
         doAnswer(call->{call.callRealMethod();return new StorageObjectRef(backend.code(),"preview-media","unrelated");}).when(backend).put(any());
-        assertThrows(IllegalStateException.class,()->preview("preview-bad-placement"));assertEquals(products,count("product"));
+        assertThrows(IllegalStateException.class,()->preview("preview-bad-placement"));assertEquals(products,count("render.product"));
         reset(backend);doAnswer(call->{var command=(PutObjectCommand)call.getArgument(0);
             return new LocalFsStorageProvider(root.toString()).put(new PutObjectCommand(command.bucket(),command.objectKey(),new byte[]{7,8},command.contentType()));
         }).when(backend).put(any());
-        assertThrows(IllegalStateException.class,()->preview("preview-bad-digest"));assertEquals(products,count("product"));
-        reset(backend);preview("preview-bad-placement");preview("preview-bad-digest");assertEquals(products+2,count("product"));
+        assertThrows(IllegalStateException.class,()->preview("preview-bad-digest"));assertEquals(products,count("render.product"));
+        reset(backend);preview("preview-bad-placement");preview("preview-bad-digest");assertEquals(products+2,count("render.product"));
     }
 
     @Test void previewSameRequestDifferentBytesRejectsAndQuarantinedPlacementCannotReplay() throws Exception {
-        var accepted=preview("preview-integrity");long products=count("product");
+        var accepted=preview("preview-integrity");long products=count("render.product");
         var service=context.getBean(com.example.platform.render.app.preview.PreviewMediaUploadService.class);
         assertThrows(StorageIssuanceConflictException.class,()->service.upload(new com.example.platform.render.api.request.PreviewUploadKey("preview-integrity"),new byte[]{2,3},"video/mp4"));
         var product=previewProducts.findByAsset(accepted.mediaId()).getFirst();
         var ref=context.getBean(StorageReferenceStore.class).findById(product.storageReferenceId()).orElseThrow();
         jdbc.update("update storage.storage_object_placement set placement_state='QUARANTINED' where object_id=?",ref.relativePath().split("/")[1]);
-        assertThrows(IllegalStateException.class,()->preview("preview-integrity"));assertEquals(products,count("product"));
+        assertThrows(IllegalStateException.class,()->preview("preview-integrity"));assertEquals(products,count("render.product"));
     }
 
     @Test void previewDeniedWrongActorAndInvalidScopeCreateNoEvidence() throws Exception {
-        long products=count("product"),intents=count("storage_write_intent");
+        long products=count("render.product"),intents=count("storage.storage_write_intent");
         previewDenied=true;assertThrows(SecurityException.class,()->preview("denied-preview"));previewDenied=false;
         previewActorTenant="foreign";assertThrows(org.springframework.web.server.ResponseStatusException.class,()->preview("wrong-preview"));previewActorTenant="ep04-tenant";
         var files=context.getBean(StorageFilePort.class);
         assertThrows(IllegalArgumentException.class,()->files.uploadPreview(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey("wrong-scope"),previewBytes(),"video/mp4"));
         assertThrows(IllegalArgumentException.class,()->files.uploadPreview(StorageOwnershipScope.tenant("ep04-tenant"),new IssuanceIdempotencyKey("empty"),new byte[0],"video/mp4"));
         assertThrows(IllegalArgumentException.class,()->files.uploadPreview(StorageOwnershipScope.tenant("ep04-tenant"),new IssuanceIdempotencyKey("type"),previewBytes(),"text/plain"));
-        assertEquals(products,count("product"));assertEquals(intents,count("storage_write_intent"));verify(backend,never()).put(any());
+        assertEquals(products,count("render.product"));assertEquals(intents,count("storage.storage_write_intent"));verify(backend,never()).put(any());
     }
 
     @Test void previewProductConcurrentRetryHasOneLocalEffect() throws Exception {
         String identity="f".repeat(64);
         var ref=context.getBean(StorageFilePort.class).uploadPreview(StorageOwnershipScope.tenant("ep04-tenant"),
                 new IssuanceIdempotencyKey("preview:"+identity),previewBytes(),"video/mp4");
-        long products=count("product");var runtime=context.getBean(com.example.platform.render.app.product.ProductRuntimeService.class);
+        long products=count("render.product");var runtime=context.getBean(com.example.platform.render.app.product.ProductRuntimeService.class);
         try(var executor=java.util.concurrent.Executors.newFixedThreadPool(2)) {
             var calls=List.of(executor.submit(()->{TenantContext.set("ep04-tenant");try{return runtime.registerPreview("ep04-tenant",identity,ref);}finally{TenantContext.clear();}}),
                     executor.submit(()->{TenantContext.set("ep04-tenant");try{return runtime.registerPreview("ep04-tenant",identity,ref);}finally{TenantContext.clear();}}));
             for(var call:calls)assertEquals("prod_preview_"+identity.substring(0,40),call.get().productId());
         }
-        assertEquals(products+1,count("product"));
+        assertEquals(products+1,count("render.product"));
     }
     List<String> eventIds(String job){return jdbc.queryForList("select id from infrastructure.outbox_events where aggregate_id=? order by created_at,id",String.class,job);}
 }

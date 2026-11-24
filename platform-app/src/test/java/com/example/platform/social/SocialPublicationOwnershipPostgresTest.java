@@ -256,7 +256,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
     @Test void databaseOutagePreservesDispatchMarkerAndBothErrorsAfterRecovery() {
         doAnswer(inv->{
             jdbc.execute("CREATE OR REPLACE FUNCTION reject_social_writes() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'controlled write outage'; END $$");
-            jdbc.execute("CREATE TRIGGER reject_social_writes BEFORE UPDATE ON social_post FOR EACH ROW EXECUTE FUNCTION reject_social_writes()");
+            jdbc.execute("CREATE TRIGGER reject_social_writes BEFORE UPDATE ON publication.social_post FOR EACH ROW EXECUTE FUNCTION reject_social_writes()");
             return success();
         }).when(provider).publish(any(),any());
         try {
@@ -361,7 +361,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
     }
     @Test void completionDatabaseFailureRetainsCommittedDispatchAndCannotRepublish() {
         jdbc.execute("CREATE OR REPLACE FUNCTION reject_social_completion() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='PUBLISHED' THEN RAISE EXCEPTION 'controlled completion failure'; END IF; RETURN NEW; END $$");
-        jdbc.execute("CREATE TRIGGER reject_social_completion BEFORE UPDATE ON social_post FOR EACH ROW EXECUTE FUNCTION reject_social_completion()");
+        jdbc.execute("CREATE TRIGGER reject_social_completion BEFORE UPDATE ON publication.social_post FOR EACH ROW EXECUTE FUNCTION reject_social_completion()");
         try {assertThatThrownBy(this::publish).isInstanceOf(org.springframework.dao.DataAccessException.class);}
         finally {jdbc.execute("DROP TRIGGER reject_social_completion ON social_post");jdbc.execute("DROP FUNCTION reject_social_completion()");}
         var before=state();assertThat(before).containsEntry("status","UNRESOLVED");assertThat(before.get("dispatch_started_at")).isNotNull();

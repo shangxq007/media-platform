@@ -84,16 +84,16 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
     @BeforeEach void reset() {
         jdbc.execute("DROP TRIGGER IF EXISTS fail_offering ON commercial_offering");
         jdbc.execute("DROP FUNCTION IF EXISTS fail_catalog_test()");
-        jdbc.execute("TRUNCATE commerce.provider_product_mapping, product_catalog_command, commercial_offering, commerce_product");
+        jdbc.execute("TRUNCATE commerce.provider_product_mapping, commerce.product_catalog_command, commerce.commercial_offering, commerce.commerce_product");
     }
 
     @Test void createExactReplayAndMismatch() {
         var command = create("tenant-a", "pro", "offer-pro", "GLOBAL", "US", NOW.minusSeconds(5), null, "create-1");
         var first = authority.create(command);
         assertEquals(first, authority.create(command));
-        assertEquals(1, count("commerce_product"));
-        assertEquals(1, count("commercial_offering"));
-        assertEquals(1, count("product_catalog_command"));
+        assertEquals(1, count("commerce.commerce_product"));
+        assertEquals(1, count("commerce.commercial_offering"));
+        assertEquals(1, count("commerce.product_catalog_command"));
         assertThrows(IllegalStateException.class, () -> authority.create(create(
                 "tenant-a", "different", "offer-other", "GLOBAL", "US", NOW.minusSeconds(5), null, "create-1")));
     }
@@ -106,9 +106,9 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
 
         assertEquals(usV1.product(), euV2.product());
         assertEquals("prod-pro", euV2.offering().productId());
-        assertEquals(1, count("commerce_product"));
-        assertEquals(2, count("commercial_offering"));
-        assertEquals(2, count("product_catalog_command"));
+        assertEquals(1, count("commerce.commerce_product"));
+        assertEquals(2, count("commerce.commercial_offering"));
+        assertEquals(2, count("commerce.product_catalog_command"));
     }
 
     @Test void concurrentCreateAndLifecycleCasHaveOneWinner() throws Exception {
@@ -142,7 +142,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
         assertEquals(retired, authority.findHistorical(CatalogReadScope.tenant("tenant-a"), retired.offeringId(), 1).orElseThrow());
         assertTrue(authority.resolveForCheckout(CatalogReadScope.tenant("tenant-a"), "US", "pro", NOW).isEmpty());
         assertThrows(IllegalStateException.class, () -> authority.transition(lifecycle(retired.offeringId(), 3, OfferingLifecycleState.ACTIVE, "regress")));
-        assertEquals(1, count("commercial_offering"), "retirement must not hard-delete history");
+        assertEquals(1, count("commerce.commercial_offering"), "retirement must not hard-delete history");
     }
 
     @Test void offeringAndProductLifecyclesAreIndependentAndAllVersionsRemainReadable() {
@@ -178,7 +178,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
                 authority.findHistorical(CatalogReadScope.tenant("tenant-a"), v2Active.offeringId(), 2).orElseThrow().lifecycleState(),
                 "explicit product retirement must not rewrite sibling offering history");
         assertTrue(authority.resolveForCheckout(CatalogReadScope.tenant("tenant-a"), "GLOBAL", "pro", NOW).isEmpty());
-        assertEquals(2, count("commercial_offering"), "neither lifecycle authority may hard-delete versions");
+        assertEquals(2, count("commerce.commercial_offering"), "neither lifecycle authority may hard-delete versions");
     }
 
     @Test void productLifecycleUsesVersionedCasAndDoesNotMutateOfferings() throws Exception {
@@ -239,7 +239,7 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
         assertThrows(RuntimeException.class, () -> authority.mapProvider(new MapProviderOfferingCommand(
                 command.actor(), "map-3", "stripe", "external-pro", "external-price", command.productId(),
                 command.offeringId(), 1, 0, "map-other-key", "catalog", "mapping", "trace-map-3", NOW)));
-        assertEquals(1, count("provider_product_mapping"));
+        assertEquals(1, count("commerce.provider_product_mapping"));
     }
 
     @Test void referencesAndMoneySnapshotAreExactAndNotExecutionCost() {
@@ -255,12 +255,12 @@ class ProductCatalogAuthorityPostgresTest extends PostgresTestContainerSupport {
 
     @Test void productOfferingAndAuditRollbackTogether() {
         jdbc.execute("CREATE FUNCTION fail_catalog_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced'; END $$");
-        jdbc.execute("CREATE TRIGGER fail_offering BEFORE INSERT ON commercial_offering FOR EACH ROW EXECUTE FUNCTION fail_catalog_test()");
+        jdbc.execute("CREATE TRIGGER fail_offering BEFORE INSERT ON commerce.commercial_offering FOR EACH ROW EXECUTE FUNCTION fail_catalog_test()");
         assertThrows(RuntimeException.class, () -> authority.create(create(
                 "tenant-a", "rollback", "offer-rollback", "GLOBAL", "US", NOW, null, "rollback-key")));
-        assertEquals(0, count("commerce_product"));
-        assertEquals(0, count("commercial_offering"));
-        assertEquals(0, count("product_catalog_command"));
+        assertEquals(0, count("commerce.commerce_product"));
+        assertEquals(0, count("commerce.commercial_offering"));
+        assertEquals(0, count("commerce.product_catalog_command"));
     }
 
     private CreateCommercialOfferingCommand create(String tenant, String product, String offering,

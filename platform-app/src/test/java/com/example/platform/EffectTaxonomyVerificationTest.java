@@ -34,8 +34,8 @@ class EffectTaxonomyVerificationTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         try {
-            jdbcTemplate.execute("ALTER TABLE effect_pack_effect ADD COLUMN IF NOT EXISTS taxonomy_category VARCHAR(50)");
-            jdbcTemplate.execute("ALTER TABLE effect_pack_effect ADD COLUMN IF NOT EXISTS is_effect BOOLEAN DEFAULT TRUE");
+            jdbcTemplate.execute("ALTER TABLE render.effect_pack_effect ADD COLUMN IF NOT EXISTS taxonomy_category VARCHAR(50)");
+            jdbcTemplate.execute("ALTER TABLE render.effect_pack_effect ADD COLUMN IF NOT EXISTS is_effect BOOLEAN DEFAULT TRUE");
         } catch (Exception e) {
             // Columns may already exist
         }

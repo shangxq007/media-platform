@@ -150,7 +150,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
 
         // Outbox event present with correct shape.
         assertEquals(1L, countOutbox());
-        Map<String, Object> event = dsl.select().from("outbox_events").fetchMaps().get(0);
+        Map<String, Object> event = dsl.select().from("infrastructure.outbox_events").fetchMaps().get(0);
         assertEquals("PROVIDER_COST", event.get("aggregate_type"));
         assertEquals(saved.observationId(), event.get("aggregate_id"));
         assertEquals("COST_OBSERVED", event.get("event_type"));
@@ -200,7 +200,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
     }
 
     private long countOutbox() {
-        return dsl.fetchCount(DSL.table("outbox_events"));
+        return dsl.fetchCount(DSL.table("infrastructure.outbox_events"));
     }
 
     @Configuration

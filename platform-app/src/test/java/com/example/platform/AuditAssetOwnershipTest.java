@@ -60,7 +60,7 @@ class AuditAssetOwnershipTest extends PostgresTestContainerSupport {
         String resource="ep27b-"+UUID.randomUUID();
         jdbc.execute("create table if not exists ep27b_business_probe (id text primary key)");
         jdbc.execute("CREATE FUNCTION ep27b_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='EP27B_REQUIRED' THEN RAISE EXCEPTION 'controlled audit failure'; END IF; RETURN NEW; END $$");
-        jdbc.execute("CREATE TRIGGER ep27b_reject_audit BEFORE INSERT ON audit_records FOR EACH ROW EXECUTE FUNCTION ep27b_reject_audit()");
+        jdbc.execute("CREATE TRIGGER ep27b_reject_audit BEFORE INSERT ON policy.audit_records FOR EACH ROW EXECUTE FUNCTION ep27b_reject_audit()");
         TransactionTemplate tx=new TransactionTemplate(transactions);
         Runnable operation=()->tx.executeWithoutResult(status->{
             jdbc.update("insert into ep27b_business_probe values (?)",resource);

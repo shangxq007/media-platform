@@ -107,8 +107,8 @@ class SourceArtifactReadL2IT extends PostgresTestContainerSupport {
         Flyway.configure()
                 .dataSource(dataSource)
                 .locations("classpath:db/migration")
-                .schemas(SCHEMA)
-                .defaultSchema(SCHEMA)
+                .schemas("public")
+                .defaultSchema("public")
                 .createSchemas(true)
                 .load()
                 .migrate();

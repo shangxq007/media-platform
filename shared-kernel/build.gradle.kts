@@ -23,6 +23,7 @@ dependencies {
     // Expose test fixtures
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
     testFixturesImplementation("org.postgresql:postgresql")
+    testFixturesImplementation("org.flywaydb:flyway-core")
     testFixturesImplementation("com.zaxxer:HikariCP")
     testFixturesImplementation("org.junit.platform:junit-platform-launcher")
     testFixturesImplementation("org.jooq:jooq")

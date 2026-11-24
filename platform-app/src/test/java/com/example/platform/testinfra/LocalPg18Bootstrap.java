@@ -5,7 +5,7 @@ import org.flywaydb.core.Flyway;
 
 /** Real local-PG18 preflight. Consumes the same bound Provider as all business tests. */
 public final class LocalPg18Bootstrap {
-    public static void prepare() throws Exception {
+    public static void migrate() throws Exception {
         var provider=TestDatabaseConnectionProvider.fromControlledLaunch();
         provider.validateConnection();
         var result=Flyway.configure().dataSource(provider.jdbcUrl(),provider.username(),provider.secret())
@@ -16,6 +16,11 @@ public final class LocalPg18Bootstrap {
             if(!r.next() || !r.getBoolean(4))throw new IllegalStateException("REAL_PG18_TLS_REQUIRED");
             System.out.println("REAL_PG18_IDENTITY version="+r.getString(1)+" db="+r.getString(2)+" role="+r.getString(3)+" tls="+r.getBoolean(4));
         }
+    }
+
+    public static void prepare() throws Exception {
+        migrate();
+        var provider=TestDatabaseConnectionProvider.fromControlledLaunch();
         var root=java.nio.file.Path.of(System.getProperty("project.root.dir"));
         var scratch=java.nio.file.Path.of(System.getProperty("media.platform.pg18.scratch"));
         org.jooq.meta.jaxb.Configuration config;
