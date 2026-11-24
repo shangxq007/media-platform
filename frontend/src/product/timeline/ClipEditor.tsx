@@ -722,7 +722,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
     <label>Composition aspect ratio
-      <select value={aspectRatio} disabled={!head || !project.tenantId || busy}
+      <select className="ff-input" aria-label="Composition aspect ratio"
+        value={aspectRatio} disabled={!head || !project.tenantId || busy}
         onChange={event => void applyAspect(event.target.value as CompositionAspectRatio)}>
         <option value="LANDSCAPE_4_3">Landscape 4:3</option>
         <option value="PORTRAIT_3_4">Portrait 3:4</option>
