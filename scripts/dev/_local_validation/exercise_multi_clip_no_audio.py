@@ -182,18 +182,18 @@ job = out['renderJobId']
 deadline = time.monotonic() + 240
 status = None
 while time.monotonic() < deadline:
-    status = psql(f"select status from render_job where id='{job}';")
+    status = psql(f"select status from render.render_job where id='{job}';")
     if status in ('COMPLETED', 'FAILED', 'CANCELLED'):
         break
     time.sleep(2)
 assert status == 'COMPLETED', ('render job did not complete', status, job)
 facts = json.loads(psql(f"""
 select json_build_object(
- 'job',(select row_to_json(x) from (select id,status,timeline_snapshot_id,profile,graph_preparation_stage from render_job where id='{job}') x),
- 'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,final_artifact_id,failure_code from render_graph_execution where job_id='{job}') g),
- 'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'digest',content_digest,'bytes',byte_length)) from artifact where render_job_id='{job}'),
- 'candidates',(select convert_from(candidates_json,'UTF8') from render_binding_inputs where render_job_id='{job}'),
- 'plan',(select convert_from(plan_json,'UTF8') from render_binding_inputs where render_job_id='{job}'))
+ 'job',(select row_to_json(x) from (select id,status,timeline_snapshot_id,profile,graph_preparation_stage from render.render_job where id='{job}') x),
+ 'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,final_artifact_id,failure_code from render.render_graph_execution where job_id='{job}') g),
+ 'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'digest',content_digest,'bytes',byte_length)) from artifacts.artifact where render_job_id='{job}'),
+ 'candidates',(select convert_from(candidates_json,'UTF8') from render.render_binding_inputs where render_job_id='{job}'),
+ 'plan',(select convert_from(plan_json,'UTF8') from render.render_binding_inputs where render_job_id='{job}'))
 """))
 candidates_text = '\n'.join(base64.b64decode(line).decode('utf-8', 'replace')
                             for line in facts['candidates'].splitlines() if line.strip())
@@ -206,7 +206,7 @@ graphs = raw_graphs if isinstance(raw_graphs, list) else ([raw_graphs] if raw_gr
 assert graphs, 'no render graph execution row'
 final_artifact = graphs[0].get('final_artifact_id') if isinstance(graphs[0], dict) else None
 if not final_artifact:
-    final_artifact = psql(f"select id from artifact where render_job_id='{job}' and artifact_kind='RENDER_MASTER' limit 1;") or None
+    final_artifact = psql(f"select id from artifacts.artifact where render_job_id='{job}' and artifact_kind='RENDER_MASTER' limit 1;") or None
 assert final_artifact, 'render graph execution has no final Artifact'
 worker_log = (app / 'worker.log').read_text(errors='replace')
 assert 'host-bundle/usr/bin/python3.9' in worker_log, 'the Worker did not execute the BMF runtime Python'

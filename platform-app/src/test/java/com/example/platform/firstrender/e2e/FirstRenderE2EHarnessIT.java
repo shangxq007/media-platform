@@ -410,7 +410,7 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
         registrationLoop.registerOnce();
         stage("readiness=" + jdbc.queryForList(
                 "select environment_readiness, sandbox_readiness, snapshot_generation, "
-                        + "(valid_until > now()) as fresh from wf_host_readiness"));
+                        + "(valid_until > now()) as fresh from worker_fabric.wf_host_readiness"));
         stage("host_registration=" + jdbc.queryForList(
                 "select physical_host_id, physical_host_incarnation_id, valid_until > now() as fresh "
                         + "from worker_fabric.wf_host_registration"));
@@ -421,10 +421,10 @@ class FirstRenderE2EHarnessIT extends PostgresTestContainerSupport {
         stage("snapshot=" + jdbc.queryForList(
                 "select snapshot_generation, cpu_millicores, memory_bytes, temporary_storage_bytes, "
                         + "safety_headroom_cpu_millicores, safety_headroom_memory_bytes, "
-                        + "safety_headroom_temporary_storage_bytes from wf_host_resource_snapshot"));
+                        + "safety_headroom_temporary_storage_bytes from worker_fabric.wf_host_resource_snapshot"));
         stage("reservations=" + jdbc.queryForList(
                 "select count(*) as n_reservations, coalesce(sum(cpu_millicores),0) as cpu_from_"
-                        + "reservations from wf_reservation"));
+                        + "reservations from worker_fabric.wf_reservation"));
         var diagContribution = providerPluginCatalog.find(
                 graph.tasks().getFirst().providerBindingPin()).orElseThrow();
         var diagDemand = TaskResourceDemandDeriver.derive(diagContribution.resourceProfile())

@@ -79,8 +79,12 @@ public final class ControlledJUnitMain {
             });launcher.execute(built);
             listener.getSummary().printTo(new java.io.PrintWriter(System.out,true));
             listener.getSummary().printFailuresTo(new java.io.PrintWriter(System.out,true));
-            if (listener.getSummary().getTestsFoundCount()==0 || listener.getSummary().getTestsFailedCount()>0
-                || listener.getSummary().getContainersFailedCount()>0) System.exit(1);
+            var summary = listener.getSummary();
+            boolean failed = summary.getTestsFoundCount() == 0 || summary.getTestsFailedCount() > 0
+                    || summary.getContainersFailedCount() > 0;
+            // Spring-managed schedulers can outlive the last test. Run the JVM shutdown hooks
+            // after recording the complete JUnit outcome, then let the supervisor reap the job.
+            System.exit(failed ? 1 : 0);
         } catch (Throwable e) {
             String reason=e instanceof IllegalArgumentException ? e.getMessage() : e.getClass().getSimpleName();
             System.out.println("CONTROLLED_REJECT "+reason);System.exit(2);

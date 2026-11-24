@@ -67,22 +67,22 @@ evidence['scenario_source_artifact'] = source_pin['artifactId']
 # ── 2. persisted bound-graph inputs and the committed graph digest ─────────────────────────────
 facts = json.loads(psql(f"""
 select json_build_object(
- 'render_job',(select row_to_json(x) from (select id,status,timeline_snapshot_id,profile,graph_preparation_stage from render_job where id='{job}') x),
- 'status_history',(select json_agg(json_build_object('from',from_status,'to',to_status,'reason',reason,'at',occurred_at) order by occurred_at) from render_job_status_history where job_id='{job}'),
+ 'render_job',(select row_to_json(x) from (select id,status,timeline_snapshot_id,profile,graph_preparation_stage from render.render_job where id='{job}') x),
+ 'status_history',(select json_agg(json_build_object('from',from_status,'to',to_status,'reason',reason,'at',occurred_at) order by occurred_at) from render.render_job_status_history where job_id='{job}'),
  'bound_graph',(select json_build_object('plan_ref',plan_ref,'plan_digest',plan_digest,'expected_etg_digest',expected_etg_digest,
     'candidate_set_digest',candidate_set_digest,'plan_bytes',octet_length(plan_json),'plan_sha256',encode(sha256(plan_json),'hex'),
     'candidates_bytes',octet_length(candidates_json),'candidates_sha256',encode(sha256(candidates_json),'hex'),
-    'declarations_bytes',octet_length(declarations_json)) from render_binding_inputs where render_job_id='{job}'),
- 'plan_text',(select convert_from(plan_json,'UTF8') from render_binding_inputs where render_job_id='{job}'),
- 'candidates_text',(select convert_from(candidates_json,'UTF8') from render_binding_inputs where render_job_id='{job}'),
- 'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,task_attempt_id,task_generation,expected_artifact_id,final_artifact_id,failure_code from render_graph_execution where job_id='{job}') g),
- 'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'mediaType',media_type,'digest',content_digest,'bytes',byte_length) order by created_at) from artifact where render_job_id='{job}'),
- 'replicas',(select json_agg(json_build_object('artifact',artifact_id,'storageProvider',provider_id,'storageObject',storage_object_id,'state',state,'role',role)) from artifact_replica r where artifact_id in (select id from artifact where render_job_id='{job}')),
- 'attempts',(select json_agg(json_build_object('attempt',a.attempt_id,'task',a.task_id,'generation',a.generation,'backend',a.backend,'state',a.state,'created',a.created_at) order by a.created_at) from wf_execution_attempt a where a.created_at >= (select created_at from render_job where id='{job}')),
- 'assignments',(select json_agg(json_build_object('assignment',s.assignment_id,'attempt',s.attempt_id,'runtime',s.worker_runtime_id,'host',s.physical_host_id) order by s.created_at) from wf_execution_assignment s where s.created_at >= (select created_at from render_job where id='{job}')),
- 'completions',(select json_agg(json_build_object('event',e.completion_event_id,'task',e.task_id,'attempt',e.attempt_id,'artifact',e.artifact_id,'at',e.completed_at) order by e.completed_at) from wf_completion_event e where e.completed_at >= (select created_at from render_job where id='{job}')),
- 'quota_operations',(select count(*) from quota_usage_operation where idempotency_key='render-job:{job}:completion'),
- 'events',(select json_agg(json_build_object('type',event_type,'count',n)) from (select event_type,count(*) n from outbox_events where aggregate_id='{job}' group by event_type order by event_type) x)
+    'declarations_bytes',octet_length(declarations_json)) from render.render_binding_inputs where render_job_id='{job}'),
+ 'plan_text',(select convert_from(plan_json,'UTF8') from render.render_binding_inputs where render_job_id='{job}'),
+ 'candidates_text',(select convert_from(candidates_json,'UTF8') from render.render_binding_inputs where render_job_id='{job}'),
+ 'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,task_attempt_id,task_generation,expected_artifact_id,final_artifact_id,failure_code from render.render_graph_execution where job_id='{job}') g),
+ 'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'mediaType',media_type,'digest',content_digest,'bytes',byte_length) order by created_at) from artifacts.artifact where render_job_id='{job}'),
+ 'replicas',(select json_agg(json_build_object('artifact',artifact_id,'storageProvider',provider_id,'storageObject',storage_object_id,'state',state,'role',role)) from artifacts.artifact_replica r where artifact_id in (select id from artifacts.artifact where render_job_id='{job}')),
+ 'attempts',(select json_agg(json_build_object('attempt',a.attempt_id,'task',a.task_id,'generation',a.generation,'backend',a.backend,'state',a.state,'created',a.created_at) order by a.created_at) from worker_fabric.wf_execution_attempt a where a.created_at >= (select created_at from render.render_job where id='{job}')),
+ 'assignments',(select json_agg(json_build_object('assignment',s.assignment_id,'attempt',s.attempt_id,'runtime',s.worker_runtime_id,'host',s.physical_host_id) order by s.created_at) from worker_fabric.wf_execution_assignment s where s.created_at >= (select created_at from render.render_job where id='{job}')),
+ 'completions',(select json_agg(json_build_object('event',e.completion_event_id,'task',e.task_id,'attempt',e.attempt_id,'artifact',e.artifact_id,'at',e.completed_at) order by e.completed_at) from worker_fabric.wf_completion_event e where e.completed_at >= (select created_at from render.render_job where id='{job}')),
+ 'quota_operations',(select count(*) from entitlement.quota_usage_operation where idempotency_key='render-job:{job}:completion'),
+ 'events',(select json_agg(json_build_object('type',event_type,'count',n)) from (select event_type,count(*) n from infrastructure.outbox_events where aggregate_id='{job}' group by event_type order by event_type) x)
 )"""))
 plan_text = facts.pop('plan_text')
 # candidates_json stores one base64-encoded canonical candidate per line.

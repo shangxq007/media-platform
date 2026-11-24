@@ -25,19 +25,19 @@ def run_podman(args, data=None):
 
 sql = f"""
 select json_build_object(
-    'revision', (select timeline_revision_id from render_job where id = '{job}'),
+    'revision', (select timeline_revision_id from render.render_job where id = '{job}'),
     'binding', (select json_build_object(
         'ref', plan_ref, 'planDigest', plan_digest, 'graphDigest', expected_etg_digest,
         'candidateDigest', candidate_set_digest,
         'candidates', convert_from(candidates_json, 'UTF8'),
         'plan', convert_from(plan_json, 'UTF8'))
-        from render_binding_inputs where render_job_id = '{job}'),
+        from render.render_binding_inputs where render_job_id = '{job}'),
     'execution', (select row_to_json(g) from
         (select plan_ref, plan_digest, graph_digest, final_artifact_id, final_task_id,
                 task_attempt_id, task_generation, attempt_id, generation
-        from render_graph_execution where job_id = '{job}') g),
+        from render.render_graph_execution where job_id = '{job}') g),
     'master', (select row_to_json(a) from
-        (select id, content_digest, byte_length from artifact
+        (select id, content_digest, byte_length from artifacts.artifact
         where render_job_id = '{job}' and artifact_kind = 'RENDER_MASTER') a)
 );
 """

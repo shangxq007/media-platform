@@ -67,7 +67,7 @@ class MeBillingControllerTenantTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.subject", "user-1");
         request.setAttribute("jwt.tenantId", "tenant-a");
-        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-a", PrincipalType.USER, "user-1");
+        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-a", PrincipalType.ORGANIZATION, "tenant-a");
 
         when(subscriptionBillingService.getCurrentSubscription(principal)).thenReturn(null);
         when(entitlementPolicyService.getTier("tenant-a")).thenReturn("FREE");
@@ -77,7 +77,7 @@ class MeBillingControllerTenantTest {
         assertTrue(response.getStatusCode().is2xxSuccessful());
         verify(subscriptionBillingService).getCurrentSubscription(principal);
         verify(subscriptionBillingService, never()).getCurrentSubscription(
-                PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1"));
+                PrincipalRef.tenantScoped("tenant-1", PrincipalType.ORGANIZATION, "tenant-1"));
     }
 
     @Test
@@ -85,7 +85,7 @@ class MeBillingControllerTenantTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.subject", "user-1");
         request.setAttribute("jwt.tenantId", "tenant-b");
-        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-b", PrincipalType.USER, "user-1");
+        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-b", PrincipalType.ORGANIZATION, "tenant-b");
 
         when(subscriptionBillingService.getCurrentSubscription(principal)).thenReturn(null);
         when(entitlementPolicyService.getTier("tenant-b")).thenReturn("FREE");
@@ -122,7 +122,7 @@ class MeBillingControllerTenantTest {
                 () -> controller.getCurrentPlan(request));
 
         verify(subscriptionBillingService, never()).getCurrentSubscription(
-                PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1"));
+                PrincipalRef.tenantScoped("tenant-1", PrincipalType.ORGANIZATION, "tenant-1"));
     }
 
     @Test
@@ -131,7 +131,8 @@ class MeBillingControllerTenantTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.subject", "user-1");
         request.setAttribute("jwt.tenantId", "real-tenant");
-        PrincipalRef principal = PrincipalRef.tenantScoped("real-tenant", PrincipalType.USER, "user-1");
+        request.setParameter("tenantId", "fake-tenant");
+        PrincipalRef principal = PrincipalRef.tenantScoped("real-tenant", PrincipalType.ORGANIZATION, "real-tenant");
 
         when(subscriptionBillingService.getCurrentSubscription(principal)).thenReturn(null);
         when(entitlementPolicyService.getTier("real-tenant")).thenReturn("FREE");
@@ -141,6 +142,6 @@ class MeBillingControllerTenantTest {
         assertTrue(response.getStatusCode().is2xxSuccessful());
         verify(subscriptionBillingService).getCurrentSubscription(principal);
         verify(subscriptionBillingService, never()).getCurrentSubscription(
-                PrincipalRef.tenantScoped("fake-tenant", PrincipalType.USER, "user-1"));
+                PrincipalRef.tenantScoped("fake-tenant", PrincipalType.ORGANIZATION, "fake-tenant"));
     }
 }

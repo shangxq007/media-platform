@@ -262,16 +262,16 @@ job = out['renderJobId']
 deadline = time.monotonic() + 300
 status = None
 while time.monotonic() < deadline:
-    status = psql(f"select status from render_job where id='{job}';")
+    status = psql(f"select status from render.render_job where id='{job}';")
     if status in ('COMPLETED', 'FAILED', 'CANCELLED'):
         break
     time.sleep(2)
 assert status == 'COMPLETED', ('render job did not complete', status, job)
 facts = json.loads(psql(f"""
 select json_build_object(
- 'job',(select row_to_json(x) from (select id,status,timeline_snapshot_id,profile,graph_preparation_stage from render_job where id='{job}') x),
- 'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,final_artifact_id,failure_code from render_graph_execution where job_id='{job}') g),
- 'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'digest',content_digest,'bytes',byte_length)) from artifact where render_job_id='{job}'))
+ 'job',(select row_to_json(x) from (select id,status,timeline_snapshot_id,profile,graph_preparation_stage from render.render_job where id='{job}') x),
+ 'graph_execution',(select row_to_json(g) from (select plan_ref,plan_digest,graph_digest,attempt_id,generation,final_task_id,final_artifact_id,failure_code from render.render_graph_execution where job_id='{job}') g),
+ 'artifacts',(select json_agg(json_build_object('id',id,'kind',artifact_kind,'state',state,'digest',content_digest,'bytes',byte_length)) from artifacts.artifact where render_job_id='{job}'))
 """))
 raw_graphs = facts['graph_execution']
 if isinstance(raw_graphs, str):
@@ -280,19 +280,19 @@ graphs = raw_graphs if isinstance(raw_graphs, list) else ([raw_graphs] if raw_gr
 assert graphs, 'no render graph execution row'
 final_artifact = graphs[0].get('final_artifact_id') if isinstance(graphs[0], dict) else None
 if not final_artifact:
-    final_artifact = psql(f"select id from artifact where render_job_id='{job}' and artifact_kind='RENDER_MASTER' limit 1;") or None
+    final_artifact = psql(f"select id from artifacts.artifact where render_job_id='{job}' and artifact_kind='RENDER_MASTER' limit 1;") or None
 assert final_artifact, 'render graph execution has no final Artifact'
 
 revision_facts = json.loads(psql(f"""
 select json_build_object(
- 'renderRevisionCount',(select count(*) from timeline_revision where project_id='project-fr-e2e'),
- 'renderHead',(select head_revision_id from timeline_revision_ref where project_id='project-fr-e2e'),
- 'batchRevisionCount',(select count(*) from timeline_revision where project_id='project-fr-batch'),
- 'batchHead',(select head_revision_id from timeline_revision_ref where project_id='project-fr-batch'),
+ 'renderRevisionCount',(select count(*) from timeline.timeline_revision where project_id='project-fr-e2e'),
+ 'renderHead',(select head_revision_id from timeline.timeline_revision_ref where project_id='project-fr-e2e'),
+ 'batchRevisionCount',(select count(*) from timeline.timeline_revision where project_id='project-fr-batch'),
+ 'batchHead',(select head_revision_id from timeline.timeline_revision_ref where project_id='project-fr-batch'),
  'batchCommands',(select json_agg(json_build_object('id',apply_command_id,'domain',command_domain,
      'status',status,'resultStatus',result_status,'planDigest',plan_digest,'resultRevisionId',result_revision_id))
-     from apply_command where project_id='project-fr-batch' and command_domain='OPERATION_BATCH'),
- 'browserRevisionCount',(select count(*) from timeline_revision where project_id='project-fr-browser'))
+     from timeline.apply_command where project_id='project-fr-batch' and command_domain='OPERATION_BATCH'),
+ 'browserRevisionCount',(select count(*) from timeline.timeline_revision where project_id='project-fr-browser'))
 """))
 assert revision_facts['renderRevisionCount'] == 5, revision_facts
 assert revision_facts['renderHead'] == out['renderRevision'], revision_facts
