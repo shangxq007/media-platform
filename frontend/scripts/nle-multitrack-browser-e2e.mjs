@@ -567,19 +567,24 @@ try {
     return Math.max(...a.map((channel, i) => Math.abs(channel - b[i])))
   }
   report.partial = []
-  for (const [start, end, label, at, x, y] of [
-    [2250, 3500, 'partial-start-in-dissolve', 2.5, 250, 120],
-    [1500, 2750, 'partial-end-in-dissolve', 2.5, 250, 120],
-    [1250, 4250, 'partial-spanning-dissolve', 1.375, 100, 100],
-    [3500, 4250, 'partial-through-fade-out', 3.75, 100, 100],
+  for (const [start, end, label, times] of [
+    [2250, 3500, 'partial-start-in-dissolve', [[2.5, 250, 120], [2.75, 250, 120]]],
+    [1500, 2750, 'partial-end-in-dissolve', [[2.25, 250, 120], [2.5, 250, 120]]],
+    [1250, 4250, 'partial-spanning-dissolve',
+      [[1.375, 100, 100], [1.75, 250, 120], [2.25, 250, 120], [2.75, 250, 120], [3.25, 250, 120]]],
+    [3500, 4250, 'partial-through-fade-out', [[3.75, 100, 100]]],
   ]) {
     const partial = await formalOutput(current.revisionId, start, end, label)
-    const fullRgb = pixel(output, at, x, y)
-    const partialRgb = pixel(partial.path, at - start / 1000, x, y)
-    const delta = maxDelta(fullRgb, partialRgb)
-    report.partial.push({ ...partial, start, end, at, x, y, fullRgb, partialRgb, delta })
+    const samples = times.map(([at, x, y]) => {
+      const fullRgb = pixel(output, at, x, y)
+      const partialRgb = pixel(partial.path, at - start / 1000, x, y)
+      return { at, x, y, fullRgb, partialRgb, delta: maxDelta(fullRgb, partialRgb) }
+    })
+    report.partial.push({ ...partial, start, end, samples })
     record(`MEASURED_${label}`)
-    assert(delta <= 12, `${label} full ${fullRgb}, partial ${partialRgb}, delta ${delta}`)
+    for (const sample of samples) {
+      assert(sample.delta <= 12, `${label} at ${sample.at} s: full ${sample.fullRgb}, partial ${sample.partialRgb}, delta ${sample.delta}`)
+    }
   }
   record('FORMAL_PARTIAL_RENDER_PHASE')
 
@@ -600,11 +605,14 @@ try {
   for (const [at, x, y] of [[0.125, 270, 200], [0.25, 272, 202], [0.375, 274, 204]]) {
     const colorRgb = pixel(color.path, at, x, y)
     const grayRgb = pixel(gray.path, at, x, y)
-    report.grayscale.samples.push({ at, x, y, colorRgb, grayRgb })
+    // BT.601 luma for the bounded 320×240 fixture, measured from its control delivery.
+    const expectedLuma = Math.round(0.299 * colorRgb[0] + 0.587 * colorRgb[1] + 0.114 * colorRgb[2])
+    report.grayscale.samples.push({ at, x, y, colorRgb, grayRgb, expectedLuma })
     record('MEASURED_FORMAL_GRAYSCALE')
     assert.equal(dominant(colorRgb), 'green')
     assert(Math.max(...grayRgb) - Math.min(...grayRgb) <= 4, `Grayscale chroma ${grayRgb}`)
-    assert(Math.min(...grayRgb) >= 80 && Math.max(...grayRgb) <= 180, `Grayscale luma ${grayRgb}`)
+    assert(grayRgb.every(channel => Math.abs(channel - expectedLuma) <= 6),
+      `Grayscale luma ${grayRgb}, expected ${expectedLuma}`)
   }
   await applyEffect(videoB, grayEffect)
   record('FORMAL_GRAYSCALE_ARTIFACT_AND_RELOAD')
