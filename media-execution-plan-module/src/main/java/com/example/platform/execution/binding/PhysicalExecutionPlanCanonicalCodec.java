@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Bounded V1 canonical codec for {@link PhysicalExecutionPlan} — one deterministic
@@ -69,7 +70,7 @@ import java.util.Objects;
  */
 public final class PhysicalExecutionPlanCanonicalCodec {
 
-    public static final String FORMAT = "p25a.physical-execution-plan.v1";
+    public static final String FORMAT = "p25a.physical-execution-plan.v2";
 
     private PhysicalExecutionPlanCanonicalCodec() {
     }
@@ -570,8 +571,14 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("fadeIn", Double.toString(timed.effect().fadeInSeconds()))
                     .field("fadeOut", Double.toString(timed.effect().fadeOutSeconds()))
                     .field("effectEnabled", Boolean.toString(timed.effect().enabled()))
-                    .field("transitionStart", timed.transitionStart().toString())
-                    .field("transitionDuration", timed.transitionDuration().toString()).build();
+                    .field("authoredStart", timed.authoredStart().toString())
+                    .field("authoredEnd", timed.authoredEnd().toString())
+                    .optional(timed.dissolve().isPresent(), timed.dissolve().map(dissolve ->
+                            new CanonicalWriter().tag("Dissolve")
+                                    .field("transitionId", dissolve.transitionId())
+                                    .field("outgoingClipId", dissolve.outgoingClipId())
+                                    .field("incomingClipId", dissolve.incomingClipId())
+                                    .field("duration", dissolve.duration().toString()).build()).orElse(null)).build();
         }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
@@ -591,9 +598,9 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
             case "TIMED_TRACK_INPUT" -> new RenderDependency.TimedTrackInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")),
-                    Integer.parseInt(reader.field("layer")), Boolean.parseBoolean(reader.field("audio")),
+                    Integer.parseInt(reader.field("layer")), reader.fieldBoolean("audio"),
                     com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain"))),
-                    com.example.platform.audio.domain.mix.AudioMute.of(Boolean.parseBoolean(reader.field("mute"))),
+                    com.example.platform.audio.domain.mix.AudioMute.of(reader.fieldBoolean("mute")),
                     com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance"))),
                     new com.example.platform.render.domain.renderplan.VideoTransformSpec(
                             Double.parseDouble(reader.field("tx")), Double.parseDouble(reader.field("ty")),
@@ -603,13 +610,25 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                             Double.parseDouble(reader.field("cb")), Double.parseDouble(reader.field("opacity"))),
                     new com.example.platform.render.domain.renderplan.VideoEffectSpec(
                             Double.parseDouble(reader.field("brightness")), Double.parseDouble(reader.field("contrast")),
-                            Double.parseDouble(reader.field("saturation")), Boolean.parseBoolean(reader.field("grayscale")),
+                            Double.parseDouble(reader.field("saturation")), reader.fieldBoolean("grayscale"),
                             Double.parseDouble(reader.field("fadeIn")), Double.parseDouble(reader.field("fadeOut")),
-                            Boolean.parseBoolean(reader.field("effectEnabled"))),
-                    com.example.platform.shared.time.MediaTime.parse(reader.field("transitionStart")),
-                    com.example.platform.shared.time.MediaTime.parse(reader.field("transitionDuration")));
+                            reader.fieldBoolean("effectEnabled")),
+                    MediaTime.parse(reader.field("authoredStart")), MediaTime.parse(reader.field("authoredEnd")),
+                    dissolve(reader.optionalNested()));
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
+    }
+
+    private static Optional<RenderDependency.Dissolve> dissolve(FrameReader reader) {
+        if (reader == null) return Optional.empty();
+        reader.requireTag("Dissolve");
+        var value = new RenderDependency.Dissolve(reader.field("transitionId"),
+                reader.field("outgoingClipId"), reader.field("incomingClipId"),
+                MediaTime.parse(reader.field("duration")));
+        if (reader.hasRemaining()) {
+            throw new UnsupportedPersistedConstructException("trailing dissolve data");
+        }
+        return Optional.of(value);
     }
 
     // ---------- exact time / extent / node kind ----------

@@ -80,6 +80,32 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
                 .isEqualTo(PhysicalExecutionPlanCanonicalCodec.digestHex(plan));
     }
 
+    @Test
+    void clippedDissolveRetainsItsAuthoredTimeAndBothEndpointIdentities() {
+        var start = MediaTime.ofMillis(2500);
+        var end = MediaTime.ofMillis(3500);
+        var dissolve = new com.example.platform.render.domain.renderplan.RenderDependency.Dissolve(
+                "transition-1", "outgoing", "incoming", TWO);
+        var dependency = com.example.platform.render.domain.renderplan.RenderDependency.TimedTrackInput.video(
+                start, end, 1,
+                com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                new com.example.platform.render.domain.renderplan.VideoEffectSpec(0, 1, 1, true, 0.5, 0.5, true),
+                TWO, MediaTime.ofMillis(4500), java.util.Optional.of(dissolve));
+        var input = new InputBinding(new ExecutionInputId("input-clip"), "composite",
+                new ExecutionStepId("composite"), new RenderNodeId("render-composite"),
+                "clip", new ExecutionStepId("clip"), new RenderNodeId("render-clip"), dependency, null, null);
+        var plan = plan(List.of(unit("multitrack-composite", "composite", null, null, null, List.of(input),
+                List.of(outputDeclaration("composite")))), null);
+
+        byte[] bytes = PhysicalExecutionPlanCanonicalCodec.encode(plan);
+        assertThat(PhysicalExecutionPlanCanonicalCodec.decode(bytes)).isEqualTo(plan);
+        String oldTag = new String(bytes, java.nio.charset.StandardCharsets.UTF_8)
+                .replace("p25a.physical-execution-plan.v2", "p25a.physical-execution-plan.v1");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                PhysicalExecutionPlanCanonicalCodec.decode(oldTag.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .isInstanceOf(UnsupportedPersistedConstructException.class);
+    }
+
     /** A plan whose unit and plan-level optionals are all absent must encode as "absent" without NPE. */
     @Test
     void allAbsentOptionalsEncodeAsAbsentAndRoundTrip() {

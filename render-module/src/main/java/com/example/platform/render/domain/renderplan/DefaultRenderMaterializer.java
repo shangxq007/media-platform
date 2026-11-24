@@ -85,9 +85,22 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 revision.track(clip.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO);
         boolean hasAudioRoutes = audioMix != null && !audioMix.routes().isEmpty();
         boolean hasAudio = hasAudioTracks || hasAudioRoutes;
-        boolean timedTracks = hasAudioTracks || hasAudioRoutes
+        var dissolvesByIncoming = revision.transitions().stream().collect(
+                java.util.stream.Collectors.toMap(
+                        com.example.platform.timeline.canonicalmodel.CanonicalTransition::incomingClipId,
+                        t -> new RenderDependency.Dissolve(t.transitionId(), t.outgoingClipId(),
+                                t.incomingClipId(), t.duration())));
+        boolean hasBasicEffects = clips.stream().anyMatch(clip -> clip.effect().enabled() && !clip.effect().identity());
+        boolean timedTracks = hasAudioTracks || hasAudioRoutes || hasBasicEffects || !dissolvesByIncoming.isEmpty()
                 || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
         boolean multiClip = clips.size() > 1 || timedTracks;
+        if ((hasBasicEffects || !dissolvesByIncoming.isEmpty())
+                && !hasExactEditorialFrameGrid(clips, request.extent())) {
+            diagnostics.add(RenderPlanningDiagnostic.diagnostic(
+                    RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED, RenderDiagnosticSeverity.ERROR,
+                    "Effect and dissolve renders require clip and output boundaries aligned to the output frame rate"));
+            return new RenderMaterializationResult(nodes, edges, diagnostics);
+        }
         if (multiClip) {
             boolean unsupported = false;
             for (MediaClip clip : clips) {
@@ -377,20 +390,13 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                                 route != null ? route.mute() : null,
                                                 route != null ? route.balance() : null)));
                             } else {
-                                var transition = revision.transitions().stream()
-                                        .filter(t -> t.incomingClipId().equals(clip.clipId()))
-                                        .findFirst().orElse(null);
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
-                                        new RenderDependency.TimedTrackInput(start, end,
-                                                revision.layer(clip.trackId()), false,
-                                                com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
-                                                com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
-                                                com.example.platform.audio.domain.mix.StereoBalance.neutral(),
+                                        RenderDependency.TimedTrackInput.video(start, end,
+                                                revision.layer(clip.trackId()),
                                                 VideoTransformSpec.from(clip.transform()),
                                                 VideoEffectSpec.from(clip.effect()),
-                                                transition == null ? clip.timelineRange().start() : clip.timelineRange().start(),
-                                                transition == null ? com.example.platform.shared.time.MediaTime.ZERO
-                                                        : transition.duration())));
+                                                clip.timelineRange().start(), clip.timelineRange().end(),
+                                                Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())))));
                                 RenderNodeId embedded = getEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId());
                                 if (embedded != null) {
                                     edges.add(new RenderDependencyEdge(embedded, compositeId,
@@ -489,6 +495,23 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             }
         }
         return result;
+    }
+
+    private static boolean hasExactEditorialFrameGrid(List<MediaClip> clips, RenderExtent extent) {
+        try {
+            extent.start().toFrameExact(extent.frameRate());
+            extent.end().toFrameExact(extent.frameRate());
+            for (MediaClip clip : clips) {
+                if (clip.timelineRange().end().isGreaterThan(extent.start())
+                        && clip.timelineRange().start().isLessThan(extent.end())) {
+                    clip.timelineRange().start().toFrameExact(extent.frameRate());
+                    clip.timelineRange().end().toFrameExact(extent.frameRate());
+                }
+            }
+            return true;
+        } catch (ArithmeticException nonIntegral) {
+            return false;
+        }
     }
 
     /**

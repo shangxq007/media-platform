@@ -55,6 +55,64 @@ def method_bodies(source: str, method_name: str) -> list[str]:
     return bodies
 
 
+def controller_authorization_missing(sources: dict[str, str]) -> int:
+    ending = lambda suffix: next((source for path, source in sources.items() if path.endswith(suffix)), "")
+    controller_auth_missing = 0
+    for controller in (
+        "TimelineGitV1Controller.java",
+        "TimelineRevisionController.java",
+        "TimelineWorkbenchController.java",
+        "TimelineReviewController.java",
+    ):
+        source = next((s for p, s in sources.items() if p.endswith(controller)), "")
+        if "projectAuthorization.require" not in source:
+            controller_auth_missing += 1
+    media_controller = next((s for p, s in sources.items()
+                             if p.endswith("TimelineMediaClipOperationController.java")), "")
+    media_service = next((s for p, s in sources.items()
+                          if p.endswith("TimelineMediaClipOperationService.java")), "")
+    if "authenticatedActor" not in media_controller or "requirePreparationAuthorization" not in media_service:
+        controller_auth_missing += 1
+    # Editor sync transport was retired. Its former private service is covered by the
+    # exact-revision/no-latest-fallback law and active workbench reads above.
+    if ending("TimelineEditorSyncController.java"):
+        controller_auth_missing += 1
+    mcp = ending("McpMediaToolsController.java")
+    invocation = ending("CanonicalOperationInvocationService.java")
+    apply = ending("OperationPlanApplyService.java")
+    submission = ending("RevisionRenderSubmissionService.java")
+    acceptance = ending("RenderAcceptanceContextService.java")
+    chains = (
+        (mcp, "case \"timeline.apply_operation\"", "operations.invoke(a.command().toOperationRequest(a.projectId())",
+         "new OperationInvocationContext(actor,"),
+        (invocation, "mediaClipService.invoke(request, context)"),
+        (apply, "context.authorization()", "authorization.allowed()", "PlanErrorCode.AUTHORIZATION_DENIED"),
+        (mcp, 'case "render.submit"', 'case "render.submit_incremental"',
+         "submissions.submit(a.request()", "submissions.submitIncremental(a.request()",
+         "RenderInitiator.from(actor())"),
+        (submission, "preparation.projectIdForRevision(tenant, request.revisionId())",
+         "acceptance.prepare(tenant, project, actor)", "idempotency.reserve(tenant, project,"),
+        (acceptance, "authorization.requireAuthorized(new AuthorizationRequest(actor,"),
+    )
+    for source, *markers in chains:
+        if not all(marker in source for marker in markers):
+            controller_auth_missing += 1
+    if (submission.find("acceptance.prepare(tenant, project, actor)")
+            >= submission.find("idempotency.reserve(tenant, project,")):
+        controller_auth_missing += 1
+    # The retired MediaAssetLifecycleController was deleted by the artifact-media
+    # convergence (ad2545de); its replacement surface is ArtifactLifecycleController,
+    # which must carry the same project-scoped read/write authorization boundary.
+    # The law follows the surface, not the deleted file.
+    artifact_lifecycle = next((s for p, s in sources.items()
+                               if p.endswith("ArtifactLifecycleController.java")), "")
+    if ("projectAuthorization.requireRead" not in artifact_lifecycle
+            or "projectAuthorization.requireWrite" not in artifact_lifecycle):
+        controller_auth_missing += 1
+
+    return controller_auth_missing
+
+
 def critical_laws(sources: dict[str, str], exact_pg_matrix: str) -> dict[str, int]:
     production = "\n".join(sources.values())
     ending = lambda suffix: next((s for p, s in sources.items() if p.endswith(suffix)), "")
@@ -63,7 +121,14 @@ def critical_laws(sources: dict[str, str], exact_pg_matrix: str) -> dict[str, in
     for method in ("saveRevision", "saveRevisionWithEffects", "saveRevisionForCommand",
                    "recordNoOpCommand", "saveMergeRevision", "restoreRevision"):
         bodies = method_bodies(save_source, method)
-        if len(bodies) != 1 or "authorizeMutation" not in bodies[0]:
+        forwarded = re.compile(
+            r"\s*return saveRevisionForCommand\(context,\s*targetRef,\s*expectedCurrentRevisionId,"
+            r"\s*document,\s*command,\s*null\);\s*")
+        guarded = [body for body in bodies if re.search(
+            r'\bauthorizeMutation\(context,\s*"[^"]+"\);', body)]
+        if len(guarded) != 1 or any(
+                body not in guarded and (method != "saveRevisionForCommand" or not forwarded.fullmatch(body))
+                for body in bodies):
             mutation_authorization_missing += 1
     git_controller = ending("TimelineGitV1Controller.java")
     global_handler = ending("GlobalExceptionHandler.java")
@@ -77,6 +142,7 @@ def critical_laws(sources: dict[str, str], exact_pg_matrix: str) -> dict[str, in
                 "AuthorizationDecisionPort" in save_source
                 and "authorizationPort.requireAuthorized" in save_source
                 and "TimelineMutationContext" in save_source) else 1),
+        "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING": controller_authorization_missing(sources),
         "CANONICAL_AUTHOR_PERSISTENCE_MISSING": 0 if re.search(
             r"AUTHOR_USER_ID\s*,\s*revision\s*\.\s*createdBy\s*\(\)",
             ending("DefaultTimelineRevisionPersistence.java")) else 1,
@@ -86,7 +152,7 @@ def critical_laws(sources: dict[str, str], exact_pg_matrix: str) -> dict[str, in
             r"(?:productId|projectId|revisionId)", save_source),
         "LATEST_SNAPSHOT_CURRENT_FALLBACK": count(
             r"findLatestOwnedByProject\s*\(",
-            ending("TimelineEditorSyncService.java")),
+            ending("TimelineEditorSyncService.java") + ending("TimelineRevisionController.java")),
         "REVISION_COMPARE_SHADOW_SEMANTIC_DIFF_AUTHORITY": (
             count(r"class\s+TimelineSemanticDiffV1Service\b", production)
             + sum(count(r"TimelineDiffEngine\s*\.\s*diff\s*\(", source)
@@ -139,6 +205,26 @@ def run_self_test(sources: dict[str, str], exact_pg_matrix: str) -> bool:
                   mutate("TimelineRevisionSaveService.java",
                          "authorizationPort.requireAuthorized", "authorizationPort.decide"),
                   exact_pg_matrix))
+    cases.append(("command_mutation_overload_bypasses_delegation",
+                  "CANONICAL_MUTATION_AUTHORIZATION_OWNERSHIP_MISSING",
+                  mutate("TimelineRevisionSaveService.java", "command, null);", "null, null);"),
+                  exact_pg_matrix))
+    cases.append(("mcp_operation_bypasses_formal_invocation",
+                  "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING",
+                  mutate("McpMediaToolsController.java", "operations.invoke(a.command()", "directWrite(a.command()"),
+                  exact_pg_matrix))
+    cases.append(("mcp_render_bypasses_scoped_preparation",
+                  "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING",
+                  mutate("RevisionRenderSubmissionService.java", "acceptance.prepare(tenant, project, actor);", ""),
+                  exact_pg_matrix))
+    cases.append(("mcp_render_loses_authorization_decision",
+                  "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING",
+                  mutate("RenderAcceptanceContextService.java", "authorization.requireAuthorized(", "authorization.decide("),
+                  exact_pg_matrix))
+    cases.append(("retired_sync_controller_returns",
+                  "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING",
+                  {**sources, "web/TimelineEditorSyncController.java": "class TimelineEditorSyncController {}"},
+                  exact_pg_matrix))
     cases.append(("workbench_unscoped_review",
                   "REVIEW_OWNERSHIP_SCOPE_MISSING",
                   mutate("TimelineWorkbenchController.java",
@@ -146,10 +232,8 @@ def run_self_test(sources: dict[str, str], exact_pg_matrix: str) -> bool:
                   exact_pg_matrix))
     cases.append(("latest_snapshot_fallback",
                   "LATEST_SNAPSHOT_CURRENT_FALLBACK",
-                  mutate("TimelineEditorSyncService.java",
-                         "throw new IllegalArgumentException(",
-                         "timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId); "
-                         "throw new IllegalArgumentException("),
+                  mutate("TimelineRevisionController.java",
+                         "getRevisionSnapshotPayload(", "findLatestOwnedByProject("),
                   exact_pg_matrix))
     cases.append(("shadow_runtime_diff",
                   "REVISION_COMPARE_SHADOW_SEMANTIC_DIFF_AUTHORITY",
@@ -247,37 +331,6 @@ def main() -> int:
         for path, source in sources.items() if path != save_service_path
     )
 
-    controller_auth_missing = 0
-    for controller in (
-        "TimelineGitV1Controller.java",
-        "TimelineRevisionController.java",
-        "TimelineEditorSyncController.java",
-        "TimelineWorkbenchController.java",
-        "TimelineReviewController.java",
-    ):
-        source = next((s for p, s in sources.items() if p.endswith(controller)), "")
-        if "projectAuthorization.require" not in source:
-            controller_auth_missing += 1
-    media_controller = next((s for p, s in sources.items()
-                             if p.endswith("TimelineMediaClipOperationController.java")), "")
-    media_service = next((s for p, s in sources.items()
-                          if p.endswith("TimelineMediaClipOperationService.java")), "")
-    if "authenticatedActor" not in media_controller or "requirePreparationAuthorization" not in media_service:
-        controller_auth_missing += 1
-    mcp_media_controller = next((s for p, s in sources.items()
-                                 if p.endswith("McpMediaToolsController.java")), "")
-    if "projectAuthorization.requireWrite" not in mcp_media_controller:
-        controller_auth_missing += 1
-    # The retired MediaAssetLifecycleController was deleted by the artifact-media
-    # convergence (ad2545de); its replacement surface is ArtifactLifecycleController,
-    # which must carry the same project-scoped read/write authorization boundary.
-    # The law follows the surface, not the deleted file.
-    artifact_lifecycle = next((s for p, s in sources.items()
-                               if p.endswith("ArtifactLifecycleController.java")), "")
-    if ("projectAuthorization.requireRead" not in artifact_lifecycle
-            or "projectAuthorization.requireWrite" not in artifact_lifecycle):
-        controller_auth_missing += 1
-
     generated = "\n".join(
         path.read_text(encoding="utf-8")
         for path in (ROOT / "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated").rglob("*.java")
@@ -285,18 +338,10 @@ def main() -> int:
 
     save_source = next((s for p, s in sources.items()
                         if p.endswith("TimelineRevisionSaveService.java")), "")
-    mutation_authorization_missing = 0
-    for method in ("saveRevision", "saveRevisionWithEffects", "saveRevisionForCommand",
-                   "recordNoOpCommand", "saveMergeRevision", "restoreRevision"):
-        bodies = method_bodies(save_source, method)
-        if len(bodies) != 1 or "authorizeMutation" not in bodies[0]:
-            mutation_authorization_missing += 1
     merge_source = next((s for p, s in sources.items()
                          if p.endswith("TimelineMergeEngine.java")), "")
     persistence_source = next((s for p, s in sources.items()
                                if p.endswith("DefaultTimelineRevisionPersistence.java")), "")
-    editor_sync_source = next((s for p, s in sources.items()
-                               if p.endswith("TimelineEditorSyncService.java")), "")
     git_controller_source = next((s for p, s in sources.items()
                                   if p.endswith("TimelineGitV1Controller.java")), "")
     global_handler_source = next((s for p, s in sources.items()
@@ -355,7 +400,8 @@ def main() -> int:
         "CONTENT_HASH_MIXED_SEMANTIC_WRITERS": count(
             r"TIMELINE_REVISION\s*\.\s*CONTENT_HASH\s*,?\s*revision\s*\.\s*contentDigest\s*\(",
             production),
-        "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING": controller_auth_missing,
+        "ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING":
+            critical["ACTIVE_TIMELINE_CONTROLLER_AUTHORIZATION_MISSING"],
         "MERGE_CONTENT_HASH_NONCANONICAL_SEMANTICS": count(
             r"computeMergeHash\s*\(|merge:\s*['\"]?\s*\+\s*source", merge_source),
         "SHADOW_INTERNAL_PATCH_REPLAY_SURFACES": count(

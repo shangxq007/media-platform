@@ -22,7 +22,7 @@ class BmfCpuProviderContractTest {
     void freezes_exact_provider_identity_without_collapsing_runtime_evidence() {
         assertThat(BmfCpuProvider.PROVIDER_ID.value()).isEqualTo("bmf");
         assertThat(BmfCpuProvider.IMPLEMENTATION_ID.value()).isEqualTo("bmf.cpu.v1");
-        assertThat(BmfCpuProvider.VERSION.value()).isEqualTo("1.0.0");
+        assertThat(BmfCpuProvider.VERSION.value()).isEqualTo("1.1.0");
         assertThat(BmfCpuProvider.EXECUTION_CONTRACT_VERSION)
                 .isEqualTo(ProviderExecutionContractVersion.of(1, 0));
         assertThat(BmfCpuProvider.CAPABILITY_PROFILE_REFERENCE)

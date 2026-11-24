@@ -51,6 +51,19 @@ public class InternalTimelineValidationService implements TimelineValidation {
         return validation;
     }
 
+    public static void verifyPersistedEditorialState(
+            String timelineId, com.example.platform.timeline.canonical.TimelineDocument document) {
+        if (document.getTransitions().isEmpty() && document.getTracks().stream()
+                .flatMap(track -> track.clips().stream())
+                .flatMap(clip -> clip.getEffects().stream())
+                .noneMatch(effect -> com.example.platform.timeline.semantics.effect.BasicVideoEffect
+                        .EFFECT_KEY.equals(effect.effectKey()))) {
+            return;
+        }
+        var result = TimelineCanonicalValidator.validate(TimelineDocumentCandidateMapper.map(timelineId, document));
+        if (result.hasFatalErrors()) throw new TimelineCanonicalRejectionException(result.diagnostics());
+    }
+
     /** Timeline-owned validation result (endpoint-friendly shape). */
 
 

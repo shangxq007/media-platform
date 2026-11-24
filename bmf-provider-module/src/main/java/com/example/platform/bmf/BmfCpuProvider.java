@@ -39,7 +39,7 @@ public final class BmfCpuProvider {
     public static final ProviderId PROVIDER_ID = ProviderId.of("bmf");
     public static final ProviderImplementationId IMPLEMENTATION_ID =
             ProviderImplementationId.of("bmf.cpu.v1");
-    public static final ProviderVersion VERSION = ProviderVersion.of("1.0.0");
+    public static final ProviderVersion VERSION = ProviderVersion.of("1.1.0");
     public static final ProviderExecutionContractVersion EXECUTION_CONTRACT_VERSION =
             ProviderExecutionContractVersion.of(1, 0);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =

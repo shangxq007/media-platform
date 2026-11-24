@@ -4,7 +4,6 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.MediaTimeJsonCodec;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -27,6 +26,31 @@ public record CanonicalTransition(
         String alignment,
         String temporalPolicy,
         Map<String, String> parameters) {
+
+    public static final String CROSS_DISSOLVE = "video.cross-dissolve";
+    private static final String CROSS_DISSOLVE_VERSION = "1.0";
+    private static final Map<String, String> LINEAR_CURVE = Map.of("curve", "LINEAR");
+
+    public static CanonicalTransition crossDissolve(
+            String id, String outgoing, String incoming, MediaTime duration) {
+        return new CanonicalTransition(id, CROSS_DISSOLVE, CROSS_DISSOLVE_VERSION,
+                outgoing, incoming, "VIDEO", duration, "START_AT_INCOMING", "OVERLAP_TIMELINE", LINEAR_CURVE);
+    }
+
+    public boolean isCrossDissolve() {
+        return CROSS_DISSOLVE.equals(transitionDefinitionId);
+    }
+
+    public boolean supportsCrossDissolve() {
+        return isCrossDissolve() && CROSS_DISSOLVE_VERSION.equals(transitionDefinitionVersion)
+                && "VIDEO".equals(mediaType) && "START_AT_INCOMING".equals(alignment)
+                && "OVERLAP_TIMELINE".equals(temporalPolicy) && LINEAR_CURVE.equals(parameters);
+    }
+
+    public CanonicalTransition withDuration(MediaTime duration) {
+        return new CanonicalTransition(transitionId, transitionDefinitionId, transitionDefinitionVersion,
+                outgoingClipId, incomingClipId, mediaType, duration, alignment, temporalPolicy, parameters);
+    }
 
     public CanonicalTransition {
         Objects.requireNonNull(transitionId, "transitionId");

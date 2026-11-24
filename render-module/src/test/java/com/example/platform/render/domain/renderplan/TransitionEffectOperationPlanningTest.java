@@ -12,6 +12,7 @@ import com.example.platform.operation.plan.OperationPlanDigest;
 import com.example.platform.operation.plan.OperationPlanner;
 import com.example.platform.operation.plan.PlanException;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.app.InternalTimelineValidationService;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -63,13 +64,10 @@ class TransitionEffectOperationPlanningTest {
         assertThat(transition.incomingClipId()).isEqualTo("clip-b");
         assertThat(transition.duration()).isEqualTo(MediaTime.ofRational(1, 1));
 
-        assertThatThrownBy(() -> plan(base, OperationDefinition.V3.CREATE_CROSS_DISSOLVE, "clip-a",
-                new OperationParameters.TransitionCreateParameters("transition-2", "clip-b",
-                        MediaTime.ofRational(4, 1)))).isInstanceOf(PlanException.class);
-
-        assertThatThrownBy(() -> plan(base, OperationDefinition.V3.CREATE_CROSS_DISSOLVE, "clip-b",
-                new OperationParameters.TransitionCreateParameters("transition-3", "clip-a",
-                        MediaTime.ofRational(1, 1)))).isInstanceOf(PlanException.class);
+        assertThat(validate(dissolve(base, "too-long", "clip-a", "clip-b", 4)))
+                .contains("TIMELINE_TRANSITION_INTERVAL_INVALID");
+        assertThat(validate(dissolve(base, "reverse-layer", "clip-b", "clip-a", 1)))
+                .contains("TIMELINE_TRANSITION_PROFILE_UNSUPPORTED");
 
         OperationPlan updated = plan(created.candidateTimeline(), OperationDefinition.V3.UPDATE_CROSS_DISSOLVE,
                 "clip-a", new OperationParameters.TransitionUpdateParameters("transition-1",
@@ -80,6 +78,70 @@ class TransitionEffectOperationPlanningTest {
         OperationPlan deleted = plan(created.candidateTimeline(), OperationDefinition.V3.DELETE_CROSS_DISSOLVE,
                 "clip-a", new OperationParameters.TransitionDeleteParameters("transition-1"));
         assertThat(deleted.candidateTimeline().getTransitions()).isEmpty();
+    }
+
+    @Test
+    void canonicalGateRejectsCompetingIncomingTransitionsAndAcceptsASequentialChain() {
+        TimelineDocument chain = withThirdClip();
+        var first = dissolve(chain, "first", "clip-a", "clip-b", 1);
+        var sequential = dissolve(first, "second", "clip-b", "clip-c", 1);
+        assertThat(validate(sequential)).isEmpty();
+        var competing = dissolve(sequential, "competing", "clip-a", "clip-c", 1);
+        assertThat(validate(competing)).contains("TIMELINE_TRANSITION_CONFLICT");
+    }
+
+    @Test
+    void canonicalGateRejectsTransitionIntervalAndMappingChanges() {
+        var base = dissolve(timeline(), "transition", "clip-a", "clip-b", 1);
+        var rate = plan(base, OperationDefinition.V1.SET_TEMPORAL_RATE, "clip-a",
+                new OperationParameters.SetTemporalRateParameters(
+                        new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1)));
+        var direction = plan(base, OperationDefinition.V1.SET_TEMPORAL_DIRECTION, "clip-a",
+                new OperationParameters.SetTemporalDirectionParameters(PlaybackDirection.REVERSE));
+        var freeze = plan(base, OperationDefinition.V1.FREEZE, "clip-b",
+                new OperationParameters.FreezeParameters(MediaTime.ZERO));
+
+        assertThat(validate(rate.candidateTimeline()))
+                .contains("TIMELINE_TRANSITION_INTERVAL_INVALID");
+        assertThat(validate(direction.candidateTimeline()))
+                .contains("TIMELINE_TRANSITION_MAPPING_UNSUPPORTED");
+        assertThat(validate(freeze.candidateTimeline()))
+                .contains("TIMELINE_TRANSITION_MAPPING_UNSUPPORTED");
+    }
+
+    @Test
+    void canonicalGateRejectsVideoEffectOnAudioTrack() {
+        var audio = clip("audio", MediaTime.ZERO, MediaTime.ofRational(2, 1));
+        var base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("a1", "A1", TrackType.AUDIO, List.of(audio))),
+                TimelineMetadata.empty(), com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of());
+        var candidate = plan(base, OperationDefinition.V3.SET_VIDEO_EFFECT, "audio",
+                new OperationParameters.VideoEffectParameters(BasicVideoEffect.IDENTITY));
+        assertThat(validate(candidate.candidateTimeline()))
+                .contains("TIMELINE_EFFECT_TARGET_UNSUPPORTED");
+    }
+
+    private static TimelineDocument dissolve(TimelineDocument base, String id, String outgoing,
+            String incoming, long duration) {
+        return plan(base, OperationDefinition.V3.CREATE_CROSS_DISSOLVE, outgoing,
+                new OperationParameters.TransitionCreateParameters(id, incoming,
+                        MediaTime.ofRational(duration, 1))).candidateTimeline();
+    }
+
+    private static List<String> validate(TimelineDocument document) {
+        return new InternalTimelineValidationService().validateDocument("project", document)
+                .diagnostics().stream().map(diagnostic -> diagnostic.code().name()).toList();
+    }
+
+    private static TimelineDocument withThirdClip() {
+        var original = timeline();
+        var tracks = new java.util.ArrayList<>(original.getTracks());
+        tracks.set(0, new TimelineTrack("v1", "V1", TrackType.VIDEO,
+                List.of(clip("clip-a", MediaTime.ZERO, MediaTime.ofRational(3, 1)))));
+        tracks.set(2, new TimelineTrack("v3", "V3", TrackType.VIDEO, List.of(
+                clip("clip-c", MediaTime.ofRational(2, 1), MediaTime.ofRational(5, 1)))));
+        return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, tracks, TimelineMetadata.empty(),
+                com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of());
     }
 
     private static OperationPlan plan(TimelineDocument base, OperationDefinition definition,

@@ -266,8 +266,33 @@ try {
   }
   await applyEffect(videoD, { brightness: 0.3, contrast: 1.2, saturation: 0.5,
     grayscale: false, fadeInSeconds: 0.5, fadeOutSeconds: 0.5, enabled: true })
-  await applyTransition(videoA, videoC, 'transition-red-blue')
+  await applyTransition(videoB, videoC, 'transition-v2-v3')
   record('EFFECT_AND_CROSS_DISSOLVE_PERSISTED_THROUGH_BROWSER_CONTROLS')
+
+  const rejectBatch = async (batchId, operations, diagnostic) => {
+    const before = await head()
+    const rejected = await page.request.post(base + scope + '/timeline-operations/batch/apply',
+      { headers, data: { batchId, baseRevisionId: before.revisionId, baseContentHash: before.contentHash, operations } })
+    const response = await rejected.text()
+    assert.equal(rejected.ok(), false, response)
+    assert(response.includes(diagnostic), response)
+    assert.deepEqual(await head(), before, 'Invalid batch must preserve the canonical head')
+    report.rejections ??= []
+    report.rejections.push({ batchId, diagnostic, status: rejected.status(), revisionId: before.revisionId })
+  }
+  await rejectBatch('reject-competing-transition', [{ definitionId: 'timeline.transition.cross-dissolve.create',
+    target: { clipId: videoA }, parameters: { transitionId: 'competing', incomingClipId: videoC, duration: '1/1' } }],
+  'TIMELINE_TRANSITION_CONFLICT')
+  await rejectBatch('reject-invalid-rate', [{ definitionId: 'timeline.temporal.set-rate',
+    target: { clipId: videoB }, parameters: { numerator: 4, denominator: 1 } }],
+  'TIMELINE_TRANSITION_INTERVAL_INVALID')
+  await rejectBatch('reject-video-effect-on-audio', [
+    { definitionId: 'audio.gain.set', target: { clipId: audioA, audioTrackId: 'track-a1' }, parameters: { linear: 0.4 } },
+    { definitionId: 'timeline.clip.effect.set', target: { clipId: audioA },
+      parameters: { brightness: 0.2, contrast: 1, saturation: 1, grayscale: false,
+        fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true } },
+  ], 'TIMELINE_EFFECT_TARGET_UNSUPPORTED')
+  record('CANONICAL_BATCH_REJECTION_PRESERVES_HEAD')
 
   // The first control also proves the browser UI writes through the canonical
   // gain/mute/pan batch; the remaining routes are applied through the same UI.
@@ -483,6 +508,7 @@ try {
     sample.renderRgb = [...execFileSync('/usr/bin/ffmpeg', ['-v', 'error', '-ss', String(sample.at), '-i', output,
       '-frames:v', '1', '-vf', `crop=2:2:${sample.x}:${sample.y},scale=1:1:flags=neighbor`, '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
     sample.maxChannelDelta = Math.max(...sample.previewRgb.map((value, index) => Math.abs(value - sample.renderRgb[index])))
+    assert(sample.maxChannelDelta <= 24, `Effect parity ${sample.phase}: ${sample.maxChannelDelta}`)
     console.log('EFFECT_PARITY ' + sample.phase + ' ' + sample.at + ' preview=' + sample.previewRgb.join(',')
       + ' render=' + sample.renderRgb.join(',') + ' delta=' + sample.maxChannelDelta)
   }
@@ -498,6 +524,90 @@ try {
   assert(leftPeaks[440] > rightPeaks[440] * 1.5, 'A1 pan left')
   assert(rightPeaks[880] > leftPeaks[880] * 1.5, 'A3 pan right')
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY')
+
+  const formalOutput = async (revisionId, startMillis, endMillis, label) => {
+    const submitted = await page.request.post(base + '/api/render-jobs', {
+      headers: { ...headers, 'Idempotency-Key': label },
+      data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: 24, frameRateDenominator: 1 },
+        profile: 'default', outputFormat: 'MP4' },
+    })
+    assert.equal(submitted.status(), 201, await submitted.text())
+    const { renderJobId } = await submitted.json()
+    const deadline = Date.now() + 240000
+    let finalArtifactId
+    while (Date.now() < deadline && !finalArtifactId) {
+      const result = await page.request.get(base + scope + `/render-jobs/${renderJobId}/result`, { headers })
+      if (result.ok()) {
+        const job = await result.json()
+        assert(!['FAILED', 'CANCELLED'].includes(job.status), `${label}: ${JSON.stringify(job)}`)
+        finalArtifactId = job.finalArtifactId
+      }
+      if (!finalArtifactId) await page.waitForTimeout(500)
+    }
+    assert(finalArtifactId, `${label} formal artifact`)
+    const delivery = await page.request.post(base + `/api/projects/${project}/deliveries`, {
+      headers: { ...headers, 'Idempotency-Key': `delivery-${label}` }, data: { sourceRenderJobId: renderJobId },
+    })
+    assert([200, 201].includes(delivery.status()), await delivery.text())
+    const { deliveryId } = await delivery.json()
+    const download = await page.request.get(base + `/api/projects/${project}/deliveries/${deliveryId}/result`, { headers })
+    assert.equal(download.status(), 200)
+    const bytes = await download.body()
+    const path = join(outputRoot, `${label}.mp4`)
+    writeFileSync(path, bytes)
+    return { revisionId, renderJobId, finalArtifactId, deliveryId,
+      sha256: createHash('sha256').update(bytes).digest('hex'), path }
+  }
+  const pixel = (path, at, x, y) => [...execFileSync('/usr/bin/ffmpeg', ['-v', 'error',
+    '-ss', String(at), '-i', path, '-frames:v', '1', '-vf', `crop=2:2:${x}:${y},scale=1:1:flags=neighbor`,
+    '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])]
+  const maxDelta = (a, b) => {
+    assert.equal(a.length, 3)
+    assert.equal(b.length, 3)
+    return Math.max(...a.map((channel, i) => Math.abs(channel - b[i])))
+  }
+  report.partial = []
+  for (const [start, end, label, at, x, y] of [
+    [2250, 3500, 'partial-start-in-dissolve', 2.5, 250, 120],
+    [1500, 2750, 'partial-end-in-dissolve', 2.5, 250, 120],
+    [1250, 4250, 'partial-spanning-dissolve', 1.375, 100, 100],
+    [3500, 4250, 'partial-through-fade-out', 3.75, 100, 100],
+  ]) {
+    const partial = await formalOutput(current.revisionId, start, end, label)
+    const fullRgb = pixel(output, at, x, y)
+    const partialRgb = pixel(partial.path, at - start / 1000, x, y)
+    const delta = maxDelta(fullRgb, partialRgb)
+    report.partial.push({ ...partial, start, end, at, x, y, fullRgb, partialRgb, delta })
+    record(`MEASURED_${label}`)
+    assert(delta <= 12, `${label} full ${fullRgb}, partial ${partialRgb}, delta ${delta}`)
+  }
+  record('FORMAL_PARTIAL_RENDER_PHASE')
+
+  // Grayscale is authored through the Browser and checked again after a reload.
+  // Compare matched deliveries with only the R1 grayscale parameter changed.
+  const grayEffect = { brightness: 0, contrast: 1, saturation: 1, grayscale: false,
+    fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true }
+  await applyEffect(videoB, grayEffect)
+  const color = await formalOutput(current.revisionId, 1500, 2000, 'grayscale-control')
+  await applyEffect(videoB, { ...grayEffect, grayscale: true })
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-preview-status]')?.dataset.previewStatus === 'READY')
+  const graySnapshot = await snapshot(current.revisionId)
+  const grayClip = graySnapshot.tracks.flatMap(track => track.clips).find(clip => clip.clipId === videoB)
+  assert.equal(grayClip.effects.find(effect => effect.effectKey === 'video.basic').parameters.grayscale, true)
+  const gray = await formalOutput(current.revisionId, 1500, 2000, 'grayscale-authored')
+  report.grayscale = { color, gray, samples: [] }
+  for (const [at, x, y] of [[0.125, 270, 200], [0.25, 272, 202], [0.375, 274, 204]]) {
+    const colorRgb = pixel(color.path, at, x, y)
+    const grayRgb = pixel(gray.path, at, x, y)
+    report.grayscale.samples.push({ at, x, y, colorRgb, grayRgb })
+    record('MEASURED_FORMAL_GRAYSCALE')
+    assert.equal(dominant(colorRgb), 'green')
+    assert(Math.max(...grayRgb) - Math.min(...grayRgb) <= 4, `Grayscale chroma ${grayRgb}`)
+    assert(Math.min(...grayRgb) >= 80 && Math.max(...grayRgb) <= 180, `Grayscale luma ${grayRgb}`)
+  }
+  await applyEffect(videoB, grayEffect)
+  record('FORMAL_GRAYSCALE_ARTIFACT_AND_RELOAD')
 
   // Embedded video audio: remove all independent audio clips, then explicitly route
   // the top video clip's embedded audio. The route is canonical; no count heuristic.

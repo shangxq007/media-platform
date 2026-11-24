@@ -217,7 +217,12 @@ class BmfCpuTranscodeSeamsTest {
                 CapabilityRequirement.of(CapabilityId.of("render.multitrack-composite"), RANGE))));
         var tracks = unit.typedInputs();
         var timeline = List.of(
-                new RenderDependency.TimedTrackInput(MediaTime.ofMillis(1500), MediaTime.ofMillis(3500), 1, false),
+                RenderDependency.TimedTrackInput.video(MediaTime.ofMillis(1500), MediaTime.ofMillis(3500), 1,
+                        com.example.platform.render.domain.renderplan.VideoTransformSpec.IDENTITY,
+                        com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                        MediaTime.ofMillis(1000), MediaTime.ofMillis(4000),
+                        Optional.of(new RenderDependency.Dissolve(
+                                "fade", "lower", "upper", MediaTime.ofMillis(1250)))),
                 new RenderDependency.TimedTrackInput(MediaTime.ofMillis(1000), MediaTime.ofMillis(3000), 0, false),
                 new RenderDependency.TimedTrackInput(MediaTime.ofMillis(1000), MediaTime.ofMillis(2500), 2, true),
                 new RenderDependency.TimedTrackInput(MediaTime.ofMillis(2000), MediaTime.ofMillis(3000), 3, true));
@@ -233,10 +238,10 @@ class BmfCpuTranscodeSeamsTest {
                 "4", "@platform-materialized-input:in-1", "@platform-materialized-input:in-0",
                 "@platform-materialized-input:in-2", "@platform-materialized-input:in-3",
                 "platform-provider-output.bin", "3", "24/1",
-                "V,0,2,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;0",
-                "V,0.5,2.5,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0.5;0",
-                "A,0,1.5,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;0",
-                "A,1,2,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;1;0");
+                "V,0,2,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;2;0",
+                "V,0.5,2.5,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0.5;3;1.25",
+                "A,0,1.5,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;1.5;0",
+                "A,1,2,1.0,0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,1.0,0.0,1.0,1.0,0.0;1.0;1.0;0;0.0;0.0;1;0;1;0");
         when(tracks.get(0).dependencyVariant()).thenReturn(new RenderDependency.TimedTrackInput(
                 MediaTime.ofMillis(1500), MediaTime.ofMillis(3500), 0, false));
         assertFailure(() -> new BmfCpuTranscodeLowerer().lower(task,

@@ -644,6 +644,8 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                     restoreVerifier.verify(tx.dsl(), productId, tenantId,
                             historicalSnapshotId0, contentHashFinal, historicalContext0);
 
+            InternalTimelineValidationService.verifyPersistedEditorialState(productId, verified.document());
+
             // C1 (RESTORE_REISSUES_EXACTLY_THE_VERIFIED_TIMELINE_PAYLOAD_V1):
             // the new restored snapshot is persisted DIRECTLY from the verified
             // payload/document — one read, one verify, one reissue. There is NO

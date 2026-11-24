@@ -1,8 +1,15 @@
 package com.example.platform.timeline.api.composition;
+import com.example.platform.timeline.app.InternalTimelineValidationService;
+import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import java.util.List;
 /** Published Timeline owner contract; implemented by the existing single authority. */
 public interface TimelineValidation {
+    /** Recheck previously persisted R1 editorial semantics before render or restore. */
+    static void verifyPersistedEditorialState(String timelineId, TimelineDocument document) {
+        InternalTimelineValidationService.verifyPersistedEditorialState(timelineId, document);
+    }
+
 TimelineValidationResult validateDocument(
             String timelineId,
             com.example.platform.timeline.canonical.TimelineDocument document);

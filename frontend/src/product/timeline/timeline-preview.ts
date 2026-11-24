@@ -25,7 +25,9 @@ export function activeClipsAt(projection: TimelineProjection, timelineTime: Rati
 
 /** The canonical cross-dissolve whose incoming clip is this clip, if any. */
 export function transitionForIncoming(projection: TimelineProjection, clipId: string): ProjectedTransition | null {
-  return projection.transitions.find(transition => transition.incomingClipId === clipId) ?? null
+  const matches = projection.transitions.filter(transition => transition.incomingClipId === clipId)
+  if (matches.length > 1) throw new Error('Conflicting incoming Timeline transitions')
+  return matches[0] ?? null
 }
 
 /** The topmost video clip covering a Timeline time, or null for a video gap. */

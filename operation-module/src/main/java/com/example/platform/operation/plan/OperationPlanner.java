@@ -793,15 +793,8 @@ public final class OperationPlanner {
         }
         TimelineClip outgoing = clipOf(base, scope.get(0));
         TimelineClip incoming = clipOf(base, TimelineClipId.of(params.incomingClipId()));
-        validateTransition(base, outgoing, incoming, params.duration());
-        for (CanonicalTransition t : base.getTransitions()) {
-            if (t.transitionId().equals(params.transitionId())
-                    || (t.outgoingClipId().equals(outgoing.getClipId().value())
-                    && t.incomingClipId().equals(incoming.getClipId().value()))) {
-                throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition already exists");
-            }
-        }
-        CanonicalTransition transition = transition(params.transitionId(), outgoing, incoming, params.duration());
+        CanonicalTransition transition = CanonicalTransition.crossDissolve(
+                params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration());
         List<CanonicalTransition> transitions = new ArrayList<>(base.getTransitions());
         transitions.add(transition);
         return withTransitions(base, transitions);
@@ -823,12 +816,10 @@ public final class OperationPlanner {
                 if (!t.outgoingClipId().equals(scope.get(0).value())) {
                     throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition outgoing target mismatch");
                 }
-                TimelineClip outgoing = clipOf(base, scope.get(0));
-                TimelineClip incoming = clipOf(base, TimelineClipId.of(t.incomingClipId()));
-                validateTransition(base, outgoing, incoming, params.duration());
-                transitions.add(new CanonicalTransition(t.transitionId(), t.transitionDefinitionId(),
-                        t.transitionDefinitionVersion(), t.outgoingClipId(), t.incomingClipId(),
-                        t.mediaType(), params.duration(), t.alignment(), t.temporalPolicy(), t.parameters()));
+                if (!t.isCrossDissolve()) {
+                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition definition mismatch");
+                }
+                transitions.add(t.withDuration(params.duration()));
                 found = true;
             } else {
                 transitions.add(t);
@@ -863,51 +854,6 @@ public final class OperationPlanner {
         if (!found) throw new PlanException(PlanErrorCode.TARGET_MISSING,
                 "transition " + params.transitionId() + " missing");
         return withTransitions(base, transitions);
-    }
-
-    private void validateTransition(TimelineDocument base, TimelineClip outgoing,
-            TimelineClip incoming, com.example.platform.shared.time.MediaTime duration) {
-        if (duration == null || !duration.isGreaterThan(com.example.platform.shared.time.MediaTime.ZERO)) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition duration must be positive");
-        }
-        var outgoingTrack = trackOf(base, outgoing.getClipId());
-        var incomingTrack = trackOf(base, incoming.getClipId());
-        if (outgoingTrack.type() != com.example.platform.timeline.canonical.TrackType.VIDEO
-                || incomingTrack.type() != com.example.platform.timeline.canonical.TrackType.VIDEO) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "cross dissolve requires video tracks");
-        }
-        int outgoingLayer = base.getTracks().indexOf(outgoingTrack);
-        int incomingLayer = base.getTracks().indexOf(incomingTrack);
-        if (incomingLayer <= outgoingLayer) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition incoming must be on a higher video layer");
-        }
-        if (incoming.getStartTime().isLessThan(outgoing.getStartTime())
-                || !incoming.getStartTime().isLessThan(outgoing.getEndTime())) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition requires overlapping incoming clip");
-        }
-        var overlapEnd = incoming.getEndTime().isLessThan(outgoing.getEndTime())
-                ? incoming.getEndTime() : outgoing.getEndTime();
-        var overlap = overlapEnd.subtract(incoming.getStartTime());
-        if (duration.isGreaterThan(overlap)) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition exceeds common overlap");
-        }
-    }
-
-    private static com.example.platform.timeline.canonical.TimelineTrack trackOf(
-            TimelineDocument document, TimelineClipId clipId) {
-        for (var track : document.getTracks()) {
-            for (var clip : track.clips()) {
-                if (clip.getClipId().equals(clipId)) return track;
-            }
-        }
-        throw new PlanException(PlanErrorCode.TARGET_MISSING, "clip " + clipId + " missing");
-    }
-
-    private static CanonicalTransition transition(String id, TimelineClip outgoing, TimelineClip incoming,
-            com.example.platform.shared.time.MediaTime duration) {
-        return new CanonicalTransition(id, "video.cross-dissolve", "1.0",
-                outgoing.getClipId().value(), incoming.getClipId().value(), "VIDEO", duration,
-                "START_AT_INCOMING", "OVERLAP_TIMELINE", Map.of("curve", "LINEAR"));
     }
 
     private static TimelineDocument withTransitions(TimelineDocument base,

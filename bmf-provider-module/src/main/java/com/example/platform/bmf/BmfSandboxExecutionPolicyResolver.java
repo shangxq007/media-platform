@@ -235,7 +235,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             var top = new java.math.BigDecimal(parts[13]);
             var bottom = new java.math.BigDecimal(parts[14]);
             String[] fx = parts[16].split(";", -1);
-            if (fx.length != 9) return false;
+            if (fx.length != 10 || !isNonNegativeSeconds(fx[7])
+                    || !isNonNegativeSeconds(fx[8]) || !isNonNegativeSeconds(fx[9])
+                    || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
             var brightness = new java.math.BigDecimal(fx[0]);
             var contrast = new java.math.BigDecimal(fx[1]);
             var saturation = new java.math.BigDecimal(fx[2]);

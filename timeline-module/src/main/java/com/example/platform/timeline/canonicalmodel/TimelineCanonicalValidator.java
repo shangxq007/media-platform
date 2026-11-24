@@ -1,8 +1,12 @@
 package com.example.platform.timeline.canonicalmodel;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +45,7 @@ public final class TimelineCanonicalValidator {
         // SAME aggregate and must not be a self-reference; every Automation
         // target must reference an existing authored semantic entity
         // (Effect instance within the aggregate).
-        validateTransitionReferences(candidate, clipsById, diagnostics);
+        validateTransitions(candidate, clipsById, diagnostics);
         // FIFTH CORRECTION (F1.2): Effect instance identity is an aggregate
         // invariant — duplicate non-null Effect IDs fail closed REGARDLESS of
         // whether any Automation references them.
@@ -95,6 +99,7 @@ public final class TimelineCanonicalValidator {
                     ? trackPath.field("clips").index(clipIndex)
                     : trackPath.field("clips").id(clip.clipId());
             validateClip(clip, clipPath, diagnostics);
+            validateBasicVideoEffect(track, clip, clipPath, diagnostics);
             if (previous != null && hasPositiveOverlap(previous, clip)) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_CLIP_OVERLAP,
                         clipPath, clip.clipId(), "Clips overlap on the same track"));
@@ -172,36 +177,138 @@ public final class TimelineCanonicalValidator {
         return TimelineDiagnostic.error(code, path, relatedIdentifier, message);
     }
 
-    /**
-     * FOURTH CORRECTION (BLOCKER 1): aggregate transition endpoint validation.
-     * Every transition endpoint must reference an existing Clip in the SAME
-     * aggregate; outgoing != incoming (no self-reference).
-     */
-    private static void validateTransitionReferences(TimelineCandidate candidate,
+    private static void validateTransitions(TimelineCandidate candidate,
             Map<String, TimelineCandidate.Clip> clipsById, List<TimelineDiagnostic> diagnostics) {
-        if (candidate.transitions() == null) {
+        if (candidate.transitions().isEmpty()) return;
+        var layers = new HashMap<String, Integer>();
+        for (int i = 0; i < candidate.tracks().size(); i++) {
+            for (var clip : candidate.tracks().get(i).clips()) {
+                layers.put(clip.clipId(), i);
+            }
+        }
+        var ids = new HashSet<String>();
+        var incomingEndpoints = new HashSet<String>();
+        var windows = new ArrayList<DissolveWindow>();
+        for (int i = 0; i < candidate.transitions().size(); i++) {
+            CanonicalTransition transition = candidate.transitions().get(i);
+            TimelineModelPath path = TimelineModelPath.root().field("transitions").index(i);
+            var outgoing = clipsById.get(transition.outgoingClipId());
+            var incoming = clipsById.get(transition.incomingClipId());
+            if (!ids.add(transition.transitionId())) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_CONFLICT,
+                        path, transition.transitionId(), "Duplicate transition identity"));
+            }
+            if (outgoing == null || incoming == null) {
+                String missing = outgoing == null ? "outgoingClipId" : "incomingClipId";
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_ENDPOINT_MISSING,
+                        path.field(missing), transition.transitionId(), "Transition must reference existing clips"));
+                continue;
+            }
+            if (outgoing == incoming) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_SELF_REFERENCE,
+                        path, transition.transitionId(), "Transition endpoints must be different"));
+                continue;
+            }
+            if (!transition.isCrossDissolve()) continue;
+            try {
+                validateDissolve(candidate, layers, transition, outgoing, incoming,
+                        incomingEndpoints, windows, path, diagnostics);
+            } catch (ArithmeticException invalid) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID,
+                        path, transition.transitionId(), "Transition time is outside the representable range"));
+            }
+        }
+    }
+
+    private static void validateDissolve(TimelineCandidate candidate, Map<String, Integer> layers,
+            CanonicalTransition transition, TimelineCandidate.Clip outgoing, TimelineCandidate.Clip incoming,
+            java.util.Set<String> incomingEndpoints, List<DissolveWindow> windows,
+            TimelineModelPath path, List<TimelineDiagnostic> diagnostics) {
+        String id = transition.transitionId();
+        int lower = layers.get(outgoing.clipId());
+        int upper = layers.get(incoming.clipId());
+        if (!transition.supportsCrossDissolve() || lower >= upper
+                || candidate.tracks().get(lower).type() != TimelineCandidate.TrackType.VIDEO
+                || candidate.tracks().get(upper).type() != TimelineCandidate.TrackType.VIDEO) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_PROFILE_UNSUPPORTED,
+                    path, id, "Cross dissolve requires the R1 profile and an incoming clip on a higher video layer"));
             return;
         }
-        for (int i = 0; i < candidate.transitions().size(); i++) {
-            CanonicalTransition t = candidate.transitions().get(i);
-            TimelineModelPath path = TimelineModelPath.root().field("transitions").index(i);
-            String outgoing = t.outgoingClipId();
-            String incoming = t.incomingClipId();
-            if (outgoing == null || outgoing.isBlank() || !clipsById.containsKey(outgoing)) {
-                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_ENDPOINT_MISSING,
-                        path.field("outgoingClipId"), outgoing == null ? "<null>" : outgoing,
-                        "Transition outgoingClipId must reference an existing Clip in the same timeline"));
+        if (!ConstantRateTemporalMapping.identity().equals(outgoing.temporalMapping())
+                || !ConstantRateTemporalMapping.identity().equals(incoming.temporalMapping())) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_MAPPING_UNSUPPORTED,
+                    path, id, "Cross dissolve requires forward 1x endpoint mappings"));
+        }
+        if (!incomingEndpoints.add(incoming.clipId())) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_CONFLICT,
+                    path, id, "More than one transition targets the same incoming clip"));
+        }
+        if (incoming.timelineStart() == null || outgoing.timelineStart() == null
+                || incoming.duration() == null || outgoing.duration() == null) return;
+        MediaTime start = incoming.timelineStart();
+        MediaTime end = start.add(transition.duration());
+        if (start.isLessThan(outgoing.timelineStart())
+                || end.isGreaterThan(outgoing.timelineStart().add(outgoing.duration()))
+                || end.isGreaterThan(start.add(incoming.duration()))) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID,
+                    path, id, "Cross dissolve interval must fit within both clips"));
+            return;
+        }
+        for (int layer = lower + 1; layer < upper; layer++) {
+            var track = candidate.tracks().get(layer);
+            if (track.type() == TimelineCandidate.TrackType.VIDEO && track.clips().stream().anyMatch(clip ->
+                    clip.timelineStart() != null && clip.duration() != null
+                    && overlaps(start, end, clip.timelineStart(), clip.timelineStart().add(clip.duration())))) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_CONFLICT,
+                        path, id, "An intervening video clip covers the authored outgoing layer during the dissolve"));
+                break;
             }
-            if (incoming == null || incoming.isBlank() || !clipsById.containsKey(incoming)) {
-                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_ENDPOINT_MISSING,
-                        path.field("incomingClipId"), incoming == null ? "<null>" : incoming,
-                        "Transition incomingClipId must reference an existing Clip in the same timeline"));
+        }
+        var window = new DissolveWindow(outgoing.clipId(), incoming.clipId(), start, end);
+        if (windows.stream().anyMatch(previous -> previous.conflictsWith(window))) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_CONFLICT,
+                    path, id, "Transitions sharing a clip cannot overlap"));
+        }
+        windows.add(window);
+    }
+
+    private static boolean overlaps(MediaTime start, MediaTime end, MediaTime otherStart, MediaTime otherEnd) {
+        return start.isLessThan(otherEnd) && otherStart.isLessThan(end);
+    }
+
+    private record DissolveWindow(String outgoing, String incoming, MediaTime start, MediaTime end) {
+        boolean conflictsWith(DissolveWindow other) {
+            return (outgoing.equals(other.outgoing) || outgoing.equals(other.incoming)
+                    || incoming.equals(other.outgoing) || incoming.equals(other.incoming))
+                    && overlaps(start, end, other.start, other.end);
+        }
+    }
+
+    private static void validateBasicVideoEffect(TimelineCandidate.Track track, TimelineCandidate.Clip clip,
+            TimelineModelPath path, List<TimelineDiagnostic> diagnostics) {
+        boolean found = false;
+        for (var effect : clip.effects()) {
+            if (!BasicVideoEffect.EFFECT_KEY.equals(effect.effectKey())) continue;
+            if (track.type() != TimelineCandidate.TrackType.VIDEO) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_EFFECT_TARGET_UNSUPPORTED,
+                        path.field("effects"), clip.clipId(), "video.basic requires a clip on a video track"));
             }
-            if (outgoing != null && outgoing.equals(incoming)) {
-                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_SELF_REFERENCE,
-                        path, t.transitionId(),
-                        "Transition outgoingClipId and incomingClipId must differ"));
+            try {
+                if (found) throw new IllegalArgumentException("Only one video.basic effect is supported per clip");
+                var basic = BasicVideoEffect.fromParameters(effect.parameters());
+                if (basic.enabled() && clip.duration() != null) {
+                    var duration = clip.duration();
+                    var longestFade = BigDecimal.valueOf(Math.max(basic.fadeInSeconds(), basic.fadeOutSeconds()));
+                    if (longestFade.multiply(BigDecimal.valueOf(duration.timeScale()))
+                            .compareTo(BigDecimal.valueOf(duration.ticks())) > 0) {
+                        throw new IllegalArgumentException("video.basic fade exceeds its authored clip interval");
+                    }
+                }
+            } catch (IllegalArgumentException invalid) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_EFFECT_PARAMETERS_INVALID,
+                        path.field("effects"), clip.clipId(), invalid.getMessage()));
             }
+            found = true;
         }
     }
 

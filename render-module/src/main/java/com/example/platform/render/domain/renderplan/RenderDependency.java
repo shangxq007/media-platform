@@ -85,6 +85,21 @@ public sealed interface RenderDependency permits
             return "TIMED_COMPOSITE_INPUT:" + start + ":" + end;
         }
     }
+    /** An incoming layer's authored linear dissolve and its explicit outgoing clip. */
+    record Dissolve(String transitionId, String outgoingClipId, String incomingClipId,
+                    com.example.platform.shared.time.MediaTime duration) {
+        public Dissolve {
+            java.util.Objects.requireNonNull(transitionId);
+            java.util.Objects.requireNonNull(outgoingClipId);
+            java.util.Objects.requireNonNull(incomingClipId);
+            java.util.Objects.requireNonNull(duration);
+            if (transitionId.isBlank() || outgoingClipId.isBlank() || incomingClipId.isBlank()
+                    || outgoingClipId.equals(incomingClipId) || duration.ticks() <= 0) {
+                throw new IllegalArgumentException("Invalid dissolve identity or duration");
+            }
+        }
+    }
+
     /**
      * Exact placement of a decoded media clip and its order in the verified Timeline.
      * For audio inputs the canonical AudioRoute gain/mute/balance is carried inline,
@@ -98,8 +113,9 @@ public sealed interface RenderDependency permits
                            com.example.platform.audio.domain.mix.StereoBalance balance,
                            VideoTransformSpec transform,
                            VideoEffectSpec effect,
-                           com.example.platform.shared.time.MediaTime transitionStart,
-                           com.example.platform.shared.time.MediaTime transitionDuration)
+                           com.example.platform.shared.time.MediaTime authoredStart,
+                           com.example.platform.shared.time.MediaTime authoredEnd,
+                           java.util.Optional<Dissolve> dissolve)
             implements RenderDependency {
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
@@ -109,11 +125,27 @@ public sealed interface RenderDependency permits
             if (balance == null) balance = com.example.platform.audio.domain.mix.StereoBalance.neutral();
             if (transform == null) transform = VideoTransformSpec.IDENTITY;
             if (effect == null) effect = VideoEffectSpec.IDENTITY;
-            if (transitionStart == null) transitionStart = start;
-            if (transitionDuration == null) transitionDuration = com.example.platform.shared.time.MediaTime.ZERO;
-            if (!start.isLessThan(end) || layer < 0) {
-                throw new IllegalArgumentException("positive track interval and nonnegative layer required");
+            java.util.Objects.requireNonNull(authoredStart, "authoredStart");
+            java.util.Objects.requireNonNull(authoredEnd, "authoredEnd");
+            java.util.Objects.requireNonNull(dissolve, "dissolve");
+            if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
+                    || layer < 0 || (audio && dissolve.isPresent())) {
+                throw new IllegalArgumentException("Invalid track placement or dissolve");
             }
+            if (dissolve.isPresent() && authoredStart.add(dissolve.get().duration()).isGreaterThan(authoredEnd)) {
+                throw new IllegalArgumentException("Dissolve extends beyond the authored clip");
+            }
+        }
+
+        public static TimedTrackInput video(com.example.platform.shared.time.MediaTime start,
+                com.example.platform.shared.time.MediaTime end, int layer, VideoTransformSpec transform,
+                VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
+                com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve) {
+            return new TimedTrackInput(start, end, layer, false,
+                    com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
+                    com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
+                    com.example.platform.audio.domain.mix.StereoBalance.neutral(),
+                    transform, effect, authoredStart, authoredEnd, dissolve);
         }
 
         /** Compatibility constructor: neutral mix values and identity transform. */
@@ -133,7 +165,7 @@ public sealed interface RenderDependency permits
                                com.example.platform.audio.domain.mix.StereoBalance balance,
                                VideoTransformSpec transform) {
             this(start, end, layer, audio, gain, mute, balance, transform,
-                    VideoEffectSpec.IDENTITY, start, com.example.platform.shared.time.MediaTime.ZERO);
+                    VideoEffectSpec.IDENTITY, start, end, java.util.Optional.empty());
         }
 
         /** Compatibility constructor: neutral mix values. */
@@ -143,8 +175,7 @@ public sealed interface RenderDependency permits
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
                     com.example.platform.audio.domain.mix.StereoBalance.neutral(),
-                    VideoTransformSpec.IDENTITY, VideoEffectSpec.IDENTITY, start,
-                    com.example.platform.shared.time.MediaTime.ZERO);
+                    VideoTransformSpec.IDENTITY, VideoEffectSpec.IDENTITY, start, end, java.util.Optional.empty());
         }
 
         public double gainLinear() { return gain.linear(); }
@@ -161,7 +192,11 @@ public sealed interface RenderDependency permits
                     + ":" + effect.brightness() + ":" + effect.contrast() + ":" + effect.saturation()
                     + ":" + effect.grayscale() + ":" + effect.fadeInSeconds() + ":"
                     + effect.fadeOutSeconds() + ":" + effect.enabled()
-                    + ":" + transitionStart + ":" + transitionDuration;
+                    + ":" + authoredStart + ":" + authoredEnd
+                    + dissolve.map(d -> ":" + d.transitionId().length() + ":" + d.transitionId()
+                            + ":" + d.outgoingClipId().length() + ":" + d.outgoingClipId()
+                            + ":" + d.incomingClipId().length() + ":" + d.incomingClipId()
+                            + ":" + d.duration()).orElse("");
         }
     }
 }

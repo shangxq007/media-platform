@@ -63,19 +63,25 @@ function projectTransform(value: unknown): ProjectedVideoTransform {
 }
 
 function projectEffect(value: unknown): ProjectedVideoEffect {
-  if (!Array.isArray(value)) return IDENTITY_VIDEO_EFFECT
-  const effect = value.find(item => item && typeof item === 'object'
-    && (item as { effectKey?: unknown }).effectKey === 'video.basic')
-  if (!effect || typeof effect !== 'object') return IDENTITY_VIDEO_EFFECT
-  const p = (effect as { parameters?: Record<string, unknown> }).parameters ?? {}
-  const number = (key: string, fallback: number) =>
-    typeof p[key] === 'number' && Number.isFinite(p[key]) ? p[key] as number : fallback
-  return {
-    brightness: number('brightness', 0), contrast: number('contrast', 1),
-    saturation: number('saturation', 1), grayscale: p.grayscale === true,
-    fadeInSeconds: number('fadeInSeconds', 0), fadeOutSeconds: number('fadeOutSeconds', 0),
-    enabled: p.enabled !== false,
+  if (value == null) return IDENTITY_VIDEO_EFFECT
+  if (!Array.isArray(value)) throw new Error('Invalid Timeline effects')
+  const effects = value.filter(item => item && typeof item === 'object' && item.effectKey === 'video.basic')
+  if (!effects.length) return IDENTITY_VIDEO_EFFECT
+  if (effects.length !== 1) throw new Error('Conflicting basic video effects')
+  const p = (effects[0] as { parameters?: Record<string, unknown> }).parameters
+  if (!p || Object.keys(p).length !== 7 || typeof p.grayscale !== 'boolean' || typeof p.enabled !== 'boolean') {
+    throw new Error('Invalid basic video effect parameters')
   }
+  const number = (key: string, min: number, max = Infinity) => {
+    const value = p[key]
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+      throw new Error(`Invalid basic video effect ${key}`)
+    }
+    return value
+  }
+  return { brightness: number('brightness', -1, 1), contrast: number('contrast', 0, 2),
+    saturation: number('saturation', 0, 2), grayscale: p.grayscale,
+    fadeInSeconds: number('fadeInSeconds', 0), fadeOutSeconds: number('fadeOutSeconds', 0), enabled: p.enabled }
 }
 
 export interface ProjectedClip {
@@ -144,13 +150,23 @@ export function projectTimeline(document: unknown): TimelineProjection {
   }
   const transitions: ProjectedTransition[] = []
   const rawTransitions = (document as { transitions?: unknown } | null)?.transitions
+  const incomingTransitions = new Set<string>()
+  if (rawTransitions != null && !Array.isArray(rawTransitions)) throw new Error('Invalid Timeline transitions')
   if (Array.isArray(rawTransitions)) {
     for (const raw of rawTransitions) {
-      if (!raw || typeof raw !== 'object') continue
+      if (!raw || typeof raw !== 'object') throw new Error('Invalid Timeline transition')
       const t = raw as Record<string, unknown>
       const duration = safeRational(t.duration)
-      if (typeof t.transitionId !== 'string' || typeof t.outgoingClipId !== 'string'
-          || typeof t.incomingClipId !== 'string' || !duration) continue
+      if (typeof t.transitionId !== 'string' || !t.transitionId
+          || typeof t.outgoingClipId !== 'string' || typeof t.incomingClipId !== 'string'
+          || t.outgoingClipId === t.incomingClipId || !duration || duration.numerator <= 0n
+          || t.transitionDefinitionId !== 'video.cross-dissolve' || t.transitionDefinitionVersion !== '1.0'
+          || t.mediaType !== 'VIDEO' || t.alignment !== 'START_AT_INCOMING' || t.temporalPolicy !== 'OVERLAP_TIMELINE'
+          || (t.parameters as { curve?: unknown } | undefined)?.curve !== 'LINEAR') {
+        throw new Error('Unsupported Timeline transition')
+      }
+      if (incomingTransitions.has(t.incomingClipId)) throw new Error('Conflicting incoming Timeline transitions')
+      incomingTransitions.add(t.incomingClipId)
       transitions.push({ transitionId: t.transitionId, outgoingClipId: t.outgoingClipId,
         incomingClipId: t.incomingClipId, duration })
     }

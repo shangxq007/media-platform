@@ -8,7 +8,7 @@ class BmfVideoEffectTransitionGraphTest {
     @Test
     void graphExecutesEffectsFadesAndCrossDissolve() {
         String graph = BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM;
-        assertThat(graph).contains("'eq'", "'hue'", "'fade'", "transition_duration", "colorchannelmixer");
+        assertThat(graph).contains("'eq'", "'hue'", "'fade'", "dissolve_duration", "colorchannelmixer");
     }
 
     @Test
@@ -17,6 +17,8 @@ class BmfVideoEffectTransitionGraphTest {
         assertThat(graph).contains("fx = placement[16].split(';')");
         assertThat(graph).contains("brightness, contrast, saturation");
         assertThat(graph).contains("effect_enabled and fade_in > 0");
-        assertThat(graph).contains("transition_duration > 0");
+        assertThat(graph).contains("dissolve_duration > 0");
+        assertThat(graph.indexOf("PTS-STARTPTS+' + fx[7]")).isLessThan(graph.indexOf("px, py = transformed(clip"));
+        assertThat(graph.indexOf("px, py = transformed(clip")).isLessThan(graph.lastIndexOf("PTS-STARTPTS+' + start"));
     }
 }

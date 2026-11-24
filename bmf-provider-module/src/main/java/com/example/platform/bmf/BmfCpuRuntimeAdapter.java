@@ -108,7 +108,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             graph = bmf.graph()
             print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
 
-            def transformed(video, placement, start, end):
+            def transformed(video, placement, fx):
                 # kind,start,end,gain,mute,pan,posx,posy,scalex,scaley,rot,cropl,cropr,cropt,cropb,opacity,fx
                 px, py = float(placement[6]), float(placement[7])
                 sx, sy = float(placement[8]), float(placement[9])
@@ -116,12 +116,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 cl, cr = float(placement[11]), float(placement[12])
                 ct, cb = float(placement[13]), float(placement[14])
                 opacity = float(placement[15])
-                fx = placement[16].split(';')
                 brightness, contrast, saturation = float(fx[0]), float(fx[1]), float(fx[2])
                 grayscale = fx[3] == '1'
                 fade_in, fade_out = float(fx[4]), float(fx[5])
                 effect_enabled = fx[6] == '1'
-                transition_start, transition_duration = float(fx[7]), float(fx[8])
+                authored_duration, dissolve_duration = float(fx[8]), float(fx[9])
                 # Canonical order: clip-local effects -> crop -> scale -> rotate ->
                 # position -> opacity -> fade/transition alpha.
                 if effect_enabled:
@@ -144,14 +143,14 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 if opacity < 0.999999:
                     video = ff.ff_filter(video, 'colorchannelmixer', 'aa=' + str(opacity))
                 if effect_enabled and fade_in > 0:
-                    video = ff.ff_filter(video, 'fade', 't=in:st=' + str(start)
+                    video = ff.ff_filter(video, 'fade', 't=in:st=0'
                                          + ':d=' + str(fade_in) + ':alpha=1')
                 if effect_enabled and fade_out > 0:
-                    video = ff.ff_filter(video, 'fade', 't=out:st=' + str(float(end) - fade_out)
+                    video = ff.ff_filter(video, 'fade', 't=out:st=' + str(authored_duration - fade_out)
                                          + ':d=' + str(fade_out) + ':alpha=1')
-                if transition_duration > 0:
-                    video = ff.ff_filter(video, 'fade', 't=in:st=' + str(transition_start)
-                                         + ':d=' + str(transition_duration) + ':alpha=1')
+                if dissolve_duration > 0:
+                    video = ff.ff_filter(video, 'fade', 't=in:st=0'
+                                         + ':d=' + str(dissolve_duration) + ':alpha=1')
                 return video, px, py
 
             video_inputs = [(path, placement) for path, placement in zip(paths, placements)
@@ -170,8 +169,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 clip = graph.decode({'input_path': path})['video']
                 clip = ff.ff_filter(clip, 'fps', rate)
                 clip = ff.ff_filter(clip, 'tpad', stop='1', stop_mode='clone')
+                fx = placement[16].split(';')
+                # Evaluate using timestamps relative to the authored clip, then place on output.
+                clip = ff.setpts(clip, 'PTS-STARTPTS+' + fx[7] + '/TB')
+                clip, px, py = transformed(clip, placement, fx)
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
-                clip, px, py = transformed(clip, placement, start, end)
                 visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible)
 
@@ -213,7 +215,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         return e.brightness() + ";" + e.contrast() + ";" + e.saturation() + ";"
                 + (e.grayscale() ? "1" : "0") + ";" + e.fadeInSeconds() + ";"
                 + e.fadeOutSeconds() + ";" + (e.enabled() ? "1" : "0") + ";"
-                + seconds(input.transitionStart()) + ";" + seconds(input.transitionDuration());
+                + seconds(input.elapsed()) + ";" + seconds(input.authoredDuration()) + ";"
+                + seconds(input.dissolveDuration());
     }
 
     private final Path python;
