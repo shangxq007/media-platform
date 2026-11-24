@@ -103,11 +103,10 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                         "BMF multitrack composition requires exact audio or video placement");
             }
             var placement = placement(timed.transform());
-            double scaledWidth = Math.ceil(extent.raster().width() * placement.scaleX());
-            double scaledHeight = Math.ceil(extent.raster().height() * placement.scaleY());
-            if (!timed.audio() && scaledWidth * scaledHeight > 8_294_400) {
+            if (!timed.audio() && !BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(
+                    extent.raster(), placement.scaleX(), placement.scaleY(), placement.degrees())) {
                 throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
-                        "BMF scaled composition input exceeds its intermediate raster budget");
+                        "BMF transformed composition input exceeds its intermediate raster budget");
             }
             inputs.add(new BmfCpuTranscodePlan.TimedInput(input.inputId(), timed.start().subtract(extent.start()),
                     timed.end().subtract(extent.start()), timed.layer(), timed.audio(),

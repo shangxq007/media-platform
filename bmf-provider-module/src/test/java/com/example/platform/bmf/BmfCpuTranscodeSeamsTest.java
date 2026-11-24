@@ -19,7 +19,10 @@ import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderExtent;
+import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.render.domain.renderplan.RenderSampleWindow;
+import com.example.platform.sandbox.SandboxResolution;
+import com.example.platform.sandbox.SandboxRuntimeCapabilities;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
 import com.example.platform.shared.capability.ContractVersionRange;
@@ -27,12 +30,14 @@ import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
+import com.example.platform.workerfabric.domain.providernative.ExecutionCommand;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionContext;
 import com.example.platform.workerfabric.domain.providernative.StaticProviderExecutionContext;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -134,6 +139,28 @@ class BmfCpuTranscodeSeamsTest {
                 ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH);
         assertThatThrownBy(() -> new BmfCpuRuntimeAdapter(Path.of("python3.9")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void sandbox_accepts_only_bounded_raster_arguments_and_intermediate_planes() {
+        var python = Path.of("/usr/bin/python3.9");
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, Path.of("/runtime"),
+                BmfSandboxWorkspace.under(Path.of("/workspace")), Duration.ofSeconds(1), 1024,
+                SandboxRuntimeCapabilities.unavailable("test"));
+        var context = runtimeContext(TASK_ID);
+        for (String raster : List.of("321x240", "1920x1920", "320x240:flags=neighbor")) {
+            var invocation = ProcessInvocationSpec.of(python.toString(),
+                    List.of("-s", "-c", BmfCpuRuntimeAdapter.GRAPH_PROGRAM,
+                            BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID),
+                            "platform-provider-output.bin", "decode", "0", "2", raster));
+            var command = new ExecutionCommand(TASK_ID, context.providerBindingPin(),
+                    context.platformExecutionAttemptId(), context.platformOwnershipGeneration(), 0, invocation);
+            assertThat(resolver.resolve(command, List.of())).isInstanceOfSatisfying(SandboxResolution.Rejected.class,
+                    rejection -> assertThat(rejection.failure().message()).contains("output raster"));
+        }
+        var landscape = new RenderRaster(1440, 1080);
+        assertThat(BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(landscape, 10, 0.25, 0)).isTrue();
+        assertThat(BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(landscape, 10, 0.25, 45)).isFalse();
     }
 
     @Test

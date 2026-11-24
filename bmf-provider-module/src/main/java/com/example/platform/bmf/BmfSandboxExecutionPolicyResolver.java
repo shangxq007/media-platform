@@ -1,5 +1,6 @@
 package com.example.platform.bmf;
 
+import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.sandbox.DeviceExposurePolicy;
 import com.example.platform.sandbox.EnvironmentPolicy;
 import com.example.platform.sandbox.FilesystemPolicy;
@@ -19,6 +20,7 @@ import com.example.platform.workerfabric.domain.providernative.ProcessInvocation
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeOutputFiles;
 import com.example.platform.workerfabric.domain.providernative.SandboxExecutionPolicyResolver;
 import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,6 +75,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         String start;
         String duration;
         String rate = null;
+        RenderRaster raster;
         if (multiInput) {
             int count;
             try {
@@ -80,10 +83,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             } catch (NumberFormatException malformed) {
                 return rejected("BMF composite input count is invalid");
             }
-            if (count < 1 || count > arguments.size() - 7) {
+            if (count < 1 || count > arguments.size() - 8) {
                 return rejected("BMF composite input count is out of range");
             }
-            int expected = 7 + count + (multitrack ? count : 0);
+            int expected = 8 + count + (multitrack ? count : 0);
             if (arguments.size() != expected
                     || !arguments.get(4 + count).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
                     || !isNonNegativeSeconds(arguments.get(5 + count))
@@ -95,14 +98,16 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             start = "0";
             duration = arguments.get(5 + count);
             rate = arguments.get(6 + count);
+            raster = parseRaster(arguments.get(7 + count));
+            if (raster == null) return rejected("BMF output raster is outside the bounded invocation contract");
             if (multitrack) {
-                placements = List.copyOf(arguments.subList(7 + count, expected));
-                if (placements.stream().anyMatch(placement -> !validPlacement(placement, duration))) {
+                placements = List.copyOf(arguments.subList(8 + count, expected));
+                if (placements.stream().anyMatch(placement -> !validPlacement(placement, duration, raster))) {
                     return rejected("BMF multitrack placement is invalid");
                 }
             }
         } else if (BmfCpuRuntimeAdapter.GRAPH_PROGRAM.equals(program)) {
-            if (arguments.size() != 8
+            if (arguments.size() != 9
                     || !arguments.get(4).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
                     || !isKnownOperation(arguments.get(5))
                     || !isNonNegativeSeconds(arguments.get(6))
@@ -113,6 +118,8 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             operation = arguments.get(5);
             start = arguments.get(6);
             duration = arguments.get(7);
+            raster = parseRaster(arguments.get(8));
+            if (raster == null) return rejected("BMF output raster is outside the bounded invocation contract");
         } else {
             return rejected("BMF requires the exact graph program");
         }
@@ -156,6 +163,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.add(ProviderNativeOutputFiles.RENDER_OUTPUT);
                 args.add(duration);
                 args.add(rate);
+                args.add(raster.width() + "x" + raster.height());
                 args.addAll(placements);
             } else {
                 Path inputPath = byToken.get(inputTokens.getFirst())
@@ -165,6 +173,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.add(operation);
                 args.add(start);
                 args.add(duration);
+                args.add(raster.width() + "x" + raster.height());
             }
             var requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(Set.of(python.toString()), python.toString(), args, timeout),
@@ -206,7 +215,18 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private static boolean validPlacement(String placement, String duration) {
+    private static RenderRaster parseRaster(String value) {
+        if (!value.matches("[1-9][0-9]{1,3}x[1-9][0-9]{1,3}")) return null;
+        int separator = value.indexOf('x');
+        try {
+            return new RenderRaster(Integer.parseInt(value.substring(0, separator)),
+                    Integer.parseInt(value.substring(separator + 1)));
+        } catch (IllegalArgumentException invalid) {
+            return null;
+        }
+    }
+
+    private static boolean validPlacement(String placement, String duration, RenderRaster raster) {
         String[] parts = placement.split(",", -1);
         if (parts.length != 17 || !List.of("V", "A").contains(parts[0])
                 || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
@@ -227,8 +247,11 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || pan.compareTo(java.math.BigDecimal.ONE) > 0) {
                 return false;
             }
-            var scaleX = new java.math.BigDecimal(parts[8]);
-            var scaleY = new java.math.BigDecimal(parts[9]);
+            var x = new BigDecimal(parts[6]);
+            var y = new BigDecimal(parts[7]);
+            var scaleX = new BigDecimal(parts[8]);
+            var scaleY = new BigDecimal(parts[9]);
+            var degrees = new BigDecimal(parts[10]);
             var opacity = new java.math.BigDecimal(parts[15]);
             var left = new java.math.BigDecimal(parts[11]);
             var right = new java.math.BigDecimal(parts[12]);
@@ -253,7 +276,11 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || fadeOut.compareTo(java.math.BigDecimal.ZERO) < 0
                     || !(fx[3].equals("0") || fx[3].equals("1"))
                     || !(fx[6].equals("0") || fx[6].equals("1"))) return false;
-            return scaleX.compareTo(java.math.BigDecimal.ZERO) > 0
+            return x.abs().compareTo(BigDecimal.valueOf(16)) <= 0
+                    && y.abs().compareTo(BigDecimal.valueOf(16)) <= 0
+                    && degrees.compareTo(BigDecimal.valueOf(-180)) >= 0
+                    && degrees.compareTo(BigDecimal.valueOf(180)) < 0
+                    && scaleX.compareTo(java.math.BigDecimal.ZERO) > 0
                     && scaleX.compareTo(java.math.BigDecimal.TEN) <= 0
                     && scaleY.compareTo(java.math.BigDecimal.ZERO) > 0
                     && scaleY.compareTo(java.math.BigDecimal.TEN) <= 0
@@ -263,7 +290,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     && right.compareTo(java.math.BigDecimal.ONE) <= 0
                     && top.compareTo(java.math.BigDecimal.ZERO) >= 0
                     && bottom.compareTo(java.math.BigDecimal.ONE) <= 0
-                    && left.compareTo(right) < 0 && top.compareTo(bottom) < 0;
+                    && left.compareTo(right) < 0 && top.compareTo(bottom) < 0
+                    && (parts[0].equals("A") || BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(
+                            raster, scaleX.doubleValue(), scaleY.doubleValue(), degrees.doubleValue()));
         } catch (NumberFormatException invalid) {
             return false;
         }

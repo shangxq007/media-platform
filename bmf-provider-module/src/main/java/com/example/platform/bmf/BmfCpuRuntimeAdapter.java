@@ -150,12 +150,12 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 height = max(1, int(round(canvas_height * sy)))
                 video = ff.ff_filter(video, 'scale', str(width) + 'x' + str(height))
                 video = ff.ff_filter(video, 'setsar', '1')
-                if abs(rot) > 0.000001:
+                if rot != 0:
                     angle = str(rot) + '*PI/180'
                     video = ff.ff_filter(video, 'rotate', 'angle=' + angle
                                          + ':ow=rotw(' + angle + '):oh=roth(' + angle
                                          + '):fillcolor=none')
-                if opacity < 0.999999:
+                if opacity < 1:
                     video = ff.ff_filter(video, 'colorchannelmixer', 'aa=' + str(opacity))
                 if effect_enabled and fade_in > 0:
                     video = ff.ff_filter(video, 'fade', 't=in:st=0'

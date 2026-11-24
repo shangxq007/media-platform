@@ -1,5 +1,6 @@
 package com.example.platform.bmf;
 
+import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.ExecutionOutputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
@@ -92,6 +93,19 @@ public record BmfCpuTranscodePlan(
     public record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
                                  double left, double right, double top, double bottom, double opacity) {
         static final VideoPlacement IDENTITY = new VideoPlacement(0, 0, 1, 1, 0, 0, 1, 0, 1, 1);
+        private static final long INTERMEDIATE_PIXEL_LIMIT = 8_294_400;
+
+        static boolean fitsIntermediateRaster(RenderRaster raster, double scaleX, double scaleY, double degrees) {
+            double width = Math.ceil(raster.width() * scaleX);
+            double height = Math.ceil(raster.height() * scaleY);
+            if (width * height > INTERMEDIATE_PIXEL_LIMIT) return false;
+            if (degrees % 90 == 0) return true;
+            double angle = Math.toRadians(degrees);
+            double cos = Math.abs(Math.cos(angle));
+            double sin = Math.abs(Math.sin(angle));
+            return Math.ceil(width * cos + height * sin) * Math.ceil(width * sin + height * cos)
+                    <= INTERMEDIATE_PIXEL_LIMIT;
+        }
     }
 
     /** Exact authored source interval for a DECODE unit. */
