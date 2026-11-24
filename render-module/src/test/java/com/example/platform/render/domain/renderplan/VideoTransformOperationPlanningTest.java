@@ -117,6 +117,20 @@ class VideoTransformOperationPlanningTest {
         var reloaded = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.deserialize(serialized);
         assertThat(reloaded.getTracks().getFirst().clips().getFirst().getTransform()).isEqualTo(transform);
         assertThat(DIGESTER.digest(reloaded)).isEqualTo(DIGESTER.digest(aspect));
+        var before = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.toSnapshot(base, "before");
+        var after = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.toSnapshot(aspect, "after");
+        var diff = new com.example.platform.timeline.diff.calculation.CanonicalTimelineDiffCalculator()
+                .calculate(before, after).diff();
+        assertThat(diff.operations()).extracting(com.example.platform.timeline.diff.TimelineChangeOperation::type)
+                .contains(com.example.platform.timeline.diff.TimelineChangeType.CLIP_TRANSFORM_CHANGED,
+                        com.example.platform.timeline.diff.TimelineChangeType.COMPOSITION_ASPECT_CHANGED);
+        var patch = new com.example.platform.timeline.diff.TimelinePatch(
+                new com.example.platform.timeline.diff.TimelinePatchId("composition-patch"),
+                before.revisionId(), diff.operations(), com.example.platform.timeline.diff.TimelineMergePolicy.FAIL_FAST,
+                java.util.Map.of());
+        var merged = new com.example.platform.timeline.diff.application.TimelinePatchApplier().apply(before, patch);
+        var rebuilt = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.toDocument(merged.patchedSnapshot());
+        assertThat(DIGESTER.digest(rebuilt)).isEqualTo(DIGESTER.digest(aspect));
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                 com.example.platform.timeline.app.TimelineDocumentJsonSerializer.deserialize(
                         serialized.replace("composition-transform-micro-v1", "output-pixel")))

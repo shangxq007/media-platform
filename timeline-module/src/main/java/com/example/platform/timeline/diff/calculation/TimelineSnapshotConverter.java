@@ -30,6 +30,29 @@ import java.util.Map;
  */
 public final class TimelineSnapshotConverter {
 
+    public static final String TRANSFORM_KEY = "timelineDocument.transform";
+    public static final String ASPECT_KEY = "timelineDocument.compositionAspectRatio";
+
+    public static String encodeTransform(com.example.platform.timeline.semantics.effect.VideoTransform transform) {
+        return com.example.platform.timeline.app.TimelineDocumentJsonSerializer.mapper()
+                .valueToTree(transform).toString();
+    }
+
+    public static com.example.platform.timeline.semantics.effect.VideoTransform decodeTransform(String serialized) {
+        try {
+            var node = com.example.platform.timeline.app.TimelineDocumentJsonSerializer.mapper().readTree(serialized);
+            return com.example.platform.timeline.semantics.effect.VideoTransform.fromJson(node);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
+            throw new IllegalArgumentException("Invalid snapshot transform", invalid);
+        }
+    }
+
+    private static Map<String, String> transformMetadata(TimelineClip clip) {
+        var transform = clip.getTransform();
+        return transform.equals(com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY)
+                ? Map.of() : Map.of(TRANSFORM_KEY, encodeTransform(transform));
+    }
+
     private TimelineSnapshotConverter() {
     }
 
@@ -148,7 +171,7 @@ public final class TimelineSnapshotConverter {
                         clip.getTrimEnd().subtract(clip.getTrimStart()),
                         FrameRate.of(30, 1),
                         clip.getEffects(),
-                        Map.of(),
+                        transformMetadata(clip),
                         clip.getSourceKind(),
                         clip.getMediaStreamId(),
                         clip.getArtifactId(),
@@ -194,7 +217,9 @@ public final class TimelineSnapshotConverter {
                         clip.artifactId(), clip.contentDigest(), clip.start(),
                         clip.start().add(clip.duration()), clip.sourceStart(),
                         clip.sourceStart().add(clip.sourceDuration()), clip.sourceKind(),
-                        clip.temporalMapping(), clip.effects(), com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
+                        clip.temporalMapping(), clip.effects(), clip.safeMetadata().containsKey(TRANSFORM_KEY)
+                                ? decodeTransform(clip.safeMetadata().get(TRANSFORM_KEY))
+                                : com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
             }
             tracks.add(new TimelineTrack(track.trackId(),
                     track.safeMetadata().getOrDefault("timelineDocument.name", track.trackId()),
@@ -216,6 +241,7 @@ public final class TimelineSnapshotConverter {
         metadata.put("schemaVersion", document.getSchemaVersion());
         metadata.put("timelineDocument.title", document.getMetadata().title());
         metadata.put("timelineDocument.description", document.getMetadata().description());
+        metadata.put(ASPECT_KEY, document.getMetadata().effectiveCompositionAspectRatio().name());
         document.getMetadata().properties().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(e -> metadata.put("timelineDocument.property." + e.getKey(), e.getValue()));
@@ -233,7 +259,8 @@ public final class TimelineSnapshotConverter {
         return new com.example.platform.timeline.canonical.TimelineMetadata(
                 safeMetadata.getOrDefault("timelineDocument.title", ""),
                 safeMetadata.getOrDefault("timelineDocument.description", ""),
-                properties);
+                properties, com.example.platform.timeline.canonical.CompositionAspectRatio
+                        .valueOf(safeMetadata.getOrDefault(ASPECT_KEY, "LANDSCAPE_4_3")));
     }
 
     private static List<com.example.platform.timeline.canonicalmodel.CanonicalTransition> fromTransitionSnapshots(

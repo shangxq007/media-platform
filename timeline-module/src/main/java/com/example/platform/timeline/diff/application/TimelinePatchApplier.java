@@ -60,6 +60,7 @@ public class TimelinePatchApplier {
             case CLIP_REMOVED -> applyClipRemoved(s, op);
             case CLIP_MOVED -> applyClipField(s, op, "start");
             case CLIP_TRIMMED -> applyClipField(s, op, "duration");
+            case CLIP_TRANSFORM_CHANGED -> applyClipField(s, op, "transform");
             case CLIP_SPEED_CHANGED -> {
                 // R4-B: CLIP_SPEED_CHANGED carries two distinct path scopes —
                 // ".rate" (legacy playback-rate change) and ".temporalMapping"
@@ -85,6 +86,7 @@ public class TimelinePatchApplier {
             case WORKFLOW_APPLY_TEMPLATE_STEP_CHANGED -> applyWorkflowStep(s, op);
             case OUTPUT_PROFILE_CHANGED -> applyOutputProfile(s, op);
             case METADATA_CHANGED -> applyMetadata(s, op);
+            case COMPOSITION_ASPECT_CHANGED -> applyAspect(s, op);
             case EFFECT_CHANGED -> applyEffectChanged(s, op);
             case TRANSITION_CHANGED -> applyTransitionChanged(s, op);
             case AUTOMATION_CHANGED -> applyAutomationChanged(s, op);
@@ -266,15 +268,18 @@ public class TimelinePatchApplier {
                     MediaTime sourceDuration = parseMediaTime(parts[5], MediaTime.ZERO);
                     long rateNum = parseLong(parts[6], 30);
                     long rateDen = parseLong(parts[7], 1);
-                    String effectsEnc = parts.length > 8 ? parts[8] : null;
-                    if (effectsEnc != null && effectsEnc.startsWith("effects=")) {
-                        effectsEnc = effectsEnc.substring("effects=".length());
+                    Map<String, String> clipFields = new HashMap<>();
+                    for (int field = 8; field < parts.length; field++) {
+                        String[] entry = parts[field].split("=", 2);
+                        if (entry.length == 2) clipFields.put(entry[0], entry[1]);
                     }
+                    String binding = clipFields.get("sourceBinding");
                     clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
-                            start, duration, sourceStart, sourceDuration,
-                            FrameRate.of(rateNum, rateDen),
-                            parseEffects(effectsEnc), Map.of(),
-                            null, null, null, null, null));
+                            start, duration, sourceStart, sourceDuration, FrameRate.of(rateNum, rateDen),
+                            parseEffects(clipFields.get("effects")), transformMetadata(clipFields.get("transform")),
+                            binding == null ? null : com.example.platform.timeline.semantics.clip
+                                    .TimelineSourceBindingCanonicalSemantics.decode(binding),
+                            parseTemporalMapping(clipFields.get("temporalMapping"), null)));
                 }
             }
         }
@@ -341,14 +346,16 @@ public class TimelinePatchApplier {
         if (sbEnc != null && !sbEnc.isBlank()) {
             clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
                     start, duration, sourceStart, sourceDuration, rate,
-                    parseEffects(meta.get("effects")), Map.of(),
+                    parseEffects(meta.get("effects")),
+                    transformMetadata(meta.get(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.TRANSFORM_KEY)),
                     com.example.platform.timeline.semantics.clip
                             .TimelineSourceBindingCanonicalSemantics.decode(sbEnc),
                     parseTemporalMapping(meta.get("temporalMapping"), null)));
         } else {
             clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
                     start, duration, sourceStart, sourceDuration, rate,
-                    parseEffects(meta.get("effects")), Map.of(),
+                    parseEffects(meta.get("effects")),
+                    transformMetadata(meta.get(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.TRANSFORM_KEY)),
                     meta.get("sourceKind"), meta.get("mediaStreamId"),
                     meta.get("artifactId"), meta.get("contentDigest"),
                     parseTemporalMapping(meta.get("temporalMapping"), null)));
@@ -497,6 +504,16 @@ public class TimelinePatchApplier {
     }
 
     // --- Metadata ---
+
+    private TimelinePatchApplicationResult applyAspect(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        var aspect = com.example.platform.timeline.canonical.CompositionAspectRatio.valueOf(afterVal(op));
+        var metadata = new HashMap<>(s.safeMetadata());
+        metadata.put(TimelineSnapshotConverter.ASPECT_KEY, aspect.name());
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(), s.tracks(),
+                s.watermarks(), s.templateApplications(), s.workflowSteps(), s.outputProfile(),
+                metadata, s.textElements(), s.transitions(), s.automations(),
+                s.audioMix(), s.semanticRelationships()));
+    }
 
     private TimelinePatchApplicationResult applyMetadata(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
         Map<String, String> meta = new HashMap<>(s.safeMetadata() != null ? s.safeMetadata() : Map.of());
@@ -720,6 +737,13 @@ public class TimelinePatchApplier {
         }
     }
 
+    private static Map<String, String> transformMetadata(String encoded) {
+        if (encoded == null) return Map.of();
+        var transform = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.decodeTransform(encoded);
+        if (transform.equals(com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY)) return Map.of();
+        return Map.of(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.TRANSFORM_KEY, encoded);
+    }
+
     private CanonicalTimelineClipSnapshot applyClipFieldOp(
             CanonicalTimelineClipSnapshot c, String field, String afterValue, TimelineChangeOperation op) {
         return switch (field) {
@@ -738,6 +762,15 @@ public class TimelinePatchApplier {
                     c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
                     c.rate(), c.effects(), c.safeMetadata(), c.sourceBinding(),
                     parseTemporalMapping(afterValue, c.temporalMapping()));
+            case "transform" -> {
+                if (afterValue == null) throw new IllegalArgumentException("Missing transform patch payload");
+                var metadata = new HashMap<>(c.safeMetadata());
+                metadata.remove(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter.TRANSFORM_KEY);
+                metadata.putAll(transformMetadata(afterValue));
+                yield new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                        c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
+                        c.rate(), c.effects(), metadata, c.sourceBinding(), c.temporalMapping());
+            }
             case "sourceSemantics" -> {
                 Map<String, String> sm = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
                 // R4-B: source-semantics reconstruction uses the TYPED binding

@@ -89,9 +89,9 @@ describe('runtime NLE operation workspace', () => {
     vi.spyOn(FormalRenderAPI, 'snapshot').mockResolvedValue({
       schemaVersion: 'timeline-1.0',
       canonicalTimelineJson: JSON.stringify({ schemaVersion: 'timeline-1.0', tracks: [
-        { trackId: 'base', type: 'VIDEO', name: 'Camera', clips: [] },
-        { trackId: 'top', type: 'VIDEO', name: 'Overlay', clips: [] },
-        { trackId: 'audio', type: 'AUDIO', name: 'Voice', clips: [] },
+        { trackId: 'base', type: 'video', name: 'Camera', clips: [] },
+        { trackId: 'top', type: 'video', name: 'Overlay', clips: [] },
+        { trackId: 'audio', type: 'audio', name: 'Voice', clips: [] },
       ] }),
     })
     renderWorkspace(new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied }))

@@ -220,9 +220,9 @@ export function projectTimeline(document: unknown): TimelineProjection {
   if (aspect !== 'LANDSCAPE_4_3' && aspect !== 'PORTRAIT_3_4') throw new Error('Unsupported composition aspect ratio')
   const tracks: ProjectedTrack[] = entries(root.tracks, 'Timeline tracks').map(raw => {
     const track = object(raw, 'Timeline track')
-    if (track.type !== 'VIDEO' && track.type !== 'AUDIO') throw new Error('Unsupported Timeline track type')
+    if (track.type !== 'video' && track.type !== 'audio') throw new Error('Unsupported Timeline track type')
     const trackId = text(track.trackId, 'track identity')
-    return { trackId, name: typeof track.name === 'string' ? track.name : trackId, type: track.type,
+    return { trackId, name: typeof track.name === 'string' ? track.name : trackId, type: track.type === 'video' ? 'VIDEO' : 'AUDIO',
       clips: entries(track.clips, 'track clips').map(clip => projectClip(clip, trackId)) }
   })
   const clips = tracks.flatMap(track => track.clips)

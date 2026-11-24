@@ -48,13 +48,21 @@ if provider=='bmf':
 # COMBINED is an optional validation shape; the default remains two independent processes.
 combined = '--combined' in sys.argv
 roles = ['api'] if combined else ['api', 'worker']
+# The composition evidence binds one immutable revision with two explicit synthetic API configurations.
+# Both share the run-owned store, object directory, issuer and Worker.
+provider_comparison = provider == 'bmf' and scenario == 'nle-multitrack' and not combined
+if provider_comparison:
+ roles.append('api-ffmpeg')
 if combined:
  base['SPRING_PROFILES_ACTIVE'] = 'pg18-integration,temporal,ffmpeg-worker'
  base['SPRING_MAIN_WEB_APPLICATION_TYPE'] = 'servlet'
 (out/'runtime-shape.json').write_text(json.dumps({'mode':'COMBINED' if combined else 'API_WORKER', 'processes':roles,'media_provider':provider,'scenario':scenario,'bmf_runtime_root':bmf_root}))
 # Secret-containing environment file is private, passed by pathname, never command line values.
 for role in roles:
- e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else role.upper()};p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
+ e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role=='api-ffmpeg' else role.upper()}
+ if role=='api-ffmpeg':
+  e.update(SERVER_PORT='18082',PLATFORM_RENDER_MEDIA_PROVIDER='ffmpeg')
+ p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
 launcher=out/'launch.py';launcher.write_text("import json,os,sys\ne=json.load(open(sys.argv[1]));os.execve('/usr/bin/java',['/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',sys.argv[2]],e)\n")
 from subreaper import require_subreaper
 require_subreaper()
@@ -69,15 +77,17 @@ libs=R/'03-build/outputs/_platform-app/libs'
 commands['api']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-env.json'),str(next(p for p in libs.glob('*.jar') if p.name not in ['platform-ffmpeg-worker.jar'] and not p.name.endswith('-plain.jar')))]
 if not combined:
  commands['worker']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'worker-env.json'),str(libs/'platform-ffmpeg-worker.jar')]
+if provider_comparison:
+ commands['api-ffmpeg']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-ffmpeg-env.json'),commands['api'][-1]]
 if '--bootstrap' in sys.argv:
  control=out/'bootstrap-control';control.mkdir(mode=0o700)
  secret_names=set()
  for profile in ['api','worker','combined','flyway','jooq']:
   secret_names.update(line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#'))
  for role in roles:
-  profile = 'combined' if combined else role
+  profile = 'combined' if combined else 'api' if role=='api-ffmpeg' else role
   e=json.loads((out/(role+'-env.json')).read_text());e.pop('PLATFORM_RUNTIME_ROLE',None)
-  deploy=control/profile;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
+  deploy=control/role;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
   names=[line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#')]
   payload=deploy/'synthetic-payload.json';payload.write_text(json.dumps([{'key':name,'value':e.get(name) or secrets.token_hex(32)} for name in names]+[{'key':'PLATFORM_RUNTIME_ROLE','value':'COMBINED'},{'key':'NEON_API_KEY','value':'synthetic-not-authorized'}]));payload.chmod(0o600)
   stub=deploy/'bws-synthetic';stub.write_text('#!/usr/bin/python3\nfrom pathlib import Path\nprint(Path('+repr(str(payload))+').read_text())\n');stub.chmod(0o700)
@@ -106,7 +116,7 @@ if '--bootstrap' in sys.argv:
 from cli import manifest
 manifest_bytes=manifest()
 (out/'candidate-identity.json').write_text(json.dumps({'path':str(W),'manifest_sha256':hashlib.sha256(manifest_bytes).hexdigest(),'files':len(manifest_bytes.splitlines())-1}))
-(out/'commands.json').write_text(json.dumps({name:{'argv':command,'cwd':str(out),'fresh_environment_keys':sorted(env),'jar_sha256':hashlib.sha256((libs/('platform-app.jar' if name=='api' else 'platform-ffmpeg-worker.jar')).read_bytes()).hexdigest() if name in ['api','worker'] else None} for name,command in commands.items()},indent=2))
+(out/'commands.json').write_text(json.dumps({name:{'argv':command,'cwd':str(out),'fresh_environment_keys':sorted(env),'jar_sha256':hashlib.sha256((libs/('platform-app.jar' if name.startswith('api') else 'platform-ffmpeg-worker.jar')).read_bytes()).hexdigest() if name in roles else None} for name,command in commands.items()},indent=2))
 (R/'07-runtime/current-apps.txt').write_text(str(out)+'\n')
 try:
  for name,cmd in commands.items():

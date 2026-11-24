@@ -6,13 +6,13 @@ import { formatRational, parseRational } from './trim'
 const source = { sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64) }
 const forward = { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' }
 const clip = { ...source, clipId: 'a', startTime: '0', endTime: '2/1', trimStart: '3', trimEnd: '5/1', temporalMapping: forward }
-const track = { trackId: 'track-1', name: 'Video', type: 'VIDEO', clips: [clip] }
+const track = { trackId: 'track-1', name: 'Video', type: 'video', clips: [clip] }
 const document = {
   schemaVersion: 'timeline-1.0',
   tracks: [
     { ...track, clips: [clip, { ...source, clipId: 'b', startTime: '4/1', endTime: '7/1', trimStart: '0', trimEnd: '6',
       temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 2, denominator: 1 }, direction: 'REVERSE' } }] },
-    { trackId: 'track-2', name: 'Audio', type: 'AUDIO', clips: [] },
+    { trackId: 'track-2', name: 'Audio', type: 'audio', clips: [] },
   ],
   audioMix: { routes: [
     { input: { trackId: 'track-1', clipId: 'a' }, gain: { linear: 0.5 }, mute: { muted: true }, balance: { value: -0.25 } },
@@ -45,7 +45,7 @@ describe('canonical Timeline projection', () => {
   it('selects video tracks only', () => {
     expect(firstVideoTrack(projectTimeline(document))?.trackId).toBe('track-1')
     expect(firstVideoTrack(projectTimeline({ ...document, audioMix: { routes: [] },
-      tracks: [{ trackId: 'x', type: 'AUDIO', clips: [] }] }))).toBeNull()
+      tracks: [{ trackId: 'x', type: 'audio', clips: [] }] }))).toBeNull()
   })
 
   it('projects explicit audio route properties and rejects invalid gain', () => {

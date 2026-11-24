@@ -3,7 +3,7 @@ import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration } from 
 import { projectTimeline } from './timeline-projection'
 import { formatRational, parseRational } from './trim'
 
-const projection = projectTimeline({ schemaVersion: 'timeline-1.0', tracks: [{ trackId: 't', type: 'VIDEO', clips: [
+const projection = projectTimeline({ schemaVersion: 'timeline-1.0', tracks: [{ trackId: 't', type: 'video', clips: [
   { clipId: 'a', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '0', endTime: '2', trimStart: '4', trimEnd: '6', temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' } },
   { clipId: 'b', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '3', endTime: '5', trimStart: '0', trimEnd: '4', temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 2, denominator: 1 }, direction: 'FORWARD' } },
   { clipId: 'r', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '6', endTime: '7', trimStart: '0', trimEnd: '2', temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'REVERSE' } },
@@ -25,9 +25,9 @@ describe('timeline media preview time mapping', () => {
       temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
     })
     const tracks = projectTimeline({ schemaVersion: 'timeline-1.0', tracks: [
-      { trackId: 'lower', type: 'VIDEO', clips: [clip('under', '0', '3')] },
-      { trackId: 'upper', type: 'VIDEO', clips: [clip('over', '1', '2')] },
-      { trackId: 'music', type: 'AUDIO', clips: [clip('sound', '0', '4')] },
+      { trackId: 'lower', type: 'video', clips: [clip('under', '0', '3')] },
+      { trackId: 'upper', type: 'video', clips: [clip('over', '1', '2')] },
+      { trackId: 'music', type: 'audio', clips: [clip('sound', '0', '4')] },
     ] })
     expect(activeClipAt(tracks, t('0'))?.clipId).toBe('under')
     expect(activeClipAt(tracks, t('1'))?.clipId).toBe('over')

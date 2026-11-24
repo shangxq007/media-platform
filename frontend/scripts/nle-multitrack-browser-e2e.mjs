@@ -527,8 +527,8 @@ try {
   assert(rightPeaks[880] > leftPeaks[880] * 1.5, 'A3 pan right')
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY')
 
-  const formalOutput = async (revisionId, startMillis, endMillis, label, width = 320, height = 240) => {
-    const submitted = await page.request.post(base + '/api/render-jobs', {
+  const formalOutput = async (revisionId, startMillis, endMillis, label, width = 320, height = 240, submitOrigin = base) => {
+    const submitted = await page.request.post(submitOrigin + '/api/render-jobs', {
       headers: { ...headers, 'Idempotency-Key': label },
       data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: 24, frameRateDenominator: 1, width, height },
         profile: 'default', outputFormat: 'MP4' },
@@ -780,12 +780,36 @@ try {
   assert(Math.max(...portraitPixels[0]) <= 8)
   assert(portraitPixels.slice(1).some(rgb => Math.max(...rgb) > 32))
   composition.samples.push({ label: 'portrait', positions: [[5,5], [114,148], [135,162]], portraitPixels })
+  for (const clipId of [pattern, second]) await deleteClip(clipId)
+  await batch('restore-landscape-for-common-provider', [{ definitionId: 'timeline.composition.aspect.set',
+    parameters: { aspectRatio: 'LANDSCAPE_4_3' } }])
+  await addClip('video-a.mp4', 'track-1', '0', '2', '2')
+  const commonRevision = await head()
+  const commonBmf = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-provider-bmf')
+  const commonFfmpeg = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-provider-ffmpeg',
+    320, 240, 'http://127.0.0.1:18082')
+  for (const output of [commonBmf, commonFfmpeg]) {
+    const [video] = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-select_streams', 'v:0',
+      '-count_frames', '-show_entries', 'stream=width,height,nb_read_frames,duration', '-of', 'json', output.path])).streams
+    assert.equal(video.width, 320)
+    assert.equal(video.height, 240)
+    assert.equal(Number(video.nb_read_frames), 48)
+  }
+  const bmfCommonRgb = pixel(commonBmf.path, 0.5, 160, 120)
+  const ffmpegCommonRgb = pixel(commonFfmpeg.path, 0.5, 160, 120)
+  assert.equal(dominant(bmfCommonRgb), 'red')
+  assert.equal(dominant(ffmpegCommonRgb), 'red')
+  assert(maxDelta(bmfCommonRgb, ffmpegCommonRgb) <= 12)
+  assert.deepEqual(await head(), commonRevision)
+  composition.providerComparison = { revision: commonRevision, bmfCommonRgb, ffmpegCommonRgb,
+    outputs: [{ ...commonBmf, provider: 'bmf' }, { ...commonFfmpeg, provider: 'ffmpeg' }] }
   report.status = 'PASS'
   record('CANONICAL_COMPOSITION_CONFORMANCE')
 
 } catch (error) {
   report.status = 'FAIL'
   report.error = String(error)
+  report.previewStatus = await page.locator('[data-preview-status] [role=status]').first().textContent({ timeout: 2000 }).catch(() => null)
   record('FAILED')
   await page.screenshot({ path: join(outputRoot, 'failure.png'), fullPage: true }).catch(() => undefined)
   throw error

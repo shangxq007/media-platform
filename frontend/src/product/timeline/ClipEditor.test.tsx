@@ -27,7 +27,7 @@ const snapshot = {
   schemaVersion: 'timeline-1.0',
   canonicalTimelineJson: JSON.stringify({
     schemaVersion: 'timeline-1.0',
-    tracks: [{ trackId: 'track-1', name: 'Video', type: 'VIDEO', clips: [{
+    tracks: [{ trackId: 'track-1', name: 'Video', type: 'video', clips: [{
       clipId: 'clip-0', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '0', endTime: '6', trimStart: '0', trimEnd: '6',
       temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
     }] }],
@@ -144,7 +144,7 @@ const multiClipSnapshot = {
   schemaVersion: 'timeline-1.0',
   canonicalTimelineJson: JSON.stringify({
     schemaVersion: 'timeline-1.0',
-    tracks: [{ trackId: 'track-1', name: 'Video', type: 'VIDEO', clips: [
+    tracks: [{ trackId: 'track-1', name: 'Video', type: 'video', clips: [
       { clipId: 'clip-a', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '0', endTime: '2', trimStart: '0', trimEnd: '2',
         temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' } },
       { clipId: 'clip-b', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '2', endTime: '4', trimStart: '0', trimEnd: '2',

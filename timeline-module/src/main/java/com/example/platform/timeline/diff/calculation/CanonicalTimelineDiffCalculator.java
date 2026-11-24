@@ -228,6 +228,16 @@ public class CanonicalTimelineDiffCalculator {
                             TimelineChangePayload.ofString(afterTm),
                             tmMeta));
                 }
+                String beforeTransform = bc.safeMetadata().get(TimelineSnapshotConverter.TRANSFORM_KEY);
+                String afterTransform = ac.safeMetadata().get(TimelineSnapshotConverter.TRANSFORM_KEY);
+                if (!Objects.equals(beforeTransform, afterTransform)) {
+                    String identity = TimelineSnapshotConverter.encodeTransform(
+                            com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY);
+                    ops.add(change(seq, TimelineChangeType.CLIP_TRANSFORM_CHANGED,
+                            TimelineChangeScope.CLIP, clipPath + ".transform",
+                            beforeTransform == null ? identity : beforeTransform,
+                            afterTransform == null ? identity : afterTransform));
+                }
                 // EFFECT_TRANSITION_CANONICALIZATION_V1 (FIFTH CORRECTION):
                 // effects are authored Timeline semantics owned by
                 // TimelineClipEffect.semanticFingerprint() and reconstructed
@@ -735,8 +745,18 @@ public class CanonicalTimelineDiffCalculator {
 
     private void diffMetadata(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
                                List<TimelineChangeOperation> ops, int[] seq) {
-        Map<String, String> bm = before.safeMetadata() != null ? before.safeMetadata() : Map.of();
-        Map<String, String> am = after.safeMetadata() != null ? after.safeMetadata() : Map.of();
+        Map<String, String> bm = new TreeMap<>(before.safeMetadata());
+        Map<String, String> am = new TreeMap<>(after.safeMetadata());
+        String beforeAspect = bm.remove(TimelineSnapshotConverter.ASPECT_KEY);
+        String afterAspect = am.remove(TimelineSnapshotConverter.ASPECT_KEY);
+        String defaultAspect = "LANDSCAPE_4_3";
+        if (!Objects.equals(Objects.requireNonNullElse(beforeAspect, defaultAspect),
+                Objects.requireNonNullElse(afterAspect, defaultAspect))) {
+            ops.add(change(seq, TimelineChangeType.COMPOSITION_ASPECT_CHANGED,
+                    TimelineChangeScope.TIMELINE, "timeline.compositionAspectRatio",
+                    Objects.requireNonNullElse(beforeAspect, defaultAspect),
+                    Objects.requireNonNullElse(afterAspect, defaultAspect)));
+        }
         if (!bm.equals(am)) {
             ops.add(change(seq, TimelineChangeType.METADATA_CHANGED,
                     TimelineChangeScope.METADATA, "timeline.metadata",
@@ -753,6 +773,7 @@ public class CanonicalTimelineDiffCalculator {
         boolean hasFullRerender = ops.stream().anyMatch(op ->
                 op.type() == TimelineChangeType.TIMELINE_DURATION_CHANGED
                 || op.type() == TimelineChangeType.OUTPUT_PROFILE_CHANGED
+                || op.type() == TimelineChangeType.COMPOSITION_ASPECT_CHANGED
                 || op.type() == TimelineChangeType.TRACK_ADDED
                 || op.type() == TimelineChangeType.TRACK_REMOVED);
 
@@ -761,6 +782,7 @@ public class CanonicalTimelineDiffCalculator {
                 || op.type() == TimelineChangeType.CLIP_REMOVED
                 || op.type() == TimelineChangeType.CLIP_MOVED
                 || op.type() == TimelineChangeType.CLIP_TRIMMED
+                || op.type() == TimelineChangeType.CLIP_TRANSFORM_CHANGED
                 || op.type() == TimelineChangeType.WATERMARK_CHANGED
                 || op.type() == TimelineChangeType.TEMPLATE_PARAMETER_CHANGED
                 || op.type() == TimelineChangeType.TEMPLATE_PROFILE_CHANGED);
@@ -841,6 +863,13 @@ public class CanonicalTimelineDiffCalculator {
                     // FIFTH CORRECTION: canonical Effect encoding (lossless/typed).
                     sb.append("effects=").append(EffectCanonicalSemantics.encodeEffects(clip.effects())).append('\u001e');
                 }
+                String transform = clip.safeMetadata().get(TimelineSnapshotConverter.TRANSFORM_KEY);
+                if (transform != null) sb.append("transform=").append(transform).append('\u001e');
+                if (clip.sourceBinding() != null) sb.append("sourceBinding=")
+                        .append(com.example.platform.timeline.semantics.clip.TimelineSourceBindingCanonicalSemantics
+                                .encode(clip.sourceBinding())).append('\u001e');
+                if (clip.temporalMapping() != null) sb.append("temporalMapping=")
+                        .append(temporalMappingJson(clip.temporalMapping())).append('\u001e');
             }
             meta.put("clips", sb.toString());
         }
@@ -862,6 +891,8 @@ public class CanonicalTimelineDiffCalculator {
     private TimelineChangeOperation clipAddedOp(int[] seq, String path, CanonicalTimelineClipSnapshot clip) {
         Map<String, String> meta = new LinkedHashMap<>();
         meta.put("assetBindingId", clip.assetBindingId());
+        String transform = clip.safeMetadata().get(TimelineSnapshotConverter.TRANSFORM_KEY);
+        if (transform != null) meta.put(TimelineSnapshotConverter.TRANSFORM_KEY, transform);
         meta.put("start", clip.start().toString());
         meta.put("duration", clip.duration().toString());
         meta.put("sourceStart", clip.sourceStart().toString());
