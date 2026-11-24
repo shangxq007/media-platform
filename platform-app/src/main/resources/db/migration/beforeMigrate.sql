@@ -48,7 +48,12 @@ BEGIN
         )
         SELECT encode(sha256(convert_to(string_agg(item::text, E'\n' ORDER BY item::text COLLATE "C"),'UTF8')), 'hex') FROM shape
     ) AS baseline(digest);
-    IF fingerprint <> '5ae12c58fb0b50023107fdd41ba3daa4de607106092156f19df40995f88f0c43' THEN
+    -- pg_restore rewrites the explicit varchar[] to text[] cast in 52 CHECKs as
+    -- equivalent per-literal casts. These are the two measured encodings of canonical V1.
+    IF fingerprint NOT IN (
+        '5ae12c58fb0b50023107fdd41ba3daa4de607106092156f19df40995f88f0c43',
+        'c45318f9a47814b20934381c220b2413e5887db276bba469aad06140ee254e1f'
+    ) THEN
         RAISE EXCEPTION 'Unsupported PostgreSQL V1 catalog. An isolated historical transition is required.';
     END IF;
 END;

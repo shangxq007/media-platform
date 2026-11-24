@@ -125,7 +125,7 @@ class FirstRenderPreparationPostgresTest {
         }
         public void close() throws Exception {
             try {
-                db.execute("drop trigger if exists reject_bound_graph_save on render.render_binding_inputs");
+                world.db.execute("drop trigger if exists reject_bound_graph_save on render.render_binding_inputs");
             } finally {
                 world.close();
             }

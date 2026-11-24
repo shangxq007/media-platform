@@ -4,7 +4,7 @@ The API and Worker share one PostgreSQL 18 database. Flyway applies the ordered 
 `platform-app/src/main/resources/db/migration`. V1 is immutable. Its SHA-256 is
 `f6755e0663596721fa824cb436a5ed548475213fda11d3655e0899fcdce3e580`, with Flyway checksum
 `-1975529748`. V2 moves the existing application objects into domain schemas in one transaction.
-The Flyway beforeMigrate callback checks an installed V1 against the frozen PostgreSQL 18 catalog before relocation. Flyway also validates the applied migration checksum. The migration history stays in `public.flyway_schema_history`.
+The Flyway beforeMigrate callback checks an installed V1 against the frozen PostgreSQL 18 catalog before relocation. Both the original catalog and the equivalent PostgreSQL 18 logical-restore rendering of its CHECK constraints are recognized. Flyway also validates the applied migration checksum. The migration history stays in `public.flyway_schema_history`.
 
 Provision the migration owner and distinct API, Worker and verification logins before rollout.
 None of these logins needs cluster administration. Give the migration owner ownership of the

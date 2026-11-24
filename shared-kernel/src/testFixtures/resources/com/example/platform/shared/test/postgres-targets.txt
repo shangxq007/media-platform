@@ -34,3 +34,5 @@ local com.example.platform.billing.usage.UsageOutboxEventAtomicityTest
 local com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepositoryPostgresTest
 local com.example.platform.entitlement.app.QuotaUsageAuthorityPostgresTest
 local com.example.platform.workflow.definition.infrastructure.UserWorkflowDefinitionJdbcRepositoryTest
+local com.example.platform.BillingUsageCompositionTest
+local com.example.platform.BillingOwnerReadProjectionTest
