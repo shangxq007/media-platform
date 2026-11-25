@@ -4,7 +4,7 @@ import { isOidcEnabled } from '../../auth/oidcConfig'
 import { bootstrapDevAuth } from '../index'
 
 export interface VersionlessTransport {
-  get(path: string, options?: { params?: Record<string, string | number> }): Promise<{ data: unknown }>
+  get(path: string, options?: { params?: Record<string, string | number>; signal?: AbortSignal }): Promise<{ data: unknown }>
   post(path: string, body: unknown): Promise<{ data: unknown }>
 }
 

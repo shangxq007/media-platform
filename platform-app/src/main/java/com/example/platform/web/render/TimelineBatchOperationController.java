@@ -107,6 +107,7 @@ public class TimelineBatchOperationController {
             for (String key : java.util.List.of("batchId", "baseRevisionId", "baseContentHash")) {
                 if (!root.path(key).isTextual()) throw new IllegalArgumentException(key + " must be a string");
             }
+            if (root.has("refId") && !root.get("refId").isTextual()) throw new IllegalArgumentException("Invalid refId");
             if (root.has("message") && !root.get("message").isTextual()) throw new IllegalArgumentException("Invalid message");
             if (!root.path("baseContentHash").textValue().matches(TimelineBatchCommand.TIMELINE_DIGEST)) {
                 throw new IllegalArgumentException("An exact revision content digest is required");

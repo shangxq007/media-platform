@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { RevisionChangeSummary, RevisionComparison, RevisionDetail, RevisionListEntry, TimelineQueryGateway } from '../../product/timeline/gateways'
+import type { CanonicalHeadReference, GatewayResult, RevisionChangeSummary, RevisionComparison, RevisionDetail, RevisionListEntry, TimelineQueryGateway } from '../../product/timeline/gateways'
 import { contentHash, isContentHash, projectId, revisionId, timelineId, type ProjectId } from '../../product/timeline/types'
 import { gatewayFailure, responseValidationFailure } from './gateway-error'
 import { versionlessTransport, type VersionlessTransport } from './versionless-api'
@@ -77,6 +77,32 @@ function mapSummary(input: z.infer<typeof SummarySchema>): RevisionChangeSummary
 }
 
 const projectPath = (value: ProjectId) => encodeURIComponent(value)
+
+const editingBranches = (project: ProjectId) => `/render/projects/${projectPath(project)}/timeline/branches`
+const EditingRef = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
+const BranchAuthority = z.object({ projectId: IdSchema, refId: EditingRef, headRevisionId: IdSchema,
+  contentHash: TimelineDigestSchema, history: z.array(RevisionSchema) })
+
+export async function readEditingBranch(project: ProjectId, refId: string): Promise<GatewayResult<{
+  head: CanonicalHeadReference
+  history: readonly RevisionListEntry[]
+}>> {
+  try {
+    const response = await versionlessTransport.get(`${editingBranches(project)}/${encodeURIComponent(refId)}`)
+    const data = BranchAuthority.parse(response.data)
+    if (data.projectId !== project || data.refId !== refId || data.history[0]?.id !== data.headRevisionId) {
+      return responseValidationFailure('Branch response did not match the requested branch and head.')
+    }
+    return { ok: true, value: { head: { projectId: project, timelineId: timelineId(project),
+      revisionId: revisionId(data.headRevisionId), contentHash: contentHash(data.contentHash) },
+    history: data.history.map(mapRevision) } }
+  } catch (error) { return gatewayFailure(error) }
+}
+
+export async function listEditingBranches(project: ProjectId, signal: AbortSignal) {
+  const response = await versionlessTransport.get(editingBranches(project), { signal })
+  return z.array(EditingRef).parse(response.data)
+}
 
 export function createTimelineQueryGateway(transport: VersionlessTransport = versionlessTransport): TimelineQueryGateway {
   return {

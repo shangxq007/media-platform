@@ -6,6 +6,12 @@ import java.util.Optional;
 public interface TimelineRevisionQueries {
 Optional<RevisionInfo> findHead(String projectId, String tenantId);
 
+List<String> listEditingRefs(String projectId, String tenantId);
+
+Optional<BranchHistory> getBranchHistory(String projectId, String tenantId, String refId, int limit);
+
+record BranchHistory(String refId, RevisionInfo head, List<RevisionInfo> history) {}
+
 Optional<RevisionInfo> findById(String projectId, String tenantId, String revisionId);
 
 Optional<RevisionSnapshotPayload> getRevisionSnapshotPayload(

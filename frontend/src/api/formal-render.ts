@@ -9,7 +9,7 @@ const id = z.string().min(1)
 const part = (value: string) => encodeURIComponent(id.parse(value))
 export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number; width?: number; height?: number }; outputFormat: 'MP4'; profile: string }
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
-export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
+export interface ClipEdit { refId?: string; type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
 export interface VideoTransformCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
   parameters: Extract<SemanticStep, { definitionId: 'timeline.clip.transform.set' }>['parameters']; commandId: string }
 export interface VideoEffectCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
@@ -55,7 +55,7 @@ function clipBatch(command: ClipEdit): SemanticBatch {
     case 'DELETE_CLIP': step = { definitionId: 'timeline.delete', target }; break
   }
   return { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
-    baseContentHash: command.baseContentHash, operations: [step] }
+    baseContentHash: command.baseContentHash, refId: command.refId, operations: [step] }
 }
 
 const batchEndpoint = (tenant: string, project: string) =>
@@ -64,6 +64,15 @@ const planSchema = z.object({ batchDigest: z.string().regex(/^[0-9a-f]{64}$/),
   steps: z.array(z.object({ changes: z.array(z.object({ identity: z.string(), primary: z.boolean() })) })) })
 
 export const FormalRenderAPI = {
+  async createEditingBranch(project: string, body: { refId: string; sourceRevisionId: string; commandId: string }, signal?: AbortSignal) {
+    const schema = z.object({ refId: id, sourceRevisionId: id, replayed: z.boolean() })
+    const accepted = schema.parse(await request(c => versionlessApi.post(
+      `/render/projects/${part(project)}/timeline/branches`, body, c), signal))
+    if (accepted.refId !== body.refId || accepted.sourceRevisionId !== body.sourceRevisionId) {
+      throw new Error('BRANCH_CREATE_SCOPE_MISMATCH')
+    }
+    return accepted
+  },
   async outputRasters(project: string, signal?: AbortSignal) {
     const path = `/render/projects/${part(project)}/output-rasters`
     return RasterProfile.array().parse(await request(c => versionlessApi.get(path, c), signal))

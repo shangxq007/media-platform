@@ -9,7 +9,7 @@ import { surfaceRegistry } from '../foundation/surfaceRegistry'
 import { PublicationSourceProvider } from '../product/publication/PublicationWorkspace'
 import { fixtureAccount, fixtureList, fixturePost, source } from '../product/publication/testing'
 import { implementedRouteInventory, legacyRouteInventory, routeTree } from './routeTree'
-import { timelineQueryGateway } from '../api/app/timeline-query.gateway'
+import * as timelineReads from '../api/app/timeline-query.gateway'
 import { contentHash, projectId, revisionId, timelineId } from '../product/timeline/types'
 import { renderReadSource } from '../api/render-jobs'
 
@@ -97,17 +97,18 @@ describe('runtime route registration and deep-link restoration', () => {
       workspace: { id: 'workspace-1', name: 'Editorial' }, tenantId: 'tenant-1',
       recentProjects: [{ id: 'project-1', name: 'Launch film' }],
     })
-    vi.spyOn(timelineQueryGateway, 'getHead').mockResolvedValue({ ok: true, value: {
+    const readBranch = vi.spyOn(timelineReads, 'readEditingBranch').mockResolvedValue({ ok: true, value: { head: {
       projectId: projectId('project-1'), timelineId: timelineId('project-1'),
       revisionId: revisionId('revision-R0'), contentHash: contentHash('A'.repeat(43) + '='),
-    } })
-    vi.spyOn(timelineQueryGateway, 'listRevisions').mockResolvedValue({ ok: true, value: [] })
+    }, history: [] } })
+    vi.spyOn(timelineReads, 'listEditingBranches').mockResolvedValue(['main'])
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const history = createMemoryHistory({ initialEntries: ['/w/workspace-1/projects/project-1/edit'] })
     const router = createRouter({ routeTree, history, context: { queryClient } })
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Timeline editor' })).toBeTruthy())
     expect(await screen.findByText('revision-R0')).toBeTruthy()
+    expect(readBranch).toHaveBeenCalledWith('project-1', 'main')
     expect(await screen.findByRole('heading', { name: 'Source media' })).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Upload source' }) as HTMLButtonElement).disabled).toBe(true)
   })

@@ -328,7 +328,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         if (command != null && (commandTargetRef == null
                 || !productId.equals(commandTargetRef.projectId())
                 || !command.tenantId().equals(commandTargetRef.tenantId())
-                || !RevisionRef.MAIN_REF.equals(commandTargetRef.refId()))) {
+                || (expectedCurrentRevisionId == null && !RevisionRef.MAIN_REF.equals(commandTargetRef.refId())))) {
             throw new IllegalArgumentException("command target ref must belong to the persisted project");
         }
         // Existing canonical callers are authenticated request paths and retain
@@ -536,6 +536,43 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             log.info("Saved timeline revision {} for product {}", revisionId, productId);
             return new SaveOutcome(revision, revisionId, timelineDigest, false);
         });
+    }
+
+    @Override
+    public String findEditingRefHead(RevisionRef ref) {
+        return revisionRefMutation.currentHead(ref);
+    }
+
+    @Override
+    public Optional<CreatedEditingRef> createEditingRef(TimelineMutationContext context, String refId,
+                                                        String sourceRevisionId, String commandId) {
+        if (refId == null || !refId.matches(RevisionRef.EDITING_REF_PATTERN) || RevisionRef.MAIN_REF.equals(refId)
+                || sourceRevisionId == null || !sourceRevisionId.matches("[A-Za-z0-9._:-]{1,64}")
+                || commandId == null || !commandId.matches("[A-Za-z0-9._:-]{1,64}")) {
+            throw new IllegalArgumentException("Invalid editing branch, source revision or command identity");
+        }
+        authorizeMutation(context, "create-editing-ref");
+        String tenant = context.tenantId();
+        String project = context.projectId();
+        var source = verifiedRestoreSource(project, tenant, sourceRevisionId);
+        if (source.isEmpty()) return Optional.empty();
+
+        String result = "REF_CREATED";
+        String fingerprint = com.example.platform.shared.digest.CanonicalCommandFingerprint.builder("CREATE_TIMELINE_REF")
+                .required("tenantId", tenant).required("projectId", project).required("targetRefId", refId)
+                .required("sourceRevisionId", sourceRevisionId).required("actor", context.authorUserId()).sha256Hex();
+        String digest = com.example.platform.timeline.revisioncommand.RevisionCommandPlanDigest.createRef(project, refId, sourceRevisionId);
+        var command = new RevisionWriteCommand(commandId, digest, fingerprint, "REVISION_COMMAND", tenant);
+        var ref = new RevisionRef(tenant, project, refId);
+        return Optional.of(dsl.transactionResult(tx -> {
+            SaveOutcome replay = claimOrReplayCommand(tx.dsl(), command, ref, sourceRevisionId, result);
+            if (replay != null) return new CreatedEditingRef(refId, replay.revisionId(), true);
+            if (!revisionRefMutation.bootstrap(tx.dsl(), ref, sourceRevisionId)) {
+                throw new TimelineRevisionCommandConflictException("Editing branch name is already in use");
+            }
+            completeCommand(tx.dsl(), commandId, sourceRevisionId, source.get().timelineDigest(), result);
+            return new CreatedEditingRef(refId, sourceRevisionId, false);
+        }));
     }
 
     private static SaveOutcome claimOrReplayCommand(

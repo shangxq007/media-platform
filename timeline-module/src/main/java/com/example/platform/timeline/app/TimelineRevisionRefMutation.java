@@ -52,7 +52,7 @@ public final class TimelineRevisionRefMutation {
                 .execute() == 1;
     }
 
-    /** Genesis only: atomically creates the target ref and publishes its root. */
+    /** Atomically creates a new scoped ref at a resolved revision. */
     public boolean bootstrap(DSLContext tx, RevisionRef ref, String genesisRevisionId) {
         if (genesisRevisionId == null || genesisRevisionId.isBlank()) {
             throw new IllegalArgumentException("genesis revision required");
@@ -84,9 +84,6 @@ public final class TimelineRevisionRefMutation {
     private static Condition identity(RevisionRef ref) {
         if (ref == null) {
             throw new IllegalArgumentException("revision ref required");
-        }
-        if (!RevisionRef.MAIN_REF.equals(ref.refId())) {
-            throw new IllegalArgumentException("only canonical main Timeline ref is supported");
         }
         return TIMELINE_REVISION_REF.TENANT_ID.eq(ref.tenantId())
                 .and(TIMELINE_REVISION_REF.PROJECT_ID.eq(ref.projectId()))

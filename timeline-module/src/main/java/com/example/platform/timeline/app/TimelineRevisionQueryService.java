@@ -45,6 +45,18 @@ public class TimelineRevisionQueryService implements TimelineRevisionQueries {
         return revisionRepository.findOwnedHead(projectId, tenantId).map(TimelineRevisionQueryService::toInfo);
     }
 
+    @Override
+    public List<String> listEditingRefs(String projectId, String tenantId) {
+        return revisionRepository.listOwnedRefIds(projectId, tenantId);
+    }
+
+    @Override
+    public Optional<BranchHistory> getBranchHistory(String projectId, String tenantId, String refId, int limit) {
+        return revisionRepository.findOwnedHead(projectId, tenantId, refId).map(head ->
+                new BranchHistory(refId, toInfo(head), revisionRepository.listOwnedAncestors(
+                        projectId, tenantId, head.id(), limit).stream().map(TimelineRevisionQueryService::toInfo).toList()));
+    }
+
     public Optional<RevisionInfo> findById(String projectId, String tenantId, String revisionId) {
         return revisionRepository.findOwnedById(revisionId, projectId, tenantId)
                 .map(TimelineRevisionQueryService::toInfo);

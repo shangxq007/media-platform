@@ -1,7 +1,7 @@
 import { DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 import { useEffect, useReducer, useRef, useState, type ChangeEvent } from 'react'
 import { operationGateway as defaultOperationGateway } from '../../api/app/operation.gateway'
-import { timelineQueryGateway as defaultTimelineQueryGateway } from '../../api/app/timeline-query.gateway'
+import { listEditingBranches, readEditingBranch, timelineQueryGateway as defaultTimelineQueryGateway } from '../../api/app/timeline-query.gateway'
 import { Button, EmptyState, Input, Panel, PropertyRow, Skeleton, Status } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import { PageHeading, ProjectFrame } from '../../surfaces/FoundationPages'
@@ -25,6 +25,7 @@ import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
 import { RestoreRevisionControl } from './RestoreRevisionControl'
+import { CreateEditingBranch } from './CreateEditingBranch'
 import { useTranslation } from '../../localization'
 import {
   ADD_MEDIA_CLIP_DEFINITION,
@@ -162,18 +163,67 @@ function EditorPhaseNotice({ phase, readbackRetrying, onRetryReadback }: {
 }
 
 export function NlePage() {
-  return <ProjectFrame surfaceId="nle"><NleWorkspace /></ProjectFrame>
+  return <ProjectFrame surfaceId="nle"><EditingBranchWorkspace /></ProjectFrame>
+}
+
+function EditingBranchWorkspace() {
+  const project = useProjectContext()
+  return <ProjectEditingBranches key={JSON.stringify([project.tenantId, project.projectId])} />
+}
+
+function ProjectEditingBranches() {
+  const [branch, setBranch] = useState(() => new URLSearchParams(window.location.search).get('branch') ?? 'main')
+  function switchBranch(next: string) {
+    if (next === branch) return
+    const url = new URL(window.location.href)
+    if (next === 'main') url.searchParams.delete('branch')
+    else url.searchParams.set('branch', next)
+    window.history.replaceState(window.history.state, '', url)
+    setBranch(next)
+  }
+  return <NleWorkspace key={branch} editingBranch={branch} onSwitchBranch={switchBranch} />
 }
 
 export function NleWorkspace({
   queryGateway = defaultTimelineQueryGateway,
   commandGateway = defaultOperationGateway,
+  editingBranch = "main", onSwitchBranch,
 }: {
   queryGateway?: TimelineQueryGateway
   commandGateway?: OperationGateway
+  editingBranch?: string
+  onSwitchBranch?: (refId: string) => void
 }) {
   const { t } = useTranslation()
   const project = useProjectContext()
+  const [branches, setBranches] = useState<string[]>([])
+  const [branchListError, setBranchListError] = useState(false)
+  const [switchTarget, setSwitchTarget] = useState<string | null>(null)
+  const [createBusy, setCreateBusy] = useState(false)
+  const [clipDraft, setClipDraft] = useState(false)
+  const [clipWriteLocked, setClipWriteLocked] = useState(false)
+  const [restoreDraft, setRestoreDraft] = useState(false)
+  const defaultBranch = editingBranch === 'main'
+
+  useEffect(() => {
+    if (!onSwitchBranch) return
+    const abort = new AbortController()
+    void listEditingBranches(projectId(project.projectId), abort.signal).then(
+      value => { if (!abort.signal.aborted) setBranches(value) },
+      () => { if (!abort.signal.aborted) setBranchListError(true) },
+    )
+    return () => abort.abort()
+  }, [project.projectId, project.tenantId])
+
+  async function readAuthority(requestedProject: CanonicalHeadReference['projectId']) {
+    if (!onSwitchBranch) {
+      return Promise.all([queryGateway.getHead(requestedProject), queryGateway.listRevisions(requestedProject)] as const)
+    }
+    const view = await readEditingBranch(requestedProject, editingBranch)
+    if (!view.ok) return [view, view] as const
+    return [{ ok: true, value: view.value.head }, { ok: true, value: view.value.history }] as const
+  }
+
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
@@ -245,7 +295,7 @@ export function NleWorkspace({
     setQueryMessage(null)
     try {
       const requestedProject = projectId(project.projectId)
-      const [head, history] = await Promise.all([queryGateway.getHead(requestedProject), queryGateway.listRevisions(requestedProject)])
+      const [head, history] = await readAuthority(requestedProject)
       if (!ownsRequest('head', generation)) return
       if (!head.ok) { dispatch({ type: 'UNAVAILABLE', reason: `${head.code}: ${head.message}` }); return }
       if (!history.ok) { dispatch({ type: 'UNAVAILABLE', reason: `${history.code}: ${history.message}` }); return }
@@ -295,7 +345,7 @@ export function NleWorkspace({
   }, [state.server.head?.revisionId, project.projectId])
 
   const selectRevision = async (selectedId: string) => {
-    const selectionLocked = restoreOwned.current || applyInFlight.current
+    const selectionLocked = createBusy || clipWriteLocked || restoreOwned.current || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (!state.server.head || selectionLocked) return
@@ -353,10 +403,7 @@ export function NleWorkspace({
     requestedProject: CanonicalHeadReference['projectId'],
   ) => {
     try {
-      const [headReadback, historyReadback] = await Promise.all([
-        queryGateway.getHead(requestedProject),
-        queryGateway.listRevisions(requestedProject),
-      ])
+      const [headReadback, historyReadback] = await readAuthority(requestedProject)
       if (!ownsRequest('apply', generation)) return
       if (!headReadback.ok) {
         dispatch({ type: 'APPLY_READBACK_FAILED', failure: readbackFailure(
@@ -464,8 +511,16 @@ export function NleWorkspace({
   }
 
   const previewReady = state.draft.preview && !state.draft.previewRequired && state.draft.preview.failures.length === 0
-  const revisionSelectionLocked = restoreApplying || state.phase.kind === 'PendingApply'
+  const revisionSelectionLocked = createBusy || clipWriteLocked || restoreApplying || state.phase.kind === 'PendingApply'
     || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
+  const switchLocked = revisionSelectionLocked || initializing
+  function requestSwitch(next: string) {
+    if (!onSwitchBranch || next === editingBranch || switchLocked) return
+    const manualDraft = !['AppliedRevision', 'CanonicalHead'].includes(state.phase.kind) && state.draft.command !== null
+      || (state.phase.kind !== 'AppliedRevision' && fields !== emptyFields)
+    if (clipDraft || restoreDraft || manualDraft) setSwitchTarget(next)
+    else onSwitchBranch(next)
+  }
   const editingHead = state.server.head?.projectId === project.projectId ? state.server.head : null
   const selectedRevision = editingHead ? state.server.selected?.revision.id : undefined
   const historyRevision = selectedRevision && selectedRevision !== editingHead?.revisionId ? selectedRevision : undefined
@@ -477,10 +532,22 @@ export function NleWorkspace({
       <EditorPhaseNotice phase={state.phase} readbackRetrying={readbackRetrying} onRetryReadback={() => void retryAuthoritativeReadback()} />
       <div className="ff-nle-layout">
         <Panel title="Canonical revision authority" actions={<Button onClick={() => void loadHead()} disabled={loading || revisionSelectionLocked}>Reload HEAD</Button>}>
-          {state.server.head ? <div className="ff-head-identity"><Status label={historyRevision ? "Editing head · main" : "Viewing editing head · main"} tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
-            <EmptyState title="HEAD unavailable" description="Create a Timeline to start editing this project." />
-            <Button disabled={!project.tenantId || initializing || loading} onClick={() => void initialize()}>Initialize Timeline</Button>
+          {state.server.head ? <div className="ff-head-identity"><Status label={`${historyRevision ? "Editing head" : "Viewing editing head"} · ${editingBranch}`} tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
+            <EmptyState title="HEAD unavailable" description={defaultBranch ? "Create a Timeline to start editing this project." : "This editing branch could not be loaded."} />
+            {defaultBranch && <Button disabled={!project.tenantId || initializing || loading} onClick={() => void initialize()}>Initialize Timeline</Button>}
             {initializeError && <p role="alert">{initializeError}</p>}
+          </>}
+          {onSwitchBranch && <>
+            <label>Editing branch <select aria-label="Editing branch" value={editingBranch} disabled={switchLocked}
+              onChange={event => requestSwitch(event.target.value)}>
+              {Array.from(new Set(['main', ...branches, editingBranch])).map(ref => <option key={ref}>{ref}</option>)}
+            </select></label>
+            {branchListError && <p role="alert">Editing branches could not be listed.</p>}
+            {switchTarget && <section aria-label="Unsaved branch edits" role="alert">
+              <p>Discard unsaved edits and switch to {switchTarget}?</p>
+              <Button disabled={switchLocked} onClick={() => onSwitchBranch(switchTarget)}>Discard edits and switch</Button>
+              <Button onClick={() => setSwitchTarget(null)}>Stay on this branch</Button>
+            </section>}
           </>}
           <h3>Revision history</h3>
           {historyRevision && <PropertyRow label="Viewing revision"><code data-viewed-revision={viewedRevision}>{viewedRevision}</code></PropertyRow>}
@@ -488,9 +555,17 @@ export function NleWorkspace({
             <Status label="Read-only historical revision" tone="info" />
             <Button disabled={loading || revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void loadHead() }}>Return to editing head</Button>
           </>}
-          {historyRevision && editingHead && project.tenantId && !selectionPending && (!loading || restoreApplying) && <RestoreRevisionControl
+          {onSwitchBranch && historyRevision && !selectionPending && project.tenantId && <CreateEditingBranch
+            key={historyRevision} projectId={project.projectId} source={historyRevision}
+            disabled={revisionSelectionLocked || loading} onBusy={setCreateBusy}
+            onCreated={ref => {
+              setBranches(previous => previous.includes(ref) ? previous : [...previous, ref])
+              requestSwitch(ref)
+            }} />}
+          {historyRevision && !defaultBranch && <p>Restore is available on main.</p>}
+          {defaultBranch && historyRevision && editingHead && project.tenantId && !selectionPending && (!loading || restoreApplying) && <RestoreRevisionControl
             key={JSON.stringify([project.projectId, editingHead.revisionId, editingHead.contentHash, historyRevision])}
-            head={editingHead} source={historyRevision} tenantId={project.tenantId} onApplying={markRestoreOwned}
+            head={editingHead} source={historyRevision} tenantId={project.tenantId} onApplying={markRestoreOwned} onDraft={setRestoreDraft}
             canStart={() => !selectionPendingRef.current}
             onRefresh={async message => { setRestoreMessage(message); await loadHead('RESTORE_READBACK') }} />}
           {restoreMessage && <p role="status">{restoreMessage}</p>}
@@ -503,12 +578,14 @@ export function NleWorkspace({
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
-            head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision} focusClipId={focusClipId} playhead={previewTime}
+            head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
+            editingBranch={editingBranch} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}
             selectedTrackId={state.presentation.selectedTrackId}
             onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
             onRevisionChanged={() => loadHead()} />
         </Panel>
-        {!historyRevision && <><Panel title="Add media clip" className="ff-operation-panel">
+        {!defaultBranch && !historyRevision && <p>Source insertion and render controls are available on main.</p>}
+        {defaultBranch && !historyRevision && <><Panel title="Add media clip" className="ff-operation-panel">
           <SourceBrowser tenantId={project.tenantId} project={project.projectId} onSelect={source => {
             const selectedTrack = tracks.find(track => track.trackId === state.presentation.selectedTrackId)
             const selectedStream = source.streams.find(item => item.kind === selectedTrack?.type)

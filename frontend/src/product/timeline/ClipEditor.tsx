@@ -3,6 +3,8 @@ import { COMPOSITION_PRESETS, customCompositionAspect } from './composition-rast
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
 import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, videoTransformParameters, type ProjectedClip, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
+import { readEditingBranch } from '../../api/app/timeline-query.gateway'
+import { projectId } from './types'
 import type { CanonicalHeadReference } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
@@ -15,6 +17,9 @@ import { describeMove, draggedStart, projectMove } from './move'
 interface Props {
   head: CanonicalHeadReference | null
   historicalRevisionId?: string
+  editingBranch?: string
+  onDraft?: (hasDraft: boolean) => void
+  onWriteLock?: (locked: boolean) => void
   onRevisionChanged: () => Promise<void>
   focusClipId?: string | null
   playhead?: number
@@ -42,8 +47,10 @@ function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
 }
 
 export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focusClipId = null, playhead = 0,
-  selectedTrackId, onSelectTrack }: Props) {
+  selectedTrackId, onSelectTrack, editingBranch = 'main', onDraft, onWriteLock }: Props) {
   const project = useProjectContext()
+  const trimOnly = editingBranch !== "main"
+  const [formChanged, setFormChanged] = useState(false)
   const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio | null>(null)
   const [aspectWidth, setAspectWidth] = useState('')
   const [aspectHeight, setAspectHeight] = useState('')
@@ -91,10 +98,20 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
   const [message, setMessage] = useState('')
   const [actionFailed, setActionFailed] = useState(false)
   const [retryCommand, setRetryCommand] = useState<{ command: ClipEdit; label: string; digest?: string } | null>(null)
+  useEffect(() => {
+    onWriteLock?.(busy || retryCommand !== null)
+    return () => onWriteLock?.(false)
+  }, [busy, retryCommand, onWriteLock])
+  useEffect(() => setFormChanged(false), [head?.revisionId])
+
   const keys = useRef<Record<string, string>>({})
   const generation = useRef(0)
   const dragOrigin = useRef<number | null>(null)
   const [moving, setMoving] = useState<{ clipId: string; start: Rational; originX: number } | null>(null)
+  useEffect(() => {
+    onDraft?.(formChanged || pending !== null || previewed !== null || moving !== null)
+    return () => onDraft?.(false)
+  }, [onDraft, formChanged, pending, previewed, moving])
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
@@ -173,7 +190,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
   }
 
   function beginTrim(trimEdge: TrimEdge, event: ReactPointerEvent<HTMLSpanElement>) {
-    if (!head || !active || busy) return
+    if (!head || !active || busy || retryCommand) return
     dragOrigin.current = event.clientX
     setPending({ edge: trimEdge, delta: { numerator: 0n, denominator: 1n } })
     event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -206,7 +223,8 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     setBusy(true); setMessage(''); setActionFailed(false)
     const commandId = commandIdFor(active.clipId, 'TRIM_CLIP', deltaValue, trimEdge)
     const command: ClipEdit = {
-      type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      type: 'TRIM_CLIP', refId: trimOnly ? editingBranch : undefined,
+      baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
       clipId: active.clipId, delta: formatRational(deltaValue), edge: trimEdge, commandId,
     }
     try {
@@ -218,6 +236,13 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
         + `${toSeconds(projected.duration).toFixed(2)}s visible. Planned changes: ${plan.steps.flatMap(step => step.changes).length}.`)
     } catch (error) { handleFailure(error, 'Trim preview', null, false) }
     finally { setBusy(false) }
+  }
+
+  async function readCommandHead(command: ClipEdit) {
+    if (!command.refId) return FormalRenderAPI.head(project.projectId)
+    const result = await readEditingBranch(projectId(project.projectId), command.refId)
+    if (!result.ok) throw new Error(result.message)
+    return result.value.head
   }
 
   async function applyTrim() {
@@ -232,7 +257,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
       const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, digest)
-      const authoritative = await FormalRenderAPI.head(project.projectId)
+      const authoritative = await readCommandHead(command)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
       }
@@ -569,7 +594,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
       const accepted = retryCommand.digest
         ? await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, retryCommand.command, retryCommand.digest)
         : await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
-      const authoritative = await FormalRenderAPI.head(project.projectId)
+      const authoritative = await readCommandHead(retryCommand.command)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
       }
@@ -663,13 +688,13 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
 
   return <section aria-label={historicalRevisionId ? "Historical timeline" : "Edit existing clip"}
     data-viewed-revision={viewedRevisionId} tabIndex={historicalRevisionId ? undefined : 0}
-    onKeyDown={historicalRevisionId ? undefined : onSectionKeyDown}>
+    onKeyDown={historicalRevisionId || trimOnly ? undefined : onSectionKeyDown} onChangeCapture={() => setFormChanged(true)}>
     {!historicalRevisionId && <><div className="ff-nle-buttons">
     <Button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</Button>
-    <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</Button>
-    <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</Button>
+    {!trimOnly && <><Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</Button>
+    <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</Button></>}
     </div>
-    <label className="ff-nle-clip-picker">Clip <select className="ff-input" aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
+    <label className="ff-nle-clip-picker">Clip <select className="ff-input" aria-label="Clip" disabled={busy || retryCommand !== null} value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} {clip.trackId && `(${clip.trackId})`}</option>)}
     </select></label></>}
 
@@ -707,12 +732,12 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
           return <div key={clip.clipId} data-clip-id={clip.clipId}
                       data-clip-body={clip.clipId}
                       aria-label={`Timeline clip ${clip.clipId}`}
-                      onPointerDown={historicalRevisionId ? undefined : event => beginMove(clip, event)}
+                      onPointerDown={historicalRevisionId || trimOnly || retryCommand ? undefined : event => beginMove(clip, event)}
                       onClick={() => setSelected(clip.clipId)}
                       onPointerMove={dragMove}
                       onPointerUp={event => void endMove(event)}
                       onPointerCancel={() => { moveOrigin.current = null; setMoving(null) }}
-                      title={historicalRevisionId ? undefined : "Drag the clip body to move it; drag an orange edge to trim"}
+                      title={historicalRevisionId ? undefined : trimOnly ? "Drag a trim handle to preview a trim" : "Drag the clip body to move it; drag an orange edge to trim"}
                       style={{ position: 'absolute', left: left * TRIM_PIXELS_PER_SECOND,
                                width: Math.max(6, (right - left) * TRIM_PIXELS_PER_SECOND), top: 0, height: 40,
                                background: isActive ? '#1d4ed8aa' : '#374151aa',
@@ -748,7 +773,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     {!historicalRevisionId && <>{projection && !projection.valid && <p role="alert">{projection.reason}</p>}
     {moving && (() => { const clip = clips.find(row => row.clipId === moving.clipId); const projection = clip ? projectMove(clip, moving.start) : null; return projection
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
-    <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
+    {!trimOnly && <><Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
     <fieldset disabled={!head || !project.tenantId || !aspectRatio || busy}>
       <legend>Composition aspect</legend>
@@ -842,6 +867,8 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
         ? `Canonical route: gain ${activeAudioRoute.gain.toFixed(2)}, mute ${activeAudioRoute.mute ? 'on' : 'off'}, pan ${activeAudioRoute.pan.toFixed(2)}`
         : 'No canonical audio route yet; applying a value creates the route (including embedded video audio).'}</p>
     </fieldset>}
+    </>}
+    {trimOnly && <p>Trim is available on this editing branch. Other clip and track edits are available on main.</p>}
     {pending && active && <p role="status">
       Pending {pending.edge === 'START' ? 'left' : 'right'} trim by {formatRational(pending.delta)}s
       {' '}(source {formatRational(projectTrim(active, pending.edge, pending.delta).sourceStart)}s →
@@ -850,7 +877,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     {(pending || retryCommand?.digest) && <Button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</Button>}
     <Button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</Button>
 
-    <div className="ff-nle-clip-controls">
+    {!trimOnly && <div className="ff-nle-clip-controls">
     <label>Operation <select className="ff-input" aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option><option value="SPLIT_CLIP">Split</option>
     </select></label>
@@ -875,7 +902,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
         ? <Button type="button" aria-label="Split selected clip" disabled={!head || !selected || !project.tenantId || busy}
                   onClick={() => void splitSelected()}>Split clip</Button>
         : <Button type="button" disabled={!head || !selected || !project.tenantId || busy} onClick={() => void applySimple()}>Apply operation</Button>}
-    </div>
+    </div>}
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
     {retryCommand && <Button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}

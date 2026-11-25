@@ -36,4 +36,4 @@ export type SemanticStep =
   | { definitionId: "timeline.transition.cross-dissolve.create"; parameters: { duration: string; incomingClipId: string; transitionId: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.transition.cross-dissolve.update"; parameters: { duration: string }; target: { transitionId: string }; version?: "2.0" }
   | { definitionId: "timeline.transition.cross-dissolve.delete"; parameters?: {  }; target: { transitionId: string }; version?: "2.0" }
-export type SemanticBatch = { baseContentHash: string; baseRevisionId: string; batchId: string; message?: string } & { operations: SemanticStep[] }
+export type SemanticBatch = { baseContentHash: string; baseRevisionId: string; batchId: string; message?: string; refId?: string } & { operations: SemanticStep[] }

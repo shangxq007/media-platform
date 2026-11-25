@@ -186,7 +186,7 @@ public class TimelineRevisionController {
 
 
 
-    private static RevisionListItem toListItem(RevisionInfo r) {
+    static RevisionListItem toListItem(RevisionInfo r) {
         ChangeSummaryDto summary = parseChangeSummary(r.changeSummaryJson());
         return new RevisionListItem(
                 r.id(),

@@ -21,12 +21,15 @@ assert container['Config']['Labels']['media-platform.f8-run'] == run['id']
 sys.path.insert(0, str(source / 'scripts/testinfra'))
 from local_runtime import sandbox_prefix
 
-out = root / '04-tests/n01-history'
+branches = sys.argv[1:] == ['--branches']
+assert branches or not sys.argv[1:]
+out = root / '04-tests' / ('n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
-assert deps.is_dir() and not deps.is_symlink() and not target.exists()
-target.mkdir()
+assert deps.is_dir() and not deps.is_symlink() and not target.is_symlink()
+target.mkdir(exist_ok=branches)
+assert not any(target.iterdir())
 prefix = sandbox_prefix(app / 'binding.json')
 prefix[-1:-1] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
                   '--ro-bind', str(deps), str(target), '--bind', str(out), str(out),
@@ -44,8 +47,18 @@ counts = f"""select json_build_object(
  'rows',(select count(*) from timeline.timeline_revision where {scoped}));"""
 checkpoints = ('before-browse', 'browse', 'reader', 'foreign', 'retired', 'committed-response-lost',
                'replay', 'no-op', 'competing-edit', 'stale')
+if branches:
+    counts = f"""select json_build_object(
+        'refs',(select coalesce(json_object_agg(ref_id,head_revision_id),'{{}}'::json)
+            from timeline.timeline_revision_ref where {scoped}),
+        'rows',(select count(*) from timeline.timeline_revision where {scoped}),
+        'snapshots',(select count(*) from timeline.timeline_snapshot where {scoped}),
+        'canonicalSnapshots',(select count(distinct snapshot_id) from timeline.timeline_revision where {scoped}),
+        'commands',(select count(*) from timeline.apply_command where {scoped}));"""
+    checkpoints = ('initial','fork','duplicate','foreign','confirmation','trim','replay','switch','stale','independent')
+browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
-      subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts/n01-history-browser-e2e.mjs'),
+      subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
                                 str(app), str(out)], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
     deadline = time.monotonic() + 600
     facts = {}
@@ -67,6 +80,33 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
+if branches:
+    browser_result = json.loads((out / 'branches-result.json').read_text())
+    assert browser_result['status'] == 'PASS'
+    a, b, c = (browser_result['revisions'][label] for label in 'ABC')
+    assert all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in (a, b, c))
+    proof = psql(f"""select json_build_object(
+      'revisions',(select json_agg(row_to_json(r) order by revision_number) from (
+        select id,parent_revision_id,revision_number,content_hash,snapshot_id
+        from timeline.timeline_revision where {scoped} and id in ('{a}','{b}','{c}')) r),
+      'semantics',(select json_agg(row_to_json(s)) from (
+        select semantic_revision_id, payload_json::json as commitment from timeline.timeline_snapshot where {scoped}
+        and id like 'revctx_%' and semantic_revision_id in ('{a}','{b}','{c}')) s),
+      'branchCommands',(select json_agg(json_build_object('id',apply_command_id,'ref',target_ref_id,
+        'result',result_revision_id,'planDigest',plan_digest,'status',result_status))
+        from timeline.apply_command where {scoped} and target_ref_id in ('alternate','mirror')),
+      'childOfA',(select parent_revision_id from timeline.timeline_revision where {scoped} and id='{c}'));""")
+    assert proof['childOfA'] == a and len(proof['semantics']) == 3
+    initial, fork, trim = (facts[label] for label in ('initial','fork','trim'))
+    assert fork['rows'] == initial['rows'] and fork['snapshots'] == initial['snapshots']
+    assert fork['refs']['alternate'] == a and fork['refs']['main'] == b
+    assert trim['refs']['alternate'] == c and trim['refs']['main'] == b and trim['rows'] == fork['rows'] + 1
+    assert trim['canonicalSnapshots'] == fork['canonicalSnapshots'] + 1
+    assert facts['switch'] == facts['replay'] == trim
+    (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
+    print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
+    raise SystemExit(0)
+
 browser_result = json.loads((out / 'history-result.json').read_text())
 assert browser_result['status'] == 'PASS'
 revisions = browser_result['revisions']

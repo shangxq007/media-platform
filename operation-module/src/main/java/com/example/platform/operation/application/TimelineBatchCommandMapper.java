@@ -60,8 +60,12 @@ public final class TimelineBatchCommandMapper {
             throw new BatchException(BatchErrorCode.EMPTY_BATCH, null,
                     "batch must contain at least one operation");
         }
+        String refId = http.refId() == null ? MAIN_REF : http.refId();
+        if (!refId.matches(com.example.platform.timeline.revisioncommand.RevisionRef.EDITING_REF_PATTERN)) {
+            throw new IllegalArgumentException("Invalid Timeline ref identity");
+        }
         VersionedAggregateRef target = new VersionedAggregateRef(
-                AGGREGATE_KIND, tenantId, projectId, projectId, MAIN_REF);
+                AGGREGATE_KIND, tenantId, projectId, projectId, refId);
         List<OperationRequest> operations = new ArrayList<>(http.operations().size());
         for (int index = 0; index < http.operations().size(); index++) {
             operations.add(toOperation(projectId, http.baseRevisionId(), http.baseContentHash(),

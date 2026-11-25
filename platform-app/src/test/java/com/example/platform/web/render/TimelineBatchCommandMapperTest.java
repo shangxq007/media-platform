@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** REST transport coverage for the non-clip target families the planner supports. */
 class TimelineBatchCommandMapperTest {
@@ -87,6 +88,19 @@ class TimelineBatchCommandMapperTest {
         OperationTargetRequest.SyncTargetRequest target =
                 assertInstanceOf(OperationTargetRequest.SyncTargetRequest.class, request.target());
         assertEquals("SYNC(clip-a,clip-b)", target.syncIdentityKey());
+    }
+
+    @Test
+    void bindsExplicitBranchAndRetainsDefaultForExistingRequests() {
+        var step = new TimelineOperationStep("timeline.trim",
+                new TimelineBatchCommand.Target("clip-a", null, null, null, null),
+                Map.of("edge", "START", "delta", "1/2"));
+        var legacy = new TimelineBatchCommand("edit-1", BASE, HASH, null, List.of(step));
+        var alternate = new TimelineBatchCommand("edit-1", BASE, HASH, null, List.of(step), "draft-a");
+        assertEquals("main", mapper.toBatchRequest("tenant-1", "project-1", legacy).target().refId());
+        assertEquals("draft-a", mapper.toBatchRequest("tenant-1", "project-1", alternate).target().refId());
+        assertThrows(IllegalArgumentException.class, () -> mapper.toBatchRequest("tenant-1", "project-1",
+                new TimelineBatchCommand("edit-1", BASE, HASH, null, List.of(step), "../other")));
     }
 
     private OperationRequest map(TimelineOperationStep operation) {

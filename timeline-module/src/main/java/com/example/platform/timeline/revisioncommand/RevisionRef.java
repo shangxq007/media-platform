@@ -10,6 +10,7 @@ package com.example.platform.timeline.revisioncommand;
 public record RevisionRef(String tenantId, String projectId, String refId) {
 
     public static final String MAIN_REF = "main";
+    public static final String EDITING_REF_PATTERN = "[A-Za-z0-9][A-Za-z0-9._-]{0,63}";
 
     public RevisionRef {
         if (tenantId == null || tenantId.isBlank()) {

@@ -11,11 +11,12 @@ interface RestorePreview {
   noOp: boolean
 }
 
-export function RestoreRevisionControl({ head, source, tenantId, onApplying, onRefresh, canStart }: {
+export function RestoreRevisionControl({ head, source, tenantId, onApplying, onRefresh, canStart, onDraft }: {
   head: CanonicalHeadReference
   source: string
   tenantId: string
   canStart: () => boolean
+  onDraft?: (hasDraft: boolean) => void
   onApplying: (busy: boolean) => void
   onRefresh: (message: string) => Promise<void>
 }) {
@@ -24,6 +25,10 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
   const [message, setMessage] = useState('')
   const request = useRef<AbortController | null>(null)
   useEffect(() => () => request.current?.abort(), [])
+  useEffect(() => {
+    onDraft?.(Boolean(plan) || phase === 'previewing')
+    return () => onDraft?.(false)
+  }, [onDraft, phase, plan])
 
   async function preview() {
     if (request.current || phase !== 'idle' || !canStart()) return

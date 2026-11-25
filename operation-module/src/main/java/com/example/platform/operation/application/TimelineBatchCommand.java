@@ -12,7 +12,13 @@ public record TimelineBatchCommand(
         String baseRevisionId,
         String baseContentHash,
         String message,
-        List<TimelineOperationStep> operations) {
+        List<TimelineOperationStep> operations,
+        String refId) {
+
+    public TimelineBatchCommand(String batchId, String baseRevisionId, String baseContentHash, String message,
+                                List<TimelineOperationStep> operations) {
+        this(batchId, baseRevisionId, baseContentHash, message, operations, null);
+    }
 
     /** SHA-256 represented in canonical padded Base64 by TimelineContentDigester. */
     public static final String TIMELINE_DIGEST = "[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=";

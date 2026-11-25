@@ -51,6 +51,10 @@ public class TimelineRevisionRepository {
     }
 
     public Optional<RevisionRow> findOwnedHead(String projectId, String tenantId) {
+        return findOwnedHead(projectId, tenantId, com.example.platform.timeline.revisioncommand.RevisionRef.MAIN_REF);
+    }
+
+    public Optional<RevisionRow> findOwnedHead(String projectId, String tenantId, String refId) {
         Record row = dsl.select()
                 .from(TIMELINE_REVISION)
                 .join(TIMELINE_REVISION_REF)
@@ -58,10 +62,35 @@ public class TimelineRevisionRepository {
                 .and(TIMELINE_REVISION_REF.PROJECT_ID.eq(TIMELINE_REVISION.PROJECT_ID))
                 .and(TIMELINE_REVISION_REF.TENANT_ID.eq(TIMELINE_REVISION.TENANT_ID))
                 .where(ownedScope(projectId, tenantId))
-                .and(TIMELINE_REVISION_REF.REF_ID.eq(
-                        com.example.platform.timeline.revisioncommand.RevisionRef.MAIN_REF))
+                .and(TIMELINE_REVISION_REF.REF_ID.eq(refId))
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(map(row));
+    }
+
+    public List<String> listOwnedRefIds(String projectId, String tenantId) {
+        return dsl.select(TIMELINE_REVISION_REF.REF_ID).from(TIMELINE_REVISION_REF)
+                .where(TIMELINE_REVISION_REF.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_REVISION_REF.TENANT_ID.eq(tenantId))
+                .and(TIMELINE_REVISION_REF.HEAD_REVISION_ID.isNotNull())
+                .orderBy(TIMELINE_REVISION_REF.REF_ID)
+                .fetch(TIMELINE_REVISION_REF.REF_ID);
+    }
+
+    /** First-parent branch history anchored to the exact immutable head already read. */
+    public List<RevisionRow> listOwnedAncestors(String projectId, String tenantId, String headId, int limit) {
+        return dsl.fetch("""
+                with recursive history(id, parent_revision_id, depth) as (
+                    select id, parent_revision_id, 1 from timeline.timeline_revision
+                    where project_id = ? and tenant_id = ? and id = ?
+                    union all
+                    select r.id, r.parent_revision_id, h.depth + 1
+                    from timeline.timeline_revision r join history h on r.id = h.parent_revision_id
+                    where r.project_id = ? and r.tenant_id = ? and h.depth < ?
+                )
+                select r.* from timeline.timeline_revision r join history h on r.id = h.id
+                where r.project_id = ? and r.tenant_id = ? order by h.depth
+                """, projectId, tenantId, headId, projectId, tenantId,
+                Math.max(1, Math.min(limit, 200)), projectId, tenantId).map(TimelineRevisionRepository::map);
     }
 
     public List<RevisionRow> listOwnedByProject(

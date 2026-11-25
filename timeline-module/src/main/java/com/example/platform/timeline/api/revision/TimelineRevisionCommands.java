@@ -88,6 +88,13 @@ RevisionWriteResult saveRestoreForCommand(TimelineMutationContext context, Revis
             String expectedCurrentRevisionId, String sourceRevisionId, String candidateHash,
             RevisionWriteCommand command, RevisionProvenance provenance);
 
+String findEditingRefHead(RevisionRef ref);
+
+record CreatedEditingRef(String refId, String sourceRevisionId, boolean replayed) {}
+
+Optional<CreatedEditingRef> createEditingRef(TimelineMutationContext context, String refId,
+                                             String sourceRevisionId, String commandId);
+
 TimelineRevision findById(String tenantId, String revisionId);
 
 Optional<TimelineDocument> findPayloadDocument(String tenantId, String revisionId);

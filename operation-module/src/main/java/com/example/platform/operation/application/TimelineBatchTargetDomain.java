@@ -96,9 +96,10 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.CROSS_AGGREGATE_BATCH_UNSUPPORTED, null,
                     "Timeline batch target must bind the project's timeline aggregate");
         }
-        if (!RevisionRef.MAIN_REF.equals(target.refId())) {
-            throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                    "only the main Timeline revision ref is supported");
+        if (!RevisionRef.MAIN_REF.equals(target.refId())
+                && revisions.findEditingRefHead(new RevisionRef(target.tenantId(), target.projectId(), target.refId())) == null) {
+            throw new BatchException(BatchErrorCode.BASE_REVISION_NOT_FOUND, null,
+                    "Editing branch not found in the target Timeline");
         }
         TimelineRevision revision = revisions.findById(target.tenantId(), baseRevisionId);
         if (revision == null || !target.projectId().equals(revision.productId())) {
@@ -143,6 +144,10 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         final OperationPlan plan;
         try {
             if (instance.parameters() instanceof OperationParameters.RestoreRevisionParameters restore) {
+                if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                    throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                            "Restore is currently available on the default editing branch");
+                }
                 if (batch.operations().size() != 1) {
                     throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
                             "Restore requires a single-operation batch");
@@ -197,10 +202,6 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         String tenantId = batch.target().tenantId();
         String projectId = batch.target().projectId();
         verifyAuthorization(plan, context, projectId, tenantId);
-        if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
-            throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                    "only the main Timeline revision ref is supported");
-        }
         if (!plan.baseRevisionId().equals(batch.expectedHeadRevisionId())) {
             throw new BatchException(BatchErrorCode.STALE_BASE_REVISION, null,
                     "expected head must equal the batch base revision");

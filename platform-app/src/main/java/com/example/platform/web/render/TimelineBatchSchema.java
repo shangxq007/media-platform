@@ -29,6 +29,8 @@ public final class TimelineBatchSchema {
                 .filter(def -> TimelineOperationWireContract.describe(def).invocationModes().contains("APPLY"))
                 .map(TimelineBatchSchema::step).toList();
         return object(Map.of("batchId", Map.of("type", "string", "pattern", "^[A-Za-z0-9._:-]{1,64}$"),
+                "refId", Map.of("type", "string", "pattern", "^"
+                        + com.example.platform.timeline.revisioncommand.RevisionRef.EDITING_REF_PATTERN + "$"),
                 "baseRevisionId", Map.of("type", "string", "minLength", 1, "maxLength", 64),
                 "baseContentHash", Map.of("type", "string", "pattern", "^" + TimelineBatchCommand.TIMELINE_DIGEST + "$"), "message", Map.of("type", "string", "maxLength", OperationBatchRequest.MAX_MESSAGE_LENGTH),
                 "operations", Map.of("type", "array", "minItems", 1, "maxItems", OperationBatchRequest.MAX_STEPS,
