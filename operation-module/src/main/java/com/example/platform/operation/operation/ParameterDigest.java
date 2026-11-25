@@ -1,7 +1,6 @@
 package com.example.platform.operation.operation;
 
 import com.example.platform.timeline.canonical.TimedTextCanonicalSemantics;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -176,32 +175,38 @@ public final class ParameterDigest {
         throw new IllegalArgumentException("unknown parameters: " + p.getClass());
     }
 
-    /** An ordered JSON tuple frames each field, using the authored TimedText encoding for structured values. */
+    /** Lengths in UTF-16 code units make adjacent arbitrary strings and absent values unambiguous. */
+    static String framed(String... values) {
+        var out = new StringBuilder();
+        for (String value : values) {
+            if (value == null) out.append("-1:");
+            else out.append(value.length()).append(':').append(value);
+        }
+        return out.toString();
+    }
+
     private static String textFields(OperationParameters parameters) {
-        var fields = JsonNodeFactory.instance.arrayNode().add("text-parameters-v2");
-        if (parameters instanceof OperationParameters.TextElementEdit edit) {
-            fields.add(edit.textElementId().value());
-        }
-        switch (parameters) {
-            case OperationParameters.AddTextElementParameters p -> fields
-                    .add(TimedTextCanonicalSemantics.styledText(p.styledText()))
-                    .add(TimedTextCanonicalSemantics.frame(p.frame()))
-                    .add(TimedTextCanonicalSemantics.fallbackPolicy(p.fallbackPolicy()))
-                    .add(TimedTextCanonicalSemantics.rational(p.start()))
-                    .add(TimedTextCanonicalSemantics.rational(p.duration()));
-            case OperationParameters.RemoveTextElementParameters ignored -> { }
-            case OperationParameters.ReplaceTextContentParameters p -> fields.add(p.content().value());
-            case OperationParameters.SetTextStyleRangeParameters p -> fields
-                    .add(TimedTextCanonicalSemantics.range(p.range())).add(TimedTextCanonicalSemantics.style(p.style()));
-            case OperationParameters.SetParagraphStyleParameters p -> fields.add(TimedTextCanonicalSemantics.paragraphStyle(p.paragraphStyle()));
-            case OperationParameters.SetFontSelectionParameters p -> fields
-                    .add(TimedTextCanonicalSemantics.range(p.range())).add(TimedTextCanonicalSemantics.fontSelection(p.fontSelection()));
-            case OperationParameters.SetFontFallbackPolicyParameters p -> fields.add(TimedTextCanonicalSemantics.fallbackPolicy(p.fallbackPolicy()));
-            case OperationParameters.SetVariableFontAxisParameters p -> fields.add(TimedTextCanonicalSemantics.variationCoordinate(p.coordinate()));
-            case OperationParameters.SetTextLayoutParameters p -> fields.add(TimedTextCanonicalSemantics.frame(p.frame()));
+        String fields = switch (parameters) {
+            case OperationParameters.AddTextElementParameters p -> framed(
+                    TimedTextCanonicalSemantics.styledText(p.styledText()).toString(),
+                    TimedTextCanonicalSemantics.frame(p.frame()).toString(),
+                    TimedTextCanonicalSemantics.fallbackPolicy(p.fallbackPolicy()).toString(),
+                    TimedTextCanonicalSemantics.rational(p.start()).toString(),
+                    TimedTextCanonicalSemantics.rational(p.duration()).toString());
+            case OperationParameters.RemoveTextElementParameters ignored -> "";
+            case OperationParameters.ReplaceTextContentParameters p -> p.content().value();
+            case OperationParameters.SetTextStyleRangeParameters p -> framed(
+                    TimedTextCanonicalSemantics.range(p.range()).toString(), TimedTextCanonicalSemantics.style(p.style()).toString());
+            case OperationParameters.SetParagraphStyleParameters p -> TimedTextCanonicalSemantics.paragraphStyle(p.paragraphStyle()).toString();
+            case OperationParameters.SetFontSelectionParameters p -> framed(
+                    TimedTextCanonicalSemantics.range(p.range()).toString(), TimedTextCanonicalSemantics.fontSelection(p.fontSelection()).toString());
+            case OperationParameters.SetFontFallbackPolicyParameters p -> TimedTextCanonicalSemantics.fallbackPolicy(p.fallbackPolicy()).toString();
+            case OperationParameters.SetVariableFontAxisParameters p -> TimedTextCanonicalSemantics.variationCoordinate(p.coordinate()).toString();
+            case OperationParameters.SetTextLayoutParameters p -> TimedTextCanonicalSemantics.frame(p.frame()).toString();
             default -> throw new IllegalArgumentException("Unknown Text parameters");
-        }
-        return fields.toString();
+        };
+        String id = parameters instanceof OperationParameters.TextElementEdit edit ? edit.textElementId().value() : null;
+        return framed("text-parameters-v2", id, fields);
     }
 
     private static String sortedUnits(

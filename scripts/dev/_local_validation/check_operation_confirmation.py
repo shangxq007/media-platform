@@ -54,8 +54,8 @@ def client(app):
         return value
 
     a, b = 18080, 18082
-    project = expect(201, call(a, '/api/identity/tenants/tenant-fr-e2e/projects',
-             {'name': 'Cross-process text confirmation', 'workspaceId': 'workspace-fr-e2e'}))['id']
+    # The batch fixture creates this same-workspace project without a Timeline.
+    project = 'project-peer'
     scope = '/api/tenants/tenant-fr-e2e/projects/' + project
     batch = scope + '/timeline-operations/batch/v2'
     init = expect(201, call(a, scope + '/timeline-operations/initialize', {'commandId': 'init-title', 'trackId': 'track-1'}))
@@ -155,6 +155,25 @@ def client(app):
     (app/'confirmation-result.json').write_text(json.dumps(result,indent=2))
 
 
+def api_jvm(app, role, port):
+    from controlled_launch import birth
+    supervisor = json.loads((app/(role+'-identity.json')).read_text())
+    assert birth(supervisor['pid']) == supervisor
+    descendants = [supervisor['pid']]
+    jvms = []
+    while descendants:
+        pid = descendants.pop()
+        try:
+            process = Path('/proc')/str(pid)
+            if (process/'exe').resolve().name == 'java':
+                jvms.append({'pid': pid, 'startTicks': birth(pid)['start']})
+            descendants.extend(map(int,(process/'task'/str(pid)/'children').read_text().split()))
+        except FileNotFoundError:
+            continue
+    jvm, = jvms
+    return {'role': role, 'port': port, **jvm}
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         client(Path(sys.argv[1]))
@@ -169,12 +188,12 @@ if __name__ == '__main__':
         argv = json.loads((root/'07-runtime/podman-base.json').read_text())
         env = json.loads((root/'03-build/podman/environment.json').read_text())
         project = result['project']
-        assert re.fullmatch('[A-Za-z0-9_-]+',project)
+        assert re.fullmatch('[A-Za-z0-9_-]+', project) and re.fullmatch('[A-Za-z0-9_-]+', result['baseRevision'])
         sql = f"select count(*),count(*) filter(where parent_revision_id='{result['baseRevision']}') from timeline.timeline_revision where project_id='{project}';"
         counts = subprocess.check_output(argv+['exec','-i','--user','postgres',ctx['container_id'],'psql','-XAt',
                     '-v','ON_ERROR_STOP=1','-U','mp_owner','-d',ctx['database']],env=env,input=sql,text=True).strip()
         assert counts == '3|1', counts
         result['persistedRevisionCounts']={'totalIncludingInitializeAndAdd':3,'childrenOfLayoutBase':1}
-        result['processes']={name:json.loads((app/(name+'-identity.json')).read_text())['pid'] for name in ['api','api-replay']}
-        assert len(set(result['processes'].values())) == 2
+        result['processes']={'A':api_jvm(app,'api',18080), 'B':api_jvm(app,'api-replay',18082)}
+        assert result['processes']['A']['pid'] != result['processes']['B']['pid']
         (root/'04-tests/confirmation.json').write_text(json.dumps(result,indent=2))

@@ -139,6 +139,28 @@ describe('ClipEditor trim interaction', () => {
     } finally { transport.mockRestore() }
   })
 
+  it.each([409, 412, 503])('discards a failed trim after status %i or explicit cancellation', async status => {
+    const { onRevisionChanged } = renderEditor()
+    api.applyConfirmedClip.mockRejectedValueOnce(Object.assign(new Error('Apply failed'), { response: { status } }))
+    const handle = await screen.findByLabelText('Trim start edge clip-0')
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 })
+    fireEvent.pointerUp(handle, { clientX: 180, pointerId: 1 })
+    await screen.findByText(/Preview valid/)
+    fireEvent.click(screen.getByRole('button', { name: 'Apply trim' }))
+    if (status === 503) {
+      await screen.findByRole('button', { name: /Retry Trim/ })
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel trim' }))
+    } else {
+      await screen.findByText(/re-preview before editing again/)
+      expect(onRevisionChanged).toHaveBeenCalledOnce()
+    }
+    expect(screen.queryByRole('button', { name: /Retry Trim/ })).toBeNull()
+    expect((screen.getByRole('button', { name: 'Apply trim' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(api.applyConfirmedClip).toHaveBeenCalledOnce()
+    expect(api.previewOperation).toHaveBeenCalledOnce()
+  })
+
   it('cancelling a pending trim never writes a revision', async () => {
     renderEditor()
     await waitFor(() => expect(screen.getByLabelText('Trim start edge clip-0')).toBeTruthy())
@@ -146,6 +168,7 @@ describe('ClipEditor trim interaction', () => {
     fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: 260, pointerId: 1 })
     fireEvent.pointerUp(handle, { clientX: 260, pointerId: 1 })
+    await screen.findByText(/Preview valid/)
     await waitFor(() => expect(screen.getByRole('button', { name: 'Cancel trim' })).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Cancel trim' }))
     expect(api.applyConfirmedClip).not.toHaveBeenCalled()

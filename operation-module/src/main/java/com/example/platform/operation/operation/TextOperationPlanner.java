@@ -333,18 +333,16 @@ public final class TextOperationPlanner {
      * client-supplied id field is introduced here.
      */
     private static String addSeed(OperationRequest request, String parameterDigest) {
-        return com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode()
-                .add("text-add-id-v2").add(request.definitionId().value()).add(request.version().toString())
-                .add(textTargetKey(request.target())).add(request.baseRevisionId()).add(request.baseContentHash())
-                .add(parameterDigest).toString();
+        return ParameterDigest.framed("text-add-id-v2", request.definitionId().value(), request.version().toString(),
+                textTargetKey(request.target()), request.baseRevisionId(), request.baseContentHash(), parameterDigest);
     }
+
     private static String textTargetKey(OperationTargetRequest target) {
-        var key = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode();
         return switch (target) {
             case OperationTargetRequest.TimelineTargetRequest timeline ->
-                    key.add("timeline").add(timeline.timelineId()).toString();
+                    ParameterDigest.framed("timeline", timeline.timelineId());
             case OperationTargetRequest.TextElementTargetRequest text ->
-                    key.add("text-element").add(text.timelineId()).add(text.textElementId().value()).toString();
+                    ParameterDigest.framed("text-element", text.timelineId(), text.textElementId().value());
             default -> throw new TextPlanException("Unsupported Text target");
         };
     }
