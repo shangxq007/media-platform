@@ -118,7 +118,7 @@ if sys.argv[2:] == ['partial']:
  ambiguous=upload('two-video-streams','ambiguous.mp4')
  assert ambiguous['status']==201,ambiguous
  second=json.loads(ambiguous['body'])
- clip=dict(draft,baseRevisionId=revision,baseContentHash=json.loads(applied['body'])['resultContentHash'],
+ clip=dict(draft,baseRevisionId=revision,baseContentHash=json.loads(applied['body'])['newTimelineContentHash'],
            clipId='clip-1',mediaAssetId=second['artifactId'],artifactId=second['artifactId'],
            contentDigest=second['contentDigest'],mediaStreamId=next(s['streamId'] for s in second['streams'] if s['kind']=='VIDEO'),
            timelineStart='1',timelineEnd='2')
