@@ -580,10 +580,10 @@ public final class OperationPlanner {
             var id = clip.getClipId();
             if (!selected.contains(id)) { layout.add(clip); continue; }
             rejectMultiMoveBindings(base, clip);
-            if (params.backward() && clip.getStartTime().isLessThan(params.delta())) {
-                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Move would produce a negative start: " + id.value());
-            }
             try {
+                if (params.backward() && clip.getStartTime().isLessThan(params.delta())) {
+                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "Move would produce a negative start: " + id.value());
+                }
                 var start = params.backward() ? clip.getStartTime().subtract(params.delta()) : clip.getStartTime().add(params.delta());
                 var end = params.backward() ? clip.getEndTime().subtract(params.delta()) : clip.getEndTime().add(params.delta());
                 var moved = withPlacement(clip, start, end);
@@ -594,31 +594,29 @@ public final class OperationPlanner {
             }
         }
         // Compare destinations to the final layout, not to the selected clips' old positions.
-        for (var moved : layout) {
-            if (!selected.contains(moved.getClipId())) continue;
-            for (var other : layout) {
-                if (moved != other && moved.getStartTime().isLessThan(other.getEndTime())
-                        && moved.getEndTime().isGreaterThan(other.getStartTime())) {
-                    throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Moving " + moved.getClipId().value()
-                            + " would overlap " + other.getClipId().value());
+        try {
+            for (var moved : layout) {
+                if (!selected.contains(moved.getClipId())) continue;
+                for (var other : layout) {
+                    if (moved != other && moved.getStartTime().isLessThan(other.getEndTime())
+                            && moved.getEndTime().isGreaterThan(other.getStartTime())) {
+                        throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Moving " + moved.getClipId().value()
+                                + " would overlap " + other.getClipId().value());
+                    }
                 }
             }
+            var tracks = base.getTracks().stream()
+                    .map(t -> t == track ? new TimelineTrack(t.trackId(), t.name(), t.type(), layout) : t).toList();
+            return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
+        } catch (ArithmeticException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Move exceeds the exact Timeline placement range");
         }
-        var tracks = base.getTracks().stream()
-                .map(t -> t == track ? new TimelineTrack(t.trackId(), t.name(), t.type(), layout) : t).toList();
-        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
     }
 
     private static void rejectMultiMoveBindings(TimelineDocument base, TimelineClip clip) {
         var id = clip.getClipId();
-        for (var relation : base.getSemanticRelationships()) {
-            if (relation instanceof GroupRelationship group && group.members().contains(id)) {
-                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Multi-clip move cannot move group binding for " + id.value());
-            }
-            if (relation instanceof SyncRelationship sync && (id.equals(sync.endpointA()) || id.equals(sync.endpointB()))) {
-                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Multi-clip move cannot move sync binding for " + id.value());
-            }
-        }
+        // Groups carry stable clip IDs only. Sync anchors are object-local, so the
+        // correspondence is unchanged when a placement changes without a trim.
         rejectTransitionMutation(base, id, "multi-clip move");
         if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
                 || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {

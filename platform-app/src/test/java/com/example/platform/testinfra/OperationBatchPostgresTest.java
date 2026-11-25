@@ -60,6 +60,7 @@ import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotCanonicalSemantics;
 import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.relationship.GroupRelationship;
 import com.example.platform.timeline.semantics.relationship.SyncRelationship;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
@@ -825,26 +826,25 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void multiMoveRejectsGroupInPreviewAndApplyWithoutLedgerEntry() {
-        var source = saveRevision(twoClipDocument());
-        var create = new OperationRequest(OperationDefinition.V1.CREATE_GROUP.definitionId(),
-                OperationDefinition.V1.CREATE_GROUP.version(),
-                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
-                        new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b"))),
-                        SelectionSpec.ExpansionPolicy.EXACT),
-                new OperationParameters.CreateGroupParameters(GroupId.of("group-1"),
-                        List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b"))),
-                source.revisionId(), hash(source), null);
-        var grouped = saveService.findById(TENANT, commit("n05-fixture-group", source, create, null).newRevisionId());
-        var request = multiMoveRequest("n05-reject-group", grouped);
+    void multiMoveRetainsGroupLocalSyncAndAudioRoutes() {
+        var sourceDocument = twoClipDocumentWithAudio();
+        var first = TimelineClipId.of("clip-a");
+        var second = TimelineClipId.of("clip-b");
+        var grouped = new TimelineDocument(sourceDocument.getSchemaVersion(), sourceDocument.getTracks(),
+                sourceDocument.getMetadata(), sourceDocument.getAudioMix(),
+                List.of(GroupRelationship.of(GroupId.of("group-1"), List.of(first, second)),
+                        SyncRelationship.of(first, time("1/1"), second, time("2/1"))),
+                sourceDocument.getTextElements(), sourceDocument.getTransitions(), sourceDocument.getAutomations());
+        var source = saveRevision(grouped);
+        var request = multiMoveRequest("n05-preserve-relationships", source);
         var actor = mutation().actor();
-        var preview = assertThrows(BatchException.class,
-                () -> batch.preview(request, OperationBatchContext.preview(actor, "test")));
-        assertTrue(preview.getMessage().contains("group binding"), preview.getMessage());
-        var rejected = assertThrows(BatchException.class, () -> batch.commit(request,
-                OperationBatchContext.apply(request.batchId(), actor, null, "test", "0".repeat(64))));
-        assertTrue(rejected.getMessage().contains("group binding"), rejected.getMessage());
-        assertEquals(grouped.revisionId(), head());
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        var result = batch.commit(request,
+                OperationBatchContext.apply(request.batchId(), actor, null, "test", preview.batchDigest()));
+        var persisted = saveService.findPayloadDocument(TENANT, result.newRevisionId()).orElseThrow();
+        assertEquals(Set.copyOf(grouped.getSemanticRelationships()), Set.copyOf(persisted.getSemanticRelationships()));
+        assertEquals(grouped.getAudioMix(), persisted.getAudioMix());
+        assertEquals(source.revisionId(), parentOf(result.newRevisionId()));
         assertEquals(2, count("timeline.timeline_revision"));
         assertEquals(1, count("timeline.apply_command"));
     }

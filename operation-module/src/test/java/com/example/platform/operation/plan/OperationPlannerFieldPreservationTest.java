@@ -28,6 +28,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * FIELD-PRESERVATION-P0 (Sink 2 + Sink 3): {@link OperationPlanner} rebuilds the whole
@@ -55,6 +56,22 @@ class OperationPlannerFieldPreservationTest {
 
         CanonicalFieldsAssert.assertPreserved(base, candidate, Field.TRACKS);
         assertNotEquals(base.getTracks(), candidate.getTracks(), "move authors tracks");
+    }
+
+    @Test
+    void multiMoveNamesUnsupportedTransitionAndAutomationBindings() {
+        var base = RichTimelineDocument.rich();
+        var target = new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope(
+                REV, HASH, List.of(TimelineClipId.of("clip-1"), TimelineClipId.of("clip-2")),
+                SelectionSpec.ExpansionPolicy.EXACT));
+        var move = instance(OperationDefinition.V1.MOVE, target,
+                new OperationParameters.MoveParameters(MediaTime.ofMillis(500), false));
+        var transition = assertThrows(PlanException.class, () -> plan(move, base));
+        assertTrue(transition.getMessage().contains("transition-1"), transition.getMessage());
+        var withoutTransition = new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(),
+                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(), List.of(), base.getAutomations());
+        var automation = assertThrows(PlanException.class, () -> plan(move, withoutTransition));
+        assertTrue(automation.getMessage().contains("automation binding for clip-1"), automation.getMessage());
     }
 
     @Test
