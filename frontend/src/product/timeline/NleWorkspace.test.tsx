@@ -350,6 +350,23 @@ describe('default branch clipboard', () => {
 describe('N09 roll edit', () => {
   afterEach(() => vi.restoreAllMocks())
 
+  it('keeps the accepted roll receipt when readback finds a newer editing head', async () => {
+    const { readRef } = renderBranchWorkspace('main', '7', true)
+    vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch').mockResolvedValue(appliedHead)
+    const option = await screen.findByRole<HTMLOptionElement>('option', { name: 'clip-0 / clip-1 at 7/1s' })
+    fireEvent.change(screen.getByLabelText('Shared cut'), { target: { value: option.value } })
+    fireEvent.change(screen.getByLabelText('New cut time (seconds)'), { target: { value: '15/2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Preview roll' }))
+    const next = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(TIMELINE_C) }
+    readRef.mockResolvedValue({ ok: true, value: { head: next, history: [olderRevision] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm roll' }))
+    await screen.findByText('Roll accepted at revision revision-R1. Current HEAD is revision-R2.')
+    expect(write).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: 'Retry confirmed roll' })).toBeNull()
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Editing branch' }).disabled).toBe(false)
+  })
+
   it('withdraws the shared-cut plan when the cut changes away and back during preview', async () => {
     renderBranchWorkspace('main', '7', true)
     const result = { batchDigest: HASH_C, steps: [] }

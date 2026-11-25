@@ -634,7 +634,7 @@ export function NleWorkspace({
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
-          {defaultBranch && !historyRevision && <RollEdit key={JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+          {defaultBranch && !historyRevision && <RollEdit key={JSON.stringify(['roll', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection === requestedProjection && loadedProjection ? tracks : []}
             disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('roll')} readback={() => loadHead('ROLL_READBACK')}
