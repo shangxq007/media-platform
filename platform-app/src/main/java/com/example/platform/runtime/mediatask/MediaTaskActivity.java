@@ -269,6 +269,15 @@ public final class MediaTaskActivity {
             com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
             com.example.platform.sandbox.SandboxCancellation cancellation,
             RuntimeClosedLoopOrchestrator.IncrementalInputs incremental) {
+        return executeTask(prepared, tenantId, beforeFinalExecution, publication, cancellation, incremental, Map.of());
+    }
+
+    MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared, String tenantId,
+            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution,
+            com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
+            com.example.platform.sandbox.SandboxCancellation cancellation,
+            RuntimeClosedLoopOrchestrator.IncrementalInputs incremental,
+            Map<ExecutableTaskId, ArtifactPin> acceptedForThisJob) {
         Objects.requireNonNull(prepared, "prepared");
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("tenantId must not be blank");
@@ -298,10 +307,28 @@ public final class MediaTaskActivity {
         var cacheability=com.example.platform.execution.taskgraph.TaskCacheabilityDeriver.derive(graph);
         com.example.platform.render.api.GraphRenderLifecycle.Output finalClaim = null;
         ArtifactPin finalPin = null;
-        for (ExecutableTaskId taskId : graph.topologicalTaskOrder()) {
+        var order = new java.util.ArrayList<>(graph.topologicalTaskOrder());
+        if (finalTask != null) {
+            if (graph.taskDependencies().stream().anyMatch(edge -> edge.producerTaskId().equals(finalTask.id()))) {
+                throw new IllegalArgumentException("The declared render master must be terminal");
+            }
+            // A bound and committed master can then recover the whole job without historical source reads.
+            order.remove(finalTask.id());
+            order.add(finalTask.id());
+        }
+        for (ExecutableTaskId taskId : order) {
             if (cancellation != null && cancellation.isCancellationRequested())
                 throw new IllegalStateException("Render execution cancelled before task admission");
             ExecutableTask executableTask = tasksById.get(taskId);
+            if (acceptedForThisJob.containsKey(taskId)) {
+                if (finalTask != null && finalTask.id().equals(taskId)) {
+                    throw new IllegalStateException("A partially completed graph cannot recover its master before its other outputs");
+                }
+                committedOutputs.put(taskId, acceptedForThisJob.get(taskId));
+                LOG.info("RECOVERED_TASK_OUTPUT job={} task={} artifact={}", prepared.renderJobId(),
+                        taskId.sha256Hex(), acceptedForThisJob.get(taskId).artifactId().value());
+                continue;
+            }
             if (incremental != null && incremental.pins().containsKey(taskId)) {
                 if (finalTask == null || finalTask.id().equals(taskId)) throw new IllegalStateException("Final output cannot be borrowed from a reference Job");
                 var input=incremental.pins().get(taskId);
@@ -317,7 +344,7 @@ public final class MediaTaskActivity {
             TaskOutputPublicationPlan publicationPlan =
                     TaskOutputPublicationPlanner.plan(executableTask, new TaskOutputPublicationContext(
                             publicationContext.tenantId(),publicationContext.renderJobId(),publicationContext.projectId(),publicationContext.storageProviderId(),publicationContext.region(),publicationContext.mediaType(),
-                            finalTask==null?publicationContext.artifactKind():(executableTask.id().equals(finalTask.id())?com.example.platform.artifact.domain.ArtifactKind.RENDER_MASTER:com.example.platform.artifact.domain.ArtifactKind.DERIVED_MEDIA),publicationContext.evaluatedAt()),
+                            finalTask == null ? publicationContext.artifactKind() : TaskOutputPublicationPlanner.renderArtifactKind(executableTask),publicationContext.evaluatedAt()),
                             grant.attempt().id().value(),grant.attempt().ownershipGeneration().value());
             if (finalTask != null && executableTask.id().equals(finalTask.id())) {
                 finalClaim = new com.example.platform.render.api.GraphRenderLifecycle.Output(

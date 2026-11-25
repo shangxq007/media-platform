@@ -31,6 +31,8 @@ class RevisionRenderPlanningAndBindingServiceWiringTest {
                 .withBean(ArtifactQueryService.class, () -> mock(ArtifactQueryService.class))
                 .withBean(ProviderInteroperabilityAuthority.class, () -> mock(ProviderInteroperabilityAuthority.class))
                 .withBean(EffectSemanticSnapshotStore.class, () -> mock(EffectSemanticSnapshotStore.class))
+                .withBean(com.example.platform.artifact.app.ArtifactSourceFactsQuery.class,
+                        () -> mock(com.example.platform.artifact.app.ArtifactSourceFactsQuery.class))
                 .withBean(ProviderPluginCatalog.class, () -> mock(ProviderPluginCatalog.class))
                 .withPropertyValues("platform.runtime.role=COMBINED")
                 .run(context -> {

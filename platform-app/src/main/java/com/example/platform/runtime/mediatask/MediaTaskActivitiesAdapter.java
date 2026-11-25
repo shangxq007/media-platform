@@ -73,14 +73,21 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
             }
             var incremental=activity.incrementalInputs(prepared,tenantId,lifecycle.incrementalReference(e));
             // Recover a lost Activity response only from every current-generation fenced success.
-            var recovered=prepared.executableTaskIds().stream().map(completed::find).toList();
-            var scope=new com.example.platform.artifact.app.ArtifactScope(tenantId,e.projectId(),e.jobId());
-            boolean sameExecution=!recovered.isEmpty() && java.util.stream.IntStream.range(0,recovered.size()).allMatch(i -> {
-                var taskId=new com.example.platform.execution.taskgraph.ExecutableTaskId(prepared.executableTaskIds().get(i));
-                var item=recovered.get(i);
-                return (incremental!=null && incremental.pins().containsKey(taskId)) || (item.isPresent()
-                        && artifacts.findArtifact(scope,new com.example.platform.shared.identity.ArtifactId(item.orElseThrow().artifactId())).isPresent());
-            });
+            var scope = new com.example.platform.artifact.app.ArtifactScope(tenantId, e.projectId(), e.jobId());
+            var recovered = new java.util.LinkedHashMap<com.example.platform.execution.taskgraph.ExecutableTaskId,
+                    com.example.platform.artifact.app.ArtifactPinService.ArtifactPin>();
+            for (String id : prepared.executableTaskIds()) {
+                var taskId = new com.example.platform.execution.taskgraph.ExecutableTaskId(id);
+                completed.find(id).filter(proof -> id.equals(proof.taskId()))
+                        .flatMap(proof -> artifacts.findArtifact(scope,
+                                new com.example.platform.shared.identity.ArtifactId(proof.artifactId())))
+                        .filter(artifact -> artifact.state() == com.example.platform.artifact.domain.ArtifactState.AVAILABLE)
+                        .ifPresent(artifact -> recovered.put(taskId, new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
+                                artifact.artifactId(), artifact.contentDigest())));
+            }
+            boolean sameExecution = !recovered.isEmpty() && prepared.executableTaskIds().stream()
+                    .map(com.example.platform.execution.taskgraph.ExecutableTaskId::new)
+                    .allMatch(id -> recovered.containsKey(id) || incremental != null && incremental.pins().containsKey(id));
             if(sameExecution) {
                 var finalOutput=completed.find(e.finalTaskId()).orElseThrow();
                 var o=new com.example.platform.render.api.GraphRenderLifecycle.Output(finalOutput.taskId(),finalOutput.attemptId(),finalOutput.generation(),finalOutput.artifactId());
@@ -111,7 +118,7 @@ public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
                         catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
                     });
                 } catch (java.io.UncheckedIOException failure) { throw failure.getCause(); }
-            }, cancellation, incremental);
+            }, cancellation, incremental, recovered);
         });
     }
 

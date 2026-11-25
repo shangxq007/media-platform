@@ -73,10 +73,35 @@ class MediaTaskActivitiesAdapterTest {
         MediaTaskWorkflowResult result = new MediaTaskWorkflowResult(
                 "tenant-1", "render-job-1", DIGEST, DIGEST, List.of(DIGEST),
                 MediaTaskWorkflowResult.STATUS_EXECUTED);
-        when(activity.executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any(),any())).thenReturn(result);
+        when(activity.executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any(),any(),any())).thenReturn(result);
 
         assertThat(adapter.executeTask(prepared, "tenant-1")).isSameAs(result);
-        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any(),any());
+        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared),org.mockito.ArgumentMatchers.eq("tenant-1"),any(),any(),any(),any(),any());
+    }
+
+    @Test
+    void resumesOnlyAvailableArtifactsForTheSameJobWithCurrentGenerationProof() {
+        var activity = mock(MediaTaskActivity.class);
+        var adapter = new MediaTaskActivitiesAdapter(activity, lifecycle, completed, artifacts,
+                mock(org.springframework.transaction.PlatformTransactionManager.class));
+        String intermediate = "b".repeat(64);
+        var prepared = new PreparedTaskRef("tenant-1", "render-job-1", REFERENCE.planRef(), DIGEST, DIGEST,
+                List.of(intermediate, DIGEST), EXECUTION);
+        var id = new com.example.platform.shared.identity.ArtifactId("finished-intermediate");
+        var digest = com.example.platform.shared.digest.ContentDigest.sha256("c".repeat(64));
+        var available = mock(com.example.platform.artifact.domain.Artifact.class);
+        when(available.artifactId()).thenReturn(id);
+        when(available.contentDigest()).thenReturn(digest);
+        when(available.state()).thenReturn(com.example.platform.artifact.domain.ArtifactState.AVAILABLE);
+        when(completed.find(intermediate)).thenReturn(java.util.Optional.of(
+                new CompletedTaskOutputQuery.Output(intermediate, "owner", 1, id.value())));
+        when(artifacts.findArtifact(new com.example.platform.artifact.app.ArtifactScope("tenant-1", "project-1", "render-job-1"), id))
+                .thenReturn(java.util.Optional.of(available));
+        adapter.executeTask(prepared, "tenant-1");
+        verify(activity).executeTask(org.mockito.ArgumentMatchers.eq(prepared), org.mockito.ArgumentMatchers.eq("tenant-1"),
+                any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq(java.util.Map.of(
+                        new com.example.platform.execution.taskgraph.ExecutableTaskId(intermediate),
+                        new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(id, digest))));
     }
 
     @Test

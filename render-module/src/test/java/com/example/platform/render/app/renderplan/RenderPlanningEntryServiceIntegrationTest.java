@@ -14,6 +14,10 @@ import com.example.platform.render.domain.renderplan.RenderSourceResolutionState
 import com.example.platform.render.domain.renderplan.SourceResolutionInput;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.render.domain.renderplan.RenderOutputRequirement;
+import com.example.platform.render.domain.renderplan.RenderOutputRole;
+import com.example.platform.render.domain.renderplan.RenderRequest;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -30,6 +34,22 @@ import org.junit.jupiter.api.Test;
 class RenderPlanningEntryServiceIntegrationTest {
 
     private final RenderPlanningEntryService service = new RenderPlanningEntryService();
+
+    @Test
+    void oneRevisionCompilesSeparateRequiredOutputPortsWithoutDuplicatingItsSource() {
+        var single = RenderPlanningEntryTestFixture.request();
+        var request = new RenderRequest(single.id(), single.extent(), List.of(
+                RenderOutputRequirement.of(RenderOutputRole.RENDER_MASTER),
+                RenderOutputRequirement.of(RenderOutputRole.DERIVED_MEDIA)));
+        var result = service.plan(RenderPlanningEntryTestFixture.revision(),
+                RenderPlanningEntryTestFixture.emptyEffectSnapshot(), request,
+                RenderPlanningEntryTestFixture.resolvedSources(), RenderPlanningEntryTestFixture.capabilities());
+        assertEquals(RenderPlanStatus.PLANNABLE, result.status());
+        var sinks = result.plan().nodes().stream().filter(node -> node.kind() instanceof RenderNodeKind.Output).toList();
+        assertEquals(2, sinks.size());
+        assertEquals(2, sinks.stream().map(node -> node.id()).distinct().count());
+        assertEquals(1, result.plan().nodes().stream().filter(node -> node.kind() instanceof RenderNodeKind.Decode).count());
+    }
 
     @Test
     void fullChainProducesConsistentPlanAndGraphForARealRevision() {

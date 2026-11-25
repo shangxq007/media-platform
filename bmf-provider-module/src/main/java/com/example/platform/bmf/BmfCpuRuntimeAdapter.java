@@ -51,6 +51,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 if operation in ('encode', 'encode-multitrack'):
                     video = ff.scale(video, raster)
                     video = ff.ff_filter(video, 'setsar', '1')
+                    if len(sys.argv) == 9:
+                        rate, extent = sys.argv[7:9]
+                        video = ff.ff_filter(video, 'tpad', stop_duration=extent, stop_mode='clone')
+                        video = ff.fps(video, rate)
+                        video = ff.trim(video, duration=extent)
                 audio = streams['audio'] if operation == 'encode-multitrack' else None
                 video.encode(audio, options).run()
             if not os.path.isfile(output) or os.path.getsize(output) == 0:
@@ -255,17 +260,25 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         }
         var window = plan.sourceWindow();
         var invocation = plan.compositeInputs().isEmpty()
-                ? ProcessInvocationSpec.of(python.toString(), List.of(
-                        "-s", "-c", GRAPH_PROGRAM, materializedInputToken(plan.inputId()),
-                        ProviderNativeOutputFiles.RENDER_OUTPUT,
-                        plan.operation().operationKey(),
-                        window.map(value -> seconds(value.start())).orElse("0"),
-                        window.map(value -> seconds(value.duration())).orElse("0"), rasterToken(plan)))
+                ? singleInvocation(plan, window)
                 : compositeInvocation(plan);
         var command = new ExecutionCommand(context.executableTaskId(), context.providerBindingPin(),
                 context.platformExecutionAttemptId(), context.platformOwnershipGeneration(), 0, invocation);
         return new RuntimeExecutionBundle(context.executableTaskId(), context.providerBindingPin(),
                 context.platformExecutionAttemptId(), context.platformOwnershipGeneration(), List.of(command));
+    }
+
+    private ProcessInvocationSpec singleInvocation(BmfCpuTranscodePlan plan, java.util.Optional<BmfCpuTranscodePlan.SourceWindow> window) {
+        var arguments = new java.util.ArrayList<>(List.of("-s", "-c", GRAPH_PROGRAM,
+                materializedInputToken(plan.inputId()), ProviderNativeOutputFiles.RENDER_OUTPUT,
+                plan.operation().operationKey(), window.map(value -> seconds(value.start())).orElse("0"),
+                window.map(value -> seconds(value.duration())).orElse("0"), rasterToken(plan)));
+        if (plan.compositeFrameRate().isPresent()) {
+            var rate = plan.compositeFrameRate().orElseThrow();
+            arguments.add(rate.numerator() + "/" + rate.denominator());
+            arguments.add(seconds(plan.compositeDuration().orElseThrow()));
+        }
+        return ProcessInvocationSpec.of(python.toString(), arguments);
     }
 
     private ProcessInvocationSpec compositeInvocation(BmfCpuTranscodePlan plan) {

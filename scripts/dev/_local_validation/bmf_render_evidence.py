@@ -136,10 +136,9 @@ file_by_attempt = {item[1]: item for item in files}
 executions = []
 for attempt, spec in spec_by_attempt.items():
     task, _, executable, arguments, _ = spec
-    # The bounded graph argv is "<python> -s -c <graph> <input> <output> <operation> <start> <duration>".
-    tail = arguments.rsplit(', ', 3)[-3:]
-    assert len(tail) == 3, ('unexpected provider argv shape', attempt)
-    operation, start, duration = (part.strip() for part in tail)
+    match = re.search(r', (decode|composite|encode), ([0-9.]+), ([0-9.]+), [0-9]+x[0-9]+(?:, [0-9]+/[0-9]+, [0-9.]+)?$', arguments)
+    assert match, ('unexpected provider argv shape', attempt)
+    operation, start, duration = match.groups()
     assert operation in ('decode', 'composite', 'encode'), ('unexpected BMF operation', operation)
     assert executable.endswith('/host-bundle/usr/bin/python3.9'), ('process is not the BMF runtime Python', executable)
     input_digest = re.search(r'/materialized/sha_256/([0-9a-f]{2})/([0-9a-f]{64})', arguments)

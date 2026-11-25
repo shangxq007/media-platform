@@ -182,13 +182,17 @@ public class RevisionRenderPlanningAndBindingService {
         return mediaProvider.isEmpty() ? ProviderSelectionPolicy.PREFERRED : ProviderSelectionPolicy.restrictedTo(mediaProvider);
     }
 
-    public List<com.example.platform.execution.compatibility.MediaLoweringEnvelope.OutputRasters> outputRasters() {
+    public record RasterLimits(int minWidth, int minHeight, int maxWidth, int maxHeight,
+            int maxPixels, int alignment) {}
+
+    public List<RasterLimits> outputRasters() {
         var required = selectionPolicy().requiredProvider();
         return ProviderCandidateProjection.project(providerPluginCatalog).stream()
                 .filter(c -> required.map(c.bindingPin().providerId()::equals).orElse(true))
                 .filter(c -> c.capabilityProfile().supportDeclarations().stream()
                         .anyMatch(d -> d.capabilityId().value().equals("render.output")))
                 .flatMap(c -> c.staticCompatibility().mediaLowering().outputRasters().stream())
+                .map(p -> new RasterLimits(p.minWidth(), p.minHeight(), p.maxWidth(), p.maxHeight(), p.maxPixels(), p.alignment()))
                 .distinct().toList();
     }
 

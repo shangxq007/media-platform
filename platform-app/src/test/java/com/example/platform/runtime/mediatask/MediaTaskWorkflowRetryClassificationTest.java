@@ -91,8 +91,8 @@ class MediaTaskWorkflowRetryClassificationTest {
 
         startWith(failingActivities(attempts, new DataAccessException("temporary database fault")));
 
-        // Bounded retry budget (3 attempts) is unchanged for recoverable infrastructure faults.
-        assertThat(attempts).as("transient database faults must remain retryable").hasValue(3);
+        // Bounded retry budget (20 attempts) is unchanged for recoverable infrastructure faults.
+        assertThat(attempts).as("transient database faults must remain retryable").hasValue(20);
     }
 
     @Test
@@ -137,7 +137,7 @@ class MediaTaskWorkflowRetryClassificationTest {
                 ProviderNativeFailureCode.PROCESS_NONZERO_EXIT, "provider exited non-zero")));
 
         // Provider runtime failures keep their existing retry semantics (not reclassified here).
-        assertThat(attempts).hasValue(3);
+        assertThat(attempts).hasValue(20);
     }
 
     private void startWith(MediaTaskActivities activities) {

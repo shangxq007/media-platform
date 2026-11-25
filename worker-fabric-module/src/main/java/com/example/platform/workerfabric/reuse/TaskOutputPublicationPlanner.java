@@ -45,6 +45,19 @@ import java.util.Objects;
  */
 public final class TaskOutputPublicationPlanner {
 
+    /** Map the compiled terminal output to the Artifact classification owned by publication. */
+    public static com.example.platform.artifact.domain.ArtifactKind renderArtifactKind(ExecutableTask task) {
+        var roles = task.memberships().stream().flatMap(member -> member.physicalPlanUnit().typedOutputs().stream())
+                .flatMap(output -> output.finalArtifactExpectations().stream()).map(expectation -> expectation.role()).toList();
+        if (roles.isEmpty()) return com.example.platform.artifact.domain.ArtifactKind.DERIVED_MEDIA;
+        if (roles.size() != 1) throw new IllegalArgumentException("A native task must own one typed result");
+        return switch (roles.getFirst()) {
+            case RENDER_MASTER -> com.example.platform.artifact.domain.ArtifactKind.RENDER_MASTER;
+            case DELIVERY_RENDITION -> com.example.platform.artifact.domain.ArtifactKind.DELIVERY_RENDITION;
+            case DERIVED_MEDIA -> com.example.platform.artifact.domain.ArtifactKind.DERIVED_MEDIA;
+        };
+    }
+
     private TaskOutputPublicationPlanner() {
     }
     /** Production publication binds the complete owning run and fenced task attempt. */

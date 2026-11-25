@@ -176,11 +176,11 @@ def main():
     sql("""create function reject_validation_image() returns trigger language plpgsql as $$ begin
         if new.tenant_id='tenant-fr-e2e' and new.project_id='project-fr-e2e' and new.media_type='IMAGE' then
         raise exception 'synthetic owned image commit failure'; end if; return new; end $$;
-        create trigger reject_validation_image before insert on artifact for each row execute function reject_validation_image();""")
+        create trigger reject_validation_image before insert on artifacts.artifact for each row execute function reject_validation_image();""")
     try:
         client('blocked-commit')
     finally:
-        sql('drop trigger reject_validation_image on artifact; drop function reject_validation_image();')
+        sql('drop trigger reject_validation_image on artifacts.artifact; drop function reject_validation_image();')
     client('retry')
     separate = json.loads((app / 'runtime-shape.json').read_text())['mode'] == 'API_WORKER'
     if separate:

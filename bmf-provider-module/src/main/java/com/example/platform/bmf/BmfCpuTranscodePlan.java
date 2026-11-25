@@ -150,8 +150,10 @@ public record BmfCpuTranscodePlan(
         Objects.requireNonNull(compositeDuration, "compositeDuration");
         Objects.requireNonNull(compositeFrameRate, "compositeFrameRate");
         if (compositeInputs.isEmpty()) {
-            if (compositeDuration.isPresent() || compositeFrameRate.isPresent()) {
-                throw new IllegalArgumentException("composite timing requires composite inputs");
+            if (compositeDuration.isPresent() != compositeFrameRate.isPresent()
+                    || compositeDuration.isPresent() && (operation != BmfOperation.ENCODE && operation != BmfOperation.MULTITRACK_ENCODE
+                    || !compositeDuration.orElseThrow().isGreaterThan(MediaTime.ZERO))) {
+                throw new IllegalArgumentException("output timing requires a final encoder and a positive extent");
             }
         } else {
             if (!inputId.equals(compositeInputs.getFirst().inputId())

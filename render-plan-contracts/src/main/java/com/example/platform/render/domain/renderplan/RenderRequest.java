@@ -21,5 +21,8 @@ public record RenderRequest(
         Objects.requireNonNull(extent, "extent");
         Objects.requireNonNull(outputs, "outputs");
         outputs = List.copyOf(outputs);
+        if (outputs.stream().map(RenderOutputRequirement::role).distinct().count() != outputs.size()) {
+            throw new IllegalArgumentException("Each required render output must have its own role");
+        }
     }
 }

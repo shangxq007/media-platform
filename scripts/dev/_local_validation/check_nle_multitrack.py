@@ -92,6 +92,7 @@ comparison = browser['composition']['providerComparison']
 assert {row['provider'] for row in comparison['outputs']} == {'bmf','ffmpeg','preferred'}
 assert all(row['revisionId'] == comparison['revision']['revisionId'] for row in comparison['outputs'])
 auxiliary_deliveries.extend(comparison['outputs'])
+auxiliary_deliveries.extend([browser['composition']['legalFfmpeg'], browser['composition']['rateConversion']])
 auxiliary_facts = []
 for delivered in auxiliary_deliveries:
     render_job_id = delivered['renderJobId']
@@ -103,12 +104,12 @@ for delivered in auxiliary_deliveries:
     fact['logicalFingerprint'] = fingerprint[1]
     candidate_data = fact['binding'].pop('candidates')
     restriction, pins = selection(candidate_data)
-    assert restriction == (None if delivered.get('provider') == 'preferred' else delivered.get('provider', 'bmf'))
+    assert restriction == (None if delivered.get('policy', delivered.get('provider')) == 'preferred' else delivered.get('provider', 'bmf'))
     ffmpeg = delivered.get('provider') == 'ffmpeg'
     provider_id, version, excluded = ('ffmpeg.cpu.native-pull.v1','1.3.0','bmf.cpu.v1') if ffmpeg else (
         'bmf.cpu.v1','1.2.0','ffmpeg.cpu.native-pull.v1')
     assert provider_id in pins and version in pins and excluded in pins
-    decisions = [json.loads(line.split('RENDER_TASK_DECISION ', 1)[1]) for line in worker.splitlines()
+    decisions = [json.JSONDecoder().raw_decode(line.split('RENDER_TASK_DECISION ', 1)[1])[0] for line in worker.splitlines()
                  if 'RENDER_TASK_DECISION ' in line]
     executed = [event for event in decisions if event['job'] == render_job_id and event['executed']
                 and event['task'] == fact['execution']['final_task_id']]

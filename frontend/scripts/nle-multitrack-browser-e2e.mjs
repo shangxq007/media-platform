@@ -527,15 +527,15 @@ try {
   assert(rightPeaks[880] > leftPeaks[880] * 1.5, 'A3 pan right')
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY')
 
-  const formalOutput = async (revisionId, startMillis, endMillis, label, width = 320, height = 240, submitOrigin = base) => {
+  const formalOutput = async (revisionId, startMillis, endMillis, label, width = 320, height = 240, submitOrigin = base, rate = 24) => {
     const submitted = await page.request.post(submitOrigin + '/api/render-jobs', {
       headers: { ...headers, 'Idempotency-Key': label },
-      data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: 24, frameRateDenominator: 1, width, height },
+      data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: rate, frameRateDenominator: 1, width, height },
         profile: 'default', outputFormat: 'MP4' },
     })
     assert.equal(submitted.status(), 201, await submitted.text())
     const { renderJobId } = await submitted.json()
-    const deadline = Date.now() + 240000
+    const deadline = Date.now() + 390000
     let finalArtifactId
     while (Date.now() < deadline && !finalArtifactId) {
       const result = await page.request.get(base + scope + `/render-jobs/${renderJobId}/result`, { headers })
@@ -984,6 +984,37 @@ try {
   composition.providerComparison = { preferredRgb, revision: commonRevision, bmfCommonRgb, ffmpegCommonRgb,
     outputs: [{ ...commonBmf, provider: 'bmf' }, { ...commonFfmpeg, provider: 'ffmpeg' },
       { ...preferred, provider: 'preferred' }] }
+  const twelve = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-source-12fps',
+    320, 240, base, 12)
+  const [rateWitness] = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-select_streams', 'v:0',
+    '-count_frames', '-show_entries', 'stream=nb_read_frames,avg_frame_rate,duration', '-of', 'json', twelve.path])).streams
+  assert.equal(rateWitness.avg_frame_rate, '12/1')
+  assert.equal(Number(rateWitness.nb_read_frames), 24)
+  assert.equal(Number(rateWitness.duration), 2)
+  composition.rateConversion = { ...twelve, ...rateWitness }
+  const restrictedRaster = await page.request.post('http://127.0.0.1:18082/api/render-jobs', {
+    headers: { ...headers, 'Idempotency-Key': 'explicit-ffmpeg-unsupported-raster' },
+    data: { revisionId: commonRevision.revisionId, extent: { startMillis: 0, endMillis: 2000,
+      frameRateNumerator: 24, frameRateDenominator: 1, width: 640, height: 480 }, profile: 'default', outputFormat: 'MP4' },
+  })
+  assert.equal(restrictedRaster.status(), 400, await restrictedRaster.text())
+
+  // A one-track gap is legal on the FFmpeg compositor and outside the BMF concatenation envelope.
+  await addClip('video-b.mp4', 'track-1', '3', '4', '1')
+  const gapRevision = await head()
+  const rejectedGap = await page.request.post(base + '/api/render-jobs', {
+    headers: { ...headers, 'Idempotency-Key': 'explicit-bmf-gap' },
+    data: { revisionId: gapRevision.revisionId, extent: { startMillis: 0, endMillis: 4000,
+      frameRateNumerator: 24, frameRateDenominator: 1, width: 320, height: 240 }, profile: 'default', outputFormat: 'MP4' },
+  })
+  assert.equal(rejectedGap.status(), 400, await rejectedGap.text())
+  const gap = await formalOutput(gapRevision.revisionId, 0, 4000, 'preferred-legal-ffmpeg',
+    320, 240, 'http://127.0.0.1:18083')
+  const gapRgb = pixel(gap.path, 2.5, 160, 120)
+  assert(Math.max(...gapRgb) < 15)
+  assert.equal(dominant(pixel(gap.path, 0.5, 160, 120)), 'red')
+  composition.legalFfmpeg = { ...gap, provider: 'ffmpeg', policy: 'preferred', gapRgb,
+    bmfGapStatus: rejectedGap.status(), ffmpegRasterStatus: restrictedRaster.status() }
   report.status = 'PASS'
   record('CANONICAL_COMPOSITION_CONFORMANCE')
 

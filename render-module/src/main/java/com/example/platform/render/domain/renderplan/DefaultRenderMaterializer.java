@@ -108,7 +108,10 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
         boolean timedTracks = hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
                 || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
-        boolean multiClip = clips.size() > 1 || timedTracks;
+        boolean partialCoverage = clips.size() == 1 && request.extent() != null
+                && (clips.getFirst().timelineRange().start().isGreaterThan(request.extent().start())
+                        || clips.getFirst().timelineRange().end().isLessThan(request.extent().end()));
+        boolean multiClip = clips.size() > 1 || timedTracks || partialCoverage;
         if ((hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty())
                 && !hasExactEditorialFrameGrid(clips, request.extent())) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
@@ -445,37 +448,29 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             }
         }
 
-        // ── OUTPUT node ──
-        RenderComponentPath outputPath = RenderComponentPath.of(RenderComponentKind.OUTPUT, "master");
         String encodeOperation = hasAudio ? "encode-multitrack" : OP_ENCODE;
         List<CapabilityRequirement> outputCaps = hasAudio
                 ? List.of(RenderCapabilityVocabulary.outputEncode(), RenderCapabilityVocabulary.multitrackComposite())
                 : List.of(RenderCapabilityVocabulary.outputEncode());
-        List<RenderArtifactReference> outputArtifacts = new ArrayList<>();
+        RenderNodeId sinkInput = compositeId != null ? compositeId
+                : getEntry(producerKeys, producerValues, clips.getFirst().clipId());
         for (RenderOutputRequirement output : request.outputs()) {
-            outputArtifacts.add(new RenderArtifactReference.FinalArtifactExpectation(output.role()));
-        }
-        String outputReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of()));
-        RenderNodeId outputId = RenderNodeId.of(
-                new RenderNodeKind.Output(), outputPath, encodeOperation, outputReqFp);
-        RenderNode outputNode = new RenderNode(
-                outputId, new RenderNodeKind.Output(), outputPath, encodeOperation,
-                outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of(),
-                List.of(), Optional.empty(), null); // full-extent sink: never pruned by coverage
-        nodes.add(outputNode);
-
-        // OUTPUT --CompositeInput--> COMPOSITE when timed text participates,
-        // otherwise --EffectInput--> final video producer of the primary clip
-        MediaClip primaryClip = clips.get(0);
-        if (compositeId != null) {
-            edges.add(new RenderDependencyEdge(compositeId, outputId,
-                    new RenderDependency.CompositeInput()));
-        } else {
-            RenderNodeId primaryProducer = getEntry(producerKeys, producerValues, primaryClip.clipId());
-            if (primaryProducer != null) {
-                edges.add(new RenderDependencyEdge(primaryProducer, outputId,
-                        new RenderDependency.EffectInput()));
+            String segment = switch (output.role()) {
+                case RENDER_MASTER -> "master";
+                case DELIVERY_RENDITION -> "rendition";
+                case DERIVED_MEDIA -> "derived";
+            };
+            var path = RenderComponentPath.of(RenderComponentKind.OUTPUT, segment);
+            List<RenderArtifactReference> expectations = List.of(new RenderArtifactReference.FinalArtifactExpectation(output.role()));
+            var requirements = List.of(output);
+            var fingerprint = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
+                    expectations, outputCaps, requirements, List.of()));
+            var sink = RenderNodeId.of(new RenderNodeKind.Output(), path, encodeOperation, fingerprint);
+            nodes.add(new RenderNode(sink, new RenderNodeKind.Output(), path, encodeOperation,
+                    expectations, outputCaps, requirements, List.of(), List.of(), Optional.empty(), null));
+            if (sinkInput != null) {
+                edges.add(new RenderDependencyEdge(sinkInput, sink, compositeId != null
+                        ? new RenderDependency.CompositeInput() : new RenderDependency.EffectInput()));
             }
         }
         // The multitrack composite owns both the video and audio mix; OUTPUT

@@ -76,9 +76,12 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
         Optional<BmfCpuTranscodePlan.SourceWindow> window = decode
                 ? sourceWindow(unit.temporalWindow())
                 : Optional.empty();
+        var output = Optional.ofNullable(unit.propagatedExtent()).filter(extent ->
+                operation == BmfOperation.ENCODE || operation == BmfOperation.MULTITRACK_ENCODE);
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), operation,
                 task.requiredRuntimeInputs().getFirst().inputId(),
-                task.authoritativeOutputIds().getFirst(), window, List.of(), Optional.empty(), Optional.empty(),
+                task.authoritativeOutputIds().getFirst(), window, List.of(),
+                output.map(extent -> extent.end().subtract(extent.start())), output.map(extent -> extent.frameRate()),
                 unit.propagatedExtent() == null ? com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT
                         : unit.propagatedExtent().raster());
     }

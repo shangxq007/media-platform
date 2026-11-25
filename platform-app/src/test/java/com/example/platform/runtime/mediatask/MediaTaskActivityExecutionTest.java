@@ -98,7 +98,7 @@ class MediaTaskActivityExecutionTest {
         ExecutableTask task = prepared.executableTaskGraph().tasks().getFirst();
         RuntimeClosedLoopResult canned = mock(RuntimeClosedLoopResult.class);
         RuntimeClosedLoopOrchestrator orchestrator = mock(RuntimeClosedLoopOrchestrator.class);
-        when(orchestrator.execute(any())).thenReturn(canned);
+        when(orchestrator.execute(any(), any(), org.mockito.ArgumentMatchers.isNull())).thenReturn(canned);
 
         RuntimeClosedLoopResult result = activity().executePreparedGraph(
                 TENANT,
@@ -168,7 +168,7 @@ class MediaTaskActivityExecutionTest {
         ExecutableTask task = prepared.executableTaskGraph().tasks().getFirst();
         RuntimeClosedLoopOrchestrator orchestrator = mock(RuntimeClosedLoopOrchestrator.class);
         java.io.IOException failure = new java.io.IOException("provider output unavailable");
-        when(orchestrator.execute(any())).thenThrow(failure);
+        when(orchestrator.execute(any(), any(), org.mockito.ArgumentMatchers.isNull())).thenThrow(failure);
 
         assertThatThrownBy(() -> activity().executePreparedGraph(
                 TENANT,
@@ -230,7 +230,7 @@ class MediaTaskActivityExecutionTest {
             RuntimeClosedLoopOrchestrator orchestrator) throws Exception {
         ArgumentCaptor<RuntimeClosedLoopRequest> captor =
                 ArgumentCaptor.forClass(RuntimeClosedLoopRequest.class);
-        org.mockito.Mockito.verify(orchestrator).execute(captor.capture());
+        org.mockito.Mockito.verify(orchestrator).execute(captor.capture(), any(), org.mockito.ArgumentMatchers.isNull());
         return captor.getValue();
     }
 

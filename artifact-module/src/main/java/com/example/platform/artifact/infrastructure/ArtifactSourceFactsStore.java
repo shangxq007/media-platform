@@ -69,9 +69,16 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
             var file = java.nio.file.Files.createTempFile("source-streams-", ".media");
             try {
                 java.nio.file.Files.write(file, source.bytes());
-                var counts = probe.probe(id, file, source.contentType()).counts();
+                var observed = probe.probe(id, file, source.contentType());
+                var counts = observed.counts();
                 if (counts == null) throw new IllegalArgumentException("Source stream counts unavailable");
                 var facts = existing.get();
+                for (var stream : facts.streams()) {
+                    if (observed.streams().stream().noneMatch(actual -> actual.kind() == stream.kind()
+                            && actual.streamId().equals(stream.streamId()))) {
+                        throw new IllegalArgumentException("Historical source stream identity cannot be verified");
+                    }
+                }
                 return Optional.of(new ArtifactSourceFacts(facts.duration(), facts.streams(), counts));
             } finally {
                 java.nio.file.Files.deleteIfExists(file);
@@ -163,6 +170,12 @@ public class ArtifactSourceFactsStore implements ArtifactSourceFactsQuery, Artif
                 var raw = root.get("streamCountsV1");
                 if (!raw.path("video").isInt() || !raw.path("audio").isInt()) {
                     throw new IllegalArgumentException("invalid source stream counts");
+                }
+                for (var key : java.util.List.of("video", "audio")) {
+                    var count = root.path("streamCountsV1").path(key);
+                    if (!count.isIntegralNumber() || !count.canConvertToInt()) {
+                        throw new IllegalArgumentException("invalid source stream count");
+                    }
                 }
                 counts = new ArtifactSourceFacts.StreamCounts(raw.get("video").intValue(), raw.get("audio").intValue());
             }

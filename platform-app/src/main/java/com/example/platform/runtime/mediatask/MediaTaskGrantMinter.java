@@ -237,6 +237,22 @@ public final class MediaTaskGrantMinter {
             return new Result.Rejected(requestWorkId, "RUNTIME_HOST_INCARNATION_MISMATCH");
         }
 
+        if (graph == null || contribution == null) {
+            return new Result.Unavailable(
+                    requestWorkId, List.of("bound-graph-and-provider-contribution"));
+        }
+
+        // Native distribution probes can outlast a host heartbeat. Collect them before reading the
+        // current snapshot generation, then let the atomic grant verify that generation again.
+        AdmissionEvidenceProducer.Evidence admissionEvidence = evidenceProducer.produce(
+                workerRuntimeId,
+                physicalHostId,
+                contribution.providerBindingPin().providerImplementationId());
+        now = clock.instant();
+        if (!hostRegistration.validUntil().isAfter(now) || !runtimeRegistration.validUntil().isAfter(now)) {
+            return new Result.Rejected(requestWorkId, "REGISTRATION_EXPIRED_DURING_PROBE");
+        }
+
         var generation = registrationBoundary.currentSnapshotGeneration(
                 physicalHostId, physicalHostIncarnationId);
         if (generation.isEmpty()) {
@@ -280,11 +296,6 @@ public final class MediaTaskGrantMinter {
             return new Result.Unavailable(
                     requestWorkId, List.of("host-resource-snapshot.observed-usage"));
         }
-        if (graph == null || contribution == null) {
-            return new Result.Unavailable(
-                    requestWorkId, List.of("bound-graph-and-provider-contribution"));
-        }
-
         List<PendingNativeWorkCandidate> candidates;
         // P1-1A.5: read-only pre-admission reservation feasibility (conservative filter). The final
         // Grant remains the in-transaction JooqAtomicAssignmentGrantBoundary decision; a read failure
@@ -320,13 +331,6 @@ public final class MediaTaskGrantMinter {
             return new Result.Rejected(requestWorkId, "ADMISSION_NO_WORK");
         }
 
-        // P1-1A.6 (Gate 4): the three independent admission inputs, each from its own authority. A
-        // signal that cannot be produced is named and fails closed; one input never stands in for
-        // another and nothing is defaulted.
-        AdmissionEvidenceProducer.Evidence admissionEvidence = evidenceProducer.produce(
-                workerRuntimeId,
-                physicalHostId,
-                contribution.providerBindingPin().providerImplementationId());
         List<String> missingEvidence = new ArrayList<>();
         if (admissionEvidence.runtimeSupportAdvertisement().isEmpty()) {
             missingEvidence.add("runtime-support-advertisement");

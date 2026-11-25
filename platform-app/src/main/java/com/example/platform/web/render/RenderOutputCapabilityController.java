@@ -1,8 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.config.render.RevisionRenderPlanningAndBindingService;
-
-import com.example.platform.execution.compatibility.MediaLoweringEnvelope.OutputRasters;
+import com.example.platform.config.render.RevisionRenderPlanningAndBindingService.RasterLimits;
 import com.example.platform.shared.web.TenantContext;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +20,7 @@ public final class RenderOutputCapabilityController {
     }
 
     @GetMapping("/api/render/projects/{projectId}/output-rasters")
-    public List<OutputRasters> outputRasters(@PathVariable String projectId) {
+    public List<RasterLimits> outputRasters(@PathVariable String projectId) {
         authorization.requireRead(TenantContext.get(), projectId);
         return planning.outputRasters();
     }
