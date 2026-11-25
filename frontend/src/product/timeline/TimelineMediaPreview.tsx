@@ -23,6 +23,7 @@ interface PreviewSession {
   projection?: TimelineProjection
   colorSurface?: HTMLCanvasElement
   duration: number
+  seekInputEnd: number
   cursor: number
   origin: number
   playing: boolean
@@ -32,6 +33,19 @@ interface PreviewSession {
 
 const clock = (session: PreviewSession) => session.audio?.currentTime ?? performance.now() / 1000
 const rationalTime = (seconds: number) => ({ numerator: BigInt(Math.floor(seconds * 1_000_000)), denominator: 1_000_000n })
+const seekInputMax = (duration: number) => Math.max(0.01, duration)
+
+function nativeSeekInputEnd(duration: number) {
+  // A range control can serialize its maximum with fewer digits than its max attribute.
+  // Measure that serialization without touching the live slider or snapping nearby positions.
+  const input = document.createElement('input')
+  input.type = 'range'
+  input.min = '0'
+  input.max = String(seekInputMax(duration))
+  input.step = 'any'
+  input.value = input.max
+  return input.valueAsNumber
+}
 
 function stopPlayback(session: PreviewSession) {
   session.playing = false
@@ -196,7 +210,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }
   useEffect(() => {
     const session: PreviewSession = {
       controller: new AbortController(), urls: [], videos: new Map(), audioClips: [], scheduled: [],
-      duration: 0, cursor: 0, origin: 0, playing: false, starting: false,
+      duration: 0, seekInputEnd: 0, cursor: 0, origin: 0, playing: false, starting: false,
     }
     current.current = session
     const signal = session.controller.signal
@@ -305,6 +319,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }
         }
         session.projection = projection
         session.duration = toSeconds(timelineDuration(projection))
+        session.seekInputEnd = nativeSeekInputEnd(session.duration)
         setDuration(session.duration)
         setStatus('READY')
         draw(session, true)
@@ -410,7 +425,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }
     if (!session?.projection) return
     const resume = session.playing
     stopPlayback(session)
-    session.cursor = Math.min(session.duration, Math.max(0, seconds))
+    session.cursor = seconds === session.seekInputEnd
+      ? session.duration : Math.min(session.duration, Math.max(0, seconds))
     publishTime(session.cursor)
     draw(session, true)
     if (resume) start(session)
@@ -430,7 +446,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }
       <Button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
         onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</Button>
       {/* The native input must be able to reach a canonical end that is off the centisecond grid. */}
-      <input aria-label="Timeline preview seek" type="range" min={0} max={Math.max(0.01, duration)}
+      <input aria-label="Timeline preview seek" type="range" min={0} max={seekInputMax(duration)}
         step="any" value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1, minWidth: 0 }} />
       <output aria-label="Timeline preview time">{time.toFixed(2)}s / {duration.toFixed(2)}s</output>
     </div>
