@@ -356,6 +356,111 @@ describe('same-track multi-clip move', () => {
   })
 })
 
+describe.each([
+  ['Delete', 'timeline.delete'],
+  ['Move', 'timeline.move'],
+] as const)('N06 F1 ordinary %s receipt and HEAD separation', (label, definition) => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each(['later-head', 'lost-replay', 'read-recovery', 'stale-409', 'stale-412'] as const)(
+    'handles %s through the default editing workspace', async (scenario) => {
+      const { readRef, queries } = renderBranchWorkspace('main')
+      const original = await screen.findByLabelText('Timeline clip clip-0')
+      await screen.findByText('Viewing editing head · main')
+      const initialReadCount = readRef.mock.calls.length
+      const later = { ...head, revisionId: revisionId('revision-R2') }
+      const laterRow: RevisionListEntry = { ...appliedRevision, id: later.revisionId, revisionNumber: 3,
+        parentRevisionId: appliedHead.revisionId }
+      const extraHead = vi.spyOn(FormalRenderAPI, 'head')
+        .mockRejectedValue(new Error('The workspace must use its single ref read'))
+      const writes: { path: string; body: string; ifMatch: unknown }[] = []
+      let previews = 0
+      let acceptedWrites = 0
+      const transport = vi.spyOn(versionlessApi, 'post').mockImplementation(async (path, data, config) => {
+        const body = data as SemanticBatch
+        expect(body.baseRevisionId).toBe(head.revisionId)
+        expect(body.baseContentHash).toBe(head.contentHash)
+        expect(body.operations[0].definitionId).toBe(definition)
+        if (path.endsWith('/preview')) {
+          previews += 1
+          return { data: { batchDigest: HASH_C, steps: [] } }
+        }
+        writes.push({ path, body: JSON.stringify(body), ifMatch: config?.headers?.['If-Match'] })
+        expect(path).toMatch(/\/timeline-operations\/batch\/v2\/apply$/)
+        if (writes.length === 1) {
+          readRef.mockResolvedValue({ ok: true, value: {
+            head: later, history: [laterRow, appliedRevision, revision, olderRevision],
+          } })
+          if (scenario.startsWith('stale-')) throw Object.assign(Error('Apply conflict'), {
+            response: { status: Number(scenario.slice(-3)) },
+          })
+          acceptedWrites += 1
+          if (scenario === 'lost-replay') throw Error('committed response lost')
+          if (scenario === 'read-recovery') readRef.mockResolvedValueOnce(mockFailure('UNAVAILABLE'))
+        }
+        return { data: { status: 'APPLIED', newRevisionId: appliedHead.revisionId, newContentHash: appliedHead.contentHash } }
+      })
+      const clipRegion = screen.getByRole('region', { name: 'Edit existing clip' })
+      const deleteButton = () => within(clipRegion).getByRole<HTMLButtonElement>('button', { name: 'Delete selected clip' })
+      const reload = () => screen.getByRole<HTMLButtonElement>('button', { name: /^Reload HEAD$/ })
+      if (label === 'Delete') fireEvent.click(deleteButton())
+      else {
+        fireEvent.pointerDown(original, { clientX: 100, pointerId: 1 })
+        fireEvent.pointerMove(original, { clientX: 180, pointerId: 1 })
+        fireEvent.pointerUp(original, { clientX: 180, pointerId: 1 })
+      }
+
+      if (scenario === 'lost-replay') {
+        const retry = await screen.findByRole('button', { name: new RegExp(`Retry ${label} with the same command ID`) })
+        expect(readRef).toHaveBeenCalledTimes(initialReadCount)
+        expect(branchPicker().disabled).toBe(true)
+        expect(deleteButton().disabled).toBe(true)
+        fireEvent.keyDown(clipRegion, { key: 'Delete' })
+        expect(writes).toHaveLength(1)
+        fireEvent.click(retry)
+      }
+      if (scenario === 'read-recovery') {
+        await within(clipRegion).findByText(new RegExp(`${label} accepted at revision revision-R1.*Reload HEAD`))
+        expect(branchPicker().disabled).toBe(false)
+        expect(deleteButton().disabled).toBe(true)
+        expect(readRef).toHaveBeenCalledTimes(initialReadCount + 1)
+        expect(writes).toHaveLength(1)
+        expect(reload().disabled).toBe(false)
+        expect(screen.queryByRole('button', { name: new RegExp(`Retry ${label}`) })).toBeNull()
+        const recovery = label === 'Delete'
+          ? within(clipRegion).getByRole('button', { name: 'Reload HEAD after accepted edit' }) : reload()
+        fireEvent.click(recovery)
+      }
+
+      const stale = scenario.startsWith('stale-')
+      if (stale) {
+        expect((await within(clipRegion).findByRole('alert')).textContent).toMatch(new RegExp(`${label} rejected.*HEAD has changed`))
+        expect(within(clipRegion).queryByText(/accepted at revision/)).toBeNull()
+      } else {
+        const accepted = await within(clipRegion).findByText(`${label} accepted at revision revision-R1. The current HEAD is revision-R2.`)
+        expect(accepted.getAttribute('role')).toBe('status')
+        expect(within(clipRegion).queryByText(/rejected/)).toBeNull()
+      }
+      await waitFor(() => {
+        expect(clipRegion.getAttribute('data-viewed-revision')).toBe(later.revisionId)
+        expect(deleteButton().disabled).toBe(false)
+        expect(reload().disabled).toBe(false)
+        expect(branchPicker().disabled).toBe(false)
+      })
+      expect(acceptedWrites).toBe(stale ? 0 : 1)
+      expect(previews).toBe(1)
+      expect(writes).toHaveLength(scenario === 'lost-replay' ? 2 : 1)
+      expect(writes[0].ifMatch).toBe('"' + HASH_C + '"')
+      if (scenario === 'lost-replay') expect(writes[1]).toEqual(writes[0])
+      expect(readRef).toHaveBeenCalledTimes(initialReadCount + (scenario === 'read-recovery' ? 2 : 1))
+      expect(extraHead).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: /Reload HEAD after accepted edit|Retry (Delete|Move)/ })).toBeNull()
+      await verifyDefaultNavigationResumed(queries, readRef)
+      expect(transport).toHaveBeenCalledTimes(1 + writes.length)
+    }
+  )
+})
+
 describe('confirmed trim history readback recovery', () => {
   afterEach(() => vi.restoreAllMocks())
 

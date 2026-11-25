@@ -40,7 +40,18 @@ export const TRIM_PIXELS_PER_SECOND = TIMELINE_PIXELS_PER_SECOND
 
 interface PendingTrim { edge: TrimEdge; delta: Rational; match?: SnapMatch }
 interface PreviewedTrim extends PendingTrim { digest: string; command: ClipEdit }
-interface RetryClip { command: ClipEdit; label: string; digest?: string }
+interface ClipAttempt { command: ClipEdit; label: string }
+interface ConfirmedPlacement extends ClipAttempt {
+  digest: string
+  tenantId: string
+  projectId: string
+  success: (revision: string) => string
+}
+type RetryClip = ClipAttempt | ConfirmedPlacement
+interface AcceptedClip {
+  attempt: ConfirmedPlacement
+  receipt: { revisionId: string; contentHash: string }
+}
 interface ConfirmedTrim { command: ClipEdit; digest: string; tenantId: string; projectId: string }
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
@@ -111,6 +122,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
   const [message, setMessage] = useState('')
   const [actionFailed, setActionFailed] = useState(false)
+  const [acceptedReadback, setAcceptedReadback] = useState<AcceptedClip | null>(null)
   const [retryCommand, setRetryCommandState] = useState<RetryClip | null>(null)
   const retryCommandRef = useRef<RetryClip | null>(null)
   function setRetryCommand(value: RetryClip | null) {
@@ -126,9 +138,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
   const trimBlocked = trimAccess?.blocked ?? false
   const writeBlocked = busy || confirmedTrim !== null || trimBlocked
-  const editsDisabled = writeBlocked || retryCommand !== null
+  const editsDisabled = writeBlocked || retryCommand !== null || acceptedReadback !== null
   const canRetry = () => !busyRef.current && confirmedTrimRef.current === null && trimAccess?.canStart() !== false
-  const canEdit = () => canRetry() && retryCommandRef.current === null
+  const canEdit = () => canRetry() && retryCommandRef.current === null && acceptedReadback === null
   useEffect(() => {
     onWriteLock?.(busy || confirmedTrim !== null || retryCommand !== null)
     return () => onWriteLock?.(false)
@@ -664,34 +676,93 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     await applyMove(drag.clip, projection.start, match)
   }
 
+  async function refreshPlacementHead(command: ClipEdit) {
+    // The workspace's authoritative read also refreshes its revision list and visible timeline.
+    if (onTrimReadback) return onTrimReadback()
+    const current = await readCommandHead(command)
+    await onRevisionChanged()
+    return current
+  }
+
+  function displayAcceptedClip(accepted: AcceptedClip, current?: { revisionId: string; contentHash: string }) {
+    const { attempt, receipt } = accepted
+    const prefix = `${attempt.label} accepted at revision ${receipt.revisionId}.`
+    setActionFailed(false)
+    if (!current || (current.revisionId === receipt.revisionId && current.contentHash !== receipt.contentHash)) {
+      setAcceptedReadback(accepted)
+      setMessage(prefix + (current
+        ? ' The current HEAD content hash could not be verified. Reload HEAD to refresh the editor.'
+        : ' Reload HEAD to refresh the editor.'))
+      return
+    }
+    setAcceptedReadback(null)
+    setMessage(current.revisionId !== receipt.revisionId
+      ? prefix + ` The current HEAD is ${current.revisionId}.`
+      : attempt.success(receipt.revisionId))
+  }
+
+  // The ordinary workspace Reload HEAD can recover too, without resending the edit.
+  useEffect(() => {
+    if (!acceptedReadback || !head || head.projectId !== acceptedReadback.attempt.projectId) return
+    const { baseRevisionId, baseContentHash } = acceptedReadback.attempt.command
+    if (head.revisionId !== baseRevisionId || head.contentHash !== baseContentHash) {
+      displayAcceptedClip(acceptedReadback, head)
+    }
+  }, [head?.revisionId, head?.contentHash, acceptedReadback])
+
+  async function readAcceptedClip(accepted: AcceptedClip) {
+    let current
+    try { current = await refreshPlacementHead(accepted.attempt.command) }
+    catch { /* Apply already returned a receipt. Only readback can be retried here. */ }
+    displayAcceptedClip(accepted, current)
+  }
+
+  async function recoverAcceptedClip() {
+    if (!acceptedReadback || !canRetry()) return
+    setBusy(true)
+    try { await readAcceptedClip(acceptedReadback) }
+    finally { setBusy(false) }
+  }
+
+  async function submitConfirmedPlacement(attempt: ConfirmedPlacement) {
+    let receipt
+    try {
+      receipt = await FormalRenderAPI.applyConfirmedClip(attempt.tenantId, attempt.projectId, attempt.command, attempt.digest)
+    } catch (error) {
+      handleFailure(error, attempt.label, attempt.command, true, false, attempt)
+      if ([409, 412].includes(httpStatus(error) ?? 0)) {
+        try { await refreshPlacementHead(attempt.command) }
+        catch { /* Keep the Apply conflict visible if recovery fails. */ }
+      }
+      return
+    }
+    // Acknowledgement ends write retry, even when a subsequent read is unavailable or observes a newer HEAD.
+    setRetryCommand(null)
+    await readAcceptedClip({ attempt, receipt })
+  }
+
   async function previewAndCommit(command: ClipEdit, label: string, success: (revision: string) => string) {
     if (!project.tenantId || !canEdit()) return
+    const tenant = project.tenantId
     setBusy(true); setMessage(''); setActionFailed(false); setPending(null); setPreviewed(null)
-    let attempt: RetryClip | undefined
+    let claimed = false
     try {
-      const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
-      if (trimAccess?.claim() === false) return
-      attempt = { command, label, digest: plan.batchDigest }
-      setRetryCommand(attempt)
-      const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, plan.batchDigest)
-      const authoritative = await readCommandHead(command)
-      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw headMismatch()
-      }
-      setRetryCommand(null)
-      if (onTrimReadback) await onTrimReadback()
-      else await onRevisionChanged()
-      setMessage(success(authoritative.revisionId))
-    } catch (error) {
-      handleFailure(error, attempt ? label : label + ' preview', attempt?.command ?? null, !!attempt, false, attempt?.digest)
-      if (!retryCommandRef.current) {
+      let plan
+      try { plan = await FormalRenderAPI.previewOperation(tenant, project.projectId, command) }
+      catch (error) {
+        handleFailure(error, label + ' preview', null, false, false)
         if (label === 'Move' || [409, 412].includes(httpStatus(error) ?? 0)) {
-          if (attempt && onTrimReadback) await onTrimReadback()
-          else await onRevisionChanged()
+          try { await onRevisionChanged() } catch { /* Preserve the preview failure. */ }
         }
+        return
       }
+      if (trimAccess?.claim() === false) return
+      claimed = true
+      const attempt = { command, label, digest: plan.batchDigest, tenantId: tenant, projectId: project.projectId, success }
+      setRetryCommand(attempt)
+      await submitConfirmedPlacement(attempt)
     } finally {
-      if (attempt && !retryCommandRef.current) trimAccess?.release()
+      if (claimed && !retryCommandRef.current) trimAccess?.release()
       setBusy(false)
     }
   }
@@ -733,7 +804,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean,
-    refreshOnConflict = true, digest?: string) {
+    refreshOnConflict = true, confirmedAttempt?: ConfirmedPlacement) {
     const status = httpStatus(error)
     const conflict = status === 409 || status === 412
     setPreviewed(null); setPending(null); setMoving(null)
@@ -745,7 +816,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       return
     }
     if (keepForRetry && command && isUncertainOutcome(status)) {
-      setRetryCommand({ command, label, digest })
+      setRetryCommand(confirmedAttempt ?? { command, label })
       showUnconfirmed(label, status)
       return
     }
@@ -756,31 +827,28 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   async function retryApply() {
     const attempt = retryCommandRef.current
     if (!head || !project.tenantId || !attempt || !canRetry()) return
+    const confirmed = 'digest' in attempt
+    if (confirmed && (attempt.tenantId !== project.tenantId || attempt.projectId !== project.projectId)) return
     setBusy(true); setMessage(''); setActionFailed(false)
+    if (confirmed) {
+      try { await submitConfirmedPlacement(attempt) }
+      finally {
+        if (!retryCommandRef.current) trimAccess?.release()
+        setBusy(false)
+      }
+      return
+    }
     try {
-      const accepted = attempt.digest
-        ? await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, attempt.command, attempt.digest)
-        : await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, attempt.command)
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, attempt.command)
       const authoritative = await readCommandHead(attempt.command)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
       }
       setRetryCommand(null)
-      if (attempt.digest && onTrimReadback) await onTrimReadback()
-      else await onRevisionChanged()
+      await onRevisionChanged()
       setMessage(`${attempt.label} applied at revision ${authoritative.revisionId}.`)
-    } catch (error) {
-      handleFailure(error, attempt.label, attempt.command, true, !attempt.digest, attempt.digest)
-      if (attempt.digest && !retryCommandRef.current) {
-        if ([409, 412].includes(httpStatus(error) ?? 0)) {
-          if (onTrimReadback) await onTrimReadback()
-          else await onRevisionChanged()
-        }
-      }
-    } finally {
-      if (attempt.digest && !retryCommandRef.current) trimAccess?.release()
-      setBusy(false)
-    }
+    } catch (error) { handleFailure(error, attempt.label, attempt.command, true) }
+    finally { setBusy(false) }
   }
 
   async function splitSelected() {
@@ -1098,6 +1166,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     </div>}
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
+    {acceptedReadback && <Button type="button" disabled={writeBlocked} onClick={() => void recoverAcceptedClip()}>
+      Reload HEAD after accepted edit
+    </Button>}
     {confirmedTrim && !busy && <Button type="button" disabled={trimBlocked} onClick={retryTrim}>Retry Trim with the same command ID</Button>}
     {retryCommand && <Button type="button" disabled={writeBlocked} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}
   </section>
