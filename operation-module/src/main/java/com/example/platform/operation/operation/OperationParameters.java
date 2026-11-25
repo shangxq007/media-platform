@@ -31,6 +31,7 @@ public sealed interface OperationParameters permits
         OperationParameters.MoveParameters,
         OperationParameters.RelocateClipParameters,
         OperationParameters.TrimParameters,
+        OperationParameters.RollCutParameters,
         OperationParameters.SplitParameters,
         OperationParameters.PasteClipsParameters,
         OperationParameters.SetTemporalRateParameters,
@@ -59,6 +60,18 @@ public sealed interface OperationParameters permits
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters,
         OperationParameters.CreateAlignmentParameters {
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record RollCutParameters(String trackId, TimelineClipId leftClipId, TimelineClipId rightClipId,
+                             MediaTime cutTime) implements OperationParameters {
+        public RollCutParameters {
+            if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}") || leftClipId == null || rightClipId == null
+                    || !leftClipId.value().matches("[A-Za-z0-9._:-]{1,64}") || !rightClipId.value().matches("[A-Za-z0-9._:-]{1,64}")
+                    || leftClipId.equals(rightClipId) || cutTime == null) {
+                throw new IllegalArgumentException("Roll requires a track, two distinct clip IDs and an exact cut time");
+            }
+        }
+    }
 
     /** Identities are paired in authored chronological source order. The planner computes all offsets. */
     @org.springframework.modulith.NamedInterface("invocation")

@@ -2091,6 +2091,42 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.roll" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "cutTime" : {
+                  "type" : "string"
+                },
+                "leftClipId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                },
+                "rightClipId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                },
+                "trackId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                }
+              },
+              "required" : [ "cutTime", "leftClipId", "rightClipId", "trackId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.ripple-insert" ],
               "type" : "string"
             },

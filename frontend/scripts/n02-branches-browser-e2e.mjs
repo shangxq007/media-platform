@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
@@ -1540,8 +1541,138 @@ try {
   result.http.n08 = { base: start8, accepted: accepted8, newId: planned8.body.operations[0].parameters.newClipIds[0],
     plan: planned8, attempts: applied8, pictures: pictures8, edgeCases: edgeCases8,
     unsupported: invalidRequests8, alternate: 'REF_NOT_SUPPORTED', inside: invalid8.payload.detail, relationship: relation8.payload.detail, reader: denied8.errorCode, stale: stale8.payload.errorCode }
-  result.status = 'PASS'
   save('N08 single-track ripple insert, read-only recovery, exact replay, whole edit Undo/Redo and reopened playback')
+  const c9 = stage => checkpoint('n09-' + stage)
+  async function rollMedia(colour, seconds) {
+    const name = 'n09-' + colour + '.mp4'
+    const path = join(out, name)
+    execFileSync('/usr/bin/ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-f',
+      'lavfi', '-i', 'color=c=' + colour + ':s=320x240:r=24', '-t', String(seconds), '-c:v', 'libopenh264',
+      '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path])
+    const uploaded = await context.request.post(base + '/api/tenants/tenant-fr-e2e/projects/' + project + '/source-media', {
+      headers: { Authorization: 'Bearer ' + token, 'Idempotency-Key': name },
+      multipart: { file: { name, mimeType: 'video/mp4', buffer: readFileSync(path) } },
+    })
+    assert.equal(uploaded.status(), 201)
+    const media = await uploaded.json()
+    return { ...media, mediaStreamId: media.streams.find(s => s.kind === 'VIDEO').streamId }
+  }
+  const red9 = await rollMedia('red', 5), blue9 = await rollMedia('blue', 6)
+  const rollSource = (id, pin, start, end, from, to) => {
+    const op = addN05(id, pin, start, end)
+    return { ...op, parameters: { ...op.parameters, sourceStart: from, sourceEnd: to } }
+  }
+  await restore6('roll-seed', base7)
+  const seed9 = await revise6('roll-fixture', [
+    ...['clip-red', 'clip-blue', 'clip-gray', 'clip-later'].map(clipId => ({ definitionId: 'timeline.delete', target: { clipId } })),
+    rollSource('clip-red', red9, '2', '5', '1', '4'), rollSource('clip-blue', blue9, '5', '9', '2', '6'),
+    rollSource('clip-later', blue9, '10', '11', '0', '1'),
+  ])
+  await view6(seed9.newRevisionId)
+  const roll = page.getByRole('region', { name: 'Roll edit', exact: true })
+  const prepare9 = async time => {
+    await roll.getByLabel('Shared cut').selectOption(JSON.stringify(['track-1', 'clip-red', 'clip-blue']))
+    await roll.getByLabel('New cut time (seconds)').fill(time)
+    const next = wire6('/preview')
+    await roll.getByRole('button', { name: 'Preview roll' }).click()
+    return trace6(await next)
+  }
+  const confirm9 = roll.getByRole('button', { name: 'Confirm roll', exact: true })
+  const before9 = await c9('before')
+  const frame9 = async (label, colour) => ({
+    cut: await samples6('n09-' + label + '-cut', [['5.5', colour]]),
+    control: await samples6('n09-' + label + '-control', [['10.5', 'blue']]),
+  })
+  const frames9 = { before: await frame9('before', 'blue') }
+  await prepare9('6')
+  await roll.getByRole('button', { name: 'Cancel roll' }).click()
+  const planned9 = await prepare9('6')
+  await roll.getByText('clip-red timeline [2/1, 6/1), source [1/1, 5/1)').waitFor()
+  await roll.getByText('clip-blue timeline [6/1, 9/1), source [3/1, 6/1)').waitFor()
+  const rejects9 = []
+  const step9 = planned9.body.operations[0]
+  for (const [label, overrides] of [['left-exhausted', { cutTime: '181/30' }],
+    ['right-exhausted', { cutTime: '89/30' }], ['empty', { cutTime: '2' }],
+    ['non-neighbor', { rightClipId: 'clip-later' }], ['gap', { leftClipId: 'clip-blue', rightClipId: 'clip-later' }],
+    ['cross-track', { trackId: 'other-track' }]]) {
+    const body = { ...planned9.body, batchId: 'roll-' + label,
+      operations: [{ ...step9, parameters: { ...step9.parameters, ...overrides } }] }
+    const res = await preview(body, 422)
+    await apply(body, '0'.repeat(64), 422)
+    rejects9.push({ label, status: 422, detail: res.detail })
+  }
+  await apply(planned9.body, planned9.payload.batchDigest, 403, reader)
+  const alt9 = await branch('alternate')
+  const alternateBody9 = { ...planned9.body, refId: 'alternate', baseRevisionId: alt9.headRevisionId, baseContentHash: alt9.contentHash }
+  assert.equal((await preview(alternateBody9, 409)).errorCode, 'REF_NOT_SUPPORTED')
+  await apply(alternateBody9, planned9.payload.batchDigest, 409)
+  assert.deepEqual(await c9('readonly'), before9)
+  const attempts9 = []
+  await page.route(applyRoute8, async route => {
+    const req = route.request(), res = await route.fetch()
+    attempts9.push({ target: req.url(), raw: req.postData(), body: req.postDataJSON(),
+      ifMatch: req.headers()['if-match'], status: res.status(), payload: await res.json() })
+    if (attempts9.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  try {
+    await confirm9.click()
+    const retry = roll.getByRole('button', { name: 'Retry confirmed roll' })
+    await retry.waitFor()
+    const committed = await c9('committed')
+    assert.equal(committed.rows, before9.rows + 1)
+    assert.equal(await deleteClip.isDisabled(), true)
+    await page.route(readRoute7, route => route.abort('failed'), { times: 1 })
+    await retry.click()
+    await roll.getByText('Roll accepted at revision ' + committed.refs.main + '. Reload HEAD to refresh the editor.').waitFor()
+    await page.getByRole('button', { name: 'Reload HEAD', exact: true }).click()
+    await waitView('main', committed.refs.main)
+    assert.deepEqual(await c9('recovered'), committed)
+  } finally { await page.unroute(applyRoute8) }
+  confirmed6(planned9, attempts9[0])
+  for (const field of ['target', 'raw', 'ifMatch']) assert.equal(attempts9[0][field], attempts9[1][field])
+  assert.equal(attempts9[1].status, 200)
+  assert.equal(attempts9[0].payload.newRevisionId, attempts9[1].payload.newRevisionId)
+  frames9.after = await frame9('after', 'red')
+  for (const direction of ['Undo', 'Redo']) {
+    const response = wire6('/apply')
+    await page.getByRole('button', { name: direction + ' roll', exact: true }).click()
+    await waitView('main', (await trace6(await response)).payload.newRevisionId)
+    await c9(direction.toLowerCase())
+  }
+  await view6((await branch()).headRevisionId)
+  frames9.reopened = await frame9('reopened', 'red')
+  await c9('reopened')
+  const zero9 = await prepare9('6')
+  assert.equal(zero9.payload.noOp, true)
+  const zeroReceipt9 = wire6('/apply')
+  await confirm9.click()
+  assert.equal((await trace6(await zeroReceipt9)).payload.status, 'NO_OP')
+  await roll.getByText(/Roll created no revision/).waitFor()
+  await c9('zero')
+  for (const cut of ['3', '151/30']) {
+    const plan = await prepare9(cut)
+    const response = wire6('/apply')
+    await confirm9.click()
+    const receipt = await trace6(await response)
+    confirmed6(plan, receipt)
+    await waitView('main', receipt.payload.newRevisionId)
+    await c9(cut === '3' ? 'left' : 'fraction')
+  }
+  const stalePlan9 = await prepare9('5')
+  await revise6('roll-competitor', [makeMove({ clipId: 'clip-later' }, '11', true)])
+  const competitor9 = await c9('competitor')
+  const staleResponse9 = wire6('/apply')
+  await confirm9.click()
+  const stale9 = await trace6(await staleResponse9)
+  assert.deepEqual(stale9.body, stalePlan9.body)
+  assert.equal(stale9.status, 409)
+  assert.equal(stale9.payload.errorCode, 'STALE_BASE_REVISION')
+  assert.deepEqual(await c9('stale'), competitor9)
+  result.http.n09 = { base: seed9.newRevisionId, plan: planned9, attempts: attempts9, rejects: rejects9,
+    frames: frames9, zero: zero9, stale: stale9 }
+  result.status = 'PASS'
+  save('N09 shared-cut roll, exact handles, fractional placement, atomic replay, recovery, undo/redo and reopened playback')
 } finally {
   await browser.close()
 }

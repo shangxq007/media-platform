@@ -76,6 +76,9 @@ public final class ParameterDigest {
                     + ",placement=" + a.placement().start() + ".." + a.placement().end()
                     + ",mapping=" + temporalMapping(a.temporalMapping()) + ")";
         }
+        if (p instanceof OperationParameters.RollCutParameters roll) {
+            return framed("roll-cut-v1", roll.trackId(), roll.leftClipId().value(), roll.rightClipId().value(), roll.cutTime().toString());
+        }
         if (p instanceof OperationParameters.PasteClipsParameters paste) {
             return framed("paste-clips-v1", paste.trackId(), paste.timelineStart().toString(),
                     paste.sourceClipIds().stream().map(TimelineClipId::value).collect(java.util.stream.Collectors.joining(",")),

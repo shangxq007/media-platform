@@ -21,6 +21,7 @@ import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { MultiClipMove } from './MultiClipMove'
 import { playheadTime } from './snapping'
+import { RollEdit } from './RollEdit'
 import { ClipClipboard } from './ClipClipboard'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
@@ -232,7 +233,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'multi-move'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'multi-move'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -305,10 +306,11 @@ export function NleWorkspace({
     mounted.current && requestGeneration.current[kind] === generation
   )
 
-  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' | 'PASTE_READBACK' | 'MULTI_MOVE_READBACK' = 'ORDINARY') => {
+  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' | 'PASTE_READBACK' | 'ROLL_READBACK' | 'MULTI_MOVE_READBACK' = 'ORDINARY') => {
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
+      || (issuedCommand.current === 'roll' && reason === 'ROLL_READBACK')
       || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
       || (issuedCommand.current === 'multi-move' && reason === 'MULTI_MOVE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
@@ -632,6 +634,11 @@ export function NleWorkspace({
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
+          {defaultBranch && !historyRevision && <RollEdit key={JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} tracks={loadedProjection === requestedProjection && loadedProjection ? tracks : []}
+            disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            access={commandAccess('roll')} readback={() => loadHead('ROLL_READBACK')}
+            onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'roll')} />}
           {defaultBranch && <ClipClipboard key={JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
             playhead={previewTime} exactEnd={parseRational(appendStart)} visible={!historyRevision}

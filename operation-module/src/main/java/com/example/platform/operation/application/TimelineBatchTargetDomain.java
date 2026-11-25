@@ -143,6 +143,14 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         if (instance.parameters() instanceof OperationParameters.PasteClipsParameters paste) {
             validatePaste(batch, paste, currentCandidate);
         }
+        if (instance.parameters() instanceof OperationParameters.RollCutParameters) {
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, "Roll requires the default editing branch");
+            }
+            if (batch.operations().size() != 1) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Roll must be the only operation in the batch");
+            }
+        }
         if (rippleDelete(operation)) {
             if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
                 throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
@@ -191,6 +199,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.STEP_PLAN_FAILED, null,
                     failure.getMessage(), failure);
         }
+        if (instance.parameters() instanceof OperationParameters.RollCutParameters roll) {
+            validateMediaRanges(batch, plan.candidateTimeline(), roll.trackId(), List.of(roll.leftClipId(), roll.rightClipId()), "Roll");
+        }
         return new StepPlan<>(plan.candidateTimeline(), instance.parameterDigest(),
                 targetIdentity(plan.sourceInstance().target()), plan.planDigest(), plan.plannedChanges().stream()
                         .map(change -> new com.example.platform.operation.batch.BatchStepDescriptor.Change(
@@ -231,6 +242,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
                 instanceof OperationParameters.TrimParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));
     }
 
@@ -246,15 +258,25 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         try {
             revisions.validatePasteSources(new RevisionRef(target.tenantId(), target.projectId(), target.refId()),
                     batch.baseRevisionId(), paste.sourceClipIds());
-            var track = candidate.getTracks().stream().filter(t -> t.trackId().equals(paste.trackId())).findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Paste track not found"));
+        } catch (IllegalArgumentException invalid) {
+            throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, null, invalid.getMessage(), invalid);
+        }
+        validateMediaRanges(batch, candidate, paste.trackId(), paste.sourceClipIds(), "Paste");
+    }
+
+    private void validateMediaRanges(OperationBatchRequest batch, TimelineDocument candidate, String trackId,
+                                     List<TimelineClipId> ids, String operation) {
+        var target = batch.target();
+        try {
+            var track = candidate.getTracks().stream().filter(t -> t.trackId().equals(trackId)).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(operation + " track not found"));
             var clips = track.clips().stream().collect(java.util.stream.Collectors.toMap(
                     com.example.platform.timeline.canonical.TimelineClip::getClipId, clip -> clip));
-            for (TimelineClipId id : paste.sourceClipIds()) {
+            for (TimelineClipId id : ids) {
                 var clip = clips.get(id);
-                if (clip == null) throw new IllegalArgumentException("Paste source is not on the copied track: " + id.value());
+                if (clip == null) throw new IllegalArgumentException(operation + " source is not on the copied track: " + id.value());
                 if (!"MEDIA_STREAM".equals(clip.getSourceKind())) {
-                    throw new IllegalArgumentException("Paste requires a media-stream source: " + id.value());
+                    throw new IllegalArgumentException(operation + " requires a media-stream source: " + id.value());
                 }
                 var binding = new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
                         com.example.platform.media.domain.identity.MediaAssetId.of(clip.getMediaAssetId()),
@@ -264,7 +286,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(clip.getTrimStart(), clip.getTrimEnd()));
                 var validation = sourceValidator.validate(binding, target.tenantId(), target.projectId(), track.type());
                 if (!validation.valid()) {
-                    throw new IllegalArgumentException("Paste source " + id.value() + " is invalid: " + validation.violations());
+                    throw new IllegalArgumentException(operation + " source " + id.value() + " is invalid: " + validation.violations());
                 }
             }
         } catch (IllegalArgumentException invalid) {

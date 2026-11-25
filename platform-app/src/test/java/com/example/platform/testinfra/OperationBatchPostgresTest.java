@@ -969,6 +969,34 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, count("artifacts.artifact_pin"));
     }
 
+    @Test
+    void rollRollsBackBothRangesPinsHeadLedgerAndOutbox() {
+        String pin = "a".repeat(64);
+        jdbc.update("""
+                insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
+                    media_type,artifact_kind,state,schema_version,created_at)
+                values ('roll-source',?,?,?,1024,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())
+                """, TENANT, PROJECT, pin);
+        var left = new TimelineClip("left", "roll-source", "video-stream", "roll-source", pin, time("2/1"),
+                time("5/1"), time("1/1"), time("4/1"), "MEDIA_STREAM", ConstantRateTemporalMapping.identity());
+        var right = new TimelineClip("right", "roll-source", "video-stream", "roll-source", pin, time("5/1"),
+                time("9/1"), time("2/1"), time("6/1"), "MEDIA_STREAM", ConstantRateTemporalMapping.identity());
+        var track = new TimelineTrack("video-main", "Video", TrackType.VIDEO, List.of(left, right));
+        var source = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(track), TimelineMetadata.empty()));
+        var def = OperationDefinition.V3.ROLL_CUT;
+        var op = new OperationRequest(def.definitionId(), def.version(), new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                new OperationParameters.RollCutParameters(track.trackId(), left.getClipId(), right.getClipId(), time("6/1")),
+                source.revisionId(), hash(source), null);
+        var request = new OperationBatchRequest("failed-roll", new VersionedAggregateRef("TIMELINE",
+                TENANT, PROJECT, PROJECT, "main"), source.revisionId(), List.of(op), null);
+        var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
+        long pins = count("artifacts.artifact_pin");
+        assertRippleRollsBack(source, request);
+        assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
+        assertEquals(pins, count("artifacts.artifact_pin"));
+    }
+
     private void assertRippleRollsBack(TimelineRevision source, OperationBatchRequest request) {
         var actor = mutation().actor();
         var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));

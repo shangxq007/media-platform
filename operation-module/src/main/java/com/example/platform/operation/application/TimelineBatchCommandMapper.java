@@ -164,6 +164,9 @@ public final class TimelineBatchCommandMapper {
                                            String projectId, String baseRevisionId,
                                            String baseContentHash, int index) {
         return switch (definitionId) {
+            case "timeline.clip.roll" -> new OperationParameters.RollCutParameters(requiredText(parameters, "trackId"),
+                    TimelineClipId.of(requiredText(parameters, "leftClipId")), TimelineClipId.of(requiredText(parameters, "rightClipId")),
+                    time(parameters, "cutTime"));
             case "timeline.clip.paste", "timeline.clip.ripple-insert" -> new OperationParameters.PasteClipsParameters(
                     requiredText(parameters, "trackId"), clipIds(parameters, "sourceClipIds"),
                     clipIds(parameters, "newClipIds"), time(parameters, "timelineStart"));

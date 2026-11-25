@@ -66,6 +66,7 @@ public final class OperationPlanner {
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
             case "timeline.track.add" -> planAddTrack(instance, base, changes);
+            case "timeline.clip.roll" -> planRollCut(instance, base, changes);
             case "timeline.clip.paste" -> planPasteClips(instance, base, changes, false);
             case "timeline.clip.ripple-insert" -> planPasteClips(instance, base, changes, true);
             case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
@@ -266,9 +267,14 @@ public final class OperationPlanner {
     }
 
     private static TimelineClip withPlacement(TimelineClip clip, MediaTime newStart, MediaTime newEnd) {
+        return withRanges(clip, newStart, newEnd, clip.getTrimStart(), clip.getTrimEnd());
+    }
+
+    private static TimelineClip withRanges(TimelineClip clip, MediaTime newStart, MediaTime newEnd,
+                                           MediaTime sourceStart, MediaTime sourceEnd) {
         return new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), newStart, newEnd,
-                clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), clip.getTemporalMapping(),
+                sourceStart, sourceEnd, clip.getSourceKind(), clip.getTemporalMapping(),
                 clip.getEffects(), clip.getTransform());
     }
 
@@ -410,7 +416,7 @@ public final class OperationPlanner {
 
     private static List<TimelineClip> makeInsertionSpace(TimelineDocument base, TimelineTrack track, TimelineClip source,
             MediaTime position, List<PlannedChange> changes) {
-        rejectRippleBinding(base, source, "Ripple Insert");
+        rejectEditBinding(base, source, "Ripple Insert");
         var layout = new ArrayList<TimelineClip>();
         var sorted = track.clips().stream().sorted(Comparator.comparing(TimelineClip::getStartTime)).toList();
         TimelineClip previous = null;
@@ -423,7 +429,7 @@ public final class OperationPlanner {
                 }
                 previous = clip;
                 if (!clip.getStartTime().isLessThan(position)) {
-                    rejectRippleBinding(base, clip, "Ripple Insert");
+                    rejectEditBinding(base, clip, "Ripple Insert");
                     var moved = withPlacement(clip, clip.getStartTime().add(shift), clip.getEndTime().add(shift));
                     layout.add(moved);
                     changes.add(new PlannedChange.ClipReplaced(clip.getClipId(), moved));
@@ -731,7 +737,7 @@ public final class OperationPlanner {
         var id = selected.getFirst();
         var removed = clipOf(base, id);
         var track = base.getTracks().stream().filter(t -> t.clips().contains(removed)).findFirst().orElseThrow();
-        rejectRippleBinding(base, removed, "Ripple Delete");
+        rejectEditBinding(base, removed, "Ripple Delete");
         changes.add(new PlannedChange.ClipRemoved(id));
         try {
             var duration = removed.getEndTime().subtract(removed.getStartTime());
@@ -739,7 +745,7 @@ public final class OperationPlanner {
             for (var clip : track.clips()) {
                 if (clip == removed) continue;
                 if (!clip.getStartTime().isLessThan(removed.getEndTime())) {
-                    rejectRippleBinding(base, clip, "Ripple Delete");
+                    rejectEditBinding(base, clip, "Ripple Delete");
                     var moved = withPlacement(clip, clip.getStartTime().subtract(duration), clip.getEndTime().subtract(duration));
                     layout.add(moved);
                     changes.add(new PlannedChange.ClipReplaced(clip.getClipId(), moved));
@@ -774,10 +780,10 @@ public final class OperationPlanner {
 
     private static PlanException rippleOverlap(TimelineClipId first, TimelineClipId second) {
         return new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Ripple Delete cannot resolve overlapping clips "
-                + first.value() + " and " + second.value() + ". Remove the overlap before rippling.");
+                + first.value() + " and " + second.value() + ". Remove the overlap before editing.");
     }
 
-    private static void rejectRippleBinding(TimelineDocument base, TimelineClip clip, String operation) {
+    private static void rejectEditBinding(TimelineDocument base, TimelineClip clip, String operation) {
         var id = clip.getClipId();
         for (var relation : base.getSemanticRelationships()) {
             if ((relation instanceof GroupRelationship group && group.members().contains(id))
@@ -791,14 +797,14 @@ public final class OperationPlanner {
                     case AlignmentRelationship alignment -> alignment.identityKey();
                 };
                 throw new PlanException(PlanErrorCode.INVALID_PLAN, operation + " cannot preserve relationship "
-                        + key + " on clip " + id.value() + ". Resolve the relationship before rippling.");
+                        + key + " on clip " + id.value() + ". Resolve the relationship before editing.");
             }
         }
         rejectTransitionMutation(base, id, operation);
         if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
                 || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, operation + " cannot move or remove automation for clip "
-                    + id.value() + ". Resolve the automation before rippling.");
+                    + id.value() + ". Resolve the automation before editing.");
         }
     }
 
@@ -849,6 +855,50 @@ public final class OperationPlanner {
         return rebuild(base, cur.getTracks(), mix, kept);
     }
 
+    private TimelineDocument planRollCut(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var roll = (OperationParameters.RollCutParameters) instance.parameters();
+        var track = base.getTracks().stream().filter(t -> t.trackId().equals(roll.trackId())).findFirst()
+                .orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING, "Roll track not found"));
+        var left = clipOf(base, roll.leftClipId());
+        var right = clipOf(base, roll.rightClipId());
+        if (!track.clips().contains(left) || !track.clips().contains(right) || !left.getEndTime().equals(right.getStartTime())) {
+            throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Select a shared cut between adjacent clips on one track");
+        }
+        var cut = roll.cutTime();
+        if (!left.getStartTime().isLessThan(cut) || !cut.isLessThan(right.getEndTime())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Roll must leave both clips with positive duration");
+        }
+        if (track.clips().stream().anyMatch(c -> c != left && c != right && c.getStartTime().isLessThan(right.getEndTime())
+                && c.getEndTime().isGreaterThan(left.getStartTime()))) {
+            throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Resolve overlapping clips before rolling this cut");
+        }
+        try {
+            for (var clip : List.of(left, right)) {
+                if (!"MEDIA_STREAM".equals(clip.getSourceKind()) || clip.getArtifactId() == null || clip.getContentDigest() == null
+                        || clip.getMediaStreamId() == null || clip.getMediaAssetId() == null
+                        || !ConstantRateTemporalMapping.identity().equals(clip.getTemporalMapping())
+                        || !clip.getTrimEnd().subtract(clip.getTrimStart()).equals(clip.getEndTime().subtract(clip.getStartTime()))) {
+                    throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                            "Roll requires pinned forward 1x media with matching source and timeline durations on " + clip.getClipId().value());
+                }
+                rejectEditBinding(base, clip, "Roll");
+            }
+            if (cut.equals(left.getEndTime())) return base;
+            MediaTime leftOut = left.getTrimStart().add(cut.subtract(left.getStartTime()));
+            MediaTime rightDuration = right.getEndTime().subtract(cut);
+            if (rightDuration.isGreaterThan(right.getTrimEnd())) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Roll exceeds the available source handle before " + right.getClipId().value());
+            }
+            var newLeft = withRanges(left, left.getStartTime(), cut, left.getTrimStart(), leftOut);
+            var newRight = withRanges(right, cut, right.getEndTime(), right.getTrimEnd().subtract(rightDuration), right.getTrimEnd());
+            changes.add(new PlannedChange.ClipReplaced(left.getClipId(), newLeft));
+            changes.add(new PlannedChange.ClipReplaced(right.getClipId(), newRight));
+            return replaceClip(replaceClip(base, left.getClipId(), newLeft), right.getClipId(), newRight);
+        } catch (ArithmeticException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Roll exceeds the exact timeline range");
+        }
+    }
+
     private TimelineDocument planTrim(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
         var params = (OperationParameters.TrimParameters) inst.parameters();
         List<TimelineClipId> scope = scopeOf(inst);
@@ -887,11 +937,7 @@ public final class OperationPlanner {
                 || newSourceStart.isLessThan(MediaTime.ZERO)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "trim must leave a positive media range");
         }
-        TimelineClip trimmed = new TimelineClip(
-                clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
-                clip.getArtifactId(), clip.getContentDigest(), newStart, newEnd,
-                newSourceStart, newSourceEnd, clip.getSourceKind(), mapping, clip.getEffects(),
-                clip.getTransform());
+        TimelineClip trimmed = withRanges(clip, newStart, newEnd, newSourceStart, newSourceEnd);
         // frozen policy: trim invalidating a Sync object-local anchor => REJECT
         for (SemanticRelationship rel : base.getSemanticRelationships()) {
             if (rel instanceof SyncRelationship s) {

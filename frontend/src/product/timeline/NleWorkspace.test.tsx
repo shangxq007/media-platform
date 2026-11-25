@@ -347,6 +347,34 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N09 roll edit', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('withdraws the shared-cut plan when the cut changes away and back during preview', async () => {
+    renderBranchWorkspace('main', '7', true)
+    const result = { batchDigest: HASH_C, steps: [] }
+    const held = deferred<typeof result>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    const option = await screen.findByRole<HTMLOptionElement>('option', { name: 'clip-0 / clip-1 at 7/1s' })
+    fireEvent.change(screen.getByLabelText('Shared cut'), { target: { value: option.value } })
+    const input = screen.getByLabelText('New cut time (seconds)')
+    const setCut = (value: string) => fireEvent.change(input, { target: { value } })
+    const prepare = screen.getByRole('button', { name: 'Preview roll' })
+    setCut('15/2')
+    fireEvent.click(prepare)
+    setCut('7'); setCut('15/2')
+    await act(async () => held.resolve(result))
+    expect(screen.queryByRole('button', { name: 'Confirm roll' })).toBeNull()
+    fireEvent.click(prepare)
+    await screen.findByText('clip-1 timeline [15/2, 8/1), source [1/2, 1/1)')
+    expect(preview.mock.lastCall?.[2].operations[0].parameters).toEqual({
+      trackId: 'track-1', leftClipId: 'clip-0', rightClipId: 'clip-1', cutTime: '15/2' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel roll' }))
+    expect(write).not.toHaveBeenCalled()
+  })
+})
+
 describe('N08 ripple insertion', () => {
   afterEach(() => vi.restoreAllMocks())
 
