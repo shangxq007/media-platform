@@ -8,6 +8,7 @@ DECLARE
     managed constant text := 'mp_api, mp_worker, mp_combined, mp_readonly';
     schema_name name;
     col record;
+    external_reader name;
 BEGIN
     FOR schema_name IN SELECT nspname FROM pg_namespace WHERE nspname IN (
         'public', 'analytics', 'artifacts', 'billing', 'commerce', 'composition', 'entitlement', 'execution',
@@ -25,6 +26,28 @@ BEGIN
         EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA %I FROM %s', schema_name, managed);
         EXECUTE format('REVOKE ALL ON ALL ROUTINES IN SCHEMA %I FROM %s', schema_name, managed);
         EXECUTE format('REVOKE ALL ON SCHEMA %I FROM %s', schema_name, managed);
+
+        -- A relocated object's ACL is retained by PostgreSQL, but its grantee also
+        -- needs USAGE on the new schema. Preserve that access for explicit grantees
+        -- who could already reach objects through public. This grants no object rights.
+        IF schema_name <> 'public' THEN
+            FOR external_reader IN
+                WITH object_acls(acl) AS (
+                    SELECT c.relacl FROM pg_class c WHERE c.relnamespace = schema_name::text::regnamespace
+                    UNION ALL
+                    SELECT a.attacl FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+                    WHERE c.relnamespace = schema_name::text::regnamespace AND a.attnum > 0 AND NOT a.attisdropped
+                    UNION ALL
+                    SELECT p.proacl FROM pg_proc p WHERE p.pronamespace = schema_name::text::regnamespace
+                )
+                SELECT DISTINCT r.rolname FROM object_acls x CROSS JOIN LATERAL aclexplode(x.acl) a
+                JOIN pg_roles r ON r.oid = a.grantee
+                WHERE r.rolname <> current_user AND r.rolname NOT IN ('mp_api', 'mp_worker', 'mp_combined', 'mp_readonly')
+                  AND has_schema_privilege(r.oid, 'public', 'USAGE')
+            LOOP
+                EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', schema_name, external_reader);
+            END LOOP;
+        END IF;
     END LOOP;
 END;
 $converge$;

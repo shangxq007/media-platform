@@ -34,8 +34,11 @@ retrying. The managed namespaces are reserved for objects owned by the migrator.
 
 In the grant transaction, `platform-app/src/main/resources/db/roles/runtime.sql` replaces direct
 managed-role schema, table, column, routine and sequence ACLs with the intended grants. This
-removes excessive direct V1 privileges carried through V2. Revocation uses RESTRICT, retaining
-independent third-party grants and failing if removing a delegated grant would be necessary.
+removes excessive direct V1 privileges carried through V2. Revocation uses RESTRICT. Explicit
+third-party object grants remain in place. The migration adds schema USAGE for their grantees
+only where they already had USAGE on public and hold an explicit grant on a relocated object.
+Before a retained rollout, re-attest external consumers with layered memberships and verify
+their access after relocation.
 If the grant transaction fails after V2 commits, leave the application stopped, resolve the grant
 failure and rerun the migration entry before serving traffic.
 
