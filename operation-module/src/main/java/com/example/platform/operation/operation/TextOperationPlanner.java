@@ -81,6 +81,7 @@ public final class TextOperationPlanner {
         Objects.requireNonNull(base, "base");
         OperationDefinition definition = definitionOf(request.definitionId());
 
+        String parameterDigest = ParameterDigest.compute(request.definitionId(), request.version(), request.parameters());
         List<TextElement> textElements = new ArrayList<>(base.getTextElements());
         List<PlannedChange> changes = new ArrayList<>();
         String changeKey;
@@ -88,7 +89,7 @@ public final class TextOperationPlanner {
 
         switch (request.parameters()) {
             case OperationParameters.AddTextElementParameters p -> {
-                TextElementId id = TextElementId.fromSeed(addSeed(request));
+                TextElementId id = TextElementId.fromSeed(addSeed(request, parameterDigest));
                 if (resolutionInput == null) {
                     throw new TextPlanException("ADD_TEXT_ELEMENT requires font resolution input");
                 }
@@ -216,8 +217,8 @@ public final class TextOperationPlanner {
         String planDigest = OperationPlanDigest.compute(
                 request.baseRevisionId(), request.baseContentHash(),
                 request.definitionId().value(), request.version().toString(),
-                Integer.toHexString(request.parameters().hashCode()),
-                List.of(request.target().toString()), List.of(changeKey), candidateHash);
+                parameterDigest,
+                List.of(textTargetKey(request.target())), List.of(changeKey), candidateHash);
         return new OperationPlan(OperationPlan.FORMAT_VERSION, request.baseRevisionId(),
                 request.baseContentHash(), null, changes, candidate, candidateHash,
                 true, planDigest, noOp, false);
@@ -331,12 +332,21 @@ public final class TextOperationPlanner {
      * request (definition, version, target, exact base, typed parameters). No
      * client-supplied id field is introduced here.
      */
-    private static String addSeed(OperationRequest request) {
-        return "ADD_TEXT_ELEMENT|" + request.definitionId().value()
-                + "|" + request.version()
-                + "|" + request.target()
-                + "|" + request.baseRevisionId()
-                + "|" + request.baseContentHash()
-                + "|" + Integer.toHexString(request.parameters().hashCode());
+    private static String addSeed(OperationRequest request, String parameterDigest) {
+        return com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode()
+                .add("text-add-id-v2").add(request.definitionId().value()).add(request.version().toString())
+                .add(textTargetKey(request.target())).add(request.baseRevisionId()).add(request.baseContentHash())
+                .add(parameterDigest).toString();
     }
+    private static String textTargetKey(OperationTargetRequest target) {
+        var key = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode();
+        return switch (target) {
+            case OperationTargetRequest.TimelineTargetRequest timeline ->
+                    key.add("timeline").add(timeline.timelineId()).toString();
+            case OperationTargetRequest.TextElementTargetRequest text ->
+                    key.add("text-element").add(text.timelineId()).add(text.textElementId().value()).toString();
+            default -> throw new TextPlanException("Unsupported Text target");
+        };
+    }
+
 }

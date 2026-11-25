@@ -17,6 +17,8 @@ public final class TimelineBatchSchema {
 
     private static final Map<String, Object> STRING = Map.of("type", "string");
     private static final Map<String, Object> ID = Map.of("type", "string", "minLength", 1);
+    private static final Map<String, Object> SOURCE_ID = Map.of("type", "string", "minLength", 1, "maxLength",
+            com.example.platform.operation.operation.OperationParameters.SourceStreamInput.MAX_ID_LENGTH);
     private static final Map<String, Object> HASH = Map.of("type", "string", "pattern", "^[0-9a-f]{64}$");
     private static final Map<String, Object> POSITIVE = Map.of("type", "integer", "minimum", 1, "maximum", Integer.MAX_VALUE);
     private static final Map<String, Object> ASPECT = object(Map.of("format", literal(CompositionAspectRatio.FORMAT),
@@ -61,7 +63,7 @@ public final class TimelineBatchSchema {
             required.add("target");
         }
         if (!wire.inputKinds().isEmpty()) fields.put("input", object(
-                Map.of("artifactId", ID, "contentDigest", HASH, "streamId", ID), List.of("artifactId", "contentDigest", "streamId")));
+                Map.of("artifactId", SOURCE_ID, "contentDigest", HASH, "streamId", SOURCE_ID), List.of("artifactId", "contentDigest", "streamId")));
         return object(fields, required);
     }
 

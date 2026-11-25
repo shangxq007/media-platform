@@ -2074,6 +2074,7 @@
               "additionalProperties" : false,
               "properties" : {
                 "artifactId" : {
+                  "maxLength" : 256,
                   "minLength" : 1,
                   "type" : "string"
                 },
@@ -2082,6 +2083,7 @@
                   "type" : "string"
                 },
                 "streamId" : {
+                  "maxLength" : 256,
                   "minLength" : 1,
                   "type" : "string"
                 }

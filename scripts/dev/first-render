@@ -218,7 +218,8 @@ try:
    command('check_nle_workflow',['python3','-B',str(HELP/'check_nle_workflow.py')],timeout=300)
   else:
    primary='replace_worker' if a.replace_worker else 'exercise_timeline_split' if a.timeline_split else 'exercise_operation_batch' if a.operation_batch else ('exercise_single_video_no_audio' if a.scenario=='single-video-no-audio' else ('exercise_multi_clip_no_audio' if a.scenario=='multi-clip-no-audio' else ('exercise_timeline_operation_editing' if a.timeline_operation_editing else 'exercise_first_render')))
-   exercises=[primary,
+   exercises=[primary, *(['check_operation_confirmation'] if a.operation_batch and not a.combined_smoke else []),
+             *(['check_operation_confirmation'] if a.operation_batch and not a.combined_smoke else []),
              'check_product','runtime_proof',*(['bmf_render_evidence'] if a.provider=='bmf' and a.scenario=='single-video-no-audio' else []),
              *([] if primary not in ('exercise_first_render','replace_worker') else ['check_media_capabilities']),
              *([] if a.combined_smoke else ['check_cancel'])]

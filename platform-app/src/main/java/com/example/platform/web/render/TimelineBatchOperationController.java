@@ -44,8 +44,11 @@ public class TimelineBatchOperationController {
 
     private static final ObjectMapper BATCH_JSON = new ObjectMapper()
             .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+    static final String CONFIRMATION_PATTERN = "^\"[0-9a-f]{64}\"$";
 
     private final BatchInvocationPort invocations;
     private final TimelineBatchCommandMapper mapper;
@@ -77,7 +80,9 @@ public class TimelineBatchOperationController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(schema = @Schema(implementation = TimelineBatchCommand.class)))
             @RequestBody String body,
-            @org.springframework.web.bind.annotation.RequestHeader(value = "If-Match", required = false) String confirmation) {
+            @io.swagger.v3.oas.annotations.Parameter(required = true, description = "Quoted digest returned by Batch preview",
+                    schema = @Schema(type = "string", pattern = CONFIRMATION_PATTERN))
+            @org.springframework.web.bind.annotation.RequestHeader("If-Match") String confirmation) {
         CanonicalActor actor = requireActor(tenantId, projectId);
         OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, decode(body));
         BatchCommitResult result = invocations.commit(batch,
@@ -89,7 +94,7 @@ public class TimelineBatchOperationController {
 
     private static String planDigest(String confirmation) {
         if (confirmation == null) throw new IllegalArgumentException("Preview digest required in If-Match");
-        if (!confirmation.matches("\"[0-9a-f]{64}\"")) {
+        if (!confirmation.matches(CONFIRMATION_PATTERN)) {
             throw new IllegalArgumentException("If-Match must contain a quoted batch digest");
         }
         return confirmation.substring(1, confirmation.length() - 1);

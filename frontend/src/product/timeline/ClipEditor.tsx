@@ -26,7 +26,7 @@ export const TRIM_PIXELS_PER_SECOND = 80
 const DRAG_THRESHOLD_PX = 4
 
 interface PendingTrim { edge: TrimEdge; delta: Rational }
-interface PreviewedTrim extends PendingTrim { digest: string; clipId: string; revisionId: string; contentHash: string; commandId: string }
+interface PreviewedTrim extends PendingTrim { digest: string; command: ClipEdit }
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
 
@@ -122,7 +122,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   }
 
   useEffect(() => { void refresh(); return () => { generation.current += 1 } }, [head?.revisionId, project.projectId])
-  useEffect(() => { setPending(null); setPreviewed(null); setMoving(null); setRetryCommand(null) }, [head?.revisionId])
+  useEffect(() => { setPending(null); setPreviewed(null); setMoving(null); setRetryCommand(current => current?.digest ? current : null) }, [head?.revisionId, head?.contentHash])
+  useEffect(() => { setRetryCommand(null); setPreviewed(null); setPending(null) }, [project.tenantId, project.projectId])
   useEffect(() => {
     if (focusClipId && clips.some(clip => clip.clipId === focusClipId)) setSelected(focusClipId)
   }, [focusClipId, clips])
@@ -192,12 +193,13 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   }
 
   function cancelTrim() {
-    setPending(null); setPreviewed(null); setActionFailed(false)
-    setMessage('Trim preview discarded. No revision was written.')
+    setPending(null); setPreviewed(null); setRetryCommand(null); setActionFailed(false)
+    setMessage(retryCommand?.digest ? 'Trim retry discarded.' : 'Trim preview discarded. No revision was written.')
   }
 
   async function previewTrim(trimEdge: TrimEdge, deltaValue: Rational) {
     if (!head || !project.tenantId || !active || busy) return
+    setPreviewed(null); setRetryCommand(null)
     if (compare(deltaValue, { numerator: 0n, denominator: 1n }) <= 0) { setPending(null); return }
     setBusy(true); setMessage(''); setActionFailed(false)
     const commandId = commandIdFor(active.clipId, 'TRIM_CLIP', deltaValue, trimEdge)
@@ -207,10 +209,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     }
     try {
       const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
-      setPreviewed({ digest: plan.batchDigest, edge: trimEdge, delta: deltaValue, clipId: active.clipId,
-        revisionId: head.revisionId, contentHash: head.contentHash, commandId })
+      setPreviewed({ digest: plan.batchDigest, edge: trimEdge, delta: deltaValue, command })
       setPending({ edge: trimEdge, delta: deltaValue })
-      setRetryCommand({ command, label: 'Trim', digest: plan.batchDigest })
       const projected = projectTrim(active, trimEdge, deltaValue)
       setMessage(`Preview valid: source ${formatRational(projected.sourceStart)}s → ${formatRational(projected.sourceEnd)}s, `
         + `${toSeconds(projected.duration).toFixed(2)}s visible. Planned changes: ${plan.steps.flatMap(step => step.changes).length}.`)
@@ -220,20 +220,16 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
 
   async function applyTrim() {
     if (!head || !project.tenantId || !active || busy || !previewed) return
-    if (previewed.clipId !== active.clipId || previewed.revisionId !== head.revisionId
-        || previewed.contentHash !== head.contentHash) {
+    if (previewed.command.clipId !== active.clipId || previewed.command.baseRevisionId !== head.revisionId
+        || previewed.command.baseContentHash !== head.contentHash) {
       setPreviewed(null); setActionFailed(true)
       setMessage('The timeline changed after the preview. Preview the trim again.')
       return
     }
-    const command: ClipEdit = {
-      type: 'TRIM_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-      clipId: active.clipId, delta: formatRational(previewed.delta), edge: previewed.edge,
-      commandId: previewed.commandId,
-    }
+    const { command, digest } = previewed
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, previewed.digest)
+      const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, digest)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
@@ -241,7 +237,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       setPending(null); setPreviewed(null); setRetryCommand(null)
       await onRevisionChanged()
       setMessage(`Trim applied at revision ${authoritative.revisionId}.`)
-    } catch (error) { handleFailure(error, 'Trim', command, true) }
+    } catch (error) { handleFailure(error, 'Trim', command, true, digest) }
     finally { setBusy(false) }
   }
 
@@ -543,7 +539,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       { response: { status: 409 } })
   }
 
-  function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean) {
+  function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean, digest?: string) {
     const status = (error as { response?: { status?: number } })?.response?.status
     const conflict = status === 409 || status === 412
     setPreviewed(null); setPending(null); setMoving(null)
@@ -556,7 +552,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     }
     const retryable = keepForRetry && command !== null && (status === undefined || status >= 500)
     if (retryable) {
-      setRetryCommand({ command, label })
+      setRetryCommand({ command, label, digest })
       setMessage(`${label} could not be confirmed (${status ?? 'network error'}). The command is retained for a safe retry with the same command ID; no success is claimed.`)
       return
     }
@@ -578,7 +574,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       setRetryCommand(null)
       await onRevisionChanged()
       setMessage(`${retryCommand.label} applied at revision ${authoritative.revisionId}.`)
-    } catch (error) { handleFailure(error, retryCommand.label, retryCommand.command, true) }
+    } catch (error) { handleFailure(error, retryCommand.label, retryCommand.command, true, retryCommand.digest) }
     finally { setBusy(false) }
   }
 
@@ -656,7 +652,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const ticks = Array.from({ length: Math.floor(stripWidth / (TRIM_PIXELS_PER_SECOND * tickStep)) + 1 },
     (_, index) => index * tickStep)
   const previewValid = previewed !== null && pending !== null
-    && previewed.clipId === active?.clipId && previewed.edge === pending.edge
+    && previewed.command.clipId === active?.clipId && previewed.edge === pending.edge
     && compare(previewed.delta, pending.delta) === 0
   const splitCandidate = type === 'SPLIT_CLIP' && active ? parseRational(splitTime) : null
   const splitMarker = splitCandidate && active
@@ -846,7 +842,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       {' '}(source {formatRational(projectTrim(active, pending.edge, pending.delta).sourceStart)}s →
       {formatRational(projectTrim(active, pending.edge, pending.delta).sourceEnd)}s).
     </p>}
-    {pending && <Button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</Button>}
+    {(pending || retryCommand?.digest) && <Button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</Button>}
     <Button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</Button>
 
     <div className="ff-nle-clip-controls">

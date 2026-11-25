@@ -241,9 +241,11 @@ public sealed interface OperationParameters permits
 
     @org.springframework.modulith.NamedInterface("invocation")
     record SourceStreamInput(String artifactId, String contentDigest, String streamId) {
+        public static final int MAX_ID_LENGTH = 256;
+
         public SourceStreamInput {
-            if (artifactId == null || artifactId.isBlank() || artifactId.length() > 256
-                    || streamId == null || streamId.isBlank() || streamId.length() > 256
+            if (artifactId == null || artifactId.isBlank() || artifactId.codePointCount(0, artifactId.length()) > MAX_ID_LENGTH
+                    || streamId == null || streamId.isBlank() || streamId.codePointCount(0, streamId.length()) > MAX_ID_LENGTH
                     || contentDigest == null || !contentDigest.matches("[0-9a-f]{64}")) {
                 throw new IllegalArgumentException("Invalid immutable source stream reference");
             }

@@ -85,7 +85,7 @@ public final class TimedTextCanonicalSemantics {
         }
     }
 
-    private static ObjectNode styledText(StyledText st) {
+    public static ObjectNode styledText(StyledText st) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("content", st.content().value());
         ArrayNode semantic = MAPPER.createArrayNode();
@@ -113,14 +113,14 @@ public final class TimedTextCanonicalSemantics {
         return node;
     }
 
-    private static ObjectNode range(TextRange r) {
+    public static ObjectNode range(TextRange r) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("start", r.start());
         n.put("end", r.end());
         return n;
     }
 
-    private static ObjectNode style(TextStyle s) {
+    public static ObjectNode style(TextStyle s) {
         ObjectNode n = MAPPER.createObjectNode();
         n.set("fontSelection", fontSelection(s.fontSelection()));
         ObjectNode fs = MAPPER.createObjectNode();
@@ -131,7 +131,7 @@ public final class TimedTextCanonicalSemantics {
         return n;
     }
 
-    private static ObjectNode fontSelection(FontSelectionIntent i) {
+    public static ObjectNode fontSelection(FontSelectionIntent i) {
         ObjectNode n = MAPPER.createObjectNode();
         ArrayNode prefs = MAPPER.createArrayNode();
         for (FontFamilyName f : i.familyPreferences()) {
@@ -158,7 +158,7 @@ public final class TimedTextCanonicalSemantics {
         return n;
     }
 
-    private static ObjectNode variationCoordinate(VariationCoordinate v) {
+    public static ObjectNode variationCoordinate(VariationCoordinate v) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("axis", v.axis().value());
         n.set("coordinate", rational(v.coordinate()));
@@ -178,7 +178,7 @@ public final class TimedTextCanonicalSemantics {
         return n;
     }
 
-    private static ObjectNode paragraphStyle(ParagraphStyle p) {
+    public static ObjectNode paragraphStyle(ParagraphStyle p) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("alignment", p.alignment() == null ? com.fasterxml.jackson.databind.node.NullNode.getInstance() : com.fasterxml.jackson.databind.node.TextNode.valueOf(p.alignment().name()));
         n.put("justification", p.justification() == null ? com.fasterxml.jackson.databind.node.NullNode.getInstance() : com.fasterxml.jackson.databind.node.TextNode.valueOf(p.justification().name()));
@@ -196,7 +196,7 @@ public final class TimedTextCanonicalSemantics {
         return n;
     }
 
-    private static ObjectNode frame(TextFrame f) {
+    public static ObjectNode frame(TextFrame f) {
         ObjectNode n = MAPPER.createObjectNode();
         n.set("widthConstraint", f.widthConstraint() == null ? null : rational(f.widthConstraint()));
         n.set("heightConstraint", f.heightConstraint() == null ? null : rational(f.heightConstraint()));
@@ -207,7 +207,7 @@ public final class TimedTextCanonicalSemantics {
         return n;
     }
 
-    private static ObjectNode fallbackPolicy(FontFallbackPolicy p) {
+    public static ObjectNode fallbackPolicy(FontFallbackPolicy p) {
         ObjectNode n = MAPPER.createObjectNode();
         ArrayNode chain = MAPPER.createArrayNode();
         for (FontFamilyName f : p.defaultChain()) {
@@ -274,7 +274,7 @@ public final class TimedTextCanonicalSemantics {
         return n;
     }
 
-    private static ObjectNode rational(FontRational r) {
+    public static ObjectNode rational(FontRational r) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("numerator", r.numerator().toString());
         n.put("denominator", r.denominator().toString());

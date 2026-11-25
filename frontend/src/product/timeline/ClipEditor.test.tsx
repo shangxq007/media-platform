@@ -1,9 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormalRenderAPI } from '../../api/formal-render'
+import { versionlessApi } from '../../api/app/versionless-api'
 import { ClipEditor } from './ClipEditor'
 import type { CanonicalHeadReference } from './gateways'
 import { contentHash, projectId, revisionId, timelineId } from './types'
+
+vi.mock('../../api/oidc-transport', () => ({
+  sessionBoundRequest: async (call: (config: object) => Promise<{ data: unknown }>) => (await call({})).data,
+}))
 
 vi.mock('../../foundation/projectContext', () => ({
   useProjectContext: () => ({ workspaceId: 'workspace-1', tenantId: 'tenant-1',
@@ -96,6 +101,44 @@ describe('ClipEditor trim interaction', () => {
     expect(await screen.findByText(/Trim applied at revision revision-R1/)).toBeTruthy()
   })
 
+  it.each(['lost committed response', 'retryable server error'])('retries the exact confirmed HTTP trim after %s', async failure => {
+    const { FormalRenderAPI: gateway } = await vi.importActual<typeof import('../../api/formal-render')>('../../api/formal-render')
+    const trace: { action: string; body: string; confirmation?: string }[] = []
+    let committed = false
+    let revisions = 0
+    const transport = vi.spyOn(versionlessApi, 'post').mockImplementation(async (path, body, config) => {
+      const action = path.substring(path.lastIndexOf('/') + 1)
+      trace.push({ action, body: JSON.stringify(body), confirmation: config?.headers?.['If-Match'] as string | undefined })
+      if (action === 'preview') return { data: { batchDigest: 'a'.repeat(64), steps: [{ changes: [] }] } }
+      if (trace.length === 2 && failure === 'retryable server error') throw Object.assign(new Error('unavailable'), { response: { status: 503 } })
+      if (!committed) { committed = true; revisions++ }
+      if (trace.length === 2) throw new Error('Response lost after commit')
+      return { data: { status: 'APPLIED', newRevisionId: 'revision-R1', newContentHash: 'B'.repeat(42) + 'E=' } }
+    })
+    try {
+      api.previewOperation.mockImplementationOnce(gateway.previewOperation.bind(gateway))
+      api.applyConfirmedClip.mockImplementationOnce(gateway.applyConfirmedClip.bind(gateway))
+        .mockImplementationOnce(gateway.applyConfirmedClip.bind(gateway))
+      const { onRevisionChanged } = renderEditor()
+      const handle = await screen.findByLabelText('Trim start edge clip-0')
+      fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+      fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 })
+      fireEvent.pointerUp(handle, { clientX: 180, pointerId: 1 })
+      await screen.findByText(/Preview valid/)
+      expect(screen.queryByRole('button', { name: /Retry Trim/ })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Apply trim' }))
+      fireEvent.click(await screen.findByRole('button', { name: /Retry Trim/ }))
+      await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledOnce())
+      expect(trace.map(row => row.action)).toEqual(['preview', 'apply', 'apply'])
+      expect(trace[1]).toEqual(trace[2])
+      expect(trace[1].body).toBe(trace[0].body)
+      expect(trace[1].confirmation).toBe('"'+ 'a'.repeat(64) +'"')
+      expect(revisions).toBe(1)
+      expect(api.applyOperation).not.toHaveBeenCalled()
+      console.info('G4_TRIM_TRACE', JSON.stringify({ failure, revisions, trace }))
+    } finally { transport.mockRestore() }
+  })
+
   it('cancelling a pending trim never writes a revision', async () => {
     renderEditor()
     await waitFor(() => expect(screen.getByLabelText('Trim start edge clip-0')).toBeTruthy())
@@ -107,6 +150,9 @@ describe('ClipEditor trim interaction', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel trim' }))
     expect(api.applyConfirmedClip).not.toHaveBeenCalled()
     expect(await screen.findByText(/No revision was written/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Retry Trim/ })).toBeNull()
+    expect((screen.getByRole('button', { name: 'Apply trim' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(api.applyOperation).not.toHaveBeenCalled()
   })
 
   it('shows the canonical rejection and keeps apply disabled', async () => {

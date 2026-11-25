@@ -58,6 +58,12 @@ public record CompositionAspectRatio(int numerator, int denominator) {
     }
 
     private static int exactInt(Object value) {
+        try {
+            if (value instanceof java.math.BigDecimal decimal) return decimal.intValueExact();
+            if (value instanceof java.math.BigInteger integer) return integer.intValueExact();
+        } catch (ArithmeticException invalid) {
+            throw new IllegalArgumentException("Composition aspect components must be exact bounded integers", invalid);
+        }
         if (value instanceof Integer exact) return exact;
         if (value instanceof Long exact && exact >= 1 && exact <= Integer.MAX_VALUE) return exact.intValue();
         throw new IllegalArgumentException("Composition aspect components must be exact bounded integers");

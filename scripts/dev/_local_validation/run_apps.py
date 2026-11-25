@@ -54,6 +54,8 @@ roles = ['api'] if combined else ['api', 'worker']
 provider_comparison = provider == 'bmf' and scenario == 'nle-multitrack' and not combined
 if provider_comparison:
  roles.extend(['api-ffmpeg', 'api-preferred'])
+if scenario == 'operation-batch' and not combined:
+ roles.append('api-replay')
 if combined:
  base['SPRING_PROFILES_ACTIVE'] = 'pg18-integration,temporal,ffmpeg-worker'
  base['SPRING_MAIN_WEB_APPLICATION_TYPE'] = 'servlet'
@@ -65,6 +67,8 @@ for role in roles:
  e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role.startswith('api-') else role.upper()}
  runtime_db_role = database_roles[role]
  e.update(SPRING_DATASOURCE_USERNAME=runtime_db_role, SPRING_DATASOURCE_PASSWORD=(R/'07-runtime/private-correction'/(runtime_db_role+'-password')).read_text())
+ if role=='api-replay':
+  e.update(SERVER_PORT='18082')
  if role=='api-ffmpeg':
   e.update(SERVER_PORT='18082',PLATFORM_RENDER_MEDIA_PROVIDER='ffmpeg')
  if role=='api-preferred':
@@ -84,9 +88,8 @@ libs=R/'03-build/outputs/_platform-app/libs'
 commands['api']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-env.json'),str(next(p for p in libs.glob('*.jar') if p.name not in ['platform-ffmpeg-worker.jar'] and not p.name.endswith('-plain.jar')))]
 if not combined:
  commands['worker']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'worker-env.json'),str(libs/'platform-ffmpeg-worker.jar')]
-if provider_comparison:
- for name in ('api-ffmpeg', 'api-preferred'):
-  commands[name]=prefix+['/usr/bin/python3','-B',str(launcher),str(out/(name+'-env.json')),commands['api'][-1]]
+for name in [role for role in roles if role.startswith('api-')]:
+ commands[name]=prefix+['/usr/bin/python3','-B',str(launcher),str(out/(name+'-env.json')),commands['api'][-1]]
 if '--bootstrap' in sys.argv:
  control=out/'bootstrap-control';control.mkdir(mode=0o700)
  secret_names=set()

@@ -138,6 +138,40 @@ class TextOperationPlannerTest {
     }
 
     @Test
+    void typedTextDigestsFrameAllNineOperationsAndDistinguishJavaHashCollisions() {
+        var id = new TextElementId("title-1");
+        var range = TextRange.of(0, 2);
+        var styled = styledText("Aa");
+        var style = styled.styleRuns().getFirst().style();
+        var width320 = new TextFrame(FontRational.whole(320), null, TextFrame.HorizontalAlignment.CENTER,
+                TextFrame.VerticalAlignment.TOP, ParagraphStyle.WrapPolicy.WRAP, TextFrame.OverflowBehavior.CLIP);
+        var parameters = List.of(
+                new OperationParameters.AddTextElementParameters(styled, frame(), fallback(), FontRational.whole(0), FontRational.whole(5)),
+                new OperationParameters.RemoveTextElementParameters(id),
+                new OperationParameters.ReplaceTextContentParameters(id, new TextContent("Aa")),
+                new OperationParameters.SetTextStyleRangeParameters(id, range, style),
+                new OperationParameters.SetParagraphStyleParameters(id, styled.paragraphStyle()),
+                new OperationParameters.SetFontSelectionParameters(id, range, style.fontSelection()),
+                new OperationParameters.SetFontFallbackPolicyParameters(id, fallback()),
+                new OperationParameters.SetVariableFontAxisParameters(id, new VariationCoordinate(VariationAxisTag.WEIGHT, FontRational.whole(700))),
+                new OperationParameters.SetTextLayoutParameters(id, width320));
+        var digests = new java.util.HashSet<String>();
+        for (OperationParameters value : parameters) {
+            var definition = OperationDefinition.V1.ALL.stream()
+                    .filter(d -> d.parameterType().equals(value.getClass())).findFirst().orElseThrow();
+            var digest = com.example.platform.operation.operation.ParameterDigest.compute(definition.definitionId(), definition.version(), value);
+            assertTrue(digests.add(digest));
+            if (value instanceof OperationParameters.ReplaceTextContentParameters) {
+                var collision = new OperationParameters.ReplaceTextContentParameters(id, new TextContent("BB"));
+                assertEquals(value.hashCode(), collision.hashCode());
+                assertNotEquals(digest, com.example.platform.operation.operation.ParameterDigest.compute(
+                        definition.definitionId(), definition.version(), collision));
+            }
+        }
+        assertEquals(9, digests.size());
+    }
+
+    @Test
     void allNineDefinitionsExistAndAreTyped() {
         List<OperationDefinition> textDefinitions = List.of(
                 OperationDefinition.V1.ADD_TEXT_ELEMENT, OperationDefinition.V1.REMOVE_TEXT_ELEMENT,

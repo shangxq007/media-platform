@@ -1,6 +1,7 @@
 package com.example.platform.operation.operation;
 
-import com.example.platform.operation.operation.OperationDefinitionVersion;
+import com.example.platform.timeline.canonical.TimedTextCanonicalSemantics;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -161,19 +162,8 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.UpdateSyncAnchorParameters ua) {
             return "sync-anchor(" + ua.localAnchorA() + "," + ua.localAnchorB() + ")";
         }
-        // ROADMAP_19 / P2-5.5: nine typed Text operations. Value-based components
-        // (records/classes with value equality) yield a deterministic parameter
-        // serialization; the text plan digest itself is owned by TextOperationPlanner.
-        if (p instanceof OperationParameters.AddTextElementParameters
-                || p instanceof OperationParameters.RemoveTextElementParameters
-                || p instanceof OperationParameters.ReplaceTextContentParameters
-                || p instanceof OperationParameters.SetTextStyleRangeParameters
-                || p instanceof OperationParameters.SetParagraphStyleParameters
-                || p instanceof OperationParameters.SetFontSelectionParameters
-                || p instanceof OperationParameters.SetFontFallbackPolicyParameters
-                || p instanceof OperationParameters.SetVariableFontAxisParameters
-                || p instanceof OperationParameters.SetTextLayoutParameters) {
-            return "text(" + p.getClass().getSimpleName() + "," + Integer.toHexString(p.hashCode()) + ")";
+        if (p instanceof OperationParameters.AddTextElementParameters || p instanceof OperationParameters.TextElementEdit) {
+            return textFields(p);
         }
         if (p instanceof OperationParameters.CreateAlignmentParameters cap) {
             // L5 lineage: deterministic canonical serialization — endpoints sorted by value,
@@ -184,6 +174,34 @@ public final class ParameterDigest {
                     + ",attributes=" + sortedAttributes(cap.attributes()) + ")";
         }
         throw new IllegalArgumentException("unknown parameters: " + p.getClass());
+    }
+
+    /** An ordered JSON tuple frames each field, using the authored TimedText encoding for structured values. */
+    private static String textFields(OperationParameters parameters) {
+        var fields = JsonNodeFactory.instance.arrayNode().add("text-parameters-v2");
+        if (parameters instanceof OperationParameters.TextElementEdit edit) {
+            fields.add(edit.textElementId().value());
+        }
+        switch (parameters) {
+            case OperationParameters.AddTextElementParameters p -> fields
+                    .add(TimedTextCanonicalSemantics.styledText(p.styledText()))
+                    .add(TimedTextCanonicalSemantics.frame(p.frame()))
+                    .add(TimedTextCanonicalSemantics.fallbackPolicy(p.fallbackPolicy()))
+                    .add(TimedTextCanonicalSemantics.rational(p.start()))
+                    .add(TimedTextCanonicalSemantics.rational(p.duration()));
+            case OperationParameters.RemoveTextElementParameters ignored -> { }
+            case OperationParameters.ReplaceTextContentParameters p -> fields.add(p.content().value());
+            case OperationParameters.SetTextStyleRangeParameters p -> fields
+                    .add(TimedTextCanonicalSemantics.range(p.range())).add(TimedTextCanonicalSemantics.style(p.style()));
+            case OperationParameters.SetParagraphStyleParameters p -> fields.add(TimedTextCanonicalSemantics.paragraphStyle(p.paragraphStyle()));
+            case OperationParameters.SetFontSelectionParameters p -> fields
+                    .add(TimedTextCanonicalSemantics.range(p.range())).add(TimedTextCanonicalSemantics.fontSelection(p.fontSelection()));
+            case OperationParameters.SetFontFallbackPolicyParameters p -> fields.add(TimedTextCanonicalSemantics.fallbackPolicy(p.fallbackPolicy()));
+            case OperationParameters.SetVariableFontAxisParameters p -> fields.add(TimedTextCanonicalSemantics.variationCoordinate(p.coordinate()));
+            case OperationParameters.SetTextLayoutParameters p -> fields.add(TimedTextCanonicalSemantics.frame(p.frame()));
+            default -> throw new IllegalArgumentException("Unknown Text parameters");
+        }
+        return fields.toString();
     }
 
     private static String sortedUnits(
