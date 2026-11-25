@@ -258,6 +258,63 @@ describe('runtime NLE operation workspace', () => {
     expect(revisionSpy).toHaveBeenCalledTimes(2)
   })
 
+  it('invalidates the previous restore immediately when another historical detail is pending', async () => {
+    const other = { ...olderRevision, id: revisionId('revision-other'), message: 'Other historical revision' }
+    const queries = new ScriptedTimelineQueryGateway({
+      head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision, other] },
+      detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
+    })
+    const detailResponse = deferred<GatewayResult<RevisionDetail>>()
+    vi.spyOn(queries, 'getRevision').mockResolvedValueOnce({ ok: true, value: olderDetail })
+      .mockImplementationOnce(() => detailResponse.promise)
+    vi.spyOn(FormalRenderAPI, 'previewRestore').mockImplementation(async (_tenant, _project, body) => ({
+      batchId: body.batchId, baseRevisionId: body.baseRevisionId, baseContentHash: body.baseContentHash,
+      finalCandidateHash: HASH_B, noOp: false, batchDigest: HASH_C, steps: [],
+    }))
+    const commit = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    renderWorkspace(new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied }), queries)
+    fireEvent.click((await screen.findByText('Older')).closest('button')!)
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview restore' }))
+    const oldConfirm = await screen.findByRole('button', { name: 'Confirm restore' })
+    fireEvent.click(screen.getByText(other.message).closest('button')!)
+    expect(screen.queryByRole('button', { name: 'Confirm restore' })).toBeNull()
+    fireEvent.click(oldConfirm)
+    expect(commit).not.toHaveBeenCalled()
+    await act(async () => detailResponse.resolve({ ok: true, value: { ...olderDetail, revision: other } }))
+    expect(await screen.findByRole('button', { name: 'Preview restore' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Confirm restore' })).toBeNull()
+  })
+
+  it('keeps a submitted historical restore owned through a lost response and exact retry', async () => {
+    const queries = new ScriptedTimelineQueryGateway({
+      head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision] },
+      detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
+    })
+    const previewRestore = vi.spyOn(FormalRenderAPI, 'previewRestore').mockImplementation(async (_tenant, _project, body) => ({
+      batchId: body.batchId, baseRevisionId: body.baseRevisionId, baseContentHash: body.baseContentHash,
+      finalCandidateHash: HASH_B, noOp: false, batchDigest: HASH_C, steps: [],
+    }))
+    const commit = vi.spyOn(FormalRenderAPI, 'commitBatch')
+      .mockRejectedValueOnce(new Error('lost response'))
+      .mockResolvedValueOnce({ revisionId: appliedHead.revisionId, contentHash: HASH_B })
+    renderWorkspace(new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied }), queries)
+    fireEvent.click((await screen.findByText('Older')).closest('button')!)
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview restore' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm restore' }))
+    const retry = await screen.findByRole('button', { name: 'Retry confirmed restore' })
+    expect((screen.getByText('Base').closest('button') as HTMLButtonElement).disabled).toBe(true)
+    expect(commit.mock.calls[0][5]?.aborted).toBe(false)
+    queries.headResult = { ok: true, value: appliedHead }
+    queries.historyResult = { ok: true, value: [appliedRevision, revision, olderRevision] }
+    fireEvent.click(retry)
+    await screen.findByText(/Restore accepted as revision revision-R1/)
+    expect(previewRestore).toHaveBeenCalledOnce()
+    expect(commit).toHaveBeenCalledTimes(2)
+    expect(commit.mock.calls[1].slice(0, 5)).toEqual(commit.mock.calls[0].slice(0, 5))
+    expect(commit.mock.calls[1][2]).toBe(commit.mock.calls[0][2])
+    expect(commit.mock.calls[1][4]).toBe(HASH_C)
+  })
+
   it('previews, explicitly confirms, and changes canonical HEAD only after APPLIED', async () => {
     const commands = new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied })
     const queries = queryGateway()

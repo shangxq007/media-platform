@@ -22,6 +22,9 @@ import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
 import com.example.platform.operation.application.CanonicalBatchInvocationService;
 import com.example.platform.operation.application.TimelineBatchTargetDomain;
+import com.example.platform.outbox.app.OutboxEventRouter;
+import com.example.platform.outbox.app.OutboxEventService;
+import com.example.platform.outbox.app.PostgresNotificationService;
 import com.example.platform.shared.authorization.AuthorizationDecision;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.CanonicalActor;
@@ -34,6 +37,8 @@ import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
+import com.example.platform.timeline.api.event.TimelineOutboxEvents;
+import com.example.platform.timeline.api.event.TimelineRestoredEvent;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
 import com.example.platform.timeline.app.ProjectRevisionNumberAllocator;
@@ -49,6 +54,9 @@ import com.example.platform.timeline.canonical.TimelineMetadata;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
+import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
+import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
 import com.example.platform.timeline.semantics.relationship.GroupId;
 import com.example.platform.timeline.semantics.relationship.SyncRelationship;
@@ -105,6 +113,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     private static Flyway flyway;
 
     private TimelineRevisionSaveService saveService;
+    private OutboxEventService outbox;
+    private OutboxEventRouter eventRouter;
     private StubAuthorization authorization;
     private CanonicalBatchInvocationService batch;
     private TimelineContentDigester digester;
@@ -150,10 +160,9 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         var snapshotService = new TimelineSnapshotService(dsl);
         var artifactQuery = new JooqArtifactQueryService(
                 new ArtifactRepository(dsl), new ArtifactRelationRepository(dsl));
-        var outbox = new com.example.platform.outbox.app.OutboxEventService(dsl, 3,
-                new com.example.platform.outbox.app.PostgresNotificationService(jdbc),
-                new com.example.platform.outbox.app.OutboxEventRouter(
-                        List.of(new com.example.platform.timeline.api.event.TimelineOutboxEvents())));
+        eventRouter = new OutboxEventRouter(List.of(new TimelineOutboxEvents()));
+        outbox = org.mockito.Mockito.spy(new OutboxEventService(dsl, 3,
+                new PostgresNotificationService(jdbc), eventRouter));
         authorization = new StubAuthorization();
         saveService = new TimelineRevisionSaveService(
                 dsl,
@@ -557,6 +566,118 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertNull(second.newRevisionId());
         assertEquals(1, count("timeline.timeline_revision"));
         assertEquals(1, count("timeline.apply_command"));
+    }
+
+    @Test
+    void restoreEffectOnlyChangeAndReplayPublishExactlyOneScopedFact() {
+        TimelineRevision a = revisionWithEffect(null, "4");
+        TimelineRevision b = revisionWithEffect(a.revisionId(), "99");
+        assertEquals(hash(a), hash(b));
+        assertNotEquals(a.semanticContext().revisionSemanticDigest(), b.semanticContext().revisionSemanticDigest());
+        var request = restoreRequest("restore-effect-only", b, a);
+        var actor = mutation().actor();
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        assertEquals(hash(a), preview.finalCandidateHash());
+        assertEquals(false, preview.noOp());
+        assertEquals("APPLIED", preview.outcomes().getFirst().status());
+        var context = OperationBatchContext.apply(request.batchId(), actor, null, "test", preview.batchDigest());
+        var result = batch.commit(request, context);
+        assertEquals(BatchCommitResult.APPLIED, result.status());
+        assertEquals(result.newRevisionId(), head());
+        assertEquals(b.revisionId(), parentOf(result.newRevisionId()));
+        var c = saveService.findById(TENANT, result.newRevisionId());
+        assertEquals(a.semanticContext(), c.semanticContext());
+        assertEquals(3, count("timeline.timeline_revision"));
+        var replay = batch.commit(request, context);
+        assertTrue(replay.replayed());
+        assertEquals(c.revisionId(), replay.newRevisionId());
+        assertEquals(3, count("timeline.timeline_revision"));
+        var events = jdbc.queryForList("""
+                select event_version, aggregate_id, aggregate_type, payload
+                from infrastructure.outbox_events where event_type='timeline.restored'
+                """);
+        assertEquals(1, events.size());
+        var row = events.getFirst();
+        assertEquals(2, ((Number) row.get("event_version")).intValue());
+        var fact = (TimelineRestoredEvent) eventRouter.decode("timeline.restored", 2,
+                (String) row.get("aggregate_type"), (String) row.get("aggregate_id"), row.get("payload").toString()).payload();
+        assertEquals(c.revisionId(), fact.newRevisionId());
+        assertEquals(a.revisionId(), fact.restoredFromRevisionId());
+        assertEquals(TENANT, fact.tenantId());
+        assertEquals(PROJECT, fact.projectId());
+        assertEquals(ACTOR, fact.authorUserId());
+    }
+
+    @Test
+    void restoreIdenticalCompleteSemanticsIsNoOpEvenWithDifferentSnapshotHandles() {
+        TimelineRevision a = revisionWithEffect(null, "4");
+        TimelineRevision b = revisionWithEffect(a.revisionId(), "4");
+        assertNotEquals(a.semanticContext().effectReference().snapshotId(), b.semanticContext().effectReference().snapshotId());
+        assertEquals(a.semanticContext().revisionSemanticDigest(), b.semanticContext().revisionSemanticDigest());
+        var request = restoreRequest("restore-equal-effect", b, a);
+        var actor = mutation().actor();
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        assertTrue(preview.noOp());
+        assertEquals("NO_OP", preview.outcomes().getFirst().status());
+        var result = batch.commit(request, OperationBatchContext.apply(
+                request.batchId(), actor, null, "test", preview.batchDigest()));
+        assertEquals(BatchCommitResult.NO_OP, result.status());
+        assertEquals(b.revisionId(), head());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(0, eventCount("timeline.restored"));
+    }
+
+    @Test
+    void restoreEventAppendFailureRollsBackRevisionHeadCommandAndOutbox() {
+        TimelineRevision a = revisionWithEffect(null, "4");
+        TimelineRevision b = revisionWithEffect(a.revisionId(), "99");
+        var request = restoreRequest("restore-effect-rollback", b, a);
+        var actor = mutation().actor();
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        int created = eventCount("timeline.revision.created");
+        org.mockito.Mockito.doAnswer(call -> {
+            assertNotNull(call.callRealMethod());
+            DSLContext transaction = call.getArgument(1);
+            assertEquals(1, transaction.fetchOne("select count(*) from infrastructure.outbox_events where event_type='timeline.restored'")
+                    .get(0, Integer.class));
+            throw new IllegalStateException("injected failure after restore outbox insert");
+        }).when(outbox).appendInTransaction(org.mockito.ArgumentMatchers.argThat(
+                item -> item.type() == TimelineOutboxEvents.RESTORED), org.mockito.ArgumentMatchers.any());
+
+        assertThrows(IllegalStateException.class, () -> batch.commit(request, OperationBatchContext.apply(
+                request.batchId(), actor, null, "test", preview.batchDigest())));
+        assertEquals(b.revisionId(), head());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(2, count("timeline.timeline_snapshot"));
+        assertEquals(0, count("timeline.apply_command"));
+        assertEquals(0, eventCount("timeline.restored"));
+        assertEquals(created, eventCount("timeline.revision.created"));
+    }
+
+    private int eventCount(String type) {
+        return jdbc.queryForObject("select count(*) from infrastructure.outbox_events where event_type=?", Integer.class, type);
+    }
+
+    private OperationBatchRequest restoreRequest(String id, TimelineRevision base, TimelineRevision source) {
+        var definition = OperationDefinition.V3.RESTORE_REVISION;
+        var step = new OperationRequest(definition.definitionId(), definition.version(),
+                new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                new OperationParameters.RestoreRevisionParameters(source.revisionId()), base.revisionId(), hash(base), null);
+        return new OperationBatchRequest(id, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(step), null);
+    }
+
+    private TimelineRevision revisionWithEffect(String parent, String radius) {
+        var effect = new EffectInstance("blur", "definition-blur", "1", EffectInstance.EffectMediaType.VIDEO, true,
+                new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(2, 1)),
+                Map.of("radiusPixels", radius), Map.of(), new ClipEffectTarget("video-main", "clip-a"),
+                EffectInstance.EffectProvenance.untracked());
+        var definition = new EffectInstance.EffectDefinition("definition-blur", "1", EffectInstance.EffectCategory.GAUSSIAN_BLUR,
+                List.of(EffectInstance.EffectMediaType.VIDEO),
+                Map.of("radiusPixels", new EffectInstance.ParameterSchema("radiusPixels", "string", null, null, "4", List.of())),
+                EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION, List.of("radiusPixels"),
+                List.of("video.effect.gaussian-blur"), List.of());
+        return saveService.saveRevisionWithEffects(mutation(), parent, twoClipDocument(), List.of(effect), List.of(definition));
     }
 
     @Test

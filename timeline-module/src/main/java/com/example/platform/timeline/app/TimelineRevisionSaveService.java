@@ -198,9 +198,12 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         SaveOutcome outcome = saveRevisionInternal(targetRef.tenantId(), targetRef.projectId(), expectedCurrentRevisionId,
                 source.document(), java.util.List.of(), java.util.List.of(), context.authorUserId(),
                 Objects.requireNonNull(command, "command"), targetRef, java.util.List.of(), "restore", null,
-                provenance, source);
+                provenance, new RestoreCommit(sourceRevisionId, source));
         return commandResult(outcome, expectedCurrentRevisionId);
     }
+
+    private record RestoreCommit(String sourceRevisionId,
+                                 HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision verified) {}
 
     private static RevisionWriteResult commandResult(SaveOutcome outcome, String expectedCurrentRevisionId) {
         if (outcome.replayed()) {
@@ -320,7 +323,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             String revisionSource,
             String mergeBaseRevisionId,
             com.example.platform.timeline.api.revision.RevisionProvenance provenance,
-            HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision restoredSource) {
+            RestoreCommit restoredSource) {
         requireOwnedProject(tenantId, productId);
         if (command != null && (commandTargetRef == null
                 || !productId.equals(commandTargetRef.projectId())
@@ -408,7 +411,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             // H(timelineDigest, contractVersion, effectContentDigest).
             var effectRef = restoredSource == null
                     ? effectSnapshotAuthority.mintAndPersistTx(tx.dsl(), productId, tenantId, effects, definitions, document).reference()
-                    : restoredSource.effectReference();
+                    : restoredSource.verified().effectReference();
             String revisionSemanticDigest =
                     com.example.platform.timeline.semantics.effect.TimelineRevisionEffectSemanticCommitment
                             .revisionEffectSemanticDigest(timelineDigest, effectRef);
@@ -516,6 +519,13 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             outbox.appendInTransaction(
                     TimelineOutboxEvents.REVISION_CREATED.append(tenantId, revisionCreatedFact, null), tx.dsl());
 
+            if (restoredSource != null) {
+                var restored = new TimelineRestoredEvent(
+                        new TimelineRevisionIdentity(tenantId, productId, revisionId),
+                        new TimelineRevisionIdentity(tenantId, productId, restoredSource.sourceRevisionId()),
+                        createdBy, Instant.now());
+                outbox.appendInTransaction(TimelineOutboxEvents.RESTORED.append(tenantId, restored, restored.factKey()), tx.dsl());
+            }
             if(!additionalParents.isEmpty()) {
                 var fact=new TimelineMergedEvent(new TimelineRevisionIdentity(tenantId,productId,revisionId),
                     new TimelineRevisionIdentity(tenantId,productId,mergeBaseRevisionId),
@@ -853,9 +863,9 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<TimelineDocument> findRestoreSource(String projectId, String tenantId, String revisionId) {
+    public Optional<RestoreSource> findRestoreSource(String projectId, String tenantId, String revisionId) {
         return verifiedRestoreSource(projectId, tenantId, revisionId)
-                .map(HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision::document);
+                .map(verified -> new RestoreSource(verified.document(), verified.fullRevisionSemanticDigest()));
     }
 
     private Optional<HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision> verifiedRestoreSource(

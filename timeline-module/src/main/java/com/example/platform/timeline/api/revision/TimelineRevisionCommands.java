@@ -80,7 +80,9 @@ TimelineRevision restoreRevision(
             String expectedCurrentRevisionId);
 
 /** Loads verified immutable historical state for Operation planning within the exact project. */
-Optional<TimelineDocument> findRestoreSource(String projectId, String tenantId, String revisionId);
+record RestoreSource(TimelineDocument document, String semanticDigest) {}
+
+Optional<RestoreSource> findRestoreSource(String projectId, String tenantId, String revisionId);
 
 RevisionWriteResult saveRestoreForCommand(TimelineMutationContext context, RevisionRef targetRef,
             String expectedCurrentRevisionId, String sourceRevisionId, String candidateHash,

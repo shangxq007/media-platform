@@ -11,10 +11,11 @@ interface RestorePreview {
   noOp: boolean
 }
 
-export function RestoreRevisionControl({ head, source, tenantId, onApplying, onRefresh }: {
+export function RestoreRevisionControl({ head, source, tenantId, onApplying, onRefresh, canStart }: {
   head: CanonicalHeadReference
   source: string
   tenantId: string
+  canStart: () => boolean
   onApplying: (busy: boolean) => void
   onRefresh: (message: string) => Promise<void>
 }) {
@@ -25,7 +26,7 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
   useEffect(() => () => request.current?.abort(), [])
 
   async function preview() {
-    if (request.current || phase !== 'idle') return
+    if (request.current || phase !== 'idle' || !canStart()) return
     const controller = new AbortController()
     request.current = controller
     setPhase('previewing')
@@ -49,12 +50,13 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
   }
 
   async function apply() {
-    if (!plan || request.current) return
+    if (!plan || request.current || !canStart()) return
     const controller = new AbortController()
     request.current = controller
     setPhase('applying')
     setMessage('')
     onApplying(true)
+    let retainOwnership = false
     try {
       const accepted = await FormalRenderAPI.commitBatch(tenantId, head.projectId, plan.body,
         plan.body.baseRevisionId, plan.digest, controller.signal)
@@ -69,6 +71,7 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
         setPlan(null)
         await onRefresh('The restore confirmation is stale. Select the source and preview again.')
       } else if (status === undefined || status >= 500 || status === 429) {
+        retainOwnership = true
         setPhase('retry')
         setMessage('Restore could not be confirmed. Retry sends the original confirmed request.')
         return
@@ -78,7 +81,7 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
       }
     } finally {
       request.current = null
-      onApplying(false)
+      if (!retainOwnership) onApplying(false)
     }
     if (!controller.signal.aborted) setPhase('idle')
   }
@@ -93,7 +96,7 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
       <Button variant="primary" disabled={phase === 'applying'} onClick={() => void apply()}>
         {phase === 'retry' ? 'Retry confirmed restore' : 'Confirm restore'}
       </Button>
-      <Button disabled={phase === 'applying'} onClick={() => { setPlan(null); setPhase('idle'); setMessage('') }}>Discard restore</Button>
+      <Button disabled={phase === 'applying'} onClick={() => { setPlan(null); setPhase('idle'); setMessage(''); onApplying(false) }}>Discard restore</Button>
     </>}
     {message && <p role="alert">{message}</p>}
   </section>

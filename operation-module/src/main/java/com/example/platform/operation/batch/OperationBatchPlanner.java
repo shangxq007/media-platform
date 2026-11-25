@@ -31,6 +31,7 @@ public final class OperationBatchPlanner {
         String previousHash = request.baseContentHash();
         List<BatchStepDescriptor> steps = new ArrayList<>(request.operations().size());
         List<BatchStepOutcome> outcomes = new ArrayList<>(request.operations().size());
+        Boolean completeRevisionNoOp = null;
 
         for (int index = 0; index < request.operations().size(); index++) {
             OperationRequest operation = request.operations().get(index);
@@ -64,9 +65,16 @@ public final class OperationBatchPlanner {
                     candidateHash, step.changes(), operation.parameters() instanceof
                             com.example.platform.operation.operation.OperationParameters.CompositionAspectParameters aspect
                             ? aspect.input() : null));
+            if (step.completeRevisionNoOp() != null) {
+                if (request.operations().size() != 1) {
+                    throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, index,
+                            "Complete revision replacement requires a single-operation batch");
+                }
+                completeRevisionNoOp = step.completeRevisionNoOp();
+            }
+            boolean stepNoOp = completeRevisionNoOp == null ? candidateHash.equals(previousHash) : completeRevisionNoOp;
             outcomes.add(new BatchStepOutcome(index,
-                    candidateHash.equals(previousHash)
-                            ? BatchStepOutcome.NO_OP : BatchStepOutcome.APPLIED,
+                    stepNoOp ? BatchStepOutcome.NO_OP : BatchStepOutcome.APPLIED,
                     step.stepPlanDigest()));
             previousHash = candidateHash;
             candidate = step.candidate();
@@ -81,7 +89,7 @@ public final class OperationBatchPlanner {
                     "final candidate validation failed: " + failure.getMessage(), failure);
         }
         String finalHash = domain.digest(candidate);
-        boolean noOp = finalHash.equals(request.baseContentHash());
+        boolean noOp = completeRevisionNoOp == null ? finalHash.equals(request.baseContentHash()) : completeRevisionNoOp;
         String batchDigest = OperationBatchDigest.compute(request, steps, finalHash);
         return new OperationBatchPlan<>(OperationBatchPlan.FORMAT_VERSION, request.batchId(),
                 request.target(), request.baseRevisionId(), request.baseContentHash(),

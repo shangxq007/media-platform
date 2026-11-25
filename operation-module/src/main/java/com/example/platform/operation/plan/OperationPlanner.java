@@ -90,28 +90,33 @@ public final class OperationPlanner {
             default -> throw new PlanException(PlanErrorCode.INVALID_PLAN,
                     "unsupported operation " + instance.definitionId());
         };
-        return finish(instance, candidate, changes);
+        return finish(instance, candidate, changes, List.of(), null);
     }
 
     /** Plans a restore from the scoped historical state resolved by the batch domain. */
-    public OperationPlan planRestore(OperationInstance instance, TimelineDocument historical) {
+    public OperationPlan planRestore(OperationInstance instance, TimelineDocument historical,
+                                     String baseSemanticDigest, String sourceSemanticDigest) {
         if (!instance.definitionId().equals(com.example.platform.operation.operation.OperationDefinition.V3.RESTORE_REVISION.definitionId())
                 || !(instance.parameters() instanceof OperationParameters.RestoreRevisionParameters restore)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "A resolved restore operation is required");
         }
-        return finish(instance, historical, List.of(new PlannedChange.RevisionRestored(restore.sourceRevisionId())));
+        return finish(instance, historical, List.of(new PlannedChange.RevisionRestored(restore.sourceRevisionId())),
+                List.of(baseSemanticDigest, sourceSemanticDigest), sourceSemanticDigest.equals(baseSemanticDigest));
     }
 
-    private OperationPlan finish(OperationInstance instance, TimelineDocument candidate, List<PlannedChange> changes) {
+    private OperationPlan finish(OperationInstance instance, TimelineDocument candidate, List<PlannedChange> changes,
+                                 List<String> semanticIdentities, Boolean semanticNoOp) {
         String candidateHash = digester.digest(candidate);
-        boolean noOp = candidateHash.equals(instance.baseContentHash());
+        boolean noOp = semanticNoOp == null ? candidateHash.equals(instance.baseContentHash()) : semanticNoOp;
+        var digestChanges = new ArrayList<>(OperationPlanDigest.changeKeys(changes));
+        digestChanges.addAll(semanticIdentities);
         String digest = OperationPlanDigest.compute(
                 instance.baseRevisionId(), instance.baseContentHash(),
                 instance.definitionId().value(),
                 instance.version().major() + "." + instance.version().minor(),
                 instance.parameterDigest(),
                 targetIdentities(instance.target()),
-                OperationPlanDigest.changeKeys(changes),
+                digestChanges,
                 candidateHash);
         return new OperationPlan(OperationPlan.FORMAT_VERSION, instance.baseRevisionId(),
                 instance.baseContentHash(), instance, List.copyOf(changes), candidate,

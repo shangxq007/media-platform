@@ -46,7 +46,13 @@ public interface BatchTargetDomain<S> {
             String parameterDigest,
             String targetIdentity,
             String stepPlanDigest,
-            java.util.List<BatchStepDescriptor.Change> changes) {
+            java.util.List<BatchStepDescriptor.Change> changes,
+            Boolean completeRevisionNoOp) {
+        public StepPlan(S candidate, String parameterDigest, String targetIdentity, String stepPlanDigest,
+                        java.util.List<BatchStepDescriptor.Change> changes) {
+            this(candidate, parameterDigest, targetIdentity, stepPlanDigest, changes, null);
+        }
+
         public StepPlan(S candidate, String parameterDigest, String targetIdentity, String stepPlanDigest) {
             this(candidate, parameterDigest, targetIdentity, stepPlanDigest, java.util.List.of());
         }

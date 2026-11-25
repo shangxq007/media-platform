@@ -178,6 +178,20 @@ export function NleWorkspace({
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
   const [restoreApplying, setRestoreApplying] = useState(false)
+  const restoreOwned = useRef(false)
+  const [selectionPending, setSelectionPending] = useState(false)
+  const selectionPendingRef = useRef(false)
+
+  function markSelectionPending(pending: boolean) {
+    selectionPendingRef.current = pending
+    setSelectionPending(pending)
+  }
+
+  function markRestoreOwned(owned: boolean) {
+    restoreOwned.current = owned
+    setRestoreApplying(owned)
+    if (!owned && mounted.current) setApplyOwnershipRelease(current => current + 1)
+  }
   const [restoreMessage, setRestoreMessage] = useState('')
   const [queryMessage, setQueryMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -214,8 +228,8 @@ export function NleWorkspace({
     mounted.current && requestGeneration.current[kind] === generation
   )
 
-  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' = 'ORDINARY') => {
-    const authoritativeTransitionOwned = applyInFlight.current
+  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' = 'ORDINARY') => {
+    const authoritativeTransitionOwned = (restoreOwned.current && reason !== 'RESTORE_READBACK') || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (authoritativeTransitionOwned) {
@@ -224,6 +238,7 @@ export function NleWorkspace({
     }
     const generation = ++requestGeneration.current.head
     requestGeneration.current.selection += 1
+    markSelectionPending(false)
     requestGeneration.current.preview += 1
     requestGeneration.current.apply += 1
     setLoading(true)
@@ -248,7 +263,7 @@ export function NleWorkspace({
   useEffect(() => { void loadHead('NAVIGATION') }, [project.projectId, queryGateway])
 
   useEffect(() => {
-    const authoritativeTransitionOwned = applyInFlight.current
+    const authoritativeTransitionOwned = restoreOwned.current || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (!deferredNavigationHeadLoad.current || authoritativeTransitionOwned) return
@@ -280,7 +295,7 @@ export function NleWorkspace({
   }, [state.server.head?.revisionId, project.projectId])
 
   const selectRevision = async (selectedId: string) => {
-    const selectionLocked = restoreApplying || applyInFlight.current
+    const selectionLocked = restoreOwned.current || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (!state.server.head || selectionLocked) return
@@ -288,10 +303,12 @@ export function NleWorkspace({
     const request = { purpose: 'USER_SELECTION' as const, generation }
     const requestedHead = state.server.head
     const requestedRevisions = state.server.revisions
+    markSelectionPending(true)
     dispatch({ type: 'REVISION_SELECTION_STARTED', request })
     setQueryMessage('Loading explicit revision…')
     const detail = await loadExplicitRevisionSelection(queryGateway, requestedHead, requestedRevisions, selectedId)
     if (!ownsRequest('selection', generation)) return
+    markSelectionPending(false)
     if (!detail.ok) { setQueryMessage(`${detail.code}: ${detail.message}`); return }
     dispatch({ type: 'REVISION_LOADED', request, detail: detail.value })
     if (detail.value.revision.id !== requestedHead.revisionId) {
@@ -372,6 +389,7 @@ export function NleWorkspace({
     applyInFlight.current = true
     const generation = ++requestGeneration.current.apply
     const selectionGeneration = ++requestGeneration.current.selection
+    markSelectionPending(false)
     const priorHead = state.server.head
     const submittedDraft = state.draft.command
     const confirmedPreview = state.draft.preview
@@ -470,10 +488,11 @@ export function NleWorkspace({
             <Status label="Read-only historical revision" tone="info" />
             <Button disabled={loading || revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void loadHead() }}>Return to editing head</Button>
           </>}
-          {historyRevision && editingHead && project.tenantId && <RestoreRevisionControl
+          {historyRevision && editingHead && project.tenantId && !selectionPending && (!loading || restoreApplying) && <RestoreRevisionControl
             key={JSON.stringify([project.projectId, editingHead.revisionId, editingHead.contentHash, historyRevision])}
-            head={editingHead} source={historyRevision} tenantId={project.tenantId} onApplying={setRestoreApplying}
-            onRefresh={async message => { setRestoreMessage(message); await loadHead() }} />}
+            head={editingHead} source={historyRevision} tenantId={project.tenantId} onApplying={markRestoreOwned}
+            canStart={() => !selectionPendingRef.current}
+            onRefresh={async message => { setRestoreMessage(message); await loadHead('RESTORE_READBACK') }} />}
           {restoreMessage && <p role="status">{restoreMessage}</p>}
           {state.server.revisions.length ? <ol className="ff-revision-list">{state.server.revisions.map(revision => <li key={revision.id}><button type="button" aria-pressed={state.server.selected?.revision.id === revision.id} disabled={revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void selectRevision(revision.id) }}><span>r{revision.revisionNumber}</span><code>{revision.id}</code><small>{revision.message ?? 'No message'}</small></button></li>)}</ol> : <p>No accepted history projection.</p>}
           {queryMessage ? <p role="status">{queryMessage}</p> : null}

@@ -147,11 +147,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                     throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
                             "Restore requires a single-operation batch");
                 }
-                TimelineDocument source = revisions.findRestoreSource(batch.target().projectId(),
-                                batch.target().tenantId(), restore.sourceRevisionId())
-                        .orElseThrow(() -> new BatchException(BatchErrorCode.BASE_REVISION_NOT_FOUND, null,
-                                "Historical revision not found in the target Timeline"));
-                plan = planner.planRestore(instance, source);
+                var base = requireRestoreRevision(batch, batch.baseRevisionId());
+                var source = requireRestoreRevision(batch, restore.sourceRevisionId());
+                plan = planner.planRestore(instance, source.document(), base.semanticDigest(), source.semanticDigest());
             } else {
                 plan = planner.plan(instance, batch.baseRevisionId(), currentCandidate, fonts);
             }
@@ -163,7 +161,14 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 targetIdentity(plan.sourceInstance().target()), plan.planDigest(), plan.plannedChanges().stream()
                         .map(change -> new com.example.platform.operation.batch.BatchStepDescriptor.Change(
                                 com.example.platform.operation.plan.OperationPlanDigest.changeKey(change), change.primary()))
-                        .toList());
+                        .toList(), instance.parameters() instanceof OperationParameters.RestoreRevisionParameters
+                                ? plan.noOp() : null);
+    }
+
+    private TimelineRevisionCommands.RestoreSource requireRestoreRevision(OperationBatchRequest batch, String revisionId) {
+        return revisions.findRestoreSource(batch.target().projectId(), batch.target().tenantId(), revisionId)
+                .orElseThrow(() -> new BatchException(BatchErrorCode.BASE_REVISION_NOT_FOUND, null,
+                        "Revision not found in the target Timeline"));
     }
 
     @Override
