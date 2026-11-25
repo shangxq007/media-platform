@@ -978,6 +978,12 @@ try {
     await inspect()
     await page.mouse.up()
   }
+  const wire6 = suffix => {
+    const response = wire5(suffix)
+    // An inspector can fail before pointer-up. Keep that error visible if its response waiter times out too.
+    response.catch(() => {})
+    return response
+  }
   const trace6 = async res => ({ target: res.url(), body: res.request().postDataJSON(),
     raw: res.request().postData(), ifMatch: res.request().headers()['if-match'], status: res.status(), payload: await res.json() })
   function confirmed6(planned, applied) {
@@ -1015,15 +1021,15 @@ try {
       assert.equal(localRequests6.length, calls)
       assert.deepEqual(await c6('cancel'), before)
     }
-    const planned = wire5('/preview')
-    const written = wire5('/apply')
+    const planned = wire6('/preview')
+    const written = wire6('/apply')
     let guide = null
     await drag6(clip6('clip-red'), -152, async () => {
-      await clipEditor6.getByText(/Moving clip-red to/).waitFor()
+      await clipEditor6.getByText(/Moving clip-red to/).waitFor({ timeout: 5000 })
       if (enabled) {
         guide = await feedback6.innerText()
         assert.match(guide, /clip-red start to clip-blue end at 61\/30s/)
-        await page.screenshot({ path: join(out, 'n06-edge-guide.png') })
+
       } else assert.equal(await feedback6.count(), 0)
     })
     const p = await trace6(await planned), a = await trace6(await written)
@@ -1032,6 +1038,7 @@ try {
     await view6(a.payload.newRevisionId)
     assert.equal((await c6(label + '-after')).rows, before.rows + 1)
     evidence6.moves.push({ label, expected, guide, preview: p, apply: a, revision: a.payload.newRevisionId })
+    console.log('N06_BROWSER_CASE', label, 'PASS')
   }
 
   // The playhead at the exact canonical endpoint wins an equal-distance tie with the blue clip end.
@@ -1041,7 +1048,7 @@ try {
   await setSnap6(true)
   await page.getByLabel('Timeline preview seek').press('End')
   const playBefore = await c6('playhead-before')
-  const playPreview = wire5('/preview'), playWrite = wire5('/apply')
+  const playPreview = wire6('/preview'), playWrite = wire6('/apply')
   let playGuide
   await drag6(clip6('clip-red'), 166, async () => {
     playGuide = await feedback6.innerText()
@@ -1054,12 +1061,13 @@ try {
   assert.equal((await c6('playhead-after')).rows, playBefore.rows + 1)
   evidence6.moves.push({ label: 'playhead', expected: '61/30', guide: playGuide, preview: pp, apply: pa, revision: pa.payload.newRevisionId })
 
+  console.log('N06_BROWSER_CASE playhead PASS')
   const trimBase6 = await restore6('trim-seed', endpoint6.newRevisionId)
   await view6(trimBase6.newRevisionId)
   await setSnap6(true)
   await seek('0.5')
   const trimBefore6 = await c6('trim-before')
-  const trimPreview6 = wire5('/preview')
+  const trimPreview6 = wire6('/preview')
   let trimGuide6
   await drag6(page.getByLabel('Trim end edge clip-red', { exact: true }), -37, async () => {
     trimGuide6 = await feedback6.innerText()
@@ -1069,7 +1077,7 @@ try {
   assert.equal(tp.status, 200)
   assert.deepEqual(tp.body.operations[0].parameters, { edge: 'END', delta: '1/2' })
   assert.deepEqual(await c6('trim-preview'), trimBefore6)
-  const trimCommit6 = wire5('/apply')
+  const trimCommit6 = wire6('/apply')
   await page.getByRole('button', { name: 'Apply trim', exact: true }).click()
   const ta = await trace6(await trimCommit6)
   confirmed6(tp, ta)
@@ -1077,6 +1085,7 @@ try {
   assert.equal((await c6('trim-after')).rows, trimBefore6.rows + 1)
   evidence6.moves.push({ label: 'trim', expected: '1/2', guide: trimGuide6, preview: tp, apply: ta, revision: ta.payload.newRevisionId })
 
+  console.log('N06_BROWSER_CASE trim PASS')
   await restore6('pair-seed')
   const pairBase6 = await revise6('pair-track', [
     makeMove({ clipId: 'clip-blue' }, '2', true), makeMove({ clipId: 'clip-red' }, '1/2', true),
@@ -1101,7 +1110,7 @@ try {
   }
   assert.deepEqual(await c6('invalid-offsets'), pairBefore6)
 
-  const illegalPreview6 = wire5('/preview')
+  const illegalPreview6 = wire6('/preview')
   await drag6(clip6('clip-red'), 283, async () => {
     assert.match(await feedback6.innerText(), /clip-red start to clip-gray start at 4\/1s/)
   })
@@ -1115,12 +1124,12 @@ try {
   assert.deepEqual(await c6('illegal'), pairBefore6)
   evidence6.illegal = { preview: illegal6, applyStatus: 422, applyError: illegalApply6.errorCode }
 
-  const legalPreview6 = wire5('/preview')
+  const legalPreview6 = wire6('/preview')
   let pairGuide6
   await drag6(clip6('clip-red'), 77, async () => {
     pairGuide6 = await feedback6.innerText()
     assert.match(pairGuide6, /clip-blue end to clip-gray start at 4\/1s/)
-    await page.screenshot({ path: join(out, 'n06-pair-guide.png') })
+
   })
   const gp = await trace6(await legalPreview6)
   assert.equal(gp.body.operations[0].parameters.delta, '1/1')
@@ -1164,6 +1173,7 @@ try {
   evidence6.moves.push({ label: 'pair', expected: '1/1', guide: pairGuide6, preview: gp,
     apply: pairWire6[0], replay: pairWire6[1], revision: pairWire6[0].payload.newRevisionId })
 
+  console.log('N06_BROWSER_CASE pair PASS')
   await restore6('delete-seed')
   const redPin6 = originalsN05.find(c => c.clipId === 'clip-red')
   const bluePin6 = originalsN05.find(c => c.clipId === 'clip-blue')
@@ -1203,7 +1213,7 @@ try {
     const before = await c6(entry + '-before')
     const picturesBefore = await samples6('n06-delete-' + entry + '-before', [['3','blue']])
     await clip6('clip-blue').click()
-    const dpWire = wire5('/preview'), daWire = wire5('/apply')
+    const dpWire = wire6('/preview'), daWire = wire6('/apply')
     if (entry === 'button') await deleteClip.click()
     else await clip6('clip-blue').press('Delete')
     const dp = await trace6(await dpWire), da = await trace6(await daWire)
@@ -1212,11 +1222,22 @@ try {
     await view6(da.payload.newRevisionId)
     assert.equal(await clip6('clip-blue').count(), 0)
     const picturesAfter = await samples6('n06-delete-' + entry + '-after', [['1','red'],['3','black'],['5.5','gray']])
+    await seek('2.65')
+    await page.getByRole('button', { name: 'Play Timeline', exact: true }).click()
+    await page.waitForFunction(() => {
+      const preview = document.querySelector('section[aria-label="Timeline media preview"]')
+      const seconds = Number(preview.dataset.previewTime)
+      const canvas = preview.querySelector('canvas')
+      const [r,g,b] = canvas.getContext('2d').getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data
+      return preview.dataset.previewStatus === 'PLAYING' && seconds >= 3 && seconds < 4 && r === 0 && g === 0 && b === 0
+    })
+    const playingGap = await page.getByRole('region', { name: 'Timeline media preview' }).getAttribute('data-preview-time')
+    await page.getByRole('button', { name: 'Pause Timeline', exact: true }).click()
     const after = await c6(entry + '-after')
     assert.equal(after.rows, before.rows + 1)
     assert.equal(after.commands, before.commands + 1)
     evidence6.deletions.push({ entry, before: initial.newRevisionId, revision: da.payload.newRevisionId,
-      picturesBefore, picturesAfter, preview: dp, apply: da })
+      picturesBefore, picturesAfter, playingGap, preview: dp, apply: da })
   }
   result.http.n06 = evidence6
   result.status = 'PASS'

@@ -153,7 +153,7 @@ export function MultiClipMove({ head, tenant, tracks, visible, disabled, access,
     begin: (id, pointer, x) => {
       if (!editable() || drag.current || !ids.includes(id)) return false
       drag.current = { pointer, x, ids }
-      setFeedback(null); setPreview(null); setMessage(''); setInvalidOffset(false)
+      setFeedback(null); setPreview(null); setMessage('')
       return true
     },
     move: (pointer, x) => {

@@ -257,6 +257,27 @@ describe('ClipEditor move and delete interaction', () => {
     expect(await screen.findByText(/Clip moved to/)).toBeTruthy()
   })
 
+  it('cancels a snapped gesture without a request and permits the next drag', async () => {
+    api.snapshot.mockResolvedValue(multiClipSnapshot)
+    render(<ClipEditor head={head} onRevisionChanged={vi.fn(async () => {})} snap
+      snapPlayhead={{ numerator: 61n, denominator: 30n }} />)
+    const body = await screen.findByLabelText('Timeline clip clip-c')
+    fireEvent.pointerDown(body, { clientX: 260, pointerId: 1 })
+    fireEvent.pointerMove(body, { clientX: 108, pointerId: 1 })
+    expect(screen.getByText('Snapped clip-c start to playhead at 61/30s.')).toBeTruthy()
+    fireEvent.keyDown(body, { key: 'Escape' })
+    fireEvent.pointerUp(body, { clientX: 108, pointerId: 1 })
+    expect(api.previewOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(body, { clientX: 260, pointerId: 1 })
+    fireEvent.pointerMove(body, { clientX: 108, pointerId: 1 })
+    fireEvent.pointerUp(body, { clientX: 108, pointerId: 1 })
+    await waitFor(() => expect(api.applyConfirmedClip).toHaveBeenCalledOnce())
+    expect(api.previewOperation.mock.calls[0][2].delta).toBe('61/30')
+    expect(api.applyConfirmedClip.mock.calls[0][2]).toEqual(api.previewOperation.mock.calls[0][2])
+  })
+
   it('does not move a clip when the drag is below the threshold', async () => {
     await renderMulti()
     const body = screen.getByLabelText('Timeline clip clip-a')

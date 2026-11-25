@@ -330,7 +330,7 @@ if branches:
         for clip_id, placement in zip(('clip-red','clip-blue','clip-gray'),((0,2),(2,5),(5,7))):
             assert tuple(Fraction(start[clip_id][k]) for k in ('startTime','endTime')) == placement
         assert all(clip == start[clip_id] for clip_id,clip in saved.items())
-        assert case['picturesAfter']['3'] == [0,0,0]
+        assert case['picturesAfter']['3'] == [0,0,0] and 3 <= Fraction(case['playingGap']) < 4
         before_documents.append(start)
         after_documents.append(saved)
     assert before_documents[0] == before_documents[1] and after_documents[0] == after_documents[1]
