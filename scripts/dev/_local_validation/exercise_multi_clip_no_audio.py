@@ -195,10 +195,11 @@ select json_build_object(
  'candidates',(select convert_from(candidates_json,'UTF8') from render.render_binding_inputs where render_job_id='{job}'),
  'plan',(select convert_from(plan_json,'UTF8') from render.render_binding_inputs where render_job_id='{job}'))
 """))
-candidates_text = '\n'.join(base64.b64decode(line).decode('utf-8', 'replace')
-                            for line in facts['candidates'].splitlines() if line.strip())
+from binding_selection import selection
+restriction, candidates_text = selection(facts['candidates'])
+assert restriction == 'bmf'
 assert 'bmf.cpu.v1' in candidates_text, 'BMF provider is not in the persisted candidate set'
-assert 'ffmpeg.cpu.native-pull.v1' not in candidates_text, 'FFmpeg candidate leaked into the BMF run'
+assert 'ffmpeg.cpu.native-pull.v1' in candidates_text, 'FFmpeg catalog candidate missing'
 raw_graphs = facts['graph_execution']
 if isinstance(raw_graphs, str):
     raw_graphs = json.loads(raw_graphs)

@@ -85,9 +85,10 @@ select json_build_object(
  'events',(select json_agg(json_build_object('type',event_type,'count',n)) from (select event_type,count(*) n from infrastructure.outbox_events where aggregate_id='{job}' group by event_type order by event_type) x)
 )"""))
 plan_text = facts.pop('plan_text')
-# candidates_json stores one base64-encoded canonical candidate per line.
-candidates_text = '\n'.join(base64.b64decode(line).decode('utf-8', 'replace')
-                            for line in facts.pop('candidates_text').splitlines() if line.strip())
+# The binding selection frame records the policy and all candidates.
+from binding_selection import selection
+restriction, candidates_text = selection(facts.pop('candidates_text'))
+assert restriction == 'bmf'
 (app / 'bmf-plan-canonical.txt').write_text(plan_text)
 (app / 'bmf-binding-candidates.txt').write_text(candidates_text)
 evidence['persisted'] = facts
@@ -97,11 +98,10 @@ assert bound is not None and graph is not None, 'bound graph inputs or graph exe
 assert bound['expected_etg_digest'] == graph['graph_digest'], ('persisted bound graph digest differs from the dispatched graph', bound, graph)
 assert graph['plan_digest'] == bound['plan_digest'] and graph['plan_ref'] == bound['plan_ref']
 evidence['assertions']['bound_graph_persisted_and_redigested'] = True
-# The persisted candidate set is the #22 input. With the internal media-provider selection it must
-# carry the BMF provider and must not carry the excluded FFmpeg candidate.
+# The full catalog is immutable even under an explicit restriction.
 assert 'bmf.cpu.v1' in candidates_text, 'persisted candidate set does not contain the BMF provider'
-assert 'ffmpeg.cpu.native-pull.v1' not in candidates_text, 'persisted candidate set still contains the excluded FFmpeg provider'
-evidence['assertions']['candidate_set_is_bmf_only'] = True
+assert 'ffmpeg.cpu.native-pull.v1' in candidates_text, 'FFmpeg catalog candidate missing'
+evidence['assertions']['full_catalog_and_explicit_bmf'] = True
 evidence['candidate_set'] = {'implementations': sorted({token for token in ('bmf.cpu.v1', 'ffmpeg.cpu.native-pull.v1') if token in candidates_text}),
                              'sha256': bound['candidates_sha256'], 'bytes': bound['candidates_bytes']}
 for operation, capability in (('decode', 'video.decode'), ('composite', 'render.composite'), ('encode', 'render.output')):

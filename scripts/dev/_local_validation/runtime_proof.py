@@ -11,6 +11,13 @@ def execute(name,args,input=None):
  p=subprocess.run(args,env=E if args[0] in ['/usr/bin/podman','/usr/bin/taskset'] else {'PATH':'/usr/bin:/bin'},input=input,text=True,capture_output=True,timeout=60);(app/(name+'.stdout')).write_text(p.stdout);(app/(name+'.stderr')).write_text(p.stderr);commands.append(dict(name=name,argv=args,exit_code=p.returncode,stdin='task-owned fixture or read-only query' if input else None));(app/'runtime-proof.commands.json').write_text(json.dumps(commands,indent=2));assert p.returncode==0,name;return p.stdout
 for method in ['describe','show']:
  out=execute('workflow-'+method,B+['exec',tid,'temporal','--address','127.0.0.1:7233','--namespace','f8-pg18-'+RUN_ID+'','workflow',method,'--workflow-id','render:tenant-fr-e2e:'+job,'--output','json']);(app/('workflow-'+method+'.json')).write_text(out)
+# Replay the actual exported workflow through the implementation packaged with this candidate.
+classpath = (R/'03-build/platform-app-test-classpath.txt').read_text()
+replay = subprocess.run(['/usr/bin/java','-cp',classpath,str(Path(__file__).with_name('RecordedRenderReplay.java')),
+                         str(app/'workflow-show.json')], capture_output=True, text=True, timeout=60,
+                        env={'PATH':'/usr/bin:/bin','HOME':str(app)})
+(app/'temporal-sdk-replay.log').write_text(replay.stdout + replay.stderr)
+assert replay.returncode == 0 and 'Actual render history replayed successfully' in replay.stdout
 sql="SELECT json_build_object('status',(select status from render.render_job where id='"+job+"'),'history',(select json_agg(to_status order by occurred_at) from render.render_job_status_history where job_id='"+job+"'),'execution',(select row_to_json(e) from render.render_graph_execution e where job_id='"+job+"'),'quota_operations',(select count(*) from entitlement.quota_usage_operation where idempotency_key='render-job:"+job+":completion'),'events',(select json_agg(x) from (select event_type,count(*) from infrastructure.outbox_events where aggregate_id='"+job+"' group by event_type order by event_type)x));"
 psql=B+['exec','-i','--user','postgres',cid,'psql','-X','-A','-t','-v','ON_ERROR_STOP=1','-U','mp_owner','-d',c['database']]
 raw=execute('product-database-facts',psql,sql);facts=json.loads(raw);assert facts['status']=='COMPLETED' and facts['quota_operations']==1;assert facts['history']==['QUEUED','SELECTING_PROVIDER','PROVIDER_SELECTED','EXECUTING','COMPLETING','COMPLETED'],facts['history'];(app/'product-database-facts.json').write_text(json.dumps(facts,indent=2))

@@ -964,7 +964,9 @@ try {
   const commonBmf = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-provider-bmf')
   const commonFfmpeg = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-provider-ffmpeg',
     320, 240, 'http://127.0.0.1:18082')
-  for (const output of [commonBmf, commonFfmpeg]) {
+  const preferred = await formalOutput(commonRevision.revisionId, 0, 2000, 'common-provider-preferred',
+    320, 240, 'http://127.0.0.1:18083')
+  for (const output of [commonBmf, commonFfmpeg, preferred]) {
     const [video] = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v', 'error', '-select_streams', 'v:0',
       '-count_frames', '-show_entries', 'stream=width,height,nb_read_frames,duration', '-of', 'json', output.path])).streams
     assert.equal(video.width, 320)
@@ -977,8 +979,11 @@ try {
   assert.equal(dominant(ffmpegCommonRgb), 'red')
   assert(maxDelta(bmfCommonRgb, ffmpegCommonRgb) <= 12)
   assert.deepEqual(await head(), commonRevision)
-  composition.providerComparison = { revision: commonRevision, bmfCommonRgb, ffmpegCommonRgb,
-    outputs: [{ ...commonBmf, provider: 'bmf' }, { ...commonFfmpeg, provider: 'ffmpeg' }] }
+  const preferredRgb = pixel(preferred.path, 0.5, 160, 120)
+  assert(maxDelta(bmfCommonRgb, preferredRgb) <= 12)
+  composition.providerComparison = { preferredRgb, revision: commonRevision, bmfCommonRgb, ffmpegCommonRgb,
+    outputs: [{ ...commonBmf, provider: 'bmf' }, { ...commonFfmpeg, provider: 'ffmpeg' },
+      { ...preferred, provider: 'preferred' }] }
   report.status = 'PASS'
   record('CANONICAL_COMPOSITION_CONFORMANCE')
 

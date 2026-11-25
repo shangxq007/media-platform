@@ -1,5 +1,5 @@
 """Correlate browser delivery with the formal BMF-bound RenderJob and Temporal run."""
-import base64
+from binding_selection import selection
 import hashlib
 import json
 import os
@@ -53,8 +53,9 @@ assert binding['graphDigest'] == execution['graph_digest']
 assert browser['render']['artifactId'] == execution['final_artifact_id'] == facts['master']['id']
 assert browser['render']['sha256'] == facts['master']['content_digest'].split(':')[-1]
 assert browser['render']['bytes'] == facts['master']['byte_length']
-candidates = '\n'.join(base64.b64decode(line).decode() for line in binding.pop('candidates').splitlines() if line)
-assert 'bmf.cpu.v1' in candidates and 'ffmpeg.cpu.native-pull.v1' not in candidates
+restriction, candidates = selection(binding.pop('candidates'))
+assert restriction == 'bmf'
+assert 'bmf.cpu.v1' in candidates and 'ffmpeg.cpu.native-pull.v1' in candidates
 plan = binding.pop('plan')
 for operation in ('decode', 'audio-decode', 'multitrack-composite', 'encode-multitrack', 'TIMED_TRACK_INPUT'):
     assert operation in plan, operation
@@ -88,7 +89,7 @@ auxiliary_deliveries = list(browser['partial']) + [
 ]
 auxiliary_deliveries.extend(browser['composition']['outputs'])
 comparison = browser['composition']['providerComparison']
-assert {row['provider'] for row in comparison['outputs']} == {'bmf','ffmpeg'}
+assert {row['provider'] for row in comparison['outputs']} == {'bmf','ffmpeg','preferred'}
 assert all(row['revisionId'] == comparison['revision']['revisionId'] for row in comparison['outputs'])
 auxiliary_deliveries.extend(comparison['outputs'])
 auxiliary_facts = []
@@ -97,12 +98,23 @@ for delivered in auxiliary_deliveries:
     assert re.fullmatch(r'rj_[a-zA-Z0-9-]+', render_job_id)
     fact = json.loads(run_podman(psql, sql.replace(f"'{job}'", f"'{render_job_id}'")))
     plan = fact['binding'].pop('plan')
+    fingerprint = re.search(r'15:planFingerprint64:([0-9a-f]{64})', plan)
+    assert fingerprint
+    fact['logicalFingerprint'] = fingerprint[1]
     candidate_data = fact['binding'].pop('candidates')
-    pins = '\n'.join(base64.b64decode(line).decode() for line in candidate_data.splitlines() if line)
+    restriction, pins = selection(candidate_data)
+    assert restriction == (None if delivered.get('provider') == 'preferred' else delivered.get('provider', 'bmf'))
     ffmpeg = delivered.get('provider') == 'ffmpeg'
     provider_id, version, excluded = ('ffmpeg.cpu.native-pull.v1','1.3.0','bmf.cpu.v1') if ffmpeg else (
         'bmf.cpu.v1','1.2.0','ffmpeg.cpu.native-pull.v1')
-    assert provider_id in pins and version in pins and excluded not in pins
+    assert provider_id in pins and version in pins and excluded in pins
+    decisions = [json.loads(line.split('RENDER_TASK_DECISION ', 1)[1]) for line in worker.splitlines()
+                 if 'RENDER_TASK_DECISION ' in line]
+    executed = [event for event in decisions if event['job'] == render_job_id and event['executed']
+                and event['task'] == fact['execution']['final_task_id']]
+    assert len(executed) == 1 and executed[0]['implementation'] == provider_id
+    assert executed[0]['graphDigest'] == fact['binding']['graphDigest']
+    fact['executedFinalTask'] = executed[0]
     assert fact['revision'] == delivered['revisionId']
     assert fact['execution']['task_attempt_id']
     assert fact['binding']['planDigest'] == fact['execution']['plan_digest']
@@ -118,3 +130,7 @@ for delivered in auxiliary_deliveries:
                 deliveryId=delivered.get('deliveryId'), artifactSha256=sha256)
     auxiliary_facts.append(fact)
 (output / 'bmf-auxiliary-formal-binding.json').write_text(json.dumps(auxiliary_facts, indent=2))
+
+common_ids = {row['renderJobId'] for row in comparison['outputs']}
+common = [row for row in auxiliary_facts if row['jobId'] in common_ids]
+assert len(common) == 3 and len({row['logicalFingerprint'] for row in common}) == 1

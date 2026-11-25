@@ -44,7 +44,8 @@ base=dict(PATH='/usr/bin:/bin',HOME=str(out),LANG='C.UTF-8',LC_ALL='C.UTF-8',SPR
 # Provider opt-in. The API selects the internal media provider for #22 binding; the Worker needs the
 # verified runtime root of the same exact distribution (its admission evidence comes from it).
 if provider=='bmf':
- base.update(PLATFORM_BMF_PROVIDER_ENABLED='true',PLATFORM_RENDER_MEDIA_PROVIDER='bmf',PLATFORM_BMF_WORKER_RUNTIME_ROOT=bmf_root)
+ manifest = dict(line.split('=', 1) for line in (Path(bmf_root)/'runtime-manifest.properties').read_text().splitlines() if '=' in line)
+ base.update(PLATFORM_BMF_BUNDLE_SHA256=manifest['bundle.sha256'],PLATFORM_BMF_PROVIDER_ENABLED='true',PLATFORM_RENDER_MEDIA_PROVIDER='bmf',PLATFORM_BMF_WORKER_RUNTIME_ROOT=bmf_root)
 # COMBINED is an optional validation shape; the default remains two independent processes.
 combined = '--combined' in sys.argv
 roles = ['api'] if combined else ['api', 'worker']
@@ -52,7 +53,7 @@ roles = ['api'] if combined else ['api', 'worker']
 # Both share the run-owned store, object directory, issuer and Worker.
 provider_comparison = provider == 'bmf' and scenario == 'nle-multitrack' and not combined
 if provider_comparison:
- roles.append('api-ffmpeg')
+ roles.extend(['api-ffmpeg', 'api-preferred'])
 if combined:
  base['SPRING_PROFILES_ACTIVE'] = 'pg18-integration,temporal,ffmpeg-worker'
  base['SPRING_MAIN_WEB_APPLICATION_TYPE'] = 'servlet'
@@ -61,11 +62,13 @@ database_roles = {role: 'mp_combined' if combined else 'mp_worker' if role == 'w
 (out/'runtime-shape.json').write_text(json.dumps({'mode':'COMBINED' if combined else 'API_WORKER', 'processes':roles,'database_roles':database_roles,'media_provider':provider,'scenario':scenario,'bmf_runtime_root':bmf_root}))
 # Secret-containing environment file is private, passed by pathname, never command line values.
 for role in roles:
- e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role=='api-ffmpeg' else role.upper()}
+ e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role.startswith('api-') else role.upper()}
  runtime_db_role = database_roles[role]
  e.update(SPRING_DATASOURCE_USERNAME=runtime_db_role, SPRING_DATASOURCE_PASSWORD=(R/'07-runtime/private-correction'/(runtime_db_role+'-password')).read_text())
  if role=='api-ffmpeg':
   e.update(SERVER_PORT='18082',PLATFORM_RENDER_MEDIA_PROVIDER='ffmpeg')
+ if role=='api-preferred':
+  e.update(SERVER_PORT='18083');e.pop('PLATFORM_RENDER_MEDIA_PROVIDER',None)
  p=out/(role+'-env.json');p.write_text(json.dumps(e));p.chmod(0o600)
 launcher=out/'launch.py';launcher.write_text("import json,os,sys\ne=json.load(open(sys.argv[1]));os.execve('/usr/bin/java',['/usr/bin/java','-Xmx1536m','-XX:ActiveProcessorCount=2','-XX:+DisableAttachMechanism','-XX:-UsePerfData','-jar',sys.argv[2]],e)\n")
 from subreaper import require_subreaper
@@ -82,14 +85,15 @@ commands['api']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-env.j
 if not combined:
  commands['worker']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'worker-env.json'),str(libs/'platform-ffmpeg-worker.jar')]
 if provider_comparison:
- commands['api-ffmpeg']=prefix+['/usr/bin/python3','-B',str(launcher),str(out/'api-ffmpeg-env.json'),commands['api'][-1]]
+ for name in ('api-ffmpeg', 'api-preferred'):
+  commands[name]=prefix+['/usr/bin/python3','-B',str(launcher),str(out/(name+'-env.json')),commands['api'][-1]]
 if '--bootstrap' in sys.argv:
  control=out/'bootstrap-control';control.mkdir(mode=0o700)
  secret_names=set()
  for profile in ['api','worker','combined','flyway','jooq']:
   secret_names.update(line.strip() for line in (W/'scripts/startup/profiles'/(profile+'.allowlist')).read_text().splitlines() if line.strip() and not line.startswith('#'))
  for role in roles:
-  profile = 'combined' if combined else 'api' if role=='api-ffmpeg' else role
+  profile = 'combined' if combined else 'api' if role.startswith('api-') else role
   e=json.loads((out/(role+'-env.json')).read_text());e.pop('PLATFORM_RUNTIME_ROLE',None)
   (out/(role+'-env.json')).unlink()
   deploy=control/role;deploy.mkdir(mode=0o700);(deploy/'bin').mkdir(mode=0o700)
@@ -127,8 +131,33 @@ try:
  for name,cmd in commands.items():
   log=open(out/(name+'.log'),'w');logs.append(log);p=subprocess.Popen(cmd,env=env,stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT);processes[name]=p
   (out/(name+'-identity.json')).write_text(json.dumps(birth(p.pid)));time.sleep(1)
- deadline=time.monotonic()+900
+ deadline=time.monotonic()+(1450 if "--replace-worker" in sys.argv else 1100)
  while time.monotonic()<deadline:
+  if '--replace-worker' in sys.argv and (out/'REPLACE_WORKER').is_file() and not (out/'worker-replacement.json').exists():
+   original=processes['worker']
+   assert original.poll() is None
+   original_birth=birth(original.pid)
+   original.kill()
+   original.wait(timeout=30)
+   # Bind an altered copy over the exact binary only inside the incompatible replacement.
+   verified=R/'03-build/outputs/_ffmpeg-provider-module/ffmpeg-runtime/org/bytedeco/ffmpeg/linux-x86_64-gpl/ffmpeg'
+   altered=out/'incompatible-ffmpeg'
+   shutil.copy2(verified,altered)
+   with altered.open('ab') as binary:binary.write(b'G3 synthetic incompatible distribution')
+   wrong=commands['worker'].copy()
+   wrong[len(prefix)-1:len(prefix)-1]=['--ro-bind',str(altered),'/usr/local/lib/media-platform/ffmpeg/ffmpeg']
+   with (out/'incompatible-worker.log').open('w') as neglog:
+    negative=subprocess.run(wrong,env=env,stdin=subprocess.DEVNULL,stdout=neglog,stderr=subprocess.STDOUT,timeout=95)
+   assert negative.returncode != 0 and 'Configured FFmpeg runtime differs from the bound distribution' in (out/'incompatible-worker.log').read_text()
+   replacement_log=open(out/'worker.log','a');logs.append(replacement_log)
+   replacement=subprocess.Popen(commands['worker'],env=env,stdin=subprocess.DEVNULL,stdout=replacement_log,stderr=subprocess.STDOUT)
+   processes['worker']=replacement
+   new_birth=birth(replacement.pid)
+   assert new_birth!=original_birth
+   (out/'worker-identity.json').write_text(json.dumps(new_birth))
+   (out/'worker-replacement.json').write_text(json.dumps(dict(original=original_birth,replacement=new_birth,
+       incompatibleRejected=True,verifiedSha256=hashlib.sha256(verified.read_bytes()).hexdigest(),
+       incompatibleSha256=hashlib.sha256(altered.read_bytes()).hexdigest())))
   status={n:p.poll() for n,p in processes.items()};(out/'status.json').write_text(json.dumps(status))
   if (out/'STOP').exists() or all(status[n] is not None for n in roles):break
   time.sleep(1)
