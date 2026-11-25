@@ -56,11 +56,13 @@ if provider_comparison:
 if combined:
  base['SPRING_PROFILES_ACTIVE'] = 'pg18-integration,temporal,ffmpeg-worker'
  base['SPRING_MAIN_WEB_APPLICATION_TYPE'] = 'servlet'
-(out/'runtime-shape.json').write_text(json.dumps({'mode':'COMBINED' if combined else 'API_WORKER', 'processes':roles,'media_provider':provider,'scenario':scenario,'bmf_runtime_root':bmf_root}))
+database_roles = {role: 'mp_combined' if combined else 'mp_worker' if role == 'worker' else 'mp_api'
+                  for role in roles}
+(out/'runtime-shape.json').write_text(json.dumps({'mode':'COMBINED' if combined else 'API_WORKER', 'processes':roles,'database_roles':database_roles,'media_provider':provider,'scenario':scenario,'bmf_runtime_root':bmf_root}))
 # Secret-containing environment file is private, passed by pathname, never command line values.
 for role in roles:
  e={**base,'PLATFORM_RUNTIME_ROLE':'COMBINED' if combined else 'API' if role=='api-ffmpeg' else role.upper()}
- runtime_db_role = 'mp_worker' if role=='worker' else 'mp_api'
+ runtime_db_role = database_roles[role]
  e.update(SPRING_DATASOURCE_USERNAME=runtime_db_role, SPRING_DATASOURCE_PASSWORD=(R/'07-runtime/private-correction'/(runtime_db_role+'-password')).read_text())
  if role=='api-ffmpeg':
   e.update(SERVER_PORT='18082',PLATFORM_RENDER_MEDIA_PROVIDER='ffmpeg')
@@ -148,7 +150,7 @@ finally:
  (out/'complete.json').write_text(json.dumps({'all_children_reaped':True,'status':{n:p.returncode for n,p in processes.items()}}))
  for log in logs:log.close()
  for role in roles:
-  runtime_db_role = 'mp_worker' if role == 'worker' else 'mp_api'
+  runtime_db_role = database_roles[role]
   password = (R/'07-runtime/private-correction'/(runtime_db_role+'-password')).read_text()
   assert all(password not in (out/(name+'.log')).read_text() for name in commands)
  print(out,flush=True)

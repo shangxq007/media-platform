@@ -11,6 +11,7 @@ services:
       SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?Supply the migration password}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Supply the API password}
       WORKER_DATASOURCE_PASSWORD: ${WORKER_DATASOURCE_PASSWORD:?Supply the Worker password}
+      COMBINED_DATASOURCE_PASSWORD: ${COMBINED_DATASOURCE_PASSWORD:-}
     volumes:
       - pgdata18:/var/lib/postgresql
       - ./scripts/database/compose-roles.sql:/docker-entrypoint-initdb.d/010_roles.sql:ro

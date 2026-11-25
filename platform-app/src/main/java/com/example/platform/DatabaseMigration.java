@@ -12,12 +12,25 @@ public final class DatabaseMigration {
         }
         var flyway = FlywayConfiguration.migrationChain().dataSource(required("SPRING_FLYWAY_URL"),
                 required("SPRING_FLYWAY_USER"), required("SPRING_FLYWAY_PASSWORD")).load();
+        var dataSource = flyway.getConfiguration().getDataSource();
+        // Reject unsafe effective privileges before V2 can change the catalog.
+        try (var connection = dataSource.getConnection()) {
+            apply(connection, "admission");
+        }
         flyway.migrate();
-        try (var grants = DatabaseMigration.class.getResourceAsStream("/db/roles/runtime.sql");
-             var connection = flyway.getConfiguration().getDataSource().getConnection();
+        try (var connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            apply(connection, "admission");
+            apply(connection, "runtime");
+            connection.commit();
+        }
+    }
+
+    private static void apply(java.sql.Connection connection, String script) throws java.io.IOException, java.sql.SQLException {
+        try (var sql = DatabaseMigration.class.getResourceAsStream("/db/roles/" + script + ".sql");
              var statement = connection.createStatement()) {
-            if (grants == null) throw new IllegalStateException("Missing database privilege definitions");
-            statement.execute(new String(grants.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            if (sql == null) throw new IllegalStateException("Missing database role script " + script);
+            statement.execute(new String(sql.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
         }
     }
 

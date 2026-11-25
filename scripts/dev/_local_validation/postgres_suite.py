@@ -4,15 +4,19 @@ from pathlib import Path
 import re
 import secrets
 
-def run_postgres_suite(root, source, binding, admin, podenv, command):
+def run_postgres_suite(root, source, binding, admin, podenv, command, selection=()):
     manifest = source / 'shared-kernel/src/testFixtures/resources/com/example/platform/shared/test/postgres-targets.txt'
     targets = [line.split()[1] for line in manifest.read_text().splitlines()]
     if len(targets) != len(set(targets)) or not targets:
         raise RuntimeError('PostgreSQL target inventory is empty or duplicated')
+    if len(set(selection)) != len(selection) or set(selection) - set(targets):
+        raise RuntimeError('PG18 targets must be unique exact entries from the fixed inventory')
     result_dir = root / '04-tests/pg18'
     result_dir.mkdir(mode=0o700)
     outcomes = []
     for slot, target in enumerate(targets):
+        if selection and target not in selection:
+            continue
         attempt = 's' + str(slot)
         database = 'mp_f8_pgsuite_' + attempt
         role = 'mp_test_pgsuite_' + attempt
@@ -50,6 +54,6 @@ def run_postgres_suite(root, source, binding, admin, podenv, command):
         command('suite-fence-' + attempt, admin, environment=podenv, input=
                 "ALTER ROLE " + role + " NOLOGIN; ALTER DATABASE " + database + " ALLOW_CONNECTIONS false;")
         password_file.unlink()
-    result = dict(executor_closed=True, targets=outcomes, passed=all(o['passed'] for o in outcomes))
+    result = dict(executor_closed=True, scope='targeted' if selection else 'full', targets=outcomes, passed=all(o['passed'] for o in outcomes))
     (result_dir / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
     return result['passed']

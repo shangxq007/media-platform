@@ -6,21 +6,41 @@ The API and Worker share one PostgreSQL 18 database. Flyway applies the ordered 
 `-1975529748`. V2 moves the existing application objects into domain schemas in one transaction.
 The Flyway beforeMigrate callback checks an installed V1 against the frozen PostgreSQL 18 catalog before relocation. Both the original catalog and the equivalent PostgreSQL 18 logical-restore rendering of its CHECK constraints are recognized. Flyway also validates the applied migration checksum. The migration history stays in `public.flyway_schema_history`.
 
-Provision the migration owner and distinct API, Worker and verification logins before rollout.
-None of these logins needs cluster administration. Give the migration owner ownership of the
-application database. Revoke database CREATE and TEMP from PUBLIC and grant the runtime logins
-CONNECT. Give the runtime logins no privileged memberships. Set their database-specific
-`search_path` to `pg_catalog`. The migrator explicitly selects `public` as Flyway's default schema.
+Provision the migration owner, `mp_api`, `mp_worker`, `mp_combined` and `mp_readonly` before
+rollout. The migration owner owns the application database and its managed objects. Revoke
+database CREATE and TEMP from PUBLIC. Give each runtime role CONNECT and set its database-specific
+`search_path` to `pg_catalog`. The only runtime memberships are:
+
+```sql
+GRANT mp_api, mp_worker TO mp_combined WITH INHERIT TRUE, SET FALSE;
+```
+
+For COMBINED, set `PLATFORM_RUNTIME_ROLE=COMBINED` and supply `mp_combined` and its dedicated
+password through the existing datasource secret inputs. Use `mp_api` and `mp_worker` for separate
+processes. Fresh Compose initialization sets a login password for `mp_combined` only when
+`COMBINED_DATASOURCE_PASSWORD` is supplied. Existing clusters need owner-side provisioning before
+migration. The migrator uses `public` as Flyway's explicit default schema.
 Run the flyway bootstrap profile with the application jar and this command:
 
 ```sh
 java -Dloader.main=com.example.platform.DatabaseMigration -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher
 ```
 
-The migration entry applies `platform-app/src/main/resources/db/roles/runtime.sql` as the migration owner. Configure the API and Worker
-with their respective database credentials. Both validate the installed history before serving.
-They do not receive the migration credential. The role boundary is per process. Application
-authorization still scopes each tenant and project.
+The migration entry checks the database and role prerequisites before Flyway and again in the
+post-migration grant transaction. It rejects runtime object owners, elevated attributes, unsafe
+memberships, delegated runtime ACLs and incompatible PUBLIC or default ACLs. Keep unrelated
+external grants in place. Resolve incompatible starting privileges with the database owner before
+retrying. The managed namespaces are reserved for objects owned by the migrator.
+
+In the grant transaction, `platform-app/src/main/resources/db/roles/runtime.sql` replaces direct
+managed-role schema, table, column, routine and sequence ACLs with the intended grants. This
+removes excessive direct V1 privileges carried through V2. Revocation uses RESTRICT, retaining
+independent third-party grants and failing if removing a delegated grant would be necessary.
+If the grant transaction fails after V2 commits, leave the application stopped, resolve the grant
+failure and rerun the migration entry before serving traffic.
+
+Each application process validates installed Flyway history using its ordinary runtime identity.
+Application authorization scopes tenants and projects inside the API process.
 
 ## Upgrading the frozen V1
 

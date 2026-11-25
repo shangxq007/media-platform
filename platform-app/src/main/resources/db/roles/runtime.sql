@@ -1,8 +1,34 @@
--- Apply as the migration owner after Flyway. Cluster provisioning supplies the three
--- separate login roles with NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS.
--- The database owner must revoke database CREATE/TEMP from PUBLIC during provisioning.
-BEGIN;
+-- Apply in the migration owner's grant transaction, after checking admission.
 SET LOCAL search_path = pg_catalog;
+
+-- Remove old direct privileges only for the managed principals. Column ACLs are
+-- independent from table ACLs. Keep the default RESTRICT behavior for delegation.
+DO $converge$
+DECLARE
+    managed constant text := 'mp_api, mp_worker, mp_combined, mp_readonly';
+    schema_name name;
+    col record;
+BEGIN
+    FOR schema_name IN SELECT nspname FROM pg_namespace WHERE nspname IN (
+        'public', 'analytics', 'artifacts', 'billing', 'commerce', 'composition', 'entitlement', 'execution',
+        'extension', 'identity', 'infrastructure', 'marketplace', 'media', 'notification', 'payment',
+        'policy', 'prompt', 'publication', 'render', 'storage', 'timeline', 'worker_fabric', 'workflow')
+    LOOP
+        FOR col IN SELECT c.relname, a.attname FROM pg_class c JOIN pg_attribute a ON a.attrelid = c.oid
+            WHERE c.relnamespace = schema_name::text::regnamespace AND a.attnum > 0 AND NOT a.attisdropped
+              AND EXISTS (SELECT FROM aclexplode(a.attacl)
+                          WHERE grantee IN ('mp_api'::regrole, 'mp_worker'::regrole, 'mp_combined'::regrole, 'mp_readonly'::regrole))
+        LOOP
+            EXECUTE format('REVOKE ALL (%I) ON TABLE %I.%I FROM %s', col.attname, schema_name, col.relname, managed);
+        END LOOP;
+        EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA %I FROM %s', schema_name, managed);
+        EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA %I FROM %s', schema_name, managed);
+        EXECUTE format('REVOKE ALL ON ALL ROUTINES IN SCHEMA %I FROM %s', schema_name, managed);
+        EXECUTE format('REVOKE ALL ON SCHEMA %I FROM %s', schema_name, managed);
+    END LOOP;
+END;
+$converge$;
+
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO mp_api, mp_worker, mp_readonly;
 GRANT SELECT ON public.flyway_schema_history TO mp_api, mp_worker, mp_readonly;
@@ -488,4 +514,3 @@ GRANT UPDATE (assignment_id) ON worker_fabric.wf_execution_assignment TO mp_work
 GRANT UPDATE (observation_id) ON worker_fabric.wf_execution_observation TO mp_worker;
 GRANT UPDATE (completion_event_id) ON worker_fabric.wf_completion_event TO mp_worker;
 GRANT UPDATE (lease_id) ON worker_fabric.wf_local_admission TO mp_worker;
-COMMIT;
