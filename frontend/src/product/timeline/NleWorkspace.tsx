@@ -400,7 +400,7 @@ export function NleWorkspace({
   }
 
   const preview = async () => {
-    if (!state.server.head || !project.tenantId) return
+    if (issuedCommand.current || !state.server.head || !project.tenantId) return
     const generation = ++requestGeneration.current.preview
     try {
       const draft = buildDraft(fields, state.server.head)
@@ -452,7 +452,8 @@ export function NleWorkspace({
   }
 
   const apply = async () => {
-    if (applyInFlight.current || !project.tenantId || !state.server.head || !state.draft.command || !state.draft.preview || !stableCommandId || !confirmed) return
+    if (issuedCommand.current || applyInFlight.current || !project.tenantId || !state.server.head
+        || !state.draft.command || !state.draft.preview || !stableCommandId || !confirmed) return
     applyInFlight.current = true
     const generation = ++requestGeneration.current.apply
     const selectionGeneration = ++requestGeneration.current.selection
@@ -514,7 +515,7 @@ export function NleWorkspace({
   }
 
   async function initialize() {
-    if (!project.tenantId || initializing) return
+    if (issuedCommand.current || !project.tenantId || initializing) return
     setInitializing(true)
     setInitializeError('')
     if (initializeCommand.current?.projectId !== project.projectId) {
@@ -560,7 +561,7 @@ export function NleWorkspace({
         <Panel title="Canonical revision authority" actions={<Button onClick={() => void loadHead()} disabled={loading || revisionSelectionLocked}>Reload HEAD</Button>}>
           {state.server.head ? <div className="ff-head-identity"><Status label={`${historyRevision ? "Editing head" : "Viewing editing head"} · ${editingBranch}`} tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
             <EmptyState title="HEAD unavailable" description={defaultBranch ? "Create a Timeline to start editing this project." : "This editing branch could not be loaded."} />
-            {defaultBranch && <Button disabled={!project.tenantId || initializing || loading} onClick={() => void initialize()}>Initialize Timeline</Button>}
+            {defaultBranch && <Button disabled={commandOwner !== null || !project.tenantId || initializing || loading} onClick={() => void initialize()}>Initialize Timeline</Button>}
             {initializeError && <p role="alert">{initializeError}</p>}
           </>}
           {onSwitchBranch && <>
@@ -628,7 +629,8 @@ export function NleWorkspace({
           }} />
           {!project.tenantId ? <div className="ff-operation-notice ff-operation-notice--danger" role="alert"><strong>TENANT CONTEXT UNAVAILABLE</strong><p>The authenticated Workspace projection did not supply a tenant. Preview and apply remain disabled.</p></div> : null}
           <form onSubmit={event => { event.preventDefault(); void preview() }}>
-            <fieldset disabled={!state.server.head || !project.tenantId || state.phase.kind === 'PendingPreview' || state.phase.kind === 'PendingApply'}>
+            <fieldset disabled={commandOwner !== null || !state.server.head || !project.tenantId
+              || state.phase.kind === 'PendingPreview' || state.phase.kind === 'PendingApply'}>
               <legend>Canonical source and placement pins</legend>
               <div className="ff-operation-fields">{fieldLabels.map(([key, label]) => <label key={key}><span>{label}</span><Input value={fields[key]} onChange={changeField(key)} autoComplete="off"
                 list={key === 'trackId' ? 'nle-track-options' : undefined} /></label>)}<label><span>Direction</span><select value={fields.direction} onChange={changeField('direction')}><option value="">Select direction</option><option value="FORWARD">Forward</option><option value="REVERSE">Reverse</option></select></label></div>
@@ -656,10 +658,10 @@ export function NleWorkspace({
             <PreviewList title="Warnings" items={state.draft.preview.warnings} />
             <PreviewList title="Failures" items={state.draft.preview.failures} />
             <p>The server will replan this exact draft at apply using the opaque plan digest. A changed plan fails closed and requires a new preview.</p>
-            <label className="ff-confirm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} disabled={!previewReady} /> I confirm this exact frozen draft, complete server preview, and opaque plan digest.</label>
-            <Button variant="primary" disabled={!previewReady || !confirmed || !stableCommandId || state.phase.kind === 'PendingApply'} onClick={() => void apply()}>Confirm and apply</Button>
+            <label className="ff-confirm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} disabled={commandOwner !== null || !previewReady} /> I confirm this exact frozen draft, complete server preview, and opaque plan digest.</label>
+            <Button variant="primary" disabled={commandOwner !== null || !previewReady || !confirmed || !stableCommandId || state.phase.kind === 'PendingApply'} onClick={() => void apply()}>Confirm and apply</Button>
           </section> : null}
-          {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
+          {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button disabled={revisionSelectionLocked} onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
         </Panel>
         <Panel title="Render and delivery" className="ff-operation-panel">
           {projectionError && <p role="alert">{projectionError}</p>}

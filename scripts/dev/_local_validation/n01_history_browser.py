@@ -56,7 +56,10 @@ if branches:
         'canonicalSnapshots',(select count(distinct snapshot_id) from timeline.timeline_revision where {scoped}),
         'commands',(select count(*) from timeline.apply_command where {scoped}));"""
     checkpoints = ('initial','fork','duplicate','foreign','confirmation','trim','replay','switch',
-                   'later-committed','later-advanced','later-replay','stale','independent')
+                   'later-committed','later-advanced','later-replay','stale','independent',
+                   'f5-replay-committed','f5-replay-blocked','f5-replay-resolved','f5-replay-navigation',
+                   'f5-discard-committed','f5-discard-blocked','f5-discard-resolved','f5-discard-navigation',
+                   'f5-deletion')
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -109,6 +112,16 @@ if branches:
     assert trim['refs']['main'] == committed['refs']['main'] == advanced['refs']['main'] == b
     assert len({c, committed['refs']['alternate'], advanced['refs']['alternate']}) == 3
     assert facts['stale'] == facts['later-replay'] == advanced
+    previous = facts['independent']
+    for resolution in ('replay', 'discard'):
+        after, blocked, resolved, navigated = (facts[f'f5-{resolution}-{stage}']
+                                                for stage in ('committed', 'blocked', 'resolved', 'navigation'))
+        assert after == blocked == resolved == navigated and after['rows'] == previous['rows'] + 1
+        assert after['refs']['main'] != previous['refs']['main']
+        assert all(after['refs'][ref] == previous['refs'][ref] for ref in ('alternate', 'mirror'))
+        previous = navigated
+    assert facts['f5-deletion']['rows'] == previous['rows'] + 1
+    assert facts['f5-deletion']['refs']['main'] != previous['refs']['main']
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

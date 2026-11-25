@@ -5,6 +5,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FormalRenderAPI } from '../../api/formal-render'
 import * as editingRefs from '../../api/app/timeline-query.gateway'
+import { versionlessApi } from '../../api/app/versionless-api'
+import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { platformClient } from '../../foundation/platformClient'
 import { ProjectContextProvider as ProjectProvider } from '../../foundation/projectContext'
 import { loadExplicitRevisionSelection, NleWorkspace } from './NleWorkspace'
@@ -126,8 +128,132 @@ const previewRestore = () => vi.spyOn(FormalRenderAPI, 'previewRestore').mockImp
 const olderButton = async () => (await screen.findByText('Older')).closest('button')!
 const branchPicker = () => screen.getByRole<HTMLSelectElement>('combobox', { name: 'Editing branch' })
 
+function defaultTrimWithLostResponse() {
+  const { queries, readRef } = renderBranchWorkspace('main')
+  const initialHistory = [revision, olderRevision]
+  const ledger = [...initialHistory]
+  const completed = new Map<string, { status: 'APPLIED'; newRevisionId: string; newContentHash: string }>()
+  let current = head
+  readRef.mockImplementation(async (_project, ref) => ({ ok: true, value: ref === 'main'
+    ? { head: current, history: [...ledger] } : { head, history: initialHistory } }))
+  vi.spyOn(FormalRenderAPI, 'head').mockImplementation(async () => current)
+  previewTrim()
+  const wire: { path: string; body: string; ifMatch: unknown }[] = []
+  const send = vi.spyOn(versionlessApi, 'post').mockImplementation(async (path, data, config) => {
+    if (path.endsWith('/preview')) return { data: { batchDigest: HASH_C, steps: [] } }
+    const body = data as SemanticBatch
+    wire.push({ path, body: JSON.stringify(body), ifMatch: config?.headers?.['If-Match'] })
+    const received = completed.get(body.batchId)
+    if (received) return { data: received }
+    if (body.baseRevisionId !== current.revisionId) throw Object.assign(Error('stale'), { response: { status: 409 } })
+    const previous = current
+    current = completed.size === 0 ? appliedHead : { ...head, revisionId: revisionId('revision-R2') }
+    ledger.unshift({ ...appliedRevision, id: current.revisionId, parentRevisionId: previous.revisionId })
+    const receipt = { status: 'APPLIED' as const, newRevisionId: current.revisionId, newContentHash: current.contentHash }
+    completed.set(body.batchId, receipt)
+    if (body.operations[0].definitionId === 'timeline.trim') throw Error('response lost after commit')
+    return { data: receipt }
+  })
+  return { queries, readRef, send, wire, ledger, initialRows: ledger.length }
+}
+
+async function verifyDefaultNavigationResumed(queries: ScriptedTimelineQueryGateway,
+  readRef: ReturnType<typeof defaultTrimWithLostResponse>['readRef']) {
+  const reload = screen.getByRole<HTMLButtonElement>('button', { name: 'Reload HEAD' })
+  await waitFor(() => expect(reload.disabled).toBe(false))
+  const before = readRef.mock.calls.length
+  fireEvent.click(reload)
+  await waitFor(() => expect(readRef.mock.calls.length).toBe(before + 1))
+  await waitFor(() => expect(reload.disabled).toBe(false))
+  const history = await olderButton()
+  const detail = vi.spyOn(queries, 'getRevision')
+  expect(history.disabled).toBe(false)
+  fireEvent.click(history)
+  await screen.findByText('Read-only historical revision')
+  expect(detail).toHaveBeenCalledWith(head.projectId, olderRevision.id)
+  fireEvent.click(screen.getByRole('button', { name: 'Return to editing head' }))
+  await screen.findByText('Viewing editing head · main')
+  expect(branchPicker().disabled).toBe(false)
+  fireEvent.change(branchPicker(), { target: { value: 'alt' } })
+  await screen.findByText('Viewing editing head · alt')
+  fireEvent.change(branchPicker(), { target: { value: 'main' } })
+  await screen.findByText('Viewing editing head · main')
+}
+
 describe('branch editor command ownership', () => {
   afterEach(() => vi.restoreAllMocks())
+
+  it('blocks direct deletion and other edits until the default-branch trim replays the exact wire command', async () => {
+    const { queries, readRef, send, wire, ledger, initialRows } = defaultTrimWithLostResponse()
+    fireEvent.click(await prepareNamedTrim())
+    const retry = await screen.findByRole('button', { name: 'Retry Trim with the same command ID' })
+    expect(ledger[0].id).toBe(appliedHead.revisionId)
+    expect(ledger).toHaveLength(initialRows + 1)
+    const deleteClip = screen.getByRole('button', { name: 'Delete selected clip' })
+    expect(deleteClip.matches(':disabled')).toBe(true)
+    fireEvent.click(deleteClip)
+    fireEvent.keyDown(screen.getByRole('region', { name: 'Edit existing clip' }), { key: 'Delete' })
+    for (const name of ['Add video track', 'Preview trim', 'Apply video transform', 'Apply video effect',
+      'Remove video effect', 'Delete cross dissolve', 'Apply audio mix', 'Apply custom aspect']) {
+      const control = screen.getByRole('button', { name })
+      expect(control.matches(':disabled'), name).toBe(true)
+      fireEvent.click(control)
+    }
+    const operation = screen.getByLabelText('Clip operation')
+    const clip = screen.getByLabelText('Clip')
+    expect(operation.matches(':disabled')).toBe(true)
+    expect(clip.matches(':disabled')).toBe(true)
+    fireEvent.change(operation, { target: { value: 'DELETE_CLIP' } })
+    fireEvent.change(clip, { target: { value: '' } })
+    const handle = screen.getByLabelText('Trim start edge clip-0')
+    expect(handle.getAttribute('aria-disabled')).toBe('true')
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 2 })
+    fireEvent.pointerMove(handle, { clientX: 180, pointerId: 2 })
+    fireEvent.pointerUp(handle, { clientX: 180, pointerId: 2 })
+    expect(send).toHaveBeenCalledOnce()
+    expect(branchPicker().disabled).toBe(true)
+    expect((await olderButton()).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Reload HEAD' }).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Cancel trim' })).toBeTruthy()
+    fireEvent.click(retry)
+    await screen.findByText('Trim applied at revision revision-R1.')
+    expect(wire).toHaveLength(2)
+    expect(wire[1]).toEqual(wire[0])
+    expect(wire[0].path).toBe('/tenants/tenant-1/projects/project-1/timeline-operations/batch/v2/apply')
+    expect(wire[0].ifMatch).toBe(`"${HASH_C}"`)
+    expect(JSON.parse(wire[0].body)).toEqual({
+      batchId: expect.any(String), baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      operations: [{ definitionId: 'timeline.trim', target: { clipId: 'clip-0' }, parameters: { edge: 'START', delta: '1/1' } }],
+    })
+    expect(ledger).toHaveLength(initialRows + 1)
+    await verifyDefaultNavigationResumed(queries, readRef)
+    const restoredDelete = await screen.findByRole('button', { name: 'Delete selected clip' })
+    await waitFor(() => expect(restoredDelete.matches(':disabled')).toBe(false))
+    fireEvent.click(restoredDelete)
+    await screen.findByText(/Clip clip-0 deleted at revision revision-R2/)
+    expect(JSON.parse(wire[2].body)).toMatchObject({
+      baseRevisionId: appliedHead.revisionId, operations: [{ definitionId: 'timeline.delete' }],
+    })
+    expect(ledger).toHaveLength(initialRows + 2)
+  })
+
+  it('explicitly discards the uncertain default-branch trim, reads back, and re-enables navigation and deletion', async () => {
+    const { queries, readRef, wire, ledger, initialRows } = defaultTrimWithLostResponse()
+    fireEvent.click(await prepareNamedTrim())
+    await screen.findByRole('button', { name: 'Retry Trim with the same command ID' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel trim' }))
+    await screen.findByText(/Trim retry discarded/)
+    expect(screen.queryByRole('button', { name: 'Retry Trim with the same command ID' })).toBeNull()
+    expect(wire).toHaveLength(1)
+    expect(ledger[0].id).toBe(appliedHead.revisionId)
+    expect(ledger).toHaveLength(initialRows + 1)
+    await verifyDefaultNavigationResumed(queries, readRef)
+    const deleteClip = await screen.findByRole('button', { name: 'Delete selected clip' })
+    await waitFor(() => expect(deleteClip.matches(':disabled')).toBe(false))
+    fireEvent.click(deleteClip)
+    await screen.findByText(/Clip clip-0 deleted at revision revision-R2/)
+    expect(JSON.parse(wire[1].body).baseRevisionId).toBe(appliedHead.revisionId)
+  })
 
   it('prevents an old trim confirmation from submitting after a historical read starts', async () => {
     const { queries } = renderBranchWorkspace('alt')

@@ -321,8 +321,96 @@ try {
   assert.equal(independent.refs.alternate, sameRef.refs.alternate)
   assert.equal(independent.rows, sameRef.rows + 2)
   result.http.independent = { main: 201, mirror: 201, before: sameRef, after: independent }
-  result.status = 'PASS'
   save('Same-ref stale edit and independent concurrent writes')
+
+  await select('main')
+  await waitView('main', mainDone.newRevisionId)
+  const deleteClip = page.getByRole('button', { name: 'Delete selected clip' })
+  const f5 = {}
+  let before = independent
+  for (const resolution of ['replay', 'discard']) {
+    await drawTrim(20)
+    const trace = []
+    await page.route('**' + batch + '/apply', async route => {
+      const req = route.request()
+      const res = await route.fetch()
+      trace.push({ body: req.postData(), ifMatch: req.headers()['if-match'], status: res.status(), response: await res.json() })
+      if (trace.length === 1) await route.abort('failed')
+      else await route.fulfill({ response: res })
+    })
+    await page.getByRole('button', { name: 'Apply trim', exact: true }).click()
+    await retryApply.waitFor()
+    const committed = await checkpoint('f5-' + resolution + '-committed')
+    const accepted = trace[0].response.newRevisionId
+    assert.equal(trace[0].status, 201)
+    assert.equal(committed.refs.main, accepted)
+    assert.equal(committed.rows, before.rows + 1)
+    assert.equal(JSON.parse(trace[0].body).baseRevisionId, before.refs.main)
+    assert.equal(JSON.parse(trace[0].body).refId ?? 'main', 'main')
+    assert.match(trace[0].ifMatch, /^"[0-9a-f]{64}"$/)
+    const reloadHead = page.getByRole('button', { name: 'Reload HEAD', exact: true })
+    const picker = page.getByRole('combobox', { name: 'Editing branch' })
+    const history = page.locator('.ff-revision-list button').filter({ hasText: before.refs.main })
+    assert.equal(await deleteClip.isDisabled(), true)
+    assert.equal(await reloadHead.isDisabled(), true)
+    assert.equal(await picker.isDisabled(), true)
+    assert.equal(await history.isDisabled(), true)
+    await deleteClip.evaluate(button => button.click())
+    await page.getByRole('region', { name: 'Edit existing clip' }).press('Delete')
+    const blocked = await checkpoint('f5-' + resolution + '-blocked')
+    assert.deepEqual(blocked, committed)
+    assert.equal(trace.length, 1)
+    assert.equal(await retryApply.isEnabled(), true)
+    if (resolution === 'replay') {
+      await retryApply.click()
+      await page.getByText(`Trim applied at revision ${accepted}.`, { exact: true }).waitFor()
+      assert.deepEqual(trace.map(e => e.status), [201, 200])
+      assert.equal(trace[1].body, trace[0].body)
+      assert.equal(trace[1].ifMatch, trace[0].ifMatch)
+      assert.equal(trace[1].response.newRevisionId, accepted)
+      assert.equal(trace[1].response.replayed, true)
+    } else {
+      await page.getByRole('button', { name: 'Cancel trim' }).click()
+      await page.getByText(/Trim retry discarded/).waitFor()
+      assert.equal(trace.length, 1)
+    }
+    await page.unroute('**' + batch + '/apply')
+    await waitView('main', accepted)
+    assert.equal(await retryApply.count(), 0)
+    const resolved = await checkpoint('f5-' + resolution + '-resolved')
+    assert.deepEqual(resolved, committed)
+    const readback = page.waitForResponse(res => res.url().endsWith(branchPath + '/main') && res.request().method() === 'GET')
+    await reloadHead.click()
+    assert.equal((await readback).status(), 200)
+    await history.click()
+    await waitView('main', before.refs.main)
+    await page.getByRole('button', { name: 'Return to editing head' }).click()
+    await waitView('main', accepted)
+    await select('alternate')
+    await waitView('alternate', independent.refs.alternate)
+    await select('main')
+    await waitView('main', accepted)
+    const navigation = await checkpoint('f5-' + resolution + '-navigation')
+    assert.deepEqual(navigation, resolved)
+    f5[resolution] = { before, committed, blocked, resolved, navigation, trace, accepted }
+    before = navigation
+  }
+  assert.equal(await deleteClip.isEnabled(), true)
+  const deleteResponse = page.waitForResponse(res => res.url().endsWith(batch + '/apply') && res.request().method() === 'POST')
+  await deleteClip.click()
+  const deleted = await deleteResponse
+  assert.equal(deleted.status(), 201)
+  const deleteBody = deleted.request().postDataJSON()
+  const deleteReceipt = await deleted.json()
+  assert.equal(deleteBody.baseRevisionId, before.refs.main)
+  assert.equal(deleteBody.operations[0].definitionId, 'timeline.delete')
+  await page.getByText(`Clip clip-red deleted at revision ${deleteReceipt.newRevisionId}. The source media is retained.`).waitFor()
+  const deletion = await checkpoint('f5-deletion')
+  assert.equal(deletion.rows, before.rows + 1)
+  assert.equal(deletion.refs.main, deleteReceipt.newRevisionId)
+  result.http.defaultTrimOwnership = { ...f5, deletion: { before, after: deletion, status: 201, revision: deleteReceipt.newRevisionId } }
+  result.status = 'PASS'
+  save('Default-branch trim retry and discard block deletion, release navigation, and permit a later delete')
 } finally {
   await browser.close()
 }
