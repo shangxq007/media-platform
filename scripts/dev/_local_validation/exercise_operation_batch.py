@@ -20,7 +20,7 @@ sys.path.insert(0, str(W / 'scripts/testinfra'))
 from local_runtime import sandbox_prefix
 
 SCENARIO = 'operation-batch'
-WIDTH, HEIGHT, FRAME_RATE = 320, 180, 24
+WIDTH, HEIGHT, FRAME_RATE = 320, 240, 24
 EXPECTED_END_MILLIS = 2500
 app = Path((R / '07-runtime/current-apps.txt').read_text().strip())
 prefix = sandbox_prefix(app / 'binding.json')
@@ -34,6 +34,11 @@ for name, colour, seconds in (('batch-source-red.mp4', 'red', 2), ('batch-source
     process = subprocess.run(command, env=env, capture_output=True, text=True, timeout=120)
     (app / (name + '.stderr')).write_text(process.stderr)
     assert process.returncode == 0, process.stderr
+# A second video stream is a legal upload and an explicitly ambiguous native decode.
+subprocess.run(prefix + [source_ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
+                         '-i', str(app / 'batch-source-red.mp4'), '-i', str(app / 'batch-source-blue.mp4'),
+                         '-map', '0:v', '-map', '1:v', '-c', 'copy', '-movflags', '+faststart',
+                         str(app / 'batch-dual-video.mp4')], env=env, check=True, timeout=120)
 (app / 'scenario.json').write_text(json.dumps({
     'scenario': SCENARIO,
     'source': {'width': WIDTH, 'height': HEIGHT, 'frameRate': FRAME_RATE, 'durationMillis': 2000, 'audio': False},
@@ -131,12 +136,12 @@ def required(name,result,expected):
     results[name]=result;(root/'batch-partial-results.json').write_text(json.dumps(results,indent=2))
     assert result['status'] in expected,(name,result['status'],result['body'][:1000])
     return json.loads(result['body']) if result['body'] else {}
-def upload(filename,key):
+def upload(filename,key,scope=project):
     boundary='owned-batch-'+uuid.uuid4().hex
     data=(root/filename).read_bytes()
     body=(('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="'+filename+'"\r\n'
            'Content-Type: video/mp4\r\n\r\n').encode()+data+('\r\n--'+boundary+'--\r\n').encode())
-    return call(project+'/source-media',body,{'Content-Type':'multipart/form-data; boundary='+boundary,'Idempotency-Key':key})
+    return call(scope+'/source-media',body,{'Content-Type':'multipart/form-data; boundary='+boundary,'Idempotency-Key':key})
 deadline=time.monotonic()+180
 while True:
     readiness=call('/actuator/health/readiness',auth=False)
@@ -162,7 +167,9 @@ operations=[add('clip-red',red,red_stream,'2','0','2'),
              'parameters':{'delta':'2/1','absolute':True}},
             {'definitionId':'timeline.trim','target':{'clipId':'clip-blue'},
              'parameters':{'delta':'1/2','edge':'END'}}]
-aspect={'format':'composition-aspect-rational-v1','numerator':16,'denominator':9}
+aspect={'format':'composition-aspect-rational-v1','numerator':4,'denominator':3}
+operations.append({'definitionId':'timeline.composition.aspect.set','version':'2.0',
+                   'parameters':{'aspectRatio':aspect|{'numerator':16,'denominator':9}}})
 source={'artifactId':red['artifactId'],'contentDigest':red['contentDigest'],'streamId':red_stream}
 operations.append({'definitionId':'timeline.composition.aspect.set','version':'2.0',
                    'parameters':{'aspectRatio':aspect},'input':source})
@@ -180,9 +187,9 @@ move=required('describe_move',call(project+'/semantic/operations/timeline.move/1
 assert move in definitions and move['target']=='CLIP_SCOPE' and move['parameters']['delta']['required']
 preview=required('batch_preview',call(project+'/timeline-operations/batch/v2/preview',body),{200})
 assert preview['status']=='PLANNED' and preview['noOp'] is False,preview
-assert len(preview['steps'])==5 and [step['definitionId'] for step in preview['steps']]==[
-    'timeline.media-clip.add','timeline.media-clip.add','timeline.move','timeline.trim','timeline.composition.aspect.set'],preview['steps']
-assert len(preview['outcomes'])==5 and all(item['status']=='APPLIED' for item in preview['outcomes']),preview['outcomes']
+assert len(preview['steps'])==6 and [step['definitionId'] for step in preview['steps']]==[
+    'timeline.media-clip.add','timeline.media-clip.add','timeline.move','timeline.trim','timeline.composition.aspect.set','timeline.composition.aspect.set'],preview['steps']
+assert len(preview['outcomes'])==6 and all(item['status']=='APPLIED' for item in preview['outcomes']),preview['outcomes']
 assert preview['steps'][-1]['input']==source
 reader={'Authorization':'Bearer '+(root/'reader-token').read_text()}
 required('reader_discovery',call(project+'/semantic/operations',headers=reader),{200})
@@ -226,7 +233,24 @@ assert [clip['clipId'] for clip in clips]==['clip-red','clip-blue'],clips
 by={clip['clipId']:clip for clip in clips}
 assert by['clip-red']['startTime'] in ('0','0/1') and by['clip-red']['endTime'] in ('2','2/1'),by['clip-red']
 assert by['clip-blue']['startTime'] in ('2','2/1') and by['clip-blue']['endTime'] in ('5/2','2.5'),by['clip-blue']
-extent={'startMillis':0,'endMillis':2500,'frameRateNumerator':24,'frameRateDenominator':1,'width':320,'height':180}
+extent={'startMillis':0,'endMillis':2500,'frameRateNumerator':24,'frameRateDenominator':1,'width':320,'height':240}
+peer=project.replace('project-fr-e2e','project-peer')
+peer_init=required('peer_init',call(peer+'/timeline-operations/initialize',{'trackId':'track-1','commandId':'peer-init'}),{201})
+dual=required('upload_ambiguous',upload('batch-dual-video.mp4','peer-dual',peer),{201})
+one=required('upload_effect_source',upload('batch-source-red.mp4','peer-single',peer),{201})
+def peer_batch(key,revision,digest,steps):
+    endpoint=peer+'/timeline-operations/batch/v2'
+    intent={'batchId':key,'baseRevisionId':revision,'baseContentHash':digest,'operations':steps}
+    plan=required(key+'_preview',call(endpoint+'/preview',intent),{200})
+    return required(key+'_apply',call(endpoint+'/apply',intent,{'If-Match':chr(34)+plan['batchDigest']+chr(34)}),{201})
+dual_stream=next(stream['streamId'] for stream in dual['streams'] if stream['kind']=='VIDEO')
+amb=peer_batch('peer-ambiguous',peer_init['newRevisionId'],peer_init['resultContentHash'],[add('peer-dual',dual,dual_stream,'2','0','2')])
+one_stream=next(stream['streamId'] for stream in one['streams'] if stream['kind']=='VIDEO')
+effect=peer_batch('peer-effect',amb['newRevisionId'],amb['newContentHash'],[
+    {'definitionId':'timeline.delete','target':{'clipId':'peer-dual'},'parameters':{}},
+    add('peer-single',one,one_stream,'2','0','2'),
+    {'definitionId':'timeline.clip.effect.set','target':{'clipId':'peer-single'},'parameters':{
+        'brightness':0,'contrast':1,'saturation':1,'grayscale':True,'fadeInSeconds':0,'fadeOutSeconds':0,'enabled':True}}])
 def barrier(stage):
     (root/(stage+'.ready')).touch()
     deadline=time.monotonic()+90
@@ -238,6 +262,10 @@ query='/api/render/projects/project-fr-e2e/revisions/'+new_revision+'/feasibilit
 params={'contentHash':new_content,'extent':extent}
 supported=required('static_ffmpeg',call(query,params),{200})
 assert supported['feasible'] and supported['requiredCapabilities'] and supported['logicalFingerprint']
+for key,pinned,reason in [('source_ambiguity',amb,'SOURCE_STREAM_AMBIGUOUS'),('unsupported_effect',effect,'UNIT_UNBINDABLE')]:
+    endpoint='/api/render/projects/project-peer/revisions/'+pinned['newRevisionId']+'/feasibility'
+    rejected=required(key,call(endpoint,{'contentHash':pinned['newContentHash'],'extent':extent|{'endMillis':2000}}),{200})
+    assert not rejected['feasible'] and rejected['reason']==reason,(key,rejected)
 assert supported==required('repeat_static',call(query,params),{200})
 bad=required('static_raster_rejection',call(query,params|{'extent':extent|{'width':320,'height':320}}),{200})
 assert not bad['feasible'] and bad['reason'].startswith('OUTPUT_RASTER')
