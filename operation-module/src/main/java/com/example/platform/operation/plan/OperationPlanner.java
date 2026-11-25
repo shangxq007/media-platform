@@ -615,8 +615,15 @@ public final class OperationPlanner {
 
     private static void rejectMultiMoveBindings(TimelineDocument base, TimelineClip clip) {
         var id = clip.getClipId();
-        // Groups carry stable clip IDs only. Sync anchors are object-local, so the
-        // correspondence is unchanged when a placement changes without a trim.
+        // Group membership is a set, but persisted group order is not currently
+        // digest-stable through the canonical reader. Do not write a grouped move.
+        for (var relation : base.getSemanticRelationships()) {
+            if (relation instanceof GroupRelationship group && group.members().contains(id)) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Multi-clip move cannot preserve group binding "
+                        + group.groupId().value() + " on " + id.value());
+            }
+        }
+        // Sync anchors are object-local. The correspondence survives a placement change.
         rejectTransitionMutation(base, id, "multi-clip move");
         if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
                 || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {

@@ -60,7 +60,9 @@ class OperationPlannerFieldPreservationTest {
 
     @Test
     void multiMoveNamesUnsupportedTransitionAndAutomationBindings() {
-        var base = RichTimelineDocument.rich();
+        var fixture = RichTimelineDocument.rich();
+        var base = new TimelineDocument(fixture.getSchemaVersion(), fixture.getTracks(), fixture.getMetadata(),
+                fixture.getAudioMix(), List.of(), fixture.getTextElements(), fixture.getTransitions(), fixture.getAutomations());
         var target = new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope(
                 REV, HASH, List.of(TimelineClipId.of("clip-1"), TimelineClipId.of("clip-2")),
                 SelectionSpec.ExpansionPolicy.EXACT));

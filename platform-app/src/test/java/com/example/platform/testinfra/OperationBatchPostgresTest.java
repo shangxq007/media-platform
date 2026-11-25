@@ -826,27 +826,47 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void multiMoveRetainsGroupLocalSyncAndAudioRoutes() {
+    void multiMoveRetainsLocalSyncAndAudioRoutes() {
         var sourceDocument = twoClipDocumentWithAudio();
         var first = TimelineClipId.of("clip-a");
         var second = TimelineClipId.of("clip-b");
-        var grouped = new TimelineDocument(sourceDocument.getSchemaVersion(), sourceDocument.getTracks(),
+        var synced = new TimelineDocument(sourceDocument.getSchemaVersion(), sourceDocument.getTracks(),
                 sourceDocument.getMetadata(), sourceDocument.getAudioMix(),
-                List.of(GroupRelationship.of(GroupId.of("group-1"), List.of(first, second)),
-                        SyncRelationship.of(first, time("1/1"), second, time("2/1"))),
+                List.of(SyncRelationship.of(first, time("1/1"), second, time("2/1"))),
                 sourceDocument.getTextElements(), sourceDocument.getTransitions(), sourceDocument.getAutomations());
-        var source = saveRevision(grouped);
+        var source = saveRevision(synced);
         var request = multiMoveRequest("n05-preserve-relationships", source);
         var actor = mutation().actor();
         var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
         var result = batch.commit(request,
                 OperationBatchContext.apply(request.batchId(), actor, null, "test", preview.batchDigest()));
         var persisted = saveService.findPayloadDocument(TENANT, result.newRevisionId()).orElseThrow();
-        assertEquals(Set.copyOf(grouped.getSemanticRelationships()), Set.copyOf(persisted.getSemanticRelationships()));
-        assertEquals(grouped.getAudioMix(), persisted.getAudioMix());
+        assertEquals(Set.copyOf(synced.getSemanticRelationships()), Set.copyOf(persisted.getSemanticRelationships()));
+        assertEquals(synced.getAudioMix(), persisted.getAudioMix());
         assertEquals(source.revisionId(), parentOf(result.newRevisionId()));
         assertEquals(2, count("timeline.timeline_revision"));
         assertEquals(1, count("timeline.apply_command"));
+    }
+
+    @Test
+    void multiMoveRejectsGroupedClipsBeforeWriting() {
+        var original = twoClipDocument();
+        var group = GroupRelationship.of(GroupId.of("group-1"),
+                List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b")));
+        var grouped = new TimelineDocument(original.getSchemaVersion(), original.getTracks(), original.getMetadata(),
+                original.getAudioMix(), List.of(group), List.of(), List.of(), List.of());
+        var source = saveRevision(grouped);
+        var request = multiMoveRequest("n05-reject-group", source);
+        var actor = mutation().actor();
+        var preview = assertThrows(BatchException.class,
+                () -> batch.preview(request, OperationBatchContext.preview(actor, "test")));
+        assertTrue(preview.getMessage().contains("group binding group-1"), preview.getMessage());
+        var rejected = assertThrows(BatchException.class, () -> batch.commit(request,
+                OperationBatchContext.apply(request.batchId(), actor, null, "test", "0".repeat(64))));
+        assertTrue(rejected.getMessage().contains("group binding group-1"), rejected.getMessage());
+        assertEquals(source.revisionId(), head());
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
     }
 
     private static OperationBatchRequest multiMoveRequest(String id, TimelineRevision source) {
