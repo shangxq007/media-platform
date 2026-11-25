@@ -13,11 +13,28 @@ import java.util.HexFormat;
 public final class ProviderImplementationContent {
     private ProviderImplementationContent() {}
 
-    public static ProviderCapabilityProfileVersionOrDigest profile(Class<?> anchor, String module, String nativeIdentity) {
+    public static ProviderCapabilityProfileVersionOrDigest profile(Class<?> anchor, String module,
+            String nativeIdentity, String declaration) {
+        MessageDigest digest = sha256();
+        append(digest, "provider-implementation-content-v2");
+        append(digest, indexedClasses(anchor, module));
+        append(digest, nativeIdentity);
+        append(digest, declaration);
+        return ProviderCapabilityProfileVersionOrDigest.digest(
+                ProviderCapabilityProfileDigest.sha256(HexFormat.of().formatHex(digest.digest())));
+    }
+
+    private static MessageDigest sha256() {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            append(digest, "provider-implementation-content-v1");
-            append(digest, nativeIdentity);
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
+
+    public static String indexedClasses(Class<?> anchor, String module) {
+        MessageDigest digest = sha256();
+        try {
             try (var reader = new BufferedReader(new InputStreamReader(
                     resource(anchor, "/META-INF/provider-content/" + module), StandardCharsets.UTF_8))) {
                 var classes = reader.lines().toList();
@@ -25,13 +42,12 @@ public final class ProviderImplementationContent {
                 for (String name : classes) {
                     append(digest, name);
                     try (var bytes = resource(anchor, "/" + name)) {
-                        digest.update(MessageDigest.getInstance("SHA-256").digest(bytes.readAllBytes()));
+                        digest.update(sha256().digest(bytes.readAllBytes()));
                     }
                 }
             }
-            return ProviderCapabilityProfileVersionOrDigest.digest(
-                    ProviderCapabilityProfileDigest.sha256(HexFormat.of().formatHex(digest.digest())));
-        } catch (IOException | NoSuchAlgorithmException failure) {
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (IOException failure) {
             throw new IllegalStateException("provider implementation content is unavailable", failure);
         }
     }

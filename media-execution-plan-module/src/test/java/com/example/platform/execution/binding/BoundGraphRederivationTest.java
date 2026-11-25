@@ -39,6 +39,19 @@ import org.junit.jupiter.api.Test;
 class BoundGraphRederivationTest {
 
     @Test
+    void restoreRejectsChangedEnvelopeImplementationUnderIdenticalVersionName() {
+        var candidate = inputsForBoundPlan().candidates().getFirst();
+        var bytes = ProviderCandidateCanonicalCodec.encode(candidate);
+        var text = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        var matcher = java.util.regex.Pattern.compile("14:implementation64:([a-f0-9]{64})").matcher(text);
+        assertThat(matcher.find()).isTrue();
+        int offset = matcher.start(1);
+        bytes[offset] = bytes[offset] == 'a' ? (byte) 'b' : (byte) 'a';
+        assertThatThrownBy(() -> ProviderCandidateCanonicalCodec.decode(bytes))
+                .isInstanceOf(UnsupportedPersistedConstructException.class);
+    }
+
+    @Test
     void rederivationReproducesTheBindingDigestFromTheSameInputs() {
         BoundGraphInputs inputs = inputsForBoundPlan();
 

@@ -26,18 +26,6 @@ public final class FfmpegCpuRuntimeBindingFactory {
 
     private FfmpegCpuRuntimeBindingFactory() {}
 
-    public static ProviderNativeRuntimeBinding<FfmpegCpuTranscodePlan> create(
-            Path executable,
-            FfmpegSandboxWorkspace workspace,
-            Duration timeout,
-            long captureBytes,
-            SandboxCancellation cancellation) {
-        return new ProviderNativeRuntimeBinding<>(
-                new FfmpegCpuTranscodeLowerer(),
-                new FfmpegCpuRuntimeAdapter(executable),
-                executor(executable, workspace, timeout, captureBytes, cancellation, null));
-    }
-
     /** The capability-aware binding exposed by the provider contribution. */
     public static ProviderNativeRuntimeBinding<FfmpegCpuRenderPlan> createRender(
             Path executable,

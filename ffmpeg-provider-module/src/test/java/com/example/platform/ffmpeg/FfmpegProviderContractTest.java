@@ -26,6 +26,7 @@ import com.example.platform.workerfabric.domain.providernative.ProviderNativeExe
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionContext;
 import com.example.platform.workerfabric.domain.providernative.StaticProviderExecutionContext;
+import com.example.platform.execution.binding.ProviderCandidateCanonicalCodec;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -33,6 +34,42 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class FfmpegProviderContractTest {
+
+    @Test
+    void workerRejectsDifferentCapabilitySupportUnderAReusedBindingPin() {
+        var actual = new FfmpegProviderPluginContribution();
+        var recorded = com.example.platform.providerplugin.ProviderCandidateProjection.project(List.of(actual)).getFirst();
+        var changed = org.mockito.Mockito.spy(actual);
+        when(changed.providerCapabilityProfile()).thenReturn(
+                new com.example.platform.execution.domain.provider.ProviderCapabilityProfile(
+                        recorded.capabilityProfile().reference(), recorded.capabilityProfile().supportDeclarations().subList(1, 4)));
+        assertThat(changed.providerBindingPin()).isEqualTo(recorded.bindingPin());
+        assertThatThrownBy(() -> com.example.platform.providerplugin.ProviderCandidateProjection.requireMatching(changed, recorded))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("immutable binding inputs");
+    }
+
+    @Test
+    void changedEffectiveDeclarationChangesPinWithIdenticalNativeImplementationAndDistribution() {
+        var supports = FfmpegCpuProvider.CAPABILITY_PROFILE.supportDeclarations();
+        var contract = FfmpegCpuProvider.EXECUTION_CONTRACT;
+        var compatibility = FfmpegCpuProvider.STATIC_COMPATIBILITY;
+        var original = ProviderCandidateCanonicalCodec.effectiveDeclaration(contract, supports, compatibility);
+        var narrower = ProviderCandidateCanonicalCodec.effectiveDeclaration(contract,
+                supports.subList(1, supports.size()), compatibility);
+        var differentContract = new com.example.platform.execution.domain.provider.ProviderExecutionContract(
+                contract.schemaVersion(), contract.contractVersion(), contract.capabilityContractReferences().subList(1,
+                        contract.capabilityContractReferences().size()));
+        var revised = ProviderCandidateCanonicalCodec.effectiveDeclaration(differentContract, supports, compatibility);
+        assertThat(profile(original)).isEqualTo(FfmpegCpuProvider.CAPABILITY_PROFILE_REFERENCE);
+        assertThat(profile(narrower)).isNotEqualTo(profile(original));
+        assertThat(profile(revised)).isNotEqualTo(profile(original));
+    }
+
+    private static com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest profile(
+            String declaration) {
+        return com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
+                FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID, declaration);
+    }
 
     @Test
     void stable_provider_and_implementation_identities_do_not_collapse_into_runtime_identity() {
@@ -66,11 +103,11 @@ class FfmpegProviderContractTest {
     void lowering_is_deterministic_for_equivalent_exact_cpu_transcode_tasks() {
         ExecutableTask firstTask = exactTask(FfmpegCpuProvider.BINDING, "transcode", 1, 1, 1);
         ExecutableTask equivalentTask = exactTask(FfmpegCpuProvider.BINDING, "transcode", 1, 1, 1);
-        FfmpegCpuTranscodeLowerer lowerer = new FfmpegCpuTranscodeLowerer();
+        FfmpegCpuRenderLowerer lowerer = new FfmpegCpuRenderLowerer();
 
-        FfmpegCpuTranscodePlan first = lowerer.lower(
+        FfmpegCpuRenderPlan first = lowerer.lower(
                 firstTask, StaticProviderExecutionContext.fromBinding(FfmpegCpuProvider.BINDING));
-        FfmpegCpuTranscodePlan second = lowerer.lower(
+        FfmpegCpuRenderPlan second = lowerer.lower(
                 equivalentTask, StaticProviderExecutionContext.fromBinding(FfmpegCpuProvider.BINDING));
 
         assertThat(first).isEqualTo(second);
@@ -80,7 +117,7 @@ class FfmpegProviderContractTest {
 
     @Test
     void lowering_rejects_binding_operation_membership_input_and_output_mismatch_fail_closed() {
-        FfmpegCpuTranscodeLowerer lowerer = new FfmpegCpuTranscodeLowerer();
+        FfmpegCpuRenderLowerer lowerer = new FfmpegCpuRenderLowerer();
         assertFailure(
                 () -> lowerer.lower(
                         exactTask(mock(ProviderBindingPin.class), "transcode", 1, 1, 1),
@@ -88,7 +125,7 @@ class FfmpegProviderContractTest {
                 ProviderNativeFailureCode.PROVIDER_BINDING_MISMATCH);
         assertFailure(
                 () -> lowerer.lower(
-                        exactTask(FfmpegCpuProvider.BINDING, "decode", 1, 1, 1),
+                        exactTask(FfmpegCpuProvider.BINDING, "not-supported", 1, 1, 1),
                         StaticProviderExecutionContext.fromBinding(FfmpegCpuProvider.BINDING)),
                 ProviderNativeFailureCode.UNSUPPORTED_OPERATION_NATIVE_LOWERING);
         assertFailure(
@@ -108,33 +145,35 @@ class FfmpegProviderContractTest {
                 ProviderNativeFailureCode.UNSUPPORTED_AUTHORITATIVE_OUTPUT_CARDINALITY);
         ExecutableTask parameterized = exactTask(
                 FfmpegCpuProvider.BINDING, "transcode", 1, 1, 1);
+        var unsupported = mock(CapabilityRequirementRef.class, org.mockito.Mockito.RETURNS_DEEP_STUBS);
+        when(unsupported.declaration().capabilityId().value()).thenReturn("unsupported.capability");
         when(parameterized.memberships().getFirst().physicalPlanUnit()
                 .capabilityRequirementRefs())
-                .thenReturn(List.of(mock(CapabilityRequirementRef.class)));
+                .thenReturn(List.of(unsupported));
         assertFailure(
                 () -> lowerer.lower(
                         parameterized,
                         StaticProviderExecutionContext.fromBinding(FfmpegCpuProvider.BINDING)),
-                ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS);
+                ProviderNativeFailureCode.UNSUPPORTED_OPERATION_NATIVE_LOWERING);
     }
 
     @Test
-    void adapter_emits_fixed_argv_with_materialized_input_token_and_stdout_only() {
+    void adapter_emits_fixed_argv_with_materialized_input_token_and_staged_output() {
         ExecutableTask task = exactTask(FfmpegCpuProvider.BINDING, "transcode", 1, 1, 1);
-        FfmpegCpuTranscodePlan plan = new FfmpegCpuTranscodeLowerer().lower(
+        FfmpegCpuRenderPlan plan = new FfmpegCpuRenderLowerer().lower(
                 task, StaticProviderExecutionContext.fromBinding(FfmpegCpuProvider.BINDING));
         RuntimeExecutionContext context = new RuntimeExecutionContext(
                 task.id(), FfmpegCpuProvider.BINDING,
                 ExecutionAttemptId.of("attempt-ffmpeg"), ExecutionOwnershipGeneration.first());
 
-        ProcessInvocationSpec invocation = (ProcessInvocationSpec) new FfmpegCpuRuntimeAdapter(
+        ProcessInvocationSpec invocation = (ProcessInvocationSpec) new FfmpegCpuRenderAdapter(
                 Path.of("/usr/bin/ffmpeg")).adapt(plan, context)
                 .commands().getFirst().invocationSpec();
 
         assertThat(invocation.executable()).isEqualTo("/usr/bin/ffmpeg");
         assertThat(invocation.arguments())
-                .contains("libx264", "yuv420p", "pipe:1")
-                .containsOnlyOnce(FfmpegCpuRuntimeAdapter.materializedInputToken(plan.inputId()));
+                .contains("libx264", "yuv420p", com.example.platform.workerfabric.domain.providernative.ProviderNativeOutputFiles.RENDER_OUTPUT)
+                .containsOnlyOnce(FfmpegCpuRenderAdapter.materializedInputToken(plan.inputId()));
         assertThat(invocation.arguments()).noneMatch(value -> value.contains(";") || value.contains("&&"));
         assertThat(Arrays.stream(ProcessInvocationSpec.class.getRecordComponents())
                 .map(RecordComponent::getName))

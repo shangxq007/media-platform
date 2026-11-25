@@ -154,7 +154,7 @@ public class RevisionRenderPlanningAndBindingService {
 
         stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BINDING;
         lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
-        RenderSourceArtifacts.requireExecutableStreams(document, tenantId, projectId, sourceFacts);
+        RenderSourceArtifacts.requireExecutableStreams(document, renderPlanningResult.graph(), tenantId, projectId, sourceFacts);
         // Declared provider candidates from the catalog projection.
         List<ProviderCandidate> candidates = ProviderCandidateProjection.project(providerPluginCatalog);
         ProviderSelectionPolicy policy = selectionPolicy();

@@ -211,7 +211,7 @@ class MediaTaskExecuteTaskIntegrationTest {
                 orchestrator,
                 new MediaTaskPublicationSettings(
                         "", "provider-1", "local",
-                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()));
+                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()), null, workerCatalog());
 
         assertThatThrownBy(() -> activity.executeTask(
                 new PreparedTaskRef(
@@ -278,6 +278,19 @@ class MediaTaskExecuteTaskIntegrationTest {
         return captor.getValue();
     }
 
+    private static com.example.platform.providerplugin.ProviderPluginCatalog workerCatalog() {
+        var catalog = mock(com.example.platform.providerplugin.ProviderPluginCatalog.class);
+        var contribution = mock(com.example.platform.providerplugin.ProviderPluginContribution.class);
+        var recorded = candidate();
+        when(contribution.providerBindingPin()).thenReturn(recorded.bindingPin());
+        when(contribution.providerDescriptor()).thenReturn(recorded.descriptor());
+        when(contribution.providerExecutionContract()).thenReturn(recorded.executionContract());
+        when(contribution.providerCapabilityProfile()).thenReturn(recorded.capabilityProfile());
+        when(contribution.providerStaticCompatibility()).thenReturn(recorded.staticCompatibility());
+        when(catalog.find(recorded.bindingPin())).thenReturn(java.util.Optional.of(contribution));
+        return catalog;
+    }
+
     private static MediaTaskActivity activity(
             AtomicAssignmentGrantBoundary grantBoundary, RuntimeClosedLoopOrchestrator orchestrator) {
         return new MediaTaskActivity(
@@ -286,7 +299,7 @@ class MediaTaskExecuteTaskIntegrationTest {
                 orchestrator,
                 new MediaTaskPublicationSettings(
                         "project-exec", "provider-exec", "local",
-                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()));
+                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()), null, workerCatalog());
     }
 
     /** TEST-ONLY grant double: a real {@link AssignmentGrant} record, no database transaction. */

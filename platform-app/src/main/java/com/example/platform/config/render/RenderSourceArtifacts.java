@@ -3,9 +3,12 @@ package com.example.platform.config.render;
 import com.example.platform.artifact.app.ArtifactSourceFactsQuery;
 import com.example.platform.artifact.contract.ArtifactSourceFacts;
 import com.example.platform.shared.digest.ContentDigest;
-import com.example.platform.audio.domain.mix.AudioMixInput;
+import com.example.platform.render.domain.renderplan.RenderArtifactReference.SourceArtifact;
+import com.example.platform.render.domain.renderplan.RenderComponentKind;
+import com.example.platform.render.domain.renderplan.RenderGraph;
+import com.example.platform.timeline.canonical.TrackType;
 import java.util.HashMap;
-import java.util.stream.Collectors;
+
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -41,34 +44,43 @@ public final class RenderSourceArtifacts {
         return List.copyOf(ids);
     }
 
-    /** Native render inputs identify a single video or audio stream of their pinned Artifact. */
-    static void requireExecutableStreams(TimelineDocument document, String tenant, String project,
-            ArtifactSourceFactsQuery sourceFacts) {
-        record Pin(ArtifactId id, ContentDigest digest) {}
-        var cache = new HashMap<Pin, ArtifactSourceFacts>();
-        var routes = document.getAudioMix().routes().stream().map(route -> route.input())
-                .collect(Collectors.toSet());
-        for (TimelineTrack track : document.getTracks()) {
-            for (TimelineClip clip : track.clips()) {
-                var pin = new Pin(new ArtifactId(clip.getArtifactId()),
-                        ContentDigest.sha256(clip.getContentDigest()));
-                var facts = cache.computeIfAbsent(pin, key -> sourceFacts.findForExecution(tenant, project, key.id(), key.digest())
-                        .orElseThrow(() -> new IllegalArgumentException("Verified source stream facts unavailable")));
-                var kind = switch (track.type()) {
+    /** Check the exact clip and kind of each compiled source edge, including routed embedded audio. */
+    static void requireExecutableStreams(TimelineDocument document, RenderGraph graph, String tenant,
+            String project, ArtifactSourceFactsQuery sourceFacts) {
+        record ClipKey(String track, String clip) {}
+        record AuthoredSource(TrackType type, TimelineClip clip) {}
+        var clips = new HashMap<ClipKey, AuthoredSource>();
+        for (var track : document.getTracks()) {
+            for (var clip : track.clips()) {
+                clips.put(new ClipKey(track.trackId(), clip.getClipId().value()), new AuthoredSource(track.type(), clip));
+            }
+        }
+        var cache = new HashMap<SourceArtifact, ArtifactSourceFacts>();
+        for (var node : graph.nodes()) {
+            for (var reference : node.artifactReferences()) {
+                if (!(reference instanceof SourceArtifact pin)) continue;
+                var path = node.componentPath().segments();
+                boolean embedded = path.size() == 3 && path.get(2).equals("embedded-audio");
+                if (node.componentPath().kind() != RenderComponentKind.CLIP || (path.size() != 2 && !embedded)) {
+                    throw new IllegalArgumentException("Unsupported compiled source path");
+                }
+                var authored = clips.get(new ClipKey(path.get(0), path.get(1)));
+                if (authored == null || !pin.artifactId().value().equals(authored.clip().getArtifactId())
+                        || !pin.contentDigest().matches(ContentDigest.sha256(authored.clip().getContentDigest()))) {
+                    throw new IllegalArgumentException("Compiled source differs from revision clip pin");
+                }
+                var kind = switch (authored.type()) {
+                    case VIDEO -> embedded ? ArtifactSourceFacts.Kind.AUDIO : ArtifactSourceFacts.Kind.VIDEO;
                     case AUDIO -> ArtifactSourceFacts.Kind.AUDIO;
-                    case VIDEO -> ArtifactSourceFacts.Kind.VIDEO;
                     default -> throw new IllegalArgumentException("Unsupported media track kind");
                 };
+                var facts = cache.computeIfAbsent(pin, key -> sourceFacts.findForExecution(tenant, project,
+                        key.artifactId(), key.contentDigest()).orElseThrow(
+                                () -> new IllegalArgumentException("Verified source stream facts unavailable")));
                 var matches = facts.streams().stream().filter(stream -> stream.kind() == kind).toList();
-                if (facts.counts() == null || facts.counts().of(kind) != 1 || matches.size() != 1 || !matches.getFirst().streamId().equals(clip.getMediaStreamId())) {
+                if (facts.counts() == null || facts.counts().of(kind) != 1 || matches.size() != 1
+                        || !embedded && !matches.getFirst().streamId().equals(authored.clip().getMediaStreamId())) {
                     throw new IllegalArgumentException("Render requires one unambiguous selected source stream of the requested kind");
-                }
-                if (kind == ArtifactSourceFacts.Kind.VIDEO
-                        && routes.contains(AudioMixInput.of(
-                                track.trackId(), clip.getClipId().value()))
-                        && (facts.counts().audio() != 1 || facts.streams().stream().filter(stream -> stream.kind()
-                                == ArtifactSourceFacts.Kind.AUDIO).count() != 1)) {
-                    throw new IllegalArgumentException("Embedded audio route requires one unambiguous audio stream");
                 }
             }
         }

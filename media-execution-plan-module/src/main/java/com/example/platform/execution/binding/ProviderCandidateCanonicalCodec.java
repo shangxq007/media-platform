@@ -40,7 +40,7 @@ import java.util.Objects;
  */
 public final class ProviderCandidateCanonicalCodec {
 
-    public static final String FORMAT = "p25a.provider-candidate.v2";
+    public static final String FORMAT = "p25a.provider-candidate.v3";
 
     private ProviderCandidateCanonicalCodec() {
     }
@@ -186,6 +186,15 @@ public final class ProviderCandidateCanonicalCodec {
                 .build();
     }
 
+    /** Effective declarations omit the resulting profile reference to avoid a circular digest. */
+    public static String effectiveDeclaration(ProviderExecutionContract contract,
+            List<ProviderCapabilitySupport> supports, ProviderStaticCompatibility compatibility) {
+        return new CanonicalWriter().tag("provider-effective-declaration-v1")
+                .field("executionContract", executionContract(contract))
+                .list(supports.stream().map(ProviderCandidateCanonicalCodec::capabilitySupport).sorted().toList())
+                .field("compatibility", staticCompatibility(compatibility)).build();
+    }
+
     private static String capabilityProfile(ProviderCapabilityProfile profile) {
         List<String> supports = profile.supportDeclarations().stream()
                 .map(ProviderCandidateCanonicalCodec::capabilitySupport)
@@ -244,6 +253,7 @@ public final class ProviderCandidateCanonicalCodec {
                         boundary -> boundary.value()))
                 .field("loweringSupport", compatibility.loweringSupport().name())
                 .field("mediaLowering", compatibility.mediaLowering().name())
+                .field("behavior", compatibility.mediaLowering().behaviorIdentity())
                 .build();
     }
 
@@ -273,10 +283,13 @@ public final class ProviderCandidateCanonicalCodec {
         }
         ProviderStaticCompatibility.LoweringSupport lowering = enumValue(
                 ProviderStaticCompatibility.LoweringSupport.class, reader.field("loweringSupport"));
-        return new ProviderStaticCompatibility(
-                knowledge, artifacts, codecs, devices, runtimes, sandboxes, determinism,
-                boundaries, lowering, enumValue(com.example.platform.execution.compatibility.MediaLoweringEnvelope.class,
-                        reader.field("mediaLowering")));
+        var envelope = enumValue(com.example.platform.execution.compatibility.MediaLoweringEnvelope.class,
+                reader.field("mediaLowering"));
+        if (!envelope.behaviorIdentity().equals(reader.field("behavior")) || reader.hasRemaining()) {
+            throw new UnsupportedPersistedConstructException("media lowering behavior differs from recorded declaration");
+        }
+        return new ProviderStaticCompatibility(knowledge, artifacts, codecs, devices, runtimes, sandboxes,
+                determinism, boundaries, lowering, envelope);
     }
 
     // ---------- shared scalars ----------

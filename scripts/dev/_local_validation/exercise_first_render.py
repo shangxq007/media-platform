@@ -13,7 +13,15 @@ def run(name,cmd,input=None):
  p=subprocess.run(cmd,env=env,input=input,capture_output=True,text=True,timeout=60);(a/(name+'.stdout')).write_text(p.stdout);(a/(name+'.stderr')).write_text(p.stderr)
  if p.returncode:raise RuntimeError(name+' exit '+str(p.returncode))
  return p.stdout
+if sys.argv[1:] == ['--required-ambiguous-source']:
+    run('required-ambiguous-source', prefix + ['/usr/bin/python3', '-B', str(a/'client.py'), str(a), 'negative'])
+    sys.exit(0)
 run('source-video',prefix+['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi','-i','color=c='+source_color+':s=320x240:r='+source_fps,'-t','1','-c:v','libopenh264','-pix_fmt','yuv420p',str(a/'source.mp4')])
+partial_streams = os.environ.get('MEDIA_PLATFORM_PARTIAL_STREAMS') == '1'
+if partial_streams:
+    run('ambiguous-source', prefix + ['/usr/bin/ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin',
+        '-y', '-i', str(a/'source.mp4'), '-map', '0:v:0', '-map', '0:v:0', '-c', 'copy',
+        str(a/'ambiguous.mp4')])
 cp=(R/'03-build/platform-app-test-classpath.txt').read_text().strip();classes=a/'fixture-classes';classes.mkdir(exist_ok=True)
 src=a/'Fixture.java';src.write_text('''import java.nio.file.*;import java.util.*;
 import com.example.platform.timeline.canonical.*;
@@ -68,13 +76,20 @@ def call(path,data,auth=True,headers=None):
   with urllib.request.urlopen(req,timeout=60) as f:status=f.status;body=f.read().decode()
  except urllib.error.HTTPError as f:status=f.code;body=f.read().decode()
  return {'status':status,'body':body}
-def upload(key):
+def upload(key, filename="source.mp4"):
  boundary='owned-first-render-'+uuid.uuid4().hex
- data=(r/'source.mp4').read_bytes()
+ data=(r/filename).read_bytes()
  body=(('--'+boundary+'\\r\\nContent-Disposition: form-data; name="file"; filename="source.mp4"\\r\\n'
         'Content-Type: video/mp4\\r\\n\\r\\n').encode()+data+('\\r\\n--'+boundary+'--\\r\\n').encode())
  return call('/api/tenants/tenant-fr-e2e/projects/project-fr-e2e/source-media',body,
              headers={'Content-Type':'multipart/form-data; boundary='+boundary,'Idempotency-Key':key})
+if sys.argv[2:] == ['negative']:
+ receipt=json.loads((r/'partial-stream-scope.json').read_text())
+ response=call('/api/render-jobs',{'revisionId':receipt['revision'],'extent':{'startMillis':1000,'endMillis':2000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})
+ assert response['status'] in (400,422) and 'unambiguous' in response['body'],response
+ receipt['requiredAmbiguousSource']=response
+ (r/'partial-stream-scope.json').write_text(json.dumps(receipt,indent=2))
+ sys.exit(0)
 result={}
 result['readiness']=call('/actuator/health/readiness',None,False)
 result['unauthenticated']=call('/api/render-jobs',{},False)
@@ -99,8 +114,23 @@ assert preview['status']==200,preview
 applied=call(project+'/timeline-operations/add-media-clip/apply',{'request':draft,'expectedPlanDigest':json.loads(preview['body'])['planDigest'],'applyCommandId':'add-clip-0'});result['add_media_clip_apply']=applied
 assert applied['status']==201,applied
 revision=json.loads(applied['body'])['newRevisionId']
+if sys.argv[2:] == ['partial']:
+ ambiguous=upload('two-video-streams','ambiguous.mp4')
+ assert ambiguous['status']==201,ambiguous
+ second=json.loads(ambiguous['body'])
+ clip=dict(draft,baseRevisionId=revision,baseContentHash=json.loads(applied['body'])['resultContentHash'],
+           clipId='clip-1',mediaAssetId=second['artifactId'],artifactId=second['artifactId'],
+           contentDigest=second['contentDigest'],mediaStreamId=next(s['streamId'] for s in second['streams'] if s['kind']=='VIDEO'),
+           timelineStart='1',timelineEnd='2')
+ preview=call(project+'/timeline-operations/add-media-clip/preview',clip)
+ assert preview['status']==200,preview
+ appended=call(project+'/timeline-operations/add-media-clip/apply',{'request':clip,'expectedPlanDigest':json.loads(preview['body'])['planDigest'],'applyCommandId':'add-clip-1'})
+ assert appended['status']==201,appended
+ revision=json.loads(appended['body'])['newRevisionId']
+ (r/'partial-stream-scope.json').write_text(json.dumps({'revision':revision,'included':pin['artifactId'],
+     'excluded':second['artifactId'],'positiveExtentMillis':[0,1000],'negativeExtentMillis':[1000,2000]}))
 result['snapshot']={'status':201,'body':json.dumps({'revisionId':revision})}
 result['first_render']=call('/api/render-jobs',{'revisionId':revision,'extent':{'startMillis':0,'endMillis':1000,'frameRateNumerator':1,'frameRateDenominator':1},'outputFormat':'MP4','profile':'default'})
 (r/'http-results.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
 ''')
-print(run('http',prefix+['/usr/bin/python3','-B',str(client),str(a)]))
+print(run('http',prefix+['/usr/bin/python3','-B',str(client),str(a),*(['partial'] if partial_streams else [])]))

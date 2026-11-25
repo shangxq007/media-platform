@@ -51,11 +51,8 @@ public class CapabilityExecutionActivity implements CapabilityExecutionActivitie
         }
         var task=graph.tasks().getFirst();
         var contribution=catalog.find(task.providerBindingPin()).orElseThrow(()->new IllegalArgumentException("bound provider unavailable"));
-        var declared=ProviderCandidateProjection.project(List.of(contribution)).getFirst();
         var pinned=inputs.candidates().stream().filter(c->c.bindingPin().equals(task.providerBindingPin())).findFirst().orElseThrow();
-        if(!Arrays.equals(ProviderCandidateCanonicalCodec.encode(declared),ProviderCandidateCanonicalCodec.encode(pinned))) {
-            throw new IllegalArgumentException("worker provider metadata differs from immutable binding inputs");
-        }
+        ProviderCandidateProjection.requireMatching(contribution, pinned);
         var grant=grants.findCurrentGrant(task.id()).orElseGet(()-> {
             // Each actual Activity delivery is a distinct RequestWork, not a reused terminal resolution.
             String dispatch=execution+":epoch:"+generation+":delivery:"+Activity.getExecutionContext().getInfo().getAttempt();

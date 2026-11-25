@@ -39,7 +39,7 @@ class FfmpegArchitectureAndPathGuardTest {
         MaterializedExecutionInput input = new MaterializedExecutionInput(
                 inputId, pin, new MaterializedArtifact(pin, inputPath, Files.size(inputPath)));
         ExecutionCommand exactCommand = command(executable,
-                FfmpegCpuRuntimeAdapter.materializedInputToken(inputId));
+                FfmpegCpuRenderAdapter.materializedInputToken(inputId));
 
         var escaping = new FfmpegSandboxExecutionPolicyResolver(
                 executable,
@@ -54,7 +54,7 @@ class FfmpegArchitectureAndPathGuardTest {
         assertThat(escaping.resolve(exactCommand, List.of(input)))
                 .isInstanceOf(SandboxResolution.Rejected.class);
         assertThat(exactWorkspace.resolve(command(executable,
-                FfmpegCpuRuntimeAdapter.materializedInputToken(
+                FfmpegCpuRenderAdapter.materializedInputToken(
                         new ExecutionInputId("input-unknown"))), List.of(input)))
                 .isInstanceOf(SandboxResolution.Rejected.class);
     }
@@ -87,7 +87,7 @@ class FfmpegArchitectureAndPathGuardTest {
                 ExecutionAttemptId.of("attempt-path-guard"),
                 ExecutionOwnershipGeneration.first(),
                 0,
-                ProcessInvocationSpec.of(executable.toString(), List.of("-i", token, "pipe:1")));
+                ProcessInvocationSpec.of(executable.toString(), List.of("-i", token, com.example.platform.workerfabric.domain.providernative.ProviderNativeOutputFiles.RENDER_OUTPUT)));
     }
 
     private static String readJava(Path directory) throws Exception {

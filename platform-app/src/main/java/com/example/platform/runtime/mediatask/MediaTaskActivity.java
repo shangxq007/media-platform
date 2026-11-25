@@ -15,6 +15,7 @@ import com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowResult;
 import com.example.platform.workflow.temporal.mediatask.PreparedTaskRef;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
+import com.example.platform.providerplugin.ProviderCandidateProjection;
 import com.example.platform.workerfabric.domain.AssignmentGrant;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
 import com.example.platform.workerfabric.reuse.AdmissionCapacityRetryableException;
@@ -294,6 +295,17 @@ public final class MediaTaskActivity {
                 prepared.expectedExecutableTaskGraphDigest());
         PreparedTask task = prepareTask(reference, tenantId);
         ProviderBoundExecutableTaskGraph graph = task.executableTaskGraph();
+        if (providerPluginCatalog == null) {
+            throw new TaskRuntimeExecutionConstructionException("PROVIDER_CONTRIBUTION_UNAVAILABLE",
+                    "Worker catalog is required to execute recorded binding inputs");
+        }
+        for (var pin : graph.tasks().stream().map(ExecutableTask::providerBindingPin).distinct().toList()) {
+            var recorded = task.boundGraphInputs().candidates().stream()
+                    .filter(candidate -> candidate.bindingPin().equals(pin)).findFirst().orElseThrow();
+            var actual = providerPluginCatalog.find(pin).orElseThrow(() ->
+                    new IllegalArgumentException("Worker does not have the recorded provider implementation"));
+            ProviderCandidateProjection.requireMatching(actual, recorded);
+        }
         TaskOutputPublicationContext publicationContext = prepared.execution()==null
                 ? publicationSettings.contextFor(tenantId,prepared.renderJobId())
                 : publicationSettings.contextFor(tenantId,prepared.renderJobId(),prepared.execution().projectId());

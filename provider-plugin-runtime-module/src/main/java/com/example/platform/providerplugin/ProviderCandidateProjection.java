@@ -1,6 +1,7 @@
 package com.example.platform.providerplugin;
 
 import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.binding.ProviderCandidateCanonicalCodec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -33,6 +34,15 @@ public final class ProviderCandidateProjection {
     public static List<ProviderCandidate> project(ProviderPluginCatalog catalog) {
         Objects.requireNonNull(catalog, "catalog");
         return project(catalog.contributions());
+    }
+
+    /** Compare the actual Worker contribution with the complete declaration recorded by planning. */
+    public static void requireMatching(ProviderPluginContribution contribution, ProviderCandidate recorded) {
+        var actual = project(List.of(contribution)).getFirst();
+        if (!java.util.Arrays.equals(ProviderCandidateCanonicalCodec.encode(actual),
+                ProviderCandidateCanonicalCodec.encode(recorded))) {
+            throw new IllegalArgumentException("Worker provider declaration differs from immutable binding inputs");
+        }
     }
 
     /** Projects the supplied contributions, preserving the supplied order. */

@@ -112,7 +112,7 @@ class FfmpegClosedLoopIntegrationTest {
     }
 
     @Test
-    void real_ffmpeg_stdout_flows_through_staging_platform_artifact_commit_and_completion()
+    void real_ffmpeg_file_flows_through_staging_platform_artifact_commit_and_completion()
             throws Exception {
         Path ffmpeg = binary("ffmpeg");
         Path ffprobe = binary("ffprobe");
@@ -120,10 +120,10 @@ class FfmpegClosedLoopIntegrationTest {
         byte[] sourceBytes = Files.readAllBytes(input);
         Harness harness = new Harness(temp.resolve("success"));
         ProviderBoundExecutableTaskGraph graph = harness.seedSource(sourceBytes);
-        ProviderNativeRuntimeBinding<FfmpegCpuTranscodePlan> binding =
-                FfmpegCpuRuntimeBindingFactory.create(
+        ProviderNativeRuntimeBinding<?> binding =
+                registeredBinding(
                         ffmpeg,
-                        FfmpegSandboxWorkspace.under(harness.workspace),
+                        harness.workspace,
                         Duration.ofSeconds(20),
                         8 * 1024 * 1024,
                         SandboxCancellation.never());
@@ -153,9 +153,9 @@ class FfmpegClosedLoopIntegrationTest {
 
         Harness repeatedHarness = new Harness(temp.resolve("repeated-success"));
         ProviderBoundExecutableTaskGraph repeatedGraph = repeatedHarness.seedSource(sourceBytes);
-        var repeatedBinding = FfmpegCpuRuntimeBindingFactory.create(
+        var repeatedBinding = registeredBinding(
                 ffmpeg,
-                FfmpegSandboxWorkspace.under(repeatedHarness.workspace),
+                repeatedHarness.workspace,
                 Duration.ofSeconds(20),
                 8 * 1024 * 1024,
                 SandboxCancellation.never());
@@ -185,7 +185,7 @@ class FfmpegClosedLoopIntegrationTest {
         var wide = Files.readAllBytes(generateInput(ffmpeg, temp.resolve("second.mp4"), "color=blue:size=96x64:rate=5"));
         var graph = FfmpegCanonicalGraphFixture.independentSources(List.of(
                 harness.seedSource("source-0", normal), harness.seedSource("source-1", wide)));
-        var binding = FfmpegCpuRuntimeBindingFactory.create(ffmpeg, FfmpegSandboxWorkspace.under(harness.workspace),
+        var binding = registeredBinding(ffmpeg, harness.workspace,
                 Duration.ofSeconds(20), 8 * 1024 * 1024, SandboxCancellation.never());
         var executed = harness.execute(graph, binding, "two-ports");
         assertThat(executed.executedTaskResults()).hasSize(2);
@@ -241,8 +241,8 @@ class FfmpegClosedLoopIntegrationTest {
         Harness invalidHarness = new Harness(temp.resolve("invalid"));
         ProviderBoundExecutableTaskGraph invalidGraph = invalidHarness.seedSource(
                 "not-media".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        var normalBinding = FfmpegCpuRuntimeBindingFactory.create(
-                ffmpeg, FfmpegSandboxWorkspace.under(invalidHarness.workspace),
+        var normalBinding = registeredBinding(
+                ffmpeg, invalidHarness.workspace,
                 Duration.ofSeconds(10), 1024 * 1024, SandboxCancellation.never());
 
         assertThatThrownBy(() -> invalidHarness.execute(invalidGraph, normalBinding, "invalid"))
@@ -261,8 +261,8 @@ class FfmpegClosedLoopIntegrationTest {
                 .filter(ProcessHandle::isAlive)
                 .map(ProcessHandle::pid)
                 .collect(java.util.stream.Collectors.toSet());
-        var cancelledBinding = FfmpegCpuRuntimeBindingFactory.create(
-                ffmpeg, FfmpegSandboxWorkspace.under(cancelledHarness.workspace),
+        var cancelledBinding = registeredBinding(
+                ffmpeg, cancelledHarness.workspace,
                 Duration.ofSeconds(10), 8 * 1024 * 1024, () -> true);
 
         assertThatThrownBy(() -> cancelledHarness.execute(
@@ -279,6 +279,13 @@ class FfmpegClosedLoopIntegrationTest {
                 .map(handle -> handle.info().command().orElse("") + " "
                         + String.join(" ", handle.info().arguments().orElse(new String[0]))))
                 .noneMatch(command -> command.contains("ffmpeg") || command.contains("bwrap"));
+    }
+
+    private ProviderNativeRuntimeBinding<?> registeredBinding(Path executable, Path workspace,
+            Duration timeout, long captureBytes, SandboxCancellation cancellation) {
+        return new FfmpegProviderPluginContribution().createRuntimeBinding(
+                new com.example.platform.providerplugin.ProviderPluginRuntimeContext(
+                        executable, workspace, timeout, captureBytes, cancellation, null));
     }
 
     private Path generateInput(Path ffmpeg, Path output) throws Exception {
@@ -384,7 +391,7 @@ class FfmpegClosedLoopIntegrationTest {
 
         private RuntimeClosedLoopResult execute(
                 ProviderBoundExecutableTaskGraph graph,
-                ProviderNativeRuntimeBinding<FfmpegCpuTranscodePlan> binding,
+                ProviderNativeRuntimeBinding<?> binding,
                 String run) throws IOException {
             var executions = new java.util.LinkedHashMap<ExecutableTaskId, TaskRuntimeExecution>();
             var cacheability = new java.util.LinkedHashMap<ExecutableTaskId, Cacheability>();

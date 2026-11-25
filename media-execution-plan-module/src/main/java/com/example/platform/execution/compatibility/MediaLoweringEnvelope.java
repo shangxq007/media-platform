@@ -14,6 +14,19 @@ import java.util.List;
 public enum MediaLoweringEnvelope {
     GENERIC, TIMED_TRACKS_H264_V1, VISUAL_H264_V1;
 
+    private static final String IMPLEMENTATION =
+            com.example.platform.execution.domain.provider.ProviderImplementationContent.indexedClasses(
+                    MediaLoweringEnvelope.class, "media-execution-plan-module");
+
+    /** Binds the predicate implementation and effective raster limits consumed during replay. */
+    public String behaviorIdentity() {
+        var writer = new com.example.platform.execution.planning.CanonicalWriter()
+                .tag("media-lowering-v1").field("predicate", name()).field("implementation", IMPLEMENTATION);
+        outputRasters().ifPresent(r -> writer.exactLong(r.minWidth()).exactLong(r.minHeight())
+                .exactLong(r.maxWidth()).exactLong(r.maxHeight()).exactLong(r.maxPixels()).exactLong(r.alignment()));
+        return writer.build();
+    }
+
     public boolean supports(PhysicalPlanUnit unit) {
         if (this == GENERIC) return true;
         var extent = unit.propagatedExtent();

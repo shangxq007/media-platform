@@ -3,6 +3,8 @@ plugins {
     id("jacoco")
 }
 
+apply(from = rootProject.file("gradle/provider-implementation.gradle.kts"))
+
 group = "com.example.platform"
 version = "0.2.0-SNAPSHOT"
 

@@ -68,7 +68,7 @@ public final class FfmpegSandboxExecutionPolicyResolver
         }
         java.util.Map<String, Path> inputs = new java.util.HashMap<>();
         for (MaterializedExecutionInput input : runtimeLocalInputs) {
-            String token = FfmpegCpuRuntimeAdapter.materializedInputToken(input.inputId());
+            String token = FfmpegCpuRenderAdapter.materializedInputToken(input.inputId());
             if (inputs.put(token, input.materializedArtifact().path().toAbsolutePath().normalize()) != null) {
                 return rejected("duplicate materialized input identity");
             }

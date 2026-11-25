@@ -7,8 +7,13 @@ val indexProviderClasses by tasks.registering {
     outputs.dir(providerIndex)
     doLast {
         val root = compiledProvider.get().asFile
+        // Only the compatibility predicate and its compiler-generated companions define the envelope.
+        val envelopeIndex = project.name == "media-execution-plan-module"
         val names = root.walkTopDown().filter { it.isFile && it.extension == "class" }
-            .map { it.relativeTo(root).invariantSeparatorsPath }.sorted().toList()
+            .map { it.relativeTo(root).invariantSeparatorsPath }.filter { !envelopeIndex || it.substringBefore('$') ==
+                    "com/example/platform/execution/compatibility/MediaLoweringEnvelope"
+                    || it == "com/example/platform/execution/compatibility/MediaLoweringEnvelope.class" }
+            .sorted().toList()
         require(names.isNotEmpty())
         val index = providerIndex.get().file("META-INF/provider-content/${project.name}").asFile
         index.parentFile.mkdirs()

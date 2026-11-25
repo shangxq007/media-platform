@@ -4,13 +4,10 @@ import com.example.platform.bmf.BmfCpuProvider;
 import com.example.platform.bmf.BmfCpuRuntimeBindingFactory;
 import com.example.platform.bmf.BmfRuntimeBundleVerifier;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
-import com.example.platform.execution.domain.provider.ProviderCapabilityContractReference;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
-import com.example.platform.execution.domain.provider.ProviderCapabilitySupport;
 import com.example.platform.execution.domain.provider.ProviderDescriptor;
 import com.example.platform.execution.domain.provider.ProviderExecutionContract;
-import com.example.platform.execution.domain.provider.ProviderExecutionContractSchemaVersion;
 import com.example.platform.extension.domain.CapabilityDescriptor;
 import com.example.platform.extension.domain.HandledObjectDescriptor;
 import com.example.platform.extension.domain.InvocationContract;
@@ -22,7 +19,6 @@ import com.example.platform.extension.domain.ResourceRequirement;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
 import com.example.platform.shared.capability.CapabilityId;
-import com.example.platform.shared.capability.ContractVersion;
 import com.example.platform.shared.capability.ContractVersionRange;
 import com.example.platform.workerfabric.domain.ExecutionBackend;
 import com.example.platform.workerfabric.domain.ProviderBackendExecutionSupport;
@@ -75,10 +71,7 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     public static final CapabilityId MULTITRACK_CAPABILITY = CapabilityId.of("render.multitrack-composite");
     public static final CapabilityId OUTPUT_CAPABILITY = CapabilityId.of("render.output");
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
-            ContractVersionRange.exactly(ContractVersion.of(1, 0));
-
-    private static final List<CapabilityId> CAPABILITIES = com.example.platform.bmf.BmfOperation.capabilityIds().stream()
-            .map(CapabilityId::of).toList();
+            BmfCpuProvider.CAPABILITY_CONTRACT_RANGE;
 
     private final Path runtimeRoot;
     private final String bundleDigest;
@@ -106,15 +99,6 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
         }
         return runtimeRoot.resolve("host-bundle/usr/bin/python3.9");
     }
-
-    private static final ProviderExecutionContract EXECUTION_CONTRACT =
-            new ProviderExecutionContract(
-                    ProviderExecutionContractSchemaVersion.of(1),
-                    BmfCpuProvider.EXECUTION_CONTRACT_VERSION,
-                    CAPABILITIES.stream()
-                            .map(capability -> new ProviderCapabilityContractReference(
-                                    capability, CAPABILITY_CONTRACT_RANGE))
-                            .toList());
 
     private static final PluginDescriptor PLUGIN_DESCRIPTOR = new PluginDescriptor(
             PLUGIN_ID,
@@ -177,17 +161,14 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
 
     @Override
     public ProviderExecutionContract providerExecutionContract() {
-        return EXECUTION_CONTRACT;
+        return BmfCpuProvider.EXECUTION_CONTRACT;
     }
 
     @Override
     public ProviderCapabilityProfile providerCapabilityProfile() {
         return new ProviderCapabilityProfile(
                     binding.providerCapabilityProfileVersionOrDigest(),
-                    CAPABILITIES.stream()
-                            .map(capability -> ProviderCapabilitySupport.unpinned(
-                                    capability, CAPABILITY_CONTRACT_RANGE))
-                            .toList());
+                BmfCpuProvider.SUPPORTS);
     }
 
     @Override

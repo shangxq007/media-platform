@@ -37,9 +37,6 @@ public final class FfmpegCpuProvider {
     public static final ProviderVersion VERSION = ProviderVersion.of("1.3.0");
     public static final ProviderExecutionContractVersion EXECUTION_CONTRACT_VERSION =
             ProviderExecutionContractVersion.of(1, 2);
-    public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
-            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
-                    FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID);
     public static final RuntimeSupportIdentifier RUNTIME_SUPPORT_IDENTIFIER =
             RuntimeSupportIdentifier.of("ffmpeg.cpu.v1");
     public static final CapabilityId COVER_CAPABILITY = CapabilityId.of("media.cover-image");
@@ -63,13 +60,6 @@ public final class FfmpegCpuProvider {
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
             ContractVersionRange.exactly(ContractVersion.of(1, 0));
 
-    public static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
-            PROVIDER_ID,
-            IMPLEMENTATION_ID,
-            VERSION,
-            EXECUTION_CONTRACT_VERSION,
-            CAPABILITY_PROFILE_REFERENCE);
-
     // The pinned Bytedeco distribution does not contain drawtext. Its registration excludes subtitle rasterization.
     public static final ProviderExecutionContract EXECUTION_CONTRACT =
             new ProviderExecutionContract(
@@ -87,47 +77,6 @@ public final class FfmpegCpuProvider {
                             new ProviderCapabilityContractReference(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 
-    public static final ProviderCapabilityProfile CAPABILITY_PROFILE =
-            new ProviderCapabilityProfile(
-                    CAPABILITY_PROFILE_REFERENCE,
-                    List.of(
-                            ProviderCapabilitySupport.unpinned(
-                                    TRANSCODE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            ProviderCapabilitySupport.unpinned(
-                                    VIDEO_DECODE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            ProviderCapabilitySupport.unpinned(
-                                    COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            ProviderCapabilitySupport.unpinned(
-                                    OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            ProviderCapabilitySupport.unpinned(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            ProviderCapabilitySupport.unpinned(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
-
-    public static final ProviderBindingPin BINDING = new ProviderBindingPin(
-            PROVIDER_ID,
-            IMPLEMENTATION_ID,
-            VERSION,
-            EXECUTION_CONTRACT_VERSION,
-            CAPABILITY_PROFILE_REFERENCE,
-            List.of());
-
-    public static final WorkerRuntimeSupportRequirement RUNTIME_SUPPORT_REQUIREMENT =
-            new WorkerRuntimeSupportRequirement(
-                    BINDING,
-                    RuntimeLifecycleKind.EPHEMERAL_TASK,
-                    RUNTIME_SUPPORT_IDENTIFIER);
-
-    /**
-     * Stage-1 static compatibility declared by this provider.
-     *
-     * <p>Only genuinely served facts: pinned source inputs plus intermediate/final
-     * outputs (the bounded slice's inter-task Artifact boundaries), the H.264 codec it
-     * emits, CPU device class, a native child process executed under the sandbox,
-     * SANDBOXED mode only (the binding factory fails closed when bubblewrap is
-     * unavailable), deterministic output (bitexact + single-threaded), and supported
-     * lowering. The raster capability consumes the exact timed-text materialization
-     * requirement; unsupported materialization shapes still fail in its lowerer.
-     * Boundary contracts remain undeclared.</p>
-     */
     public static final ProviderStaticCompatibility STATIC_COMPATIBILITY =
             new ProviderStaticCompatibility(
                     ProviderStaticCompatibility.Knowledge.DECLARED,
@@ -145,6 +94,38 @@ public final class FfmpegCpuProvider {
                     List.of(),
                     ProviderStaticCompatibility.LoweringSupport.SUPPORTED,
                     com.example.platform.execution.compatibility.MediaLoweringEnvelope.VISUAL_H264_V1);
+
+    private static final List<ProviderCapabilitySupport> SUPPORTS = EXECUTION_CONTRACT.capabilityContractReferences()
+            .stream().map(ref -> ProviderCapabilitySupport.unpinned(ref.capabilityId(), ref.contractVersionRange())).toList();
+
+    public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
+            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
+                    FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID,
+                    com.example.platform.execution.binding.ProviderCandidateCanonicalCodec.effectiveDeclaration(
+                            EXECUTION_CONTRACT, SUPPORTS, STATIC_COMPATIBILITY));
+    public static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
+            PROVIDER_ID,
+            IMPLEMENTATION_ID,
+            VERSION,
+            EXECUTION_CONTRACT_VERSION,
+            CAPABILITY_PROFILE_REFERENCE);
+
+    public static final ProviderCapabilityProfile CAPABILITY_PROFILE =
+            new ProviderCapabilityProfile(CAPABILITY_PROFILE_REFERENCE, SUPPORTS);
+
+    public static final ProviderBindingPin BINDING = new ProviderBindingPin(
+            PROVIDER_ID,
+            IMPLEMENTATION_ID,
+            VERSION,
+            EXECUTION_CONTRACT_VERSION,
+            CAPABILITY_PROFILE_REFERENCE,
+            List.of());
+
+    public static final WorkerRuntimeSupportRequirement RUNTIME_SUPPORT_REQUIREMENT =
+            new WorkerRuntimeSupportRequirement(
+                    BINDING,
+                    RuntimeLifecycleKind.EPHEMERAL_TASK,
+                    RUNTIME_SUPPORT_IDENTIFIER);
 
     private FfmpegCpuProvider() {}
 }
