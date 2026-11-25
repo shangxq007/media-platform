@@ -368,9 +368,20 @@ describe.each([
       const original = await screen.findByLabelText('Timeline clip clip-0')
       await screen.findByText('Viewing editing head · main')
       const initialReadCount = readRef.mock.calls.length
-      const later = { ...head, revisionId: revisionId('revision-R2') }
+      const later = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(TIMELINE_C) }
+      const alternate = { ...head, revisionId: revisionId('revision-alt') }
       const laterRow: RevisionListEntry = { ...appliedRevision, id: later.revisionId, revisionNumber: 3,
         parentRevisionId: appliedHead.revisionId }
+      const laterBinding = { ok: true as const, value: {
+        head: later, history: [laterRow, appliedRevision, revision, olderRevision],
+      } }
+      const alternateRow = { ...revision, id: alternate.revisionId }
+      const receipt = { data: { status: 'APPLIED', newRevisionId: appliedHead.revisionId, newContentHash: appliedHead.contentHash } }
+      const delivery = deferred<typeof receipt>()
+      type RefResponse = Awaited<ReturnType<typeof editingRefs.readEditingBranch>>
+      const failedRead = deferred<RefResponse>()
+      const recoveryRead = deferred<RefResponse>()
+      const endpoint = '/tenants/tenant-1/projects/project-1/timeline-operations/batch/v2'
       const extraHead = vi.spyOn(FormalRenderAPI, 'head')
         .mockRejectedValue(new Error('The workspace must use its single ref read'))
       const writes: { path: string; body: string; ifMatch: unknown }[] = []
@@ -380,25 +391,30 @@ describe.each([
         const body = data as SemanticBatch
         expect(body.baseRevisionId).toBe(head.revisionId)
         expect(body.baseContentHash).toBe(head.contentHash)
-        expect(body.operations[0].definitionId).toBe(definition)
-        if (path.endsWith('/preview')) {
+        expect(body.batchId).toMatch(/^[0-9a-f-]{36}$/)
+        expect(body.operations).toHaveLength(1)
+        expect(body.operations[0]).toMatchObject({ definitionId: definition, target: { clipId: 'clip-0' } })
+        expect(body.refId ?? 'main').toBe('main')
+        if (path === endpoint + '/preview') {
           previews += 1
           return { data: { batchDigest: HASH_C, steps: [] } }
         }
         writes.push({ path, body: JSON.stringify(body), ifMatch: config?.headers?.['If-Match'] })
-        expect(path).toMatch(/\/timeline-operations\/batch\/v2\/apply$/)
+        expect(path).toBe(endpoint + '/apply')
         if (writes.length === 1) {
-          readRef.mockResolvedValue({ ok: true, value: {
-            head: later, history: [laterRow, appliedRevision, revision, olderRevision],
-          } })
+          readRef.mockImplementation(async (_project, ref) => ref === 'main'
+            ? laterBinding : { ok: true, value: { head: alternate, history: [alternateRow] } })
           if (scenario.startsWith('stale-')) throw Object.assign(Error('Apply conflict'), {
             response: { status: Number(scenario.slice(-3)) },
           })
           acceptedWrites += 1
           if (scenario === 'lost-replay') throw Error('committed response lost')
-          if (scenario === 'read-recovery') readRef.mockResolvedValueOnce(mockFailure('UNAVAILABLE'))
+          if (scenario === 'read-recovery') {
+            readRef.mockReturnValueOnce(failedRead.promise).mockReturnValueOnce(recoveryRead.promise)
+            return delivery.promise
+          }
         }
-        return { data: { status: 'APPLIED', newRevisionId: appliedHead.revisionId, newContentHash: appliedHead.contentHash } }
+        return receipt
       })
       const clipRegion = screen.getByRole('region', { name: 'Edit existing clip' })
       const deleteButton = () => within(clipRegion).getByRole<HTMLButtonElement>('button', { name: 'Delete selected clip' })
@@ -420,16 +436,51 @@ describe.each([
         fireEvent.click(retry)
       }
       if (scenario === 'read-recovery') {
-        await within(clipRegion).findByText(new RegExp(`${label} accepted at revision revision-R1.*Reload HEAD`))
-        expect(branchPicker().disabled).toBe(false)
+        const accepted = new RegExp(`${label} accepted at revision revision-R1.*Reload HEAD`)
+        const writeRetry = () => screen.queryByRole('button', { name: new RegExp(`Retry ${label}`) })
+        await waitFor(() => {
+          expect(writes).toHaveLength(1)
+          expect(branchPicker().disabled).toBe(true)
+          expect(deleteButton().disabled).toBe(true)
+        })
+        expect(readRef).toHaveBeenCalledTimes(initialReadCount)
+        expect(within(clipRegion).queryByText(accepted)).toBeNull()
+        expect(reload().disabled).toBe(true)
+
+        await act(async () => delivery.resolve(receipt))
+        expect(readRef).toHaveBeenCalledTimes(initialReadCount + 1)
+        expect(readRef).toHaveBeenLastCalledWith(head.projectId, 'main')
+        expect(branchPicker().disabled).toBe(true)
         expect(deleteButton().disabled).toBe(true)
+        expect(clipRegion.getAttribute('data-viewed-revision')).toBe(head.revisionId)
+        expect(writeRetry()).toBeNull()
+
+        // ClipEditor can render the accepted notice before the workspace renders
+        // the ownership/clip-lock release. Wait for the actual control to unlock.
+        failedRead.resolve(mockFailure('UNAVAILABLE'))
+        const outcome = await within(clipRegion).findByText(accepted)
+        const recovery = () => label === 'Delete'
+          ? within(clipRegion).getByRole<HTMLButtonElement>('button', { name: 'Reload HEAD after accepted edit' })
+          : reload()
+        await waitFor(() => {
+          expect(branchPicker().disabled).toBe(false)
+          expect(reload().disabled).toBe(false)
+          expect(recovery().disabled).toBe(false)
+        })
+        expect(outcome.getAttribute('role')).toBe('status')
+        expect(deleteButton().disabled).toBe(true)
+        expect(writeRetry()).toBeNull()
         expect(readRef).toHaveBeenCalledTimes(initialReadCount + 1)
         expect(writes).toHaveLength(1)
-        expect(reload().disabled).toBe(false)
-        expect(screen.queryByRole('button', { name: new RegExp(`Retry ${label}`) })).toBeNull()
-        const recovery = label === 'Delete'
-          ? within(clipRegion).getByRole('button', { name: 'Reload HEAD after accepted edit' }) : reload()
-        fireEvent.click(recovery)
+
+        fireEvent.click(recovery())
+        await waitFor(() => expect(readRef).toHaveBeenCalledTimes(initialReadCount + 2))
+        expect(readRef).toHaveBeenLastCalledWith(head.projectId, 'main')
+        expect(within(clipRegion).getByText(accepted)).toBeTruthy()
+        expect(deleteButton().disabled).toBe(true)
+        expect(writeRetry()).toBeNull()
+        expect(transport).toHaveBeenCalledTimes(2)
+        await act(async () => recoveryRead.resolve(laterBinding))
       }
 
       const stale = scenario.startsWith('stale-')
@@ -455,7 +506,35 @@ describe.each([
       expect(readRef).toHaveBeenCalledTimes(initialReadCount + (scenario === 'read-recovery' ? 2 : 1))
       expect(extraHead).not.toHaveBeenCalled()
       expect(screen.queryByRole('button', { name: /Reload HEAD after accepted edit|Retry (Delete|Move)/ })).toBeNull()
-      await verifyDefaultNavigationResumed(queries, readRef)
+      const beforeNavigation = readRef.mock.calls.length
+      const detail = vi.spyOn(queries, 'getRevision')
+      const compare = vi.spyOn(queries, 'compare')
+      const history = await olderButton()
+      await waitFor(() => expect(history.disabled).toBe(false))
+      fireEvent.click(history)
+      const historical = await screen.findByRole('region', { name: 'Historical timeline' })
+      expect(historical.getAttribute('data-viewed-revision')).toBe(olderRevision.id)
+      expect(detail).toHaveBeenCalledExactlyOnceWith(head.projectId, olderRevision.id)
+      await waitFor(() => expect(compare).toHaveBeenCalledExactlyOnceWith(head.projectId, olderRevision.id, later.revisionId))
+      expect(readRef).toHaveBeenCalledTimes(beforeNavigation)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Return to editing head' }))
+      const expectHead = async (ref: string, expected: string) => {
+        await waitFor(() => {
+          expect(branchPicker().value).toBe(ref)
+          expect(branchPicker().disabled).toBe(false)
+          expect(screen.getByRole('region', { name: 'Edit existing clip' })
+            .getAttribute('data-viewed-revision')).toBe(expected)
+        })
+      }
+      await expectHead('main', later.revisionId)
+      fireEvent.change(branchPicker(), { target: { value: 'alt' } })
+      await expectHead('alt', alternate.revisionId)
+      fireEvent.change(branchPicker(), { target: { value: 'main' } })
+      await expectHead('main', later.revisionId)
+      expect(readRef.mock.calls.slice(beforeNavigation)).toEqual([
+        [head.projectId, 'main'], [head.projectId, 'alt'], [head.projectId, 'main'],
+      ])
       expect(transport).toHaveBeenCalledTimes(1 + writes.length)
     }
   )
