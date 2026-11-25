@@ -76,6 +76,9 @@ public final class ParameterDigest {
                     + ",placement=" + a.placement().start() + ".." + a.placement().end()
                     + ",mapping=" + temporalMapping(a.temporalMapping()) + ")";
         }
+        if (p instanceof OperationParameters.SlipParameters slip) {
+            return framed("slip-v1", slip.backward() ? "-" : "+", slip.magnitude().toString());
+        }
         if (p instanceof OperationParameters.RollCutParameters roll) {
             return framed("roll-cut-v1", roll.trackId(), roll.leftClipId().value(), roll.rightClipId().value(), roll.cutTime().toString());
         }

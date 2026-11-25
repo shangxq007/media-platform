@@ -11,6 +11,11 @@ ValidationResult validate(MediaStreamSourceBinding binding,
                                      String expectedProjectId,
                                      TrackType expectedTrackType);
 
+/** Validate the shared source window when a video clip also feeds an explicit audio route. */
+default ValidationResult validateRoutedVideo(MediaStreamSourceBinding binding, String tenant, String project) {
+    return new ValidationResult(false, List.of("Routed embedded audio range verification unavailable"));
+}
+
 public record ValidationResult(boolean valid, List<String> violations) {
         public ValidationResult {
             violations = violations == null ? List.of() : List.copyOf(violations);

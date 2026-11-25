@@ -3,6 +3,7 @@ package com.example.platform.timeline.app;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.artifact.app.ArtifactSourcePinAuthority;
+import com.example.platform.artifact.contract.ArtifactSourceFacts;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.timeline.canonical.TrackType;
@@ -86,6 +87,23 @@ class ArtifactPinTimelineSourceValidatorTest {
         var validator = validator(authority);
         assertThat(validator.validate(tooLong, TENANT, PROJECT, TrackType.VIDEO).valid()).isFalse();
         assertThat(validator.validate(binding(), TENANT, PROJECT, TrackType.AUDIO).valid()).isFalse();
+    }
+
+    @Test
+    void routedVideoNeedsOneKnownEmbeddedAudioStreamCoveringTheSameSourceWindow() {
+        var pin = new RecordingAuthority(ArtifactSourcePinAuthority.Outcome.RESOLVED);
+        var video = new ArtifactSourceFacts.Stream("stream-1", ArtifactSourceFacts.Kind.VIDEO, MediaTime.ofMillis(2000));
+        for (int audioMillis : List.of(999, 1000, 1500)) {
+            var audio = new ArtifactSourceFacts.Stream("audio", ArtifactSourceFacts.Kind.AUDIO, MediaTime.ofMillis(audioMillis));
+            for (Integer count : java.util.Arrays.asList(null, 1, 2)) {
+                var facts = new ArtifactSourceFacts(video.duration(), List.of(video, audio),
+                        count == null ? null : new ArtifactSourceFacts.StreamCounts(1, count));
+                var validator = new ArtifactPinTimelineSourceValidator(pin, (t,p,id,digest) -> java.util.Optional.of(facts));
+                assertThat(validator.validateRoutedVideo(binding(), TENANT, PROJECT).valid())
+                        .isEqualTo(Integer.valueOf(1).equals(count) && audioMillis >= 1000);
+                assertThat(validator.validate(binding(), TENANT, PROJECT, TrackType.VIDEO).valid()).isTrue();
+            }
+        }
     }
 
     @Test

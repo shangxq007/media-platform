@@ -347,6 +347,53 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N10 slip edit', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each(['offset', 'clip'])('invalidates a pending plan when its %s changes away and back', async field => {
+    renderBranchWorkspace('main', '6', true)
+    const result = { batchDigest: HASH_C, steps: [] }
+    const held = deferred<typeof result>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    await screen.findByRole('option', { name: 'clip-0 on Video' })
+    const section = within(screen.getByRole('region', { name: 'Slip edit' }))
+    const select = (id: string) => fireEvent.change(section.getByLabelText('Slip clip'), { target: { value: id } })
+    const offset = (value: string) => fireEvent.change(section.getByLabelText('Source offset (seconds)'), { target: { value } })
+    select('clip-0'); offset('+1/30')
+    const prepare = section.getByRole('button', { name: 'Preview slip' })
+    fireEvent.click(prepare)
+    if (field === 'clip') { select('clip-1'); select('clip-0') }
+    else offset('-1/30')
+    offset('+1/30')
+    await act(async () => held.resolve(result))
+    expect(section.queryByRole('button', { name: 'Confirm slip' })).toBeNull()
+    fireEvent.click(prepare)
+    await section.findByText('Source [0/1, 6/1) → [1/30, 181/30)')
+    expect(preview.mock.lastCall?.[2].operations).toEqual([{ definitionId: 'timeline.clip.slip', version: '1.0',
+      target: { clipId: 'clip-0' }, parameters: { offset: '1/30' } }])
+    fireEvent.click(section.getByRole('button', { name: 'Cancel slip' }))
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it('separates an accepted slip from a subsequently advanced HEAD', async () => {
+    const { readRef } = renderBranchWorkspace('main')
+    vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch').mockResolvedValue(appliedHead)
+    await screen.findByRole('option', { name: 'clip-0 on Video' })
+    const section = within(screen.getByRole('region', { name: 'Slip edit' }))
+    fireEvent.change(section.getByLabelText('Slip clip'), { target: { value: 'clip-0' } })
+    fireEvent.change(section.getByLabelText('Source offset (seconds)'), { target: { value: '+1' } })
+    fireEvent.click(section.getByRole('button', { name: 'Preview slip' }))
+    const next = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(TIMELINE_C) }
+    readRef.mockResolvedValue({ ok: true, value: { head: next, history: [olderRevision] } })
+    fireEvent.click(await section.findByRole('button', { name: 'Confirm slip' }))
+    await section.findByText('Slip accepted at revision revision-R1. Current HEAD is revision-R2.')
+    expect(write).toHaveBeenCalledOnce()
+    expect(section.queryByRole('button', { name: 'Retry confirmed slip' })).toBeNull()
+  })
+})
+
 describe('N09 roll edit', () => {
   afterEach(() => vi.restoreAllMocks())
 

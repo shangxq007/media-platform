@@ -81,6 +81,8 @@ if branches:
         'redo', 'reopened', 'gap', 'end', 'competitor', 'stale', 'bound', 'rejected'))
     checkpoints += tuple('n09-' + stage for stage in ('before','readonly','committed','recovered','undo','redo',
         'reopened','zero','left','fraction','competitor','stale'))
+    checkpoints += tuple('n10-' + stage for stage in ('zero-before','before','readonly','committed','recovered','undo','redo',
+        'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -466,6 +468,41 @@ if branches:
     assert all({'artifact':c['artifactId'], 'digest':c['contentDigest']} in pins9 for c in initial9.values())
     (out / 'n09-postgres.json').write_text(json.dumps(dict(browser=browser_result['http']['n09'],
         persisted=rows9, pins=pins9, checkpoints=counts9), indent=2))
+    counts10 = {k.removeprefix('n10-'): v for k, v in facts.items() if k.startswith('n10-')}
+    slip = browser_result['http']['n10']
+    rows10 = persisted_revisions({state['refs']['main'] for state in counts10.values()} | {e['base'] for e in slip['edges']})
+    def row10(stage):
+        return rows10[counts10[stage]['refs']['main']]
+    assert counts10['before'] == counts10['readonly'] and counts10['committed'] == counts10['recovered']
+    assert counts10['redo'] == counts10['reopened'] and counts10['stale'] == counts10['competitor']
+    assert counts10['bound'] == counts10['rejected'] and counts10['zero-before']['rows'] == counts10['before']['rows']
+    for first, second in [('before','committed'),('committed','undo'),('undo','redo')]:
+        assert row10(second)['parent_revision_id'] == row10(first)['id']
+        for field in ('commands','rows'):
+            assert counts10[second][field] == counts10[first][field] + 1
+    for field in ('snapshot','semantics'):
+        assert row10('before')[field] == row10('undo')[field] and row10('committed')[field] == row10('redo')[field]
+    def check_slip(before, after, offset):
+        import copy
+        expected = copy.deepcopy(before['snapshot'])
+        base_clip = clip_rows({'snapshot':expected})['clip-blue']
+        actual = clip_rows(after)['clip-blue']
+        assert placement(base_clip) == placement(actual) == (5,8)
+        assert (Fraction(base_clip['trimStart']), Fraction(base_clip['trimEnd'])) == (2,5)
+        assert (Fraction(actual['trimStart']), Fraction(actual['trimEnd'])) == (2+offset,5+offset)
+        for k in ('trimStart','trimEnd'):
+            base_clip[k] = actual[k]
+        assert after['snapshot'] == expected and after['parent_revision_id'] == before['id']
+    check_slip(row10('before'), row10('committed'), 1)
+    for edge in slip['edges']:
+        check_slip(rows10[edge['base']], row10(edge['stage']), Fraction(edge['offset']))
+    def slip_pins(row):
+        return psql(f"""select json_agg(json_build_object('artifact',artifact_id,'digest',content_digest)
+            order by artifact_id,content_digest) from artifacts.artifact_pin where {scoped} and revision_id='{row['id']}';""")
+    pins10 = slip_pins(row10('committed'))
+    assert pins10 == slip_pins(row10('before'))
+    assert all({'artifact':c['artifactId'], 'digest':c['contentDigest']} in pins10 for c in clip_rows(row10('before')).values())
+    (out / 'n10-postgres.json').write_text(json.dumps(dict(browser=slip, persisted=rows10, pins=pins10, checkpoints=counts10), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

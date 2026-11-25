@@ -151,17 +151,18 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Roll must be the only operation in the batch");
             }
         }
-        if (rippleDelete(operation)) {
+        if (rippleDelete(operation) || instance.parameters() instanceof OperationParameters.SlipParameters) {
+            String edit = rippleDelete(operation) ? "Ripple Delete" : "Slip";
             if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
                 throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                        "Ripple Delete is only available on the default editing branch");
+                        edit + " is only available on the default editing branch");
             }
             if (batch.operations().size() != 1
                     || !(operation.target() instanceof com.example.platform.operation.operation.OperationTargetRequest.ClipSelectionTargetRequest request)
                     || !(request.selectionSpec() instanceof com.example.platform.timeline.semantics.selection.SelectionSpec.ExplicitObjectSelection selection)
                     || selection.clipIds().size() != 1) {
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
-                        "Ripple Delete requires one explicitly selected clip and must be the only operation in its batch");
+                        edit + " requires one explicitly selected clip and must be the only operation in its batch");
             }
         }
         if (instance.parameters() instanceof OperationParameters.MoveParameters
@@ -200,7 +201,17 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                     failure.getMessage(), failure);
         }
         if (instance.parameters() instanceof OperationParameters.RollCutParameters roll) {
-            validateMediaRanges(batch, plan.candidateTimeline(), roll.trackId(), List.of(roll.leftClipId(), roll.rightClipId()), "Roll");
+            validateMediaRanges(batch, plan.candidateTimeline(), roll.trackId(), List.of(roll.leftClipId(), roll.rightClipId()), "Roll", false);
+        }
+        if (instance.parameters() instanceof OperationParameters.SlipParameters
+                && instance.target() instanceof OperationTarget.ResolvedClipScopeTarget scope) {
+            var ids = scope.resolvedScope().resolvedClipIds();
+            var track = plan.candidateTimeline().getTracks().stream()
+                    .filter(t -> t.clips().stream().anyMatch(c -> c.getClipId().equals(ids.getFirst())))
+                    .findFirst().orElseThrow();
+            validateMediaRanges(batch, plan.candidateTimeline(), track.trackId(), ids, "Slip", track.type() == com.example.platform.timeline.canonical.TrackType.VIDEO
+                    && plan.candidateTimeline().getAudioMix().routes().stream().anyMatch(route ->
+                        route.input().clipId().equals(ids.getFirst().value()) && route.input().trackId().equals(track.trackId())));
         }
         return new StepPlan<>(plan.candidateTimeline(), instance.parameterDigest(),
                 targetIdentity(plan.sourceInstance().target()), plan.planDigest(), plan.plannedChanges().stream()
@@ -242,6 +253,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
                 instanceof OperationParameters.TrimParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));
     }
@@ -261,11 +273,11 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         } catch (IllegalArgumentException invalid) {
             throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, null, invalid.getMessage(), invalid);
         }
-        validateMediaRanges(batch, candidate, paste.trackId(), paste.sourceClipIds(), "Paste");
+        validateMediaRanges(batch, candidate, paste.trackId(), paste.sourceClipIds(), "Paste", false);
     }
 
     private void validateMediaRanges(OperationBatchRequest batch, TimelineDocument candidate, String trackId,
-                                     List<TimelineClipId> ids, String operation) {
+                                     List<TimelineClipId> ids, String operation, boolean routedEmbeddedAudio) {
         var target = batch.target();
         try {
             var track = candidate.getTracks().stream().filter(t -> t.trackId().equals(trackId)).findFirst()
@@ -284,12 +296,14 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         new com.example.platform.shared.identity.ArtifactId(clip.getArtifactId()),
                         com.example.platform.shared.digest.ContentDigest.sha256(clip.getContentDigest()),
                         new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(clip.getTrimStart(), clip.getTrimEnd()));
-                var validation = sourceValidator.validate(binding, target.tenantId(), target.projectId(), track.type());
+                var validation = routedEmbeddedAudio
+                        ? sourceValidator.validateRoutedVideo(binding, target.tenantId(), target.projectId())
+                        : sourceValidator.validate(binding, target.tenantId(), target.projectId(), track.type());
                 if (!validation.valid()) {
                     throw new IllegalArgumentException(operation + " source " + id.value() + " is invalid: " + validation.violations());
                 }
             }
-        } catch (IllegalArgumentException invalid) {
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
             throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, null, invalid.getMessage(), invalid);
         }
     }

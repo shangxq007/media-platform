@@ -66,6 +66,7 @@ public final class OperationPlanner {
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
             case "timeline.track.add" -> planAddTrack(instance, base, changes);
+            case "timeline.clip.slip" -> planSlip(instance, base, changes);
             case "timeline.clip.roll" -> planRollCut(instance, base, changes);
             case "timeline.clip.paste" -> planPasteClips(instance, base, changes, false);
             case "timeline.clip.ripple-insert" -> planPasteClips(instance, base, changes, true);
@@ -855,6 +856,37 @@ public final class OperationPlanner {
         return rebuild(base, cur.getTracks(), mix, kept);
     }
 
+    private static void requireForwardUnitMedia(TimelineClip clip, String operation) {
+        if (!"MEDIA_STREAM".equals(clip.getSourceKind()) || clip.getArtifactId() == null || clip.getContentDigest() == null
+                || clip.getMediaStreamId() == null || clip.getMediaAssetId() == null
+                || !ConstantRateTemporalMapping.identity().equals(clip.getTemporalMapping())
+                || !clip.getTrimEnd().subtract(clip.getTrimStart()).equals(clip.getEndTime().subtract(clip.getStartTime()))) {
+            throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                    operation + " requires pinned forward 1x media with matching source and timeline durations on " + clip.getClipId().value());
+        }
+    }
+
+    private TimelineDocument planSlip(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var scope = scopeOf(instance);
+        if (scope.size() != 1) throw new PlanException(PlanErrorCode.INVALID_PLAN, "Slip requires one clip");
+        var clip = clipOf(base, scope.getFirst());
+        var slip = (OperationParameters.SlipParameters) instance.parameters();
+        try {
+            requireForwardUnitMedia(clip, "Slip");
+            rejectEditBinding(base, clip, "Slip");
+            if (slip.magnitude().equals(MediaTime.ZERO)) return base;
+            if (slip.backward() && slip.magnitude().isGreaterThan(clip.getTrimStart())) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Slip would start before the pinned source on " + clip.getClipId().value());
+            }
+            var slipped = withRanges(clip, clip.getStartTime(), clip.getEndTime(),
+                    slip.shift(clip.getTrimStart()), slip.shift(clip.getTrimEnd()));
+            changes.add(new PlannedChange.ClipReplaced(clip.getClipId(), slipped));
+            return replaceClip(base, clip.getClipId(), slipped);
+        } catch (ArithmeticException overflow) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Slip exceeds the exact source-time range");
+        }
+    }
+
     private TimelineDocument planRollCut(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
         var roll = (OperationParameters.RollCutParameters) instance.parameters();
         var track = base.getTracks().stream().filter(t -> t.trackId().equals(roll.trackId())).findFirst()
@@ -874,13 +906,7 @@ public final class OperationPlanner {
         }
         try {
             for (var clip : List.of(left, right)) {
-                if (!"MEDIA_STREAM".equals(clip.getSourceKind()) || clip.getArtifactId() == null || clip.getContentDigest() == null
-                        || clip.getMediaStreamId() == null || clip.getMediaAssetId() == null
-                        || !ConstantRateTemporalMapping.identity().equals(clip.getTemporalMapping())
-                        || !clip.getTrimEnd().subtract(clip.getTrimStart()).equals(clip.getEndTime().subtract(clip.getStartTime()))) {
-                    throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
-                            "Roll requires pinned forward 1x media with matching source and timeline durations on " + clip.getClipId().value());
-                }
+                requireForwardUnitMedia(clip, "Roll");
                 rejectEditBinding(base, clip, "Roll");
             }
             if (cut.equals(left.getEndTime())) return base;

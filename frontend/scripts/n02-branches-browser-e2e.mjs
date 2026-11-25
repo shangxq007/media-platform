@@ -1549,6 +1549,9 @@ try {
     execFileSync('/usr/bin/ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-f',
       'lavfi', '-i', 'color=c=' + colour + ':s=320x240:r=24', '-t', String(seconds), '-c:v', 'libopenh264',
       '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path])
+    return uploadFixture(name, path)
+  }
+  async function uploadFixture(name, path) {
     const uploaded = await context.request.post(base + '/api/tenants/tenant-fr-e2e/projects/' + project + '/source-media', {
       headers: { Authorization: 'Bearer ' + token, 'Idempotency-Key': name },
       multipart: { file: { name, mimeType: 'video/mp4', buffer: readFileSync(path) } },
@@ -1671,8 +1674,149 @@ try {
   assert.deepEqual(await c9('stale'), competitor9)
   result.http.n09 = { base: seed9.newRevisionId, plan: planned9, attempts: attempts9, rejects: rejects9,
     frames: frames9, zero: zero9, stale: stale9 }
-  result.status = 'PASS'
   save('N09 shared-cut roll, exact handles, fractional placement, atomic replay, recovery, undo/redo and reopened playback')
+  const c10 = stage => checkpoint('n10-' + stage)
+  const file10 = 'n10-two-sections.mp4'
+  const path10 = join(out, file10)
+  execFileSync('/usr/bin/ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
+    '-f', 'lavfi', '-i', 'color=c=red:s=320x240:r=24:d=3',
+    '-f', 'lavfi', '-i', 'color=c=blue:s=320x240:r=24:d=5',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=8',
+    '-filter_complex', '[0:v][1:v]concat=n=2:v=1:a=0[v]', '-map', '[v]', '-map', '2:a',
+    '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', path10])
+  const probe10 = JSON.parse(execFileSync('/usr/bin/ffprobe', ['-v','error','-show_entries',
+    'stream=codec_type,duration:format=duration','-of','json',path10], { encoding: 'utf8' }))
+  assert.equal(Number(probe10.format.duration), 8)
+  assert.deepEqual(probe10.streams.map(s => [s.codec_type, Number(s.duration)]), [['video',8], ['audio',8]])
+  const mixed10 = await uploadFixture(file10, path10)
+  await restore6('slip-seed', seed9.newRevisionId)
+  const seed10 = await revise6('slip-fixture', [
+    ...['clip-red','clip-blue','clip-later'].map(clipId => ({ definitionId: 'timeline.delete', target: { clipId } })),
+    rollSource('clip-red', red9, '2','4','0','2'), rollSource('clip-blue', mixed10, '5','8','2','5'),
+    rollSource('clip-later', blue9, '10','11','0','1'),
+    { definitionId: 'audio.gain.set', target: { audioTrackId: 'track-1', clipId: 'clip-blue' }, parameters: { linear: 0.5 } },
+  ])
+  await view6(seed10.newRevisionId)
+  const slip = page.getByRole('region', { name: 'Slip edit', exact: true })
+  const prepare10 = async offset => {
+    await slip.getByLabel('Slip clip').selectOption('clip-blue')
+    await slip.getByLabel('Source offset (seconds)').fill(offset)
+    const next = wire6('/preview')
+    await slip.getByRole('button', { name: 'Preview slip' }).click()
+    return trace6(await next)
+  }
+  const confirm10 = slip.getByRole('button', { name: 'Confirm slip', exact: true })
+  const frame10 = async (stage, colour) => ({
+    selected: await samples6('n10-' + stage + '-selected', [['5.5',colour]]),
+    neighbor: await samples6('n10-' + stage + '-neighbor', [['3','red']]),
+  })
+  const frames10 = { before: await frame10('before', 'red') }
+  const zeroBefore10 = await c10('zero-before')
+  const zero10 = await prepare10('0')
+  assert.equal(zero10.payload.noOp, true)
+  const zeroWrite10 = wire6('/apply')
+  await confirm10.click()
+  assert.equal((await trace6(await zeroWrite10)).payload.status, 'NO_OP')
+  await slip.getByText(/Slip created no revision/).waitFor()
+  assert.equal(await page.getByRole('button', { name: 'Undo slip' }).count(), 0)
+  const before10 = await c10('before')
+  assert.deepEqual(before10.refs, zeroBefore10.refs)
+  assert.equal(before10.rows, zeroBefore10.rows)
+  await prepare10('+1')
+  await slip.getByRole('button', { name: 'Cancel slip' }).click()
+  const rejected10 = []
+  for (const offset of ['-61/30','91/30']) {
+    const rejected = await prepare10(offset)
+    assert.equal(rejected.status, 422)
+    await apply(rejected.body, '0'.repeat(64), 422)
+    rejected10.push({ offset, preview: rejected.payload.detail, applyStatus: 422 })
+  }
+  const planned10 = await prepare10('+1')
+  await slip.getByText('clip-blue timeline [5/1, 8/1)').waitFor()
+  await slip.getByText('Source [2/1, 5/1) → [3/1, 6/1)').waitFor()
+  await slip.getByText('Source offset +1/1s').waitFor()
+  await apply(planned10.body, planned10.payload.batchDigest, 403, reader)
+  const alt10 = await branch('alternate')
+  const alternate10 = { ...planned10.body, refId: 'alternate', baseRevisionId: alt10.headRevisionId, baseContentHash: alt10.contentHash,
+    operations: [{ ...planned10.body.operations[0], target: { clipId: 'clip-red' } }] }
+  assert.equal((await preview(alternate10, 409)).errorCode, 'REF_NOT_SUPPORTED')
+  await apply(alternate10, planned10.payload.batchDigest, 409)
+  assert.deepEqual(await c10('readonly'), before10)
+  const attempts10 = []
+  await page.route(applyRoute8, async route => {
+    const req = route.request(), res = await route.fetch()
+    attempts10.push({ target: req.url(), raw: req.postData(), body: req.postDataJSON(),
+      ifMatch: req.headers()['if-match'], status: res.status(), payload: await res.json() })
+    if (attempts10.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  try {
+    await confirm10.click()
+    const retry = slip.getByRole('button', { name: 'Retry confirmed slip' })
+    await retry.waitFor()
+    const committed = await c10('committed')
+    assert.equal(committed.rows, before10.rows + 1)
+    assert.equal(await deleteClip.isDisabled(), true)
+    await page.route(readRoute7, route => route.abort('failed'), { times: 1 })
+    await retry.click()
+    await slip.getByText('Slip accepted at revision ' + committed.refs.main + '. Reload HEAD to refresh the editor.').waitFor()
+    await page.getByRole('button', { name: 'Reload HEAD', exact: true }).click()
+    await waitView('main', committed.refs.main)
+    assert.deepEqual(await c10('recovered'), committed)
+  } finally { await page.unroute(applyRoute8) }
+  confirmed6(planned10, attempts10[0])
+  for (const field of ['target', 'raw', 'ifMatch']) assert.equal(attempts10[0][field], attempts10[1][field])
+  assert.equal(attempts10[1].status, 200)
+  assert.equal(attempts10[0].payload.newRevisionId, attempts10[1].payload.newRevisionId)
+  frames10.after = await frame10('after', 'blue')
+  for (const direction of ['Undo', 'Redo']) {
+    const response = wire6('/apply')
+    await page.getByRole('button', { name: direction + ' slip', exact: true }).click()
+    await waitView('main', (await trace6(await response)).payload.newRevisionId)
+    await c10(direction.toLowerCase())
+  }
+  await view6((await branch()).headRevisionId)
+  frames10.reopened = await frame10('reopened', 'blue')
+  await c10('reopened')
+  const edges10 = []
+  for (const [stage, offset] of [['left','-1'], ['fraction','1/30'], ['source-start','-2'], ['source-end','+3']]) {
+    const base = (await restore6('slip-' + stage, seed10.newRevisionId)).newRevisionId
+    await view6(base)
+    const plan = await prepare10(offset)
+    const pending = wire6('/apply')
+    await confirm10.click()
+    const accepted = await trace6(await pending)
+    confirmed6(plan, accepted)
+    await waitView('main', accepted.payload.newRevisionId)
+    edges10.push({ stage, offset, base, accepted: accepted.payload.newRevisionId })
+    await c10(stage)
+  }
+  const staleBase10 = (await restore6('slip-stale', seed10.newRevisionId)).newRevisionId
+  await view6(staleBase10)
+  const stalePlan10 = await prepare10('+1')
+  await revise6('slip-competitor', [makeMove({ clipId: 'clip-later' }, '12', true)])
+  const competitor10 = await c10('competitor')
+  const staleResponse10 = wire6('/apply')
+  await confirm10.click()
+  const stale10 = await trace6(await staleResponse10)
+  assert.deepEqual(stale10.body, stalePlan10.body)
+  assert.equal(stale10.status, 409)
+  assert.equal(stale10.payload.errorCode, 'STALE_BASE_REVISION')
+  assert.deepEqual(await c10('stale'), competitor10)
+  const linked10 = await revise6('slip-sync', [{ definitionId: 'timeline.sync.create',
+    target: { syncIdentityKey: 'SYNC(clip-blue,clip-later)' },
+    parameters: { endpointA: 'clip-blue', localAnchorA: '1', endpointB: 'clip-later', localAnchorB: '1/2' } }])
+  await view6(linked10.newRevisionId)
+  const bound10 = await c10('bound')
+  const relation10 = await prepare10('+1')
+  assert.equal(relation10.status, 422)
+  assert.match(relation10.payload.detail, /relationship.*clip-blue/)
+  await apply(relation10.body, '0'.repeat(64), 422)
+  assert.deepEqual(await c10('rejected'), bound10)
+  result.http.n10 = { probe: probe10, base: seed10.newRevisionId, plan: planned10, attempts: attempts10, frames: frames10,
+    edges: edges10, rejected: rejected10, readOnly: 403, alternate: 409, stale: stale10.payload, sync: relation10.payload.detail }
+  result.status = 'PASS'
+  save('N10 single-clip slip, fixed timeline picture, routed audio, exact media handles, replay, readback and undo/redo')
 } finally {
   await browser.close()
 }

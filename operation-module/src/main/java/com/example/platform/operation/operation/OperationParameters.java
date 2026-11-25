@@ -31,6 +31,7 @@ public sealed interface OperationParameters permits
         OperationParameters.MoveParameters,
         OperationParameters.RelocateClipParameters,
         OperationParameters.TrimParameters,
+        OperationParameters.SlipParameters,
         OperationParameters.RollCutParameters,
         OperationParameters.SplitParameters,
         OperationParameters.PasteClipsParameters,
@@ -60,6 +61,27 @@ public sealed interface OperationParameters permits
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters,
         OperationParameters.CreateAlignmentParameters {
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record SlipParameters(MediaTime magnitude, boolean backward) implements OperationParameters {
+        public SlipParameters {
+            java.util.Objects.requireNonNull(magnitude, "source offset required");
+            if (magnitude.equals(MediaTime.ZERO)) backward = false;
+        }
+
+        public static SlipParameters parse(String value) {
+            if (!value.matches("[+-]?[0-9]+(/[1-9][0-9]*)?")) {
+                throw new IllegalArgumentException("Slip offset must be an exact signed integer or fraction");
+            }
+            boolean negative = value.startsWith("-");
+            String unsigned = negative || value.startsWith("+") ? value.substring(1) : value;
+            return new SlipParameters(MediaTime.parse(unsigned.contains("/") ? unsigned : unsigned + "/1"), negative);
+        }
+
+        public MediaTime shift(MediaTime endpoint) {
+            return backward ? endpoint.subtract(magnitude) : endpoint.add(magnitude);
+        }
+    }
 
     @org.springframework.modulith.NamedInterface("invocation")
     record RollCutParameters(String trackId, TimelineClipId leftClipId, TimelineClipId rightClipId,

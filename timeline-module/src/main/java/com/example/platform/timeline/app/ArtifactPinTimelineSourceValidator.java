@@ -57,6 +57,16 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
             String expectedTenantId,
             String expectedProjectId,
             TrackType expectedTrackType) {
+        return validate(binding, expectedTenantId, expectedProjectId, expectedTrackType, false);
+    }
+
+    @Override
+    public ValidationResult validateRoutedVideo(MediaStreamSourceBinding binding, String tenant, String project) {
+        return validate(binding, tenant, project, TrackType.VIDEO, true);
+    }
+
+    private ValidationResult validate(MediaStreamSourceBinding binding, String expectedTenantId,
+            String expectedProjectId, TrackType expectedTrackType, boolean routedEmbeddedAudio) {
         if (binding == null) {
             return invalid("source binding required");
         }
@@ -70,7 +80,7 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
                 expectedTenantId, expectedProjectId, binding.artifactId(), binding.contentDigest());
         String pin = binding.artifactId().value() + "@" + binding.contentDigest().canonicalValue();
         return switch (resolution.outcome()) {
-            case RESOLVED -> validateFacts(binding, expectedTenantId, expectedProjectId, expectedTrackType);
+            case RESOLVED -> validateFacts(binding, expectedTenantId, expectedProjectId, expectedTrackType, routedEmbeddedAudio);
             case UNKNOWN_ARTIFACT ->
                     invalid("source artifact pin is unknown: " + pin);
             case OUT_OF_SCOPE ->
@@ -84,7 +94,7 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
     }
 
     private ValidationResult validateFacts(MediaStreamSourceBinding binding, String tenant,
-            String project, TrackType trackType) {
+            String project, TrackType trackType, boolean routedEmbeddedAudio) {
         var facts = sourceFacts.find(tenant, project, binding.artifactId(), binding.contentDigest());
         if (facts.isEmpty()) return invalid("normalized source facts unavailable for artifact pin");
         if (binding.sourceRange().end().isGreaterThan(facts.get().duration())) {
@@ -102,6 +112,15 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
         }
         if (binding.sourceRange().end().isGreaterThan(stream.get().duration())) {
             return invalid("source range exceeds accepted stream duration");
+        }
+        if (routedEmbeddedAudio) {
+            var audio = facts.get().streams().stream().filter(item -> item.kind() == ArtifactSourceFacts.Kind.AUDIO).toList();
+            if (trackType != TrackType.VIDEO || facts.get().counts() == null || facts.get().counts().audio() != 1 || audio.size() != 1) {
+                return invalid("Slip requires one verified embedded audio stream for this routed clip");
+            }
+            if (binding.sourceRange().end().isGreaterThan(audio.getFirst().duration())) {
+                return invalid("Slip exceeds the routed embedded audio stream duration");
+            }
         }
         return valid();
     }

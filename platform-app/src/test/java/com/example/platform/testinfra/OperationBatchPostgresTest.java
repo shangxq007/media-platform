@@ -969,6 +969,59 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, count("artifacts.artifact_pin"));
     }
 
+    private TimelineRevision slipFixture() {
+        String pin = "a".repeat(64);
+        jdbc.update("""
+                insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
+                    media_type,artifact_kind,state,schema_version,created_at)
+                values ('slip-source',?,?,?,1024,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())
+                """, TENANT, PROJECT, pin);
+        var clip = new TimelineClip("clip-a", "slip-source", "video-stream", "slip-source", pin, time("5/1"),
+                time("8/1"), time("2/1"), time("5/1"), "MEDIA_STREAM", ConstantRateTemporalMapping.identity());
+        var track = new TimelineTrack("video-main", "Video", TrackType.VIDEO, List.of(clip));
+        return saveWithEffects(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
+                TimelineMetadata.empty()), null, List.of(blur("z-first", "4"), blur("a-second", "13")));
+    }
+
+    private OperationBatchRequest slipRequest(TimelineRevision base) {
+        var def = OperationDefinition.V3.SLIP_CLIP;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))), SelectionSpec.ExpansionPolicy.EXACT);
+        var op = new OperationRequest(def.definitionId(), def.version(), target, OperationParameters.SlipParameters.parse("+1"),
+                base.revisionId(), hash(base), null);
+        return new OperationBatchRequest("slip-one", new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(op), null);
+    }
+
+    @Test
+    void slipRetainsOrderedBoundEffectsAndRestoresFullSemantics() {
+        var base = slipFixture();
+        var accepted = saveService.findById(TENANT, applyPrepared(slipRequest(base)).newRevisionId());
+        assertEquals(base.revisionId(), accepted.parentRevisionId());
+        assertEquals(base.semanticContext().effectReference(), accepted.semanticContext().effectReference());
+        var effects = new JdbcEffectSemanticSnapshotStore(dsl).findById(PROJECT, TENANT,
+                accepted.semanticContext().effectReference().snapshotId()).orElseThrow();
+        assertEquals(List.of("z-first", "a-second"), effects.entries().stream().map(e -> e.effectInstanceId()).toList());
+        assertEquals(List.of("4", "13"), effects.entries().stream().map(e -> e.parameters().getFirst().value()).toList());
+        var clip = saveService.findPayloadDocument(TENANT, accepted.revisionId()).orElseThrow().getTracks().getFirst().clips().getFirst();
+        assertEquals(time("3/1"), clip.getTrimStart());
+        assertEquals(time("6/1"), clip.getTrimEnd());
+        var undone = saveService.findById(TENANT, applyPrepared(restoreRequest("undo-slip", accepted, base)).newRevisionId());
+        var redone = saveService.findById(TENANT, applyPrepared(restoreRequest("redo-slip", undone, accepted)).newRevisionId());
+        assertEquals(base.semanticContext(), undone.semanticContext());
+        assertEquals(accepted.semanticContext(), redone.semanticContext());
+    }
+
+    @Test
+    void slipRollsBackSourceRangePinsHeadLedgerAndEventsAfterWriteFailure() {
+        var source = slipFixture();
+        var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
+        var pins = jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id");
+        assertRippleRollsBack(source, slipRequest(source));
+        assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
+        assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
+    }
+
     @Test
     void rollRollsBackBothRangesPinsHeadLedgerAndOutbox() {
         String pin = "a".repeat(64);
