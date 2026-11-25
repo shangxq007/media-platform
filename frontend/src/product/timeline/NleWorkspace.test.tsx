@@ -10,6 +10,7 @@ import { versionlessApi } from '../../api/app/versionless-api'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { platformClient } from '../../foundation/platformClient'
 import { ProjectContextProvider as ProjectProvider } from '../../foundation/projectContext'
+import { ClipEditor } from './ClipEditor'
 import { loadExplicitRevisionSelection, NleWorkspace } from './NleWorkspace'
 import { ScriptedOperationGateway, ScriptedTimelineQueryGateway, mockFailure } from './testing/mocks'
 import type { AcceptedOperationResult, CanonicalHeadReference, GatewayResult, OperationPreview, RevisionComparison, RevisionDetail, RevisionListEntry, TimelineQueryGateway } from './gateways'
@@ -80,7 +81,7 @@ async function prepareConfirmedPreview() {
   fireEvent.click(screen.getByLabelText(/I confirm this exact frozen draft/i))
 }
 
-function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = false) {
+function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = false, initialHead = head) {
   const queries = new ScriptedTimelineQueryGateway({
     head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision] },
     detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
@@ -92,7 +93,7 @@ function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = 
   })
   vi.spyOn(editingRefs, 'listEditingBranches').mockResolvedValue(['main', 'alt'])
   const readRef = vi.spyOn(editingRefs, 'readEditingBranch')
-    .mockResolvedValue({ ok: true, value: { head, history: [revision, olderRevision] } })
+    .mockResolvedValue({ ok: true, value: { head: initialHead, history: [{ ...revision, id: initialHead.revisionId }, olderRevision] } })
   vi.spyOn(FormalRenderAPI, 'snapshot').mockImplementation(async (_project, selected) => ({
     revisionId: selected,
     schemaVersion: 'timeline-1.0',
@@ -137,6 +138,123 @@ const previewRestore = () => vi.spyOn(FormalRenderAPI, 'previewRestore').mockImp
 }))
 const olderButton = async () => (await screen.findByText('Older')).closest('button')!
 const branchPicker = () => screen.getByRole<HTMLSelectElement>('combobox', { name: 'Editing branch' })
+
+describe('N07 F1 revision-bound Ripple Delete', () => {
+  afterEach(() => vi.restoreAllMocks())
+  const r1 = appliedHead
+  const r2 = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(TIMELINE_C) }
+  const r3 = { ...head, revisionId: revisionId('revision-R3') }
+  const previewButton = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Preview ripple delete' })
+  const confirmButton = () => screen.queryByRole<HTMLButtonElement>('button', { name: 'Confirm ripple delete' })
+  const picker = () => screen.getByRole<HTMLSelectElement>('combobox', { name: /^Clip$/ })
+  const planned = { batchDigest: HASH_C, steps: [{ changes: [
+    { identity: 'remove(clip-0)', primary: true }, { identity: 'replace(clip-1,6/1)', primary: true },
+  ] }] }
+  type Snapshot = Awaited<ReturnType<typeof FormalRenderAPI.snapshot>>
+  const ref = (next: CanonicalHeadReference) => ({ ok: true as const, value: {
+    head: next, history: [{ ...appliedRevision, id: next.revisionId }, olderRevision],
+  } })
+
+  it('blocks preview until the new HEAD geometry is installed, then applies only the exact new plan', async () => {
+    const { readRef } = renderBranchWorkspace('main', '3/1', true, r1)
+    const delayed = deferred<Snapshot>()
+    const snapshot = vi.mocked(FormalRenderAPI.snapshot)
+    const readSnapshot = snapshot.getMockImplementation()!
+    snapshot.mockImplementation((project, id) => id === r2.revisionId ? delayed.promise : readSnapshot(project, id))
+    const endpoint = '/tenants/tenant-1/projects/project-1/timeline-operations/batch/v2'
+    const previews: SemanticBatch[] = []
+    const writes: { body: SemanticBatch; ifMatch: unknown }[] = []
+    vi.spyOn(versionlessApi, 'post').mockImplementation(async (path, data, config) => {
+      const body = data as SemanticBatch
+      if (path === endpoint + '/preview') {
+        previews.push(body)
+        return { data: planned }
+      }
+      expect(path).toBe(endpoint + '/apply')
+      writes.push({ body, ifMatch: config?.headers?.['If-Match'] })
+      readRef.mockResolvedValue(ref(r3))
+      return { data: { status: 'APPLIED', newRevisionId: r3.revisionId, newContentHash: r3.contentHash } }
+    })
+    await screen.findByLabelText('Timeline clip clip-0')
+    expect(picker().value).toBe('clip-0')
+    readRef.mockResolvedValue(ref(r2))
+    fireEvent.click(screen.getByRole('button', { name: /^Reload HEAD$/ }))
+    await waitFor(() => expect(snapshot.mock.calls.some(([, id]) => id === r2.revisionId)).toBe(true))
+    const disabled = previewButton().disabled
+    await act(async () => { fireEvent.click(previewButton()) })
+    expect({
+      disabled, bases: previews.map(body => body.baseRevisionId), applyAttempts: writes.length,
+      confirmable: confirmButton()?.disabled === false,
+      shownShift: screen.queryByText(/Shift clip-1 left by/)?.textContent,
+    }).toEqual({ disabled: true, bases: [], applyAttempts: 0, confirmable: false, shownShift: undefined })
+
+    const next = await readSnapshot('project-1', r2.revisionId)
+    const document = JSON.parse(next.canonicalTimelineJson)
+    document.tracks[0].clips[0].endTime = '2/1'
+    document.tracks[0].clips[0].trimEnd = '2/1'
+    await act(async () => delayed.resolve({ ...next, canonicalTimelineJson: JSON.stringify(document) }))
+    expect(previewButton().disabled).toBe(false)
+    fireEvent.click(previewButton())
+    await screen.findByText('Remove clip-0. Shift clip-1 left by 2/1s on this track.')
+    expect(previews).toHaveLength(1)
+    expect(previews[0]).toMatchObject({
+      baseRevisionId: r2.revisionId, baseContentHash: r2.contentHash,
+      operations: [{ definitionId: 'timeline.clip.ripple-delete', version: '1.0', target: { clipId: 'clip-0' } }],
+    })
+    expect(writes).toHaveLength(0)
+    fireEvent.click(confirmButton()!)
+    await screen.findByText(`Clip clip-0 ripple deleted at revision ${r3.revisionId}.`)
+    expect(writes).toEqual([{ body: previews[0], ifMatch: `"${HASH_C}"` }])
+  })
+
+  it.each(['base', 'selection round trip'] as const)('ignores a preview completed after a %s change', async (change) => {
+    vi.spyOn(platformClient.workspace, 'getHome').mockResolvedValue({
+      workspace: { id: 'workspace-1', name: 'Editorial' }, tenantId: 'tenant-1',
+      recentProjects: [{ id: 'project-1', name: 'Launch film' }],
+    })
+    vi.spyOn(FormalRenderAPI, 'snapshot').mockImplementation(async (_project, id) => ({
+      revisionId: id, schemaVersion: 'timeline-1.0',
+      canonicalTimelineJson: JSON.stringify({ schemaVersion: 'timeline-1.0', tracks: [{
+        trackId: 'track-1', name: 'Video', type: 'video', clips: ['clip-0', 'clip-1'].map((clipId, index) => ({
+          clipId, sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: SOURCE_DIGEST,
+          startTime: index ? '7' : '0', endTime: index ? '8' : '3', trimStart: '0', trimEnd: index ? '1' : '3',
+          temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
+        })),
+      }] }),
+    }))
+    const delayed = deferred<typeof planned>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewOperation').mockReturnValueOnce(delayed.promise).mockResolvedValue(planned)
+    const apply = vi.spyOn(FormalRenderAPI, 'applyConfirmedClip')
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const view = (current: CanonicalHeadReference, focus: string) => <QueryClientProvider client={client}>
+      <ProjectContextProvider workspaceId="workspace-1" projectId="project-1">
+        <ClipEditor head={current} focusClipId={focus} onRevisionChanged={async () => {}} />
+      </ProjectContextProvider>
+    </QueryClientProvider>
+    const mounted = render(view(r1, 'clip-0'))
+    await waitFor(() => expect(previewButton().disabled).toBe(false))
+    fireEvent.click(previewButton())
+    expect(preview).toHaveBeenCalledTimes(1)
+    if (change === 'base') {
+      mounted.rerender(view(r2, 'clip-0'))
+      await waitFor(() => expect(FormalRenderAPI.snapshot).toHaveBeenCalledWith('project-1', r2.revisionId))
+    } else {
+      mounted.rerender(view(r1, 'clip-1'))
+      expect(picker().value).toBe('clip-1')
+      mounted.rerender(view(r1, 'clip-0'))
+      expect(picker().value).toBe('clip-0')
+    }
+    await act(async () => delayed.resolve(planned))
+    expect(confirmButton()).toBeNull()
+    expect(apply).not.toHaveBeenCalled()
+    await waitFor(() => expect(previewButton().disabled).toBe(false))
+    fireEvent.click(previewButton())
+    await waitFor(() => expect(confirmButton()?.disabled).toBe(false))
+    expect(preview).toHaveBeenCalledTimes(2)
+    expect(preview.mock.calls[1][2].baseRevisionId).toBe(change === 'base' ? r2.revisionId : r1.revisionId)
+    expect(apply).not.toHaveBeenCalled()
+  })
+})
 
 function defaultTrimWithLostResponse() {
   const { queries, readRef } = renderBranchWorkspace('main')

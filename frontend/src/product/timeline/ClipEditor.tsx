@@ -1,6 +1,6 @@
 import { aspectLabel, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 import { COMPOSITION_PRESETS, customCompositionAspect } from './composition-raster'
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
 import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, videoTransformParameters, type ProjectedClip, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
 import { readEditingBranch } from '../../api/app/timeline-query.gateway'
@@ -49,6 +49,7 @@ interface ConfirmedPlacement extends ClipAttempt {
   success: (revision: string) => string
 }
 interface RipplePreview {
+  context: string
   attempt: ConfirmedPlacement
   shift: string
   moved: readonly string[]
@@ -81,6 +82,8 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const [aspectWidth, setAspectWidth] = useState('')
   const [aspectHeight, setAspectHeight] = useState('')
   const viewedRevisionId = historicalRevisionId ?? head?.revisionId
+  const snapshotScope = JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch,
+    viewedRevisionId, historicalRevisionId ? null : head?.contentHash])
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
   const [transforms, setTransforms] = useState<Record<string, ProjectedVideoTransform>>({})
@@ -88,7 +91,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const [transitions, setTransitions] = useState<readonly ProjectedTransition[]>([])
   const [destinationTrackId, setDestinationTrackId] = useState('')
   const trackCommands = useRef<Partial<Record<'VIDEO' | 'AUDIO', { revision: string; id: string }>>>({})
-  const [clips, setClips] = useState<EditorClip[]>([])
+  const [{ scope: loadedScope, rows: clips }, setClipGeometry] = useState<{ scope: string | null; rows: EditorClip[] }>({
+    scope: null, rows: [],
+  })
   const [selected, setSelected] = useState('')
   const [audioGain, setAudioGain] = useState(1)
   const [audioMute, setAudioMute] = useState(false)
@@ -130,6 +135,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const [actionFailed, setActionFailed] = useState(false)
   const [acceptedReadback, setAcceptedReadback] = useState<AcceptedClip | null>(null)
   const [ripplePreview, setRipplePreview] = useState<RipplePreview | null>(null)
+  const rippleRequest = useRef<symbol | null>(null)
   const [retryCommand, setRetryCommandState] = useState<RetryClip | null>(null)
   const retryCommandRef = useRef<RetryClip | null>(null)
   function setRetryCommand(value: RetryClip | null) {
@@ -148,13 +154,15 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const editsDisabled = writeBlocked || retryCommand !== null || acceptedReadback !== null
   const canRetry = () => !busyRef.current && confirmedTrimRef.current === null && trimAccess?.canStart() !== false
   const canEdit = () => canRetry() && retryCommandRef.current === null && acceptedReadback === null
-  const visibleRipple = !trimOnly && ripplePreview && ripplePreview.attempt.command.clipId === selected
-    && ripplePreview.attempt.command.baseRevisionId === head?.revisionId
-    && ripplePreview.attempt.command.baseContentHash === head?.contentHash
-    && ripplePreview.attempt.projectId === project.projectId && ripplePreview.attempt.tenantId === project.tenantId
-    ? ripplePreview : null
-  useEffect(() => { setRipplePreview(null) }, [head?.revisionId, head?.contentHash, selected, editingBranch,
-    project.projectId, project.tenantId])
+  const active = clips.find(clip => clip.clipId === selected) ?? null
+  const rippleContext = head && !historicalRevisionId && !trimOnly && project.tenantId
+    && active && loadedScope === snapshotScope ? JSON.stringify([snapshotScope, active.clipId]) : null
+  const visibleRipple = ripplePreview?.context === rippleContext ? ripplePreview : null
+  useLayoutEffect(() => {
+    setRipplePreview(null)
+    // Invalidate at commit, including a scope or selection round trip while a preview is pending.
+    return () => { rippleRequest.current = null }
+  }, [rippleContext])
   useEffect(() => {
     onWriteLock?.(busy || confirmedTrim !== null || retryCommand !== null)
     return () => onWriteLock?.(false)
@@ -179,8 +187,8 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }, [onDraft, formChanged, pending, previewed, moving, multiFeedback, visibleRipple])
 
   async function refresh() {
-    if (!viewedRevisionId) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
     const owned = ++generation.current
+    if (!viewedRevisionId) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClipGeometry({ scope: null, rows: [] }); setSelected(''); return }
     try {
       const snapshot = await FormalRenderAPI.snapshot(project.projectId, viewedRevisionId)
       const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
@@ -194,17 +202,17 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       setTransforms(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.transform])))
       setEffects(Object.fromEntries(projection.clips.map(clip => [clip.clipId, clip.effect])))
       setTransitions(projection.transitions)
-      setClips(rows)
+      setClipGeometry({ scope: snapshotScope, rows })
       setSelected(current => rows.some(row => row.clipId === current) ? current : rows[0]?.clipId ?? '')
     } catch (error) {
       if (owned === generation.current) {
-        setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setActionFailed(true)
+        setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClipGeometry({ scope: null, rows: [] }); setActionFailed(true)
         setMessage(error instanceof Error ? error.message : 'Clip readback failed.')
       }
     }
   }
 
-  useEffect(() => { void refresh(); return () => { generation.current += 1 } }, [viewedRevisionId, project.projectId])
+  useEffect(() => { void refresh(); return () => { generation.current += 1 } }, [snapshotScope])
   useEffect(() => { setPending(null); setPreviewed(null); setMoving(null); setRetryCommand(null) }, [head?.revisionId, head?.contentHash])
   useEffect(() => { setRetryCommand(null); setPreviewed(null); setPending(null) }, [project.tenantId, project.projectId])
   useEffect(() => {
@@ -212,7 +220,6 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }, [focusClipId, clips])
   useEffect(() => { setMessage(''); setActionFailed(false); keys.current = {} }, [project.projectId])
 
-  const active = clips.find(clip => clip.clipId === selected) ?? null
   const activeTrack = tracks.find(track => track.trackId === active?.trackId)
   const activeAudioRoute = audioRoutes.find(route => route.trackId === active?.trackId && route.clipId === active?.clipId) ?? null
   useEffect(() => {
@@ -804,24 +811,30 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   async function previewRippleDelete() {
-    if (!active || !head || !project.tenantId || trimOnly || !canEdit()) return
+    if (!rippleContext || !active || !head || !project.tenantId || !canEdit()) return
     const command: ClipEdit = {
       type: 'RIPPLE_DELETE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
       clipId: active.clipId, commandId: commandIdFor(active.clipId, 'RIPPLE_DELETE_CLIP', ZERO),
     }
+    const request = Symbol()
+    rippleRequest.current = request
     setBusy(true); setMessage(''); setActionFailed(false); setRipplePreview(null)
     setPending(null); setPreviewed(null)
     try {
+      const shift = formatRational(subtract(active.end, active.start))
       const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+      if (rippleRequest.current !== request) return
       // The planned changes identify moved clips. The editor never submits an affected set.
       const moved = plan.steps.flatMap(step => step.changes).flatMap(change => change.identity.startsWith('replace(')
         ? [change.identity.slice('replace('.length, change.identity.lastIndexOf(','))] : [])
       setRipplePreview({
+        context: rippleContext,
         attempt: { command, digest: plan.batchDigest, tenantId: project.tenantId, projectId: project.projectId,
           label: 'Ripple Delete', success: revision => `Clip ${command.clipId} ripple deleted at revision ${revision}.` },
-        shift: formatRational(subtract(active.end, active.start)), moved,
+        shift, moved,
       })
     } catch (error) {
+      if (rippleRequest.current !== request) return
       handleFailure(error, 'Ripple Delete preview', null, false, false)
       const detail = (error as { response?: { data?: { detail?: unknown; message?: unknown } } })?.response?.data
       const reason = detail?.detail ?? detail?.message
@@ -1096,7 +1109,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     {!trimOnly && <><Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || editsDisabled}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
-    <Button type="button" disabled={!head || !active || !project.tenantId || editsDisabled}
+    <Button type="button" disabled={!rippleContext || editsDisabled}
       onClick={() => void previewRippleDelete()}>Preview ripple delete</Button>
     {visibleRipple && <div aria-label="Ripple Delete preview">
       <p role="status">Remove {visibleRipple.attempt.command.clipId}. {visibleRipple.moved.length
