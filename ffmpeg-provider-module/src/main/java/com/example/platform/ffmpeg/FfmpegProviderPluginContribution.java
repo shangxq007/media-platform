@@ -26,6 +26,7 @@ import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
 import java.util.List;
 import java.util.Map;
+import com.example.platform.execution.domain.provider.ProviderImplementationContent;
 import java.util.Optional;
 import java.util.Set;
 import org.pf4j.Extension;
@@ -76,6 +77,11 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
     @Override
     public PluginDescriptor pluginDescriptor() {
         return PLUGIN_DESCRIPTOR;
+    }
+
+    @Override
+    public Optional<ProviderImplementationContent> implementationContent() {
+        return Optional.of(FfmpegCpuProvider.IMPLEMENTATION);
     }
 
     @Override

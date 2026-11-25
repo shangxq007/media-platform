@@ -335,6 +335,9 @@ class PendingNativeWorkProjectionTest {
         @Override public PluginDescriptor pluginDescriptor() { return delegate.pluginDescriptor(); }
         @Override public com.example.platform.execution.domain.provider.ProviderDescriptor
                 providerDescriptor() { return delegate.providerDescriptor(); }
+        @Override public java.util.Optional<com.example.platform.execution.domain.provider.ProviderImplementationContent>
+                implementationContent() { return delegate.implementationContent(); }
+
         @Override public com.example.platform.execution.domain.provider.ProviderExecutionContract
                 providerExecutionContract() { return delegate.providerExecutionContract(); }
         @Override public com.example.platform.execution.domain.provider.ProviderCapabilityProfile

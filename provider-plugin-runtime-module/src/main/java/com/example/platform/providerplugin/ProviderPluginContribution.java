@@ -14,6 +14,7 @@ import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
 import com.example.platform.workerfabric.domain.SandboxRuntimeRequirement;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import java.util.List;
+import com.example.platform.execution.domain.provider.ProviderImplementationContent;
 import java.util.Optional;
 import org.pf4j.ExtensionPoint;
 
@@ -31,6 +32,11 @@ public interface ProviderPluginContribution extends ExtensionPoint {
     String pluginVersion();
 
     PluginDescriptor pluginDescriptor();
+
+    /** Digest-pinned implementations supply the packaged native identity behind their declaration. */
+    default Optional<ProviderImplementationContent> implementationContent() {
+        return Optional.empty();
+    }
 
     ProviderDescriptor providerDescriptor();
 

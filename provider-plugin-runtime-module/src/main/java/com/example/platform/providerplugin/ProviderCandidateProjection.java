@@ -3,6 +3,7 @@ package com.example.platform.providerplugin;
 import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.binding.ProviderCandidateCanonicalCodec;
 import java.util.ArrayList;
+import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
 import java.util.List;
 import java.util.Objects;
 
@@ -51,12 +52,25 @@ public final class ProviderCandidateProjection {
         List<ProviderCandidate> candidates = new ArrayList<>(contributions.size());
         for (ProviderPluginContribution contribution : contributions) {
             Objects.requireNonNull(contribution, "contributions element");
-            candidates.add(new ProviderCandidate(
+            var candidate = new ProviderCandidate(
                     contribution.providerBindingPin(),
                     contribution.providerDescriptor(),
                     contribution.providerExecutionContract(),
                     contribution.providerCapabilityProfile(),
-                    contribution.providerStaticCompatibility()));
+                    contribution.providerStaticCompatibility());
+            var reference = candidate.bindingPin().providerCapabilityProfileVersionOrDigest();
+            if (reference instanceof ProviderCapabilityProfileVersionOrDigest.DigestReference) {
+                var nativeContent = contribution.implementationContent().orElseThrow(() ->
+                        new IllegalArgumentException("Digest-pinned provider has no native implementation identity"));
+                var declaration = ProviderCandidateCanonicalCodec.effectiveDeclaration(candidate.executionContract(),
+                        candidate.capabilityProfile().supportDeclarations(), candidate.staticCompatibility());
+                if (!reference.equals(nativeContent.profile(declaration))
+                        || !reference.equals(candidate.capabilityProfile().reference())
+                        || !reference.equals(candidate.descriptor().providerCapabilityProfileReference())) {
+                    throw new IllegalArgumentException("Effective declaration differs from immutable binding inputs");
+                }
+            }
+            candidates.add(candidate);
         }
         return List.copyOf(candidates);
     }

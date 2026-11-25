@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Bounded V1 canonical codec for {@link ProviderCandidate} — one deterministic
+ * Versioned canonical codec for {@link ProviderCandidate} — one deterministic
  * byte form plus its exact inverse.
  *
  * <p>Format version is carried in the stream header; unknown headers, unknown
@@ -61,7 +61,10 @@ public final class ProviderCandidateCanonicalCodec {
     public static ProviderCandidate decode(byte[] payload) {
         Objects.requireNonNull(payload, "payload");
         FrameReader reader = FrameReader.of(payload);
-        reader.requireTag(FORMAT);
+        String version = reader.text();
+        if (!FORMAT.equals(version)) {
+            throw new UnsupportedPersistedConstructException("provider candidate format " + version);
+        }
         ProviderBindingPin bindingPin = bindingPin(reader.fieldNested("bindingPin"));
         ProviderDescriptor descriptor = descriptor(reader.fieldNested("descriptor"));
         ProviderExecutionContract contract = executionContract(reader.fieldNested("executionContract"));

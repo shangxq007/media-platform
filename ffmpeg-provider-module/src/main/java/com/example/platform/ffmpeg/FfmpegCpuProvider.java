@@ -20,6 +20,8 @@ import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
 import com.example.platform.shared.capability.ContractVersionRange;
+import com.example.platform.execution.domain.provider.ProviderImplementationContent;
+import com.example.platform.execution.binding.ProviderCandidateCanonicalCodec;
 import java.util.List;
 
 /**
@@ -98,11 +100,12 @@ public final class FfmpegCpuProvider {
     private static final List<ProviderCapabilitySupport> SUPPORTS = EXECUTION_CONTRACT.capabilityContractReferences()
             .stream().map(ref -> ProviderCapabilitySupport.unpinned(ref.capabilityId(), ref.contractVersionRange())).toList();
 
+    public static final ProviderImplementationContent IMPLEMENTATION = ProviderImplementationContent.packaged(
+            FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
-            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
-                    FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID,
-                    com.example.platform.execution.binding.ProviderCandidateCanonicalCodec.effectiveDeclaration(
-                            EXECUTION_CONTRACT, SUPPORTS, STATIC_COMPATIBILITY));
+            IMPLEMENTATION.profile(ProviderCandidateCanonicalCodec.effectiveDeclaration(
+                    EXECUTION_CONTRACT, SUPPORTS, STATIC_COMPATIBILITY));
+
     public static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
             PROVIDER_ID,
             IMPLEMENTATION_ID,

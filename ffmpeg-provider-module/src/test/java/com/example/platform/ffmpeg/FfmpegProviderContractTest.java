@@ -44,6 +44,20 @@ class FfmpegProviderContractTest {
                 new com.example.platform.execution.domain.provider.ProviderCapabilityProfile(
                         recorded.capabilityProfile().reference(), recorded.capabilityProfile().supportDeclarations().subList(1, 4)));
         assertThat(changed.providerBindingPin()).isEqualTo(recorded.bindingPin());
+        assertThatThrownBy(() -> com.example.platform.providerplugin.ProviderCandidateProjection.project(List.of(changed)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("immutable binding inputs");
+        assertThatThrownBy(() -> com.example.platform.providerplugin.ProviderCandidateProjection.requireMatching(changed, recorded))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("immutable binding inputs");
+    }
+
+    @Test
+    void workerRejectsAChangedCompatibilityEnvelopeEvenWhenThePinAndNativeBytesAreUnchanged() {
+        var actual = new FfmpegProviderPluginContribution();
+        var recorded = com.example.platform.providerplugin.ProviderCandidateProjection.project(List.of(actual)).getFirst();
+        var changed = org.mockito.Mockito.spy(actual);
+        when(changed.providerStaticCompatibility()).thenReturn(
+                com.example.platform.execution.compatibility.ProviderStaticCompatibility.unknown());
+        assertThat(changed.implementationContent()).isEqualTo(actual.implementationContent());
         assertThatThrownBy(() -> com.example.platform.providerplugin.ProviderCandidateProjection.requireMatching(changed, recorded))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("immutable binding inputs");
     }
@@ -67,8 +81,7 @@ class FfmpegProviderContractTest {
 
     private static com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest profile(
             String declaration) {
-        return com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
-                FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID, declaration);
+        return FfmpegCpuProvider.IMPLEMENTATION.profile(declaration);
     }
 
     @Test

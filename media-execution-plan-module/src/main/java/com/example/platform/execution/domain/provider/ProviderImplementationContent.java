@@ -10,15 +10,22 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /** Content-address the actual packaged provider classes and its admitted native distribution. */
-public final class ProviderImplementationContent {
-    private ProviderImplementationContent() {}
+public record ProviderImplementationContent(String implementationDigest, String distributionIdentity) {
+    public ProviderImplementationContent {
+        if (!implementationDigest.matches("[0-9a-f]{64}") || distributionIdentity.isBlank()) {
+            throw new IllegalArgumentException("Invalid native provider identity");
+        }
+    }
 
-    public static ProviderCapabilityProfileVersionOrDigest profile(Class<?> anchor, String module,
-            String nativeIdentity, String declaration) {
+    public static ProviderImplementationContent packaged(Class<?> anchor, String module, String distributionIdentity) {
+        return new ProviderImplementationContent(indexedClasses(anchor, module), distributionIdentity);
+    }
+
+    public ProviderCapabilityProfileVersionOrDigest profile(String declaration) {
         MessageDigest digest = sha256();
         append(digest, "provider-implementation-content-v2");
-        append(digest, indexedClasses(anchor, module));
-        append(digest, nativeIdentity);
+        append(digest, implementationDigest);
+        append(digest, distributionIdentity);
         append(digest, declaration);
         return ProviderCapabilityProfileVersionOrDigest.digest(
                 ProviderCapabilityProfileDigest.sha256(HexFormat.of().formatHex(digest.digest())));

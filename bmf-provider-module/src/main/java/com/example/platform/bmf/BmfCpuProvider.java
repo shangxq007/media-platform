@@ -24,6 +24,7 @@ import com.example.platform.workerfabric.domain.RuntimeDependencyCoordinate;
 import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
 import com.example.platform.workerfabric.domain.RuntimeDependencyVersion;
 import com.example.platform.workerfabric.domain.RuntimeDependencyVersionConstraint;
+import com.example.platform.execution.domain.provider.ProviderImplementationContent;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,12 +83,17 @@ public final class BmfCpuProvider {
             com.example.platform.execution.binding.ProviderCandidateCanonicalCodec.effectiveDeclaration(
                     EXECUTION_CONTRACT, SUPPORTS, STATIC_COMPATIBILITY);
 
+    private static final String IMPLEMENTATION = ProviderImplementationContent.indexedClasses(
+            BmfCpuProvider.class, "bmf-provider-module");
+
+    public static ProviderImplementationContent implementationContent(String bundleDigest) {
+        return new ProviderImplementationContent(IMPLEMENTATION, bundleDigest);
+    }
+
     private static final ProviderCapabilityProfileVersionOrDigest ORIGINAL_PROFILE =
-            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
-                    BmfCpuProvider.class, "bmf-provider-module", RUNTIME_BUNDLE_SHA256, DECLARATION);
+            implementationContent(RUNTIME_BUNDLE_SHA256).profile(DECLARATION);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
-            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
-                    BmfCpuProvider.class, "bmf-provider-module", RUNTIME_BUNDLE_WITH_SNDIO_SHA256, DECLARATION);
+            implementationContent(RUNTIME_BUNDLE_WITH_SNDIO_SHA256).profile(DECLARATION);
 
     public static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
             PROVIDER_ID,

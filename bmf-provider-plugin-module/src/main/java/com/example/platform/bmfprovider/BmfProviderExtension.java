@@ -44,6 +44,7 @@ import com.example.platform.workerfabric.domain.providernative.ProviderNativeExe
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import java.util.List;
+import com.example.platform.execution.domain.provider.ProviderImplementationContent;
 import java.util.Optional;
 import java.util.Set;
 import java.nio.file.Path;
@@ -151,6 +152,11 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     @Override
     public PluginDescriptor pluginDescriptor() {
         return PLUGIN_DESCRIPTOR;
+    }
+
+    @Override
+    public Optional<ProviderImplementationContent> implementationContent() {
+        return Optional.of(BmfCpuProvider.implementationContent(bundleDigest));
     }
 
     @Override
