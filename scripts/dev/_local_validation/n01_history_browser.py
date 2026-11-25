@@ -1,5 +1,6 @@
 """Verify N01 against the owned batch fixture, real browser and real PostgreSQL."""
 import json
+from fractions import Fraction
 import os
 from pathlib import Path
 import re
@@ -65,6 +66,8 @@ if branches:
         'pre-redo-conflict','prep-redo','stale-redo-before','stale-redo-after','branch-return'))
     checkpoints += tuple('n04-' + name for name in ('before','copied','preview','invalid','reader','committed',
         'replay','reopened','stale-before','stale-after','branch-return'))
+    checkpoints += tuple(f'n04-f1-{fixture}-{stage}'
+        for fixture in ('centisecond', 'fractional') for stage in ('before', 'overlap', 'preview', 'commit', 'reopened'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -185,7 +188,39 @@ if branches:
     assert all(by_id[x['clipId']] == x for x in source_track['clips'])
     assert all(by_id[x['clipId']] == x for x in paste['copies'])
     (out / 'n04-postgres.json').write_text(json.dumps(dict(revisions=paste_proof, clips=paste['copies'],
-        checkpoints={k:v for k,v in facts.items() if k.startswith('n04-')}), indent=2))
+        checkpoints={k:v for k,v in facts.items() if k.startswith('n04-') and not k.startswith('n04-f1-')}), indent=2))
+    endpoints = paste['endpointRegression']
+    assert [case['exactEnd'] for case in endpoints] == ['201/100', '61/30']
+    for case in endpoints:
+        original, accepted = case['base'], case['accepted']
+        assert all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in (original, accepted))
+        label = case['label']
+        before, overlap, previewed, committed, reopened = (
+            facts[f'n04-f1-{label}-{stage}'] for stage in ('before', 'overlap', 'preview', 'commit', 'reopened'))
+        assert before == overlap == previewed and committed == reopened
+        assert before['refs']['main'] == original and committed['refs']['main'] == accepted
+        assert committed['rows'] == before['rows'] + 1 and committed['commands'] == before['commands'] + 1
+        persisted = psql(f"""select json_object_agg(id,row_to_json(r)) from (
+          select rev.id, rev.parent_revision_id, rev.content_hash, s.payload_json::json as snapshot
+          from timeline.timeline_revision rev join timeline.timeline_snapshot s
+            on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+          where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
+            and rev.id in ('{original}','{accepted}')) r;""")
+        assert persisted[accepted]['parent_revision_id'] == original
+        def track(row):
+            return next(t['clips'] for t in row['snapshot']['tracks'] if t['trackId'] == 'track-1')
+        source_clips = track(persisted[original])
+        durable = {clip['clipId']:clip for clip in track(persisted[accepted])}
+        assert all(durable[clip['clipId']] == clip for clip in source_clips)
+        new_ids = case['endpointBody']['operations'][0]['parameters']['newClipIds']
+        assert len(durable) == len(source_clips) + 2 and len(new_ids) == 2
+        originals_end = max(Fraction(clip['endTime']) for clip in source_clips)
+        assert originals_end == Fraction(case['exactEnd']) == Fraction(durable[new_ids[0]]['startTime'])
+        assert Fraction(case['earlier']) < originals_end
+        assert all(durable[clip['clipId']] == clip for clip in case['copies'])
+        case['persisted'] = persisted
+        case['checkpoints'] = dict(before=before, overlap=overlap, preview=previewed, commit=committed, reopened=reopened)
+    (out / 'n04-f1-postgres.json').write_text(json.dumps(endpoints, indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

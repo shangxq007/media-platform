@@ -429,8 +429,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
       <Button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
         onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</Button>
+      {/* The native input must be able to reach a canonical end that is off the centisecond grid. */}
       <input aria-label="Timeline preview seek" type="range" min={0} max={Math.max(0.01, duration)}
-        step={0.01} value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1, minWidth: 0 }} />
+        step="any" value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1, minWidth: 0 }} />
       <output aria-label="Timeline preview time">{time.toFixed(2)}s / {duration.toFixed(2)}s</output>
     </div>
     {status === 'FAILED' && <Button type="button" onClick={() => setRetry(value => value + 1)}>Retry preview</Button>}

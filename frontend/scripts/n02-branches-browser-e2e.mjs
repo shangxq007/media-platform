@@ -701,8 +701,82 @@ try {
   result.http.n04 = { ...n04, pasteRevision, sources, copies, pasteWire,
     invalidPreview: invalidPreview.errorCode, invalidApply: invalidApply.errorCode,
     denied: denied.errorCode, stale: stalePasteError.errorCode, competitor: competingPasteReceipt.newRevisionId }
-  result.status = 'PASS'
   save('N04 atomic clipboard, reopening, exact retry, invalid second source, authorization and stale confirmation')
+
+  const exactEndpoints = []
+  for (const [label, blueStart, exactEnd] of [['centisecond', '151/100', '201/100'], ['fractional', '23/15', '61/30']]) {
+    const previous = await branch()
+    const seedBody = { ...reset, batchId: 'n04-f1-reset-' + label,
+      baseRevisionId: previous.headRevisionId, baseContentHash: previous.contentHash }
+    const seedHead = await apply(seedBody, (await preview(seedBody)).batchDigest)
+    const fixture = { batchId: 'n04-f1-fixture-' + label, baseRevisionId: seedHead.newRevisionId,
+      baseContentHash: seedHead.newContentHash, operations: [
+        { definitionId: 'timeline.trim', target: { clipId: 'clip-red' }, parameters: { edge: 'END', delta: '1/2' } },
+        { definitionId: 'timeline.move', target: { clipId: 'clip-blue' }, parameters: { absolute: true, delta: blueStart } },
+      ] }
+    const baseHead = await apply(fixture, (await preview(fixture)).batchDigest)
+    await page.reload()
+    await waitView('main', baseHead.newRevisionId)
+    const realOriginals = (await snapshot(baseHead.newRevisionId)).tracks.find(t => t.trackId === 'track-1').clips
+    assert.equal(realOriginals.find(c => c.clipId === 'clip-blue').endTime, exactEnd)
+    const cp = stage => checkpoint('n04-f1-' + label + '-' + stage)
+    const initial = await cp('before')
+    await copyPair()
+
+    await seek(t(exactEnd) - 0.0000003)
+    const overlaps = page.waitForResponse(res => res.url().endsWith(batch + '/preview') && res.request().method() === 'POST')
+    await pastePreview.click()
+    const overlap = await overlaps
+    assert.equal(overlap.status(), 422)
+    const overlapBody = overlap.request().postDataJSON()
+    const earlier = overlapBody.operations[0].parameters.timelineStart
+    assert.ok(t(earlier) < t(exactEnd), 'Do not snap earlier requests to the endpoint')
+    assert.match((await overlap.json()).detail, /would overlap/)
+    const rejectedApply = await apply(overlapBody, '0'.repeat(64), 422)
+    assert.match(rejectedApply.detail, /would overlap/)
+    await clipboard.getByText(/Paste preview rejected/).waitFor()
+    assert.equal(await pasteConfirm.count(), 0)
+    assert.deepEqual(await cp('overlap'), initial)
+
+    // Exercise the native slider's End key rather than supplying the exact fraction to the client.
+    await page.getByLabel('Timeline preview seek').press('End')
+    const endpointRequest = page.waitForResponse(res => res.url().endsWith(batch + '/preview') && res.request().method() === 'POST')
+    await pastePreview.click()
+    const atEnd = await endpointRequest
+    assert.equal(atEnd.status(), 200)
+    const endpointBody = atEnd.request().postDataJSON()
+    assert.equal(endpointBody.operations[0].parameters.timelineStart, exactEnd)
+    const ids = endpointBody.operations[0].parameters.newClipIds
+    assert.equal(ids.length, 2)
+    await pasteConfirm.waitFor()
+    assert.deepEqual(await cp('preview'), initial)
+    const writeResponse = page.waitForResponse(res => res.url().endsWith(batch + '/apply') && res.request().method() === 'POST')
+    await pasteConfirm.click()
+    const write = await writeResponse
+    assert.equal(write.status(), 201)
+    assert.deepEqual(write.request().postDataJSON(), endpointBody)
+    const { batchDigest } = await atEnd.json()
+    assert.equal(write.request().headers()['if-match'], '"' + batchDigest + '"')
+    const { newRevisionId } = await write.json()
+    await clipboard.getByText('Paste accepted at revision ' + newRevisionId + '.', { exact: true }).waitFor()
+    const actual = await cp('commit')
+    assert.equal(actual.rows, initial.rows + 1)
+    assert.equal(actual.refs.main, newRevisionId)
+
+    await page.reload()
+    await waitView('main', newRevisionId)
+    const reopenedTrack = (await snapshot(newRevisionId)).tracks.find(t => t.trackId === 'track-1')
+    const copiesAtEnd = ids.map(id => reopenedTrack.clips.find(clip => clip.clipId === id))
+    assert.equal(copiesAtEnd[0].startTime, exactEnd)
+    assert.equal(reopenedTrack.clips.length, realOriginals.length + 2)
+    assert.deepEqual(await cp('reopened'), actual)
+    exactEndpoints.push({ label, exactEnd, earlier, base: baseHead.newRevisionId, accepted: newRevisionId,
+      endpointBody, overlapBody, copies: copiesAtEnd, overlapPreview: overlap.status(),
+      overlapApply: 422, apply: write.status() })
+  }
+  result.http.n04.endpointRegression = exactEndpoints
+  result.status = 'PASS'
+  save('N04 F1 exact timeline endpoints and no-write genuine overlap')
 } finally {
   await browser.close()
 }

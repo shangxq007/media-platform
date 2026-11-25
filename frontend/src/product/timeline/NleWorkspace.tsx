@@ -626,7 +626,7 @@ export function NleWorkspace({
           </section>}
           {defaultBranch && <ClipClipboard key={JSON.stringify([project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={projectionRevision === editingHead?.revisionId ? tracks : []}
-            playhead={previewTime} visible={!historyRevision}
+            playhead={previewTime} exactEnd={parseRational(appendStart)} visible={!historyRevision}
             disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
             access={commandAccess('paste')} readback={() => loadHead('PASTE_READBACK')} />}
           <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}

@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FormalRenderAPI } from '../../api/formal-render'
 import * as editingRefs from '../../api/app/timeline-query.gateway'
+import { assetGateway } from '../../api/app/asset.gateway'
 import { versionlessApi } from '../../api/app/versionless-api'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { platformClient } from '../../foundation/platformClient'
@@ -16,6 +17,11 @@ import {
   ADD_MEDIA_CLIP_DEFINITION,
   ADD_MEDIA_CLIP_PRESENTATION_VERSION,
   ADD_MEDIA_CLIP_PREVIEW_OPERATION,
+  artifactId,
+  exactMediaTime,
+  mediaAssetId,
+  mediaStreamId,
+  sourceContentDigest,
   contentHash,
   planDigest,
   projectId,
@@ -74,7 +80,7 @@ async function prepareConfirmedPreview() {
   fireEvent.click(screen.getByLabelText(/I confirm this exact frozen draft/i))
 }
 
-function renderBranchWorkspace(initial: string) {
+function renderBranchWorkspace(initial: string, clipEnd = '6') {
   const queries = new ScriptedTimelineQueryGateway({
     head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision] },
     detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
@@ -93,7 +99,7 @@ function renderBranchWorkspace(initial: string) {
     canonicalTimelineJson: JSON.stringify({ schemaVersion: 'timeline-1.0', tracks: [
       { trackId: 'track-1', name: 'Video', type: 'video', clips: [{
         clipId: 'clip-0', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream',
-        contentDigest: 'a'.repeat(64), startTime: '0', endTime: '6', trimStart: '0', trimEnd: '6',
+        contentDigest: 'a'.repeat(64), startTime: '0', endTime: clipEnd, trimStart: '0', trimEnd: clipEnd,
         temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
       }] },
     ] }),
@@ -216,6 +222,50 @@ describe('default branch clipboard', () => {
     fireEvent.change(branchPicker(), { target: { value: 'alt' } })
     await screen.findByText('Viewing editing head · alt')
     expect(screen.queryByRole('region', { name: 'Clip clipboard' })).toBeNull()
+  })
+})
+
+describe('clipboard playhead precision at the editor entry point', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it.each([
+    ['201/100', 2.01, '201/100'],
+    ['61/30', 61 / 30, '61/30'],
+    ['3/1', 2.01, '201/100'],
+  ])('previews a paste at the intended playhead for a %s timeline', async (clipEnd, seek, timelineStart) => {
+    const duration = exactMediaTime('6/1')
+    vi.spyOn(assetGateway, 'listSourcePins').mockResolvedValue({ ok: true, value: [{
+      name: 'Fixture', artifactId: artifactId('artifact'), mediaAssetId: mediaAssetId('artifact'),
+      mediaStreamId: mediaStreamId('stream'), contentDigest: sourceContentDigest('a'.repeat(64)),
+      duration, byteLength: 1, streams: [{ streamId: mediaStreamId('stream'), kind: 'VIDEO', duration }],
+    }] })
+    vi.spyOn(assetGateway, 'readSourceContent').mockResolvedValue({ ok: true, value: new Blob(['fixture']) })
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL() { return 'blob:preview-fixture' }
+      static revokeObjectURL() {}
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(function (this: HTMLMediaElement) {
+      this.dispatchEvent(new Event('loadeddata'))
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    renderBranchWorkspace('main', clipEnd)
+    const previewBatch = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const apply = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    await screen.findByText('Preview ready.')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Copy clip clip-0' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy selected clips' }))
+    fireEvent.change(screen.getByLabelText('Timeline preview seek'), { target: { value: String(seek) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Preview paste at playhead' }))
+    await screen.findByRole('button', { name: 'Confirm paste' })
+    expect(previewBatch).toHaveBeenCalledOnce()
+    const step = previewBatch.mock.calls[0][2].operations[0]
+    if (step.definitionId !== 'timeline.clip.paste') throw new Error('Expected a paste operation')
+    expect(step.parameters.timelineStart).toBe(timelineStart)
+    expect(apply).not.toHaveBeenCalled()
   })
 })
 

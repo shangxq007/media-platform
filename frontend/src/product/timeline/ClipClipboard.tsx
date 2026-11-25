@@ -4,7 +4,7 @@ import { Button } from '../../components/design-system'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
 import type { ProjectedTrack } from './timeline-projection'
-import { compare, formatRational, rational } from './trim'
+import { compare, formatRational, rational, toSeconds, type Rational } from './trim'
 
 interface Clipboard {
   head: CanonicalHeadReference
@@ -21,16 +21,29 @@ const sameHead = (first: CanonicalHeadReference, second: CanonicalHeadReference 
   first.projectId === second?.projectId && first.revisionId === second.revisionId && first.contentHash === second.contentHash
 const MAX_COPY_CLIPS = 64
 
+function pastePosition(seconds: number, exactEnd: Rational | null): Rational | null {
+  if (!Number.isFinite(seconds) || seconds < 0) return null
+  // The preview clamps to this endpoint. Use its authored value, not its numeric rendering.
+  if (exactEnd && seconds === toSeconds(exactEnd)) return exactEnd
+  if (!Number.isSafeInteger(Math.floor(seconds * 1_000_000))) return null
+  if (seconds < 0.000001) return rational(0n, 1n)
+  // Keep interior placement at microsecond resolution without binary multiplication error.
+  // Truncate the decimal instead of rounding an interior position forward into a boundary.
+  const [whole, fraction = ''] = String(seconds).split('.')
+  return rational(BigInt(whole) * 1_000_000n + BigInt(fraction.slice(0, 6).padEnd(6, '0')), 1_000_000n)
+}
+
 function failure(error: unknown) {
   const response = (error as { response?: { status?: number; data?: { detail?: string } } })?.response
   return { status: response?.status, detail: response?.data?.detail }
 }
 
-export function ClipClipboard({ head, tenant, tracks, playhead, visible, disabled, access, readback }: {
+export function ClipClipboard({ head, tenant, tracks, playhead, exactEnd, visible, disabled, access, readback }: {
   head: CanonicalHeadReference | null
   tenant: string | null
   tracks: readonly ProjectedTrack[]
   playhead: number
+  exactEnd: Rational | null
   visible: boolean
   disabled: boolean
   access: EditorCommandAccess
@@ -63,9 +76,9 @@ export function ClipClipboard({ head, tenant, tracks, playhead, visible, disable
 
   async function preview() {
     if (!canPrepare() || !clipboard || !freshCopy || !tenant || !head) return
-    const micros = Math.floor(playhead * 1_000_000)
-    if (!Number.isSafeInteger(micros) || micros < 0) return
-    const start = formatRational(rational(BigInt(micros), 1_000_000n))
+    const position = pastePosition(playhead, exactEnd)
+    if (!position) return
+    const start = formatRational(position)
     const body: SemanticBatch = {
       batchId: crypto.randomUUID(), baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
       operations: [{ definitionId: 'timeline.clip.paste', version: '1.0', parameters: {
