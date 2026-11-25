@@ -230,6 +230,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   function beginTrim(clip: ClipGeometry, trimEdge: TrimEdge, event: ReactPointerEvent<HTMLSpanElement>) {
     event.stopPropagation()
     if (!head || !canEdit() || trimDrag.current || moveDrag.current || groupPointer.current !== null) return
+    event.preventDefault() // Do not start a native text drag after moving or canceling an edge.
     setSelected(clip.clipId); setType('TRIM_CLIP')
     setPreviewed(null)
     trimDrag.current = { clip, edge: trimEdge, x: event.clientX, pointer: event.pointerId }
@@ -607,6 +608,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   function beginMove(clip: ClipGeometry, event: ReactPointerEvent<HTMLDivElement>) {
     if (!head || !canEdit() || moveDrag.current || trimDrag.current || groupPointer.current !== null) return
     event.stopPropagation()
+    event.preventDefault() // Pointer capture owns this gesture, not browser text selection.
     if (multiMove?.ids.includes(clip.clipId)) {
       if (!multiMove.begin(clip.clipId, event.pointerId, event.clientX)) return
       groupPointer.current = event.pointerId
@@ -930,7 +932,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
                                background: isActive ? '#1d4ed8aa' : '#374151aa',
                                border: grouped ? '2px solid #38bdf8' : isActive ? '1px solid #60a5fa' : '1px solid #4b5563', borderRadius: 3,
                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                               fontSize: 11, color: '#e5e7eb', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                               fontSize: 11, color: '#e5e7eb', whiteSpace: 'nowrap', overflow: 'hidden',
+                               userSelect: historicalRevisionId || trimOnly ? undefined : 'none',
+                               touchAction: historicalRevisionId || trimOnly ? undefined : 'none' }}>
             {splitMarker?.clipId === clip.clipId && <span data-split-marker aria-hidden="true"
               style={{ position: 'absolute', left: (toSeconds(splitMarker.at) - left) * TRIM_PIXELS_PER_SECOND - 1,
                        top: -4, width: 2, height: 48, background: '#facc15', zIndex: 2, pointerEvents: 'none' }} />}
@@ -940,12 +944,12 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
                   onPointerDown={event => beginTrim(clip, 'START', event)}
                   onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={cancelTrimDrag} onLostPointerCapture={cancelTrimDrag}
                   style={{ position: 'absolute', left: -3, top: 0, width: 8, height: '100%', cursor: 'ew-resize',
-                           background: '#f59e0b', borderRadius: 2 }} />
+                           background: '#f59e0b', borderRadius: 2, touchAction: 'none', userSelect: 'none' }} />
             <span role="slider" tabIndex={editsDisabled ? -1 : 0} aria-disabled={editsDisabled} aria-label={`Trim end edge ${clip.clipId}`} aria-valuetext="trim end"
                   onPointerDown={event => beginTrim(clip, 'END', event)}
                   onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={cancelTrimDrag} onLostPointerCapture={cancelTrimDrag}
                   style={{ position: 'absolute', right: -3, top: 0, width: 8, height: '100%', cursor: 'ew-resize',
-                           background: '#f59e0b', borderRadius: 2 }} /></>}
+                           background: '#f59e0b', borderRadius: 2, touchAction: 'none', userSelect: 'none' }} /></>}
           </div>
         })}
                 </div>
