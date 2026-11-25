@@ -95,6 +95,23 @@ class FfmpegClosedLoopIntegrationTest {
     @TempDir Path temp;
 
     @Test
+    void pinnedFilterInventoryMatchesSubtitleCapabilityRegistration() throws Exception {
+        Path ffmpeg = binary("ffmpeg");
+        assertThat(FfmpegRuntimeFiles.matchesDistribution(ffmpeg, null)).isTrue();
+        var builder = new ProcessBuilder(ffmpeg.toString(), "-hide_banner", "-filters").redirectErrorStream(true);
+        builder.environment().put("LD_LIBRARY_PATH", ffmpeg.getParent().toString());
+        var process = builder.start();
+        String filters = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(process.waitFor()).isZero();
+        assertThat(filters).contains("overlay");
+        boolean hasDrawtext = filters.lines().map(String::strip).map(line -> line.split("\\s+"))
+                .anyMatch(fields -> fields.length > 1 && fields[1].equals("drawtext"));
+        boolean declaresRaster = FfmpegCpuProvider.EXECUTION_CONTRACT.capabilityContractReferences().stream()
+                .anyMatch(ref -> ref.capabilityId().equals(FfmpegCpuProvider.SUBTITLE_RASTERIZE_CAPABILITY));
+        assertThat(declaresRaster).isEqualTo(hasDrawtext);
+    }
+
+    @Test
     void real_ffmpeg_stdout_flows_through_staging_platform_artifact_commit_and_completion()
             throws Exception {
         Path ffmpeg = binary("ffmpeg");

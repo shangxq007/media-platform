@@ -48,9 +48,7 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
                     new CapabilityDescriptor("media.cover-image", "1.0", "frame-extract", "Artifact",
                             "Artifact", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
                     new CapabilityDescriptor("media.thumbnail", "1.0", "frame-extract", "Artifact",
-                            "Artifact", CapabilityDescriptor.InvocationMode.SYNC_ONLY),
-                    new CapabilityDescriptor("subtitle.rasterize", "1.0", "raster", "ExecutableTask",
-                            "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
+                            "Artifact", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
             List.of(new HandledObjectDescriptor(
                     "ExecutableTask", "1",
                     "com.example.platform.execution.taskgraph.ExecutableTask",

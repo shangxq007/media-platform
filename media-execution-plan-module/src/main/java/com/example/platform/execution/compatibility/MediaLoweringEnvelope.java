@@ -4,7 +4,6 @@ import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPla
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.render.domain.renderplan.RenderOutputRole;
-import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement;
 import com.example.platform.shared.time.MediaTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -13,7 +12,7 @@ import java.util.List;
 
 /** Versioned, replayable input-shape contracts for the two current native media pipelines. */
 public enum MediaLoweringEnvelope {
-    GENERIC, TIMED_TRACKS_H264_V1, TIMED_TEXT_H264_V1;
+    GENERIC, TIMED_TRACKS_H264_V1, VISUAL_H264_V1;
 
     public boolean supports(PhysicalPlanUnit unit) {
         if (this == GENERIC) return true;
@@ -40,9 +39,8 @@ public enum MediaLoweringEnvelope {
             case "encode-multitrack" -> tracks && single(unit, "render.output");
             case "encode" -> single(unit, "render.output");
             case "transcode" -> unit.typedInputs().size() == 1
-                    && (this == TIMED_TEXT_H264_V1 || hasCapability(unit, "media.transcode"));
+                    && (this == VISUAL_H264_V1 || hasCapability(unit, "media.transcode"));
             case "frame-extract" -> !tracks && frameExtraction(unit);
-            case "raster" -> !tracks && timedText(unit);
             default -> false;
         };
     }
@@ -64,7 +62,7 @@ public enum MediaLoweringEnvelope {
             case TIMED_TRACKS_H264_V1 -> java.util.Optional.of(new OutputRasters(
                     RenderRaster.MIN_DIMENSION, RenderRaster.MIN_DIMENSION,
                     RenderRaster.MAX_DIMENSION, RenderRaster.MAX_DIMENSION, RenderRaster.MAX_PIXELS, 2));
-            case TIMED_TEXT_H264_V1 -> {
+            case VISUAL_H264_V1 -> {
                 var exact = RenderRaster.DEFAULT;
                 yield java.util.Optional.of(new OutputRasters(exact.width(), exact.height(),
                         exact.width(), exact.height(), exact.width() * exact.height(), 2));
@@ -101,16 +99,6 @@ public enum MediaLoweringEnvelope {
                 && unit.temporalWindow() != null && unit.temporalWindow().isFreezePoint()
                 && unit.temporalWindow().start().equals(request.parameters().position())
                 && finals.size() == 1 && finals.getFirst().role() == RenderOutputRole.DERIVED_MEDIA;
-    }
-
-    private static boolean timedText(PhysicalPlanUnit unit) {
-        if (unit.propagatedExtent() == null || unit.executionCoverage() == null || !unit.typedInputs().isEmpty()
-                || unit.capabilityRequirementRefs().size() != 1 || !hasCapability(unit, "subtitle.rasterize")) return false;
-        var texts = unit.typedOutputs().getFirst().materializationRequirements().stream()
-                .filter(TimedTextMaterializationRequirement.class::isInstance)
-                .map(TimedTextMaterializationRequirement.class::cast).toList();
-        if (texts.size() != 1) return false;
-        return texts.getFirst().hasStyledContentWithin(unit.propagatedExtent());
     }
 
     private static boolean composite(PhysicalPlanUnit unit, boolean contiguous) {

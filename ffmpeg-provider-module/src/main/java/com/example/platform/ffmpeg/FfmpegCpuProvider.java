@@ -70,6 +70,7 @@ public final class FfmpegCpuProvider {
             EXECUTION_CONTRACT_VERSION,
             CAPABILITY_PROFILE_REFERENCE);
 
+    // The pinned Bytedeco distribution does not contain drawtext. Its registration excludes subtitle rasterization.
     public static final ProviderExecutionContract EXECUTION_CONTRACT =
             new ProviderExecutionContract(
                     ProviderExecutionContractSchemaVersion.of(1),
@@ -83,8 +84,6 @@ public final class FfmpegCpuProvider {
                                     COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(
                                     OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            new ProviderCapabilityContractReference(
-                                    SUBTITLE_RASTERIZE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             new ProviderCapabilityContractReference(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 
@@ -100,8 +99,6 @@ public final class FfmpegCpuProvider {
                                     COMPOSITE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(
                                     OUTPUT_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
-                            ProviderCapabilitySupport.unpinned(
-                                    SUBTITLE_RASTERIZE_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(COVER_CAPABILITY, CAPABILITY_CONTRACT_RANGE),
                             ProviderCapabilitySupport.unpinned(THUMBNAIL_CAPABILITY, CAPABILITY_CONTRACT_RANGE)));
 
@@ -147,7 +144,7 @@ public final class FfmpegCpuProvider {
                     List.of(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC),
                     List.of(),
                     ProviderStaticCompatibility.LoweringSupport.SUPPORTED,
-                    com.example.platform.execution.compatibility.MediaLoweringEnvelope.TIMED_TEXT_H264_V1);
+                    com.example.platform.execution.compatibility.MediaLoweringEnvelope.VISUAL_H264_V1);
 
     private FfmpegCpuProvider() {}
 }
