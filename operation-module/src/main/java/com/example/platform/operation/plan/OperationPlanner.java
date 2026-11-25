@@ -31,6 +31,7 @@ import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.timeline.semantics.temporal.TemporalMapping;
 import com.example.platform.shared.time.MediaTime;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -39,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -349,7 +351,8 @@ public final class OperationPlanner {
                 throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
                         "Paste requires a pinned media-stream clip with constant playback rate: " + id.value());
             }
-            if (referencesRelationship(base, id)) {
+            if (referencesRelationship(base, id) || base.getAutomations().stream().anyMatch(curve ->
+                    clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {
                 throw new PlanException(PlanErrorCode.INVALID_PLAN,
                         "Paste cannot reproduce group, sync, transition or automation bindings: " + id.value());
             }
@@ -384,7 +387,7 @@ public final class OperationPlanner {
             }
             TimelineClip added = new TimelineClip(newId.value(), source.getMediaAssetId(), source.getMediaStreamId(),
                     source.getArtifactId(), source.getContentDigest(), start, end, source.getTrimStart(), source.getTrimEnd(),
-                    source.getSourceKind(), source.getTemporalMapping(), source.getEffects(), source.getTransform());
+                    source.getSourceKind(), source.getTemporalMapping(), pastedEffects(source, newId), source.getTransform());
             clips.add(added);
             changes.add(new PlannedChange.ClipAdded(track.trackId(), added));
             var oldInput = AudioMixInput.of(track.trackId(), source.getClipId().value());
@@ -397,6 +400,19 @@ public final class OperationPlanner {
         List<TimelineTrack> tracks = base.getTracks().stream().map(t -> t.trackId().equals(track.trackId())
                 ? new TimelineTrack(t.trackId(), t.name(), t.type(), clips) : t).toList();
         return rebuild(base, tracks, mix.withRoutes(routes), base.getSemanticRelationships());
+    }
+
+    private static List<TimelineClipEffect> pastedEffects(TimelineClip source, TimelineClipId newId) {
+        var result = new ArrayList<TimelineClipEffect>();
+        for (TimelineClipEffect effect : source.getEffects()) {
+            String id = effect.id();
+            if (id != null && !id.isBlank()) {
+                String key = "timeline-paste-effect-v1/" + newId.value() + "/" + result.size();
+                id = UUID.nameUUIDFromBytes(key.getBytes(StandardCharsets.UTF_8)).toString();
+            }
+            result.add(new TimelineClipEffect(id, effect.effectKey(), effect.parameters()));
+        }
+        return result;
     }
 
     // ---- 17 non-text operations (split added) ----

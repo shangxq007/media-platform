@@ -5,11 +5,12 @@ import com.example.platform.operation.operation.*;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.*;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
+import com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve;
+import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,9 +42,13 @@ class TimelinePastePlannerTest {
             assertEquals(source.getTrimStart(), copy.getTrimStart());
             assertEquals(source.getTrimEnd(), copy.getTrimEnd());
             assertEquals(source.getTemporalMapping(), copy.getTemporalMapping());
-            assertEquals(source.getEffects(), copy.getEffects());
+            assertEquals(source.getEffects().stream().map(TimelineClipEffect::effectKey).toList(),
+                    copy.getEffects().stream().map(TimelineClipEffect::effectKey).toList());
+            assertEquals(source.getEffects().stream().map(TimelineClipEffect::parameters).toList(),
+                    copy.getEffects().stream().map(TimelineClipEffect::parameters).toList());
             assertEquals(source.getTransform(), copy.getTransform());
         }
+        assertNotEquals(original.getFirst().getEffects().getFirst().id(), all.get(2).getEffects().getFirst().id());
         var routes = result.getAudioMix().routes();
         assertEquals(base.getAudioMix().routes().getFirst(), routes.getFirst());
         assertEquals(AudioRoute.of(AudioMixInput.of("video", NEW_FIRST.value()), new AudioGain(0.5)), routes.getLast());
@@ -63,6 +68,17 @@ class TimelinePastePlannerTest {
         assertEquals(before, digester.digest(base));
     }
 
+    @Test
+    void rejectsCopyOfAnAutomatedInlineEffect() {
+        TimelineDocument base = document();
+        var automated = new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(),
+                base.getAudioMix(), List.of(), List.of(), List.of(),
+                List.of(new CanonicalAutomationCurve("curve", "fx-local", "brightness", "NUMBER", "HOLD", List.of())));
+        var failure = assertThrows(PlanException.class,
+                () -> plan(automated, List.of(FIRST), List.of(NEW_FIRST), time(10)));
+        assertTrue(failure.getMessage().contains("automation"));
+    }
+
     private OperationPlan plan(TimelineDocument base, List<TimelineClipId> sources, List<TimelineClipId> copies, MediaTime at) {
         var def = OperationDefinition.V3.PASTE_CLIPS;
         String hash = digester.digest(base);
@@ -78,7 +94,8 @@ class TimelinePastePlannerTest {
         var red = new TimelineClip(FIRST.value(), "asset-red", "stream-red", "artifact-red", "a".repeat(64),
                 time(1), time(3), time(2), time(6), "MEDIA_STREAM",
                 ConstantRateTemporalMapping.of(2, 1, PlaybackDirection.REVERSE),
-                List.of(new TimelineClipEffect("fx-local", "brightness", Map.of("value", 0.5))), VideoTransform.IDENTITY);
+                List.of(new TimelineClipEffect("fx-local", BasicVideoEffect.EFFECT_KEY,
+                        new BasicVideoEffect(0.1, 1, 1, false, 0, 0, true).toParameters())), VideoTransform.IDENTITY);
         var blue = new TimelineClip(SECOND.value(), "asset-blue", "stream-blue", "artifact-blue", "b".repeat(64),
                 time(5), time(6), time(0), time(1), "MEDIA_STREAM", ConstantRateTemporalMapping.identity());
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,

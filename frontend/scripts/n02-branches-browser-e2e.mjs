@@ -549,7 +549,12 @@ try {
   const gapEdit = { batchId: 'n04-fixture-gap', baseRevisionId: restoredForPaste.newRevisionId,
     baseContentHash: restoredForPaste.newContentHash, operations: [{ definitionId: 'timeline.move',
       target: { clipId: 'clip-blue' }, parameters: { absolute: true, delta: '3/1' } }] }
-  const gapHead = await apply(gapEdit, (await preview(gapEdit)).batchDigest)
+  const beforeFx = await apply(gapEdit, (await preview(gapEdit)).batchDigest)
+  const effectEdit = { batchId: 'n04-inline-effect', baseRevisionId: beforeFx.newRevisionId,
+    baseContentHash: beforeFx.newContentHash, operations: [{ definitionId: 'timeline.clip.effect.set', version: '2.0',
+      target: { clipId: 'clip-red' }, parameters: { brightness: 0.1, contrast: 1, saturation: 1, grayscale: false,
+        fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true } }] }
+  const gapHead = await apply(effectEdit, (await preview(effectEdit)).batchDigest)
   await page.reload()
   await waitView('main', gapHead.newRevisionId)
 
@@ -643,7 +648,14 @@ try {
   for (let ix = 0; ix < copies.length; ix++) {
     const { clipId: _i, startTime: _s, endTime: _e, ...semantic } = copies[ix]
     const { clipId: _oi, startTime: _os, endTime: _oe, ...sourceSemantic } = sources[ix]
-    assert.deepEqual(semantic, sourceSemantic)
+    const withoutEffectIds = ({ effects, ...rest }) => ({
+      ...rest, effects: (effects ?? []).map(({ id: _id, ...effect }) => effect),
+    })
+    assert.deepEqual(withoutEffectIds(semantic), withoutEffectIds(sourceSemantic))
+    if (ix === 0) {
+      assert.equal(sourceSemantic.effects.length, 1)
+      assert.notEqual(semantic.effects[0].id, sourceSemantic.effects[0].id)
+    }
   }
   assert.deepEqual(await checkpoint('n04-reopened'), committedPaste)
   const canvas = page.getByLabel('Timeline preview canvas', { exact: true })
