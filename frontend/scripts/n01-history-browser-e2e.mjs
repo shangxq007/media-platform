@@ -53,7 +53,12 @@ const api = async (path, expected, { body, digest, actor = token } = {}) => {
   return data
 }
 const history = () => api(revisions + '?limit=100', 200)
-const head = () => api(revisions + '/head', 200)
+const head = async () => {
+  const [summary, current] = await Promise.all([api(revisions + '/head', 200),
+    api(`/api/timeline-git/products/${project}/revisions/current`, 200)])
+  assert.equal(summary.id, current.revisionId)
+  return { ...summary, contentHash: current.revision.semanticContext.timelineContentDigest }
+}
 const counts = async () => ({ head: (await head()).id, rows: (await history()).length })
 const snap = id => api(revisions + '/' + id + '/snapshot', 200)
 const intent = (key, revision, operation) => ({
@@ -102,6 +107,11 @@ async function picture(name, expectedLeft, dominant) {
 }
 
 try {
+  const definition = await api(projectApi + '/semantic/operations/timeline.revision.restore/1.0', 200)
+  assert.equal(definition.target, 'TIMELINE')
+  assert.deepEqual(definition.invocationModes, ['PREVIEW', 'APPLY'])
+  assert.deepEqual(definition.parameters, { sourceRevisionId: { type: 'revision-id', required: true } })
+  result.discovery = definition
   const a = await head()
   const aSnapshot = await snap(a.id)
   const bIntent = move('n01-fixture-b', a, '3/1')
