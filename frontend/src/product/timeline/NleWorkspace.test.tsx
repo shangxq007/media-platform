@@ -1,9 +1,10 @@
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { WorkspaceSessionProvider } from '../../foundation/workspaceSession'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FormalRenderAPI } from '../../api/formal-render'
+import * as editingRefs from '../../api/app/timeline-query.gateway'
 import { platformClient } from '../../foundation/platformClient'
 import { ProjectContextProvider as ProjectProvider } from '../../foundation/projectContext'
 import { loadExplicitRevisionSelection, NleWorkspace } from './NleWorkspace'
@@ -70,6 +71,195 @@ async function prepareConfirmedPreview() {
   await screen.findByText(HASH_C)
   fireEvent.click(screen.getByLabelText(/I confirm this exact frozen draft/i))
 }
+
+function renderBranchWorkspace(initial: string) {
+  const queries = new ScriptedTimelineQueryGateway({
+    head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision] },
+    detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
+  })
+  const commandGateway = new ScriptedOperationGateway({ ok: true, value: preview }, { ok: true, value: applied })
+  vi.spyOn(platformClient.workspace, 'getHome').mockResolvedValue({
+    workspace: { id: 'workspace-1', name: 'Editorial' }, tenantId: 'tenant-1',
+    recentProjects: [{ id: 'project-1', name: 'Launch film' }],
+  })
+  vi.spyOn(editingRefs, 'listEditingBranches').mockResolvedValue(['main', 'alt'])
+  const readRef = vi.spyOn(editingRefs, 'readEditingBranch')
+    .mockResolvedValue({ ok: true, value: { head, history: [revision, olderRevision] } })
+  vi.spyOn(FormalRenderAPI, 'snapshot').mockImplementation(async (_project, selected) => ({
+    revisionId: selected,
+    schemaVersion: 'timeline-1.0',
+    canonicalTimelineJson: JSON.stringify({ schemaVersion: 'timeline-1.0', tracks: [
+      { trackId: 'track-1', name: 'Video', type: 'video', clips: [{
+        clipId: 'clip-0', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream',
+        contentDigest: 'a'.repeat(64), startTime: '0', endTime: '6', trimStart: '0', trimEnd: '6',
+        temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
+      }] },
+    ] }),
+  }))
+  function Workspace() {
+    const [branch, switchBranch] = useState(initial)
+    return <NleWorkspace key={branch} editingBranch={branch} onSwitchBranch={switchBranch}
+      queryGateway={queries} commandGateway={commandGateway} />
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={client}><ProjectContextProvider workspaceId="workspace-1" projectId="project-1"><Workspace /></ProjectContextProvider></QueryClientProvider>)
+  return { queries, readRef }
+}
+
+async function prepareNamedTrim() {
+  const handle = await screen.findByLabelText('Trim start edge clip-0')
+  fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+  fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 })
+  fireEvent.pointerUp(handle, { clientX: 180, pointerId: 1 })
+  const apply = screen.getByRole<HTMLButtonElement>('button', { name: 'Apply trim' })
+  await waitFor(() => expect(apply.disabled).toBe(false))
+  return apply
+}
+
+const previewTrim = () => vi.spyOn(FormalRenderAPI, 'previewOperation').mockResolvedValue({
+  batchDigest: HASH_C, steps: [{ changes: [{ identity: 'clip-0', primary: true }] }],
+})
+const previewRestore = () => vi.spyOn(FormalRenderAPI, 'previewRestore').mockImplementation(async (_tenant, _project, body) => ({
+  batchId: body.batchId, baseRevisionId: body.baseRevisionId, baseContentHash: body.baseContentHash,
+  finalCandidateHash: HASH_B, noOp: false, batchDigest: HASH_C, steps: [],
+}))
+const olderButton = async () => (await screen.findByText('Older')).closest('button')!
+const branchPicker = () => screen.getByRole<HTMLSelectElement>('combobox', { name: 'Editing branch' })
+
+describe('branch editor command ownership', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('prevents an old trim confirmation from submitting after a historical read starts', async () => {
+    const { queries } = renderBranchWorkspace('alt')
+    const pendingDetail = deferred<GatewayResult<RevisionDetail>>()
+    vi.spyOn(queries, 'getRevision').mockImplementationOnce(() => pendingDetail.promise)
+    const plan = previewTrim()
+    const write = vi.spyOn(FormalRenderAPI, 'applyConfirmedClip')
+    const apply = await prepareNamedTrim()
+    fireEvent.click(await olderButton())
+    await screen.findByText('Loading explicit revision…')
+    expect(apply.disabled).toBe(true)
+    fireEvent.click(apply)
+    expect(write).not.toHaveBeenCalled()
+    await act(async () => pendingDetail.resolve({ ok: true, value: olderDetail }))
+    await screen.findByText('Read-only historical revision')
+    fireEvent.click(screen.getByRole('button', { name: 'Return to editing head' }))
+    const newApply = await screen.findByRole<HTMLButtonElement>('button', { name: 'Apply trim' })
+    expect(newApply.disabled).toBe(true)
+    await prepareNamedTrim()
+    expect(plan).toHaveBeenCalledTimes(2)
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it('locks history at trim submission and retains the exact retry when a later head already exists', async () => {
+    const { queries, readRef } = renderBranchWorkspace('alt')
+    const getRevision = vi.spyOn(queries, 'getRevision')
+    const plan = previewTrim()
+    const inFlight = deferred<void>()
+    const write = vi.spyOn(FormalRenderAPI, 'applyConfirmedClip')
+      .mockImplementationOnce(async () => { await inFlight.promise; throw Error('response lost') })
+      .mockResolvedValueOnce({ revisionId: 'revision-C', contentHash: HASH_B })
+    fireEvent.click(await prepareNamedTrim())
+    expect(write).toHaveBeenCalledOnce()
+    const history = await olderButton()
+    expect(history.disabled).toBe(true)
+    fireEvent.click(history)
+    expect(getRevision).not.toHaveBeenCalled()
+    await act(async () => inFlight.resolve())
+    const retry = await screen.findByRole('button', { name: /Retry Trim with the same command ID/ })
+    expect(history.disabled).toBe(true)
+    expect(branchPicker().disabled).toBe(true)
+    readRef.mockResolvedValue({ ok: true, value: {
+      head: { ...appliedHead, revisionId: revisionId('revision-D') },
+      history: [revision, olderRevision],
+    } })
+    fireEvent.click(retry)
+    await screen.findByText('Trim applied at revision revision-C. The branch is now at revision revision-D.')
+    expect(write).toHaveBeenCalledTimes(2)
+    expect(write.mock.calls[1]).toEqual(write.mock.calls[0])
+    expect(write.mock.calls[1][2]).toBe(write.mock.calls[0][2])
+    expect(write.mock.calls[0][2].refId).toBe('alt')
+    expect(write.mock.calls[0][3]).toBe(HASH_C)
+    expect(plan).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: /Retry Trim/ })).toBeNull()
+    await waitFor(() => expect((screen.getByText('Older').closest('button')!).disabled).toBe(false))
+  })
+
+  it('treats a real 409 as a rejected trim and requires a new preview', async () => {
+    const { readRef } = renderBranchWorkspace('alt')
+    const plan = previewTrim()
+    const write = vi.spyOn(FormalRenderAPI, 'applyConfirmedClip')
+      .mockRejectedValueOnce(Object.assign(new Error('stale'), { response: { status: 409 } }))
+    const button = await prepareNamedTrim()
+    readRef.mockResolvedValue({ ok: true, value: { head: appliedHead, history: [appliedRevision, revision, olderRevision] } })
+    fireEvent.click(button)
+    await screen.findByText(/Trim rejected: the authoritative HEAD has changed/)
+    expect(button.disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: /Retry Trim/ })).toBeNull()
+    await prepareNamedTrim()
+    expect(plan.mock.calls[1][2].baseRevisionId).toBe(appliedHead.revisionId)
+    expect(write).toHaveBeenCalledOnce()
+  })
+
+  it('blocks navigation and a previously previewed restore until uncertain creation is replayed exactly', async () => {
+    renderBranchWorkspace('main')
+    previewRestore()
+    const restore = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    const inFlight = deferred<void>()
+    const create = vi.spyOn(FormalRenderAPI, 'createEditingBranch')
+      .mockImplementationOnce(async () => { await inFlight.promise; throw Error('response lost') })
+      .mockImplementationOnce(async (_project, body) => ({ ...body, replayed: true }))
+    fireEvent.click(await olderButton())
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview restore' }))
+    const confirm = await screen.findByRole<HTMLButtonElement>('button', { name: 'Confirm restore' })
+    fireEvent.change(screen.getByLabelText('Branch name'), { target: { value: 'alternate-new' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create branch from viewed revision' }))
+    expect(confirm.disabled).toBe(true)
+    fireEvent.click(confirm)
+    await act(async () => inFlight.resolve())
+    const retry = await screen.findByRole('button', { name: 'Retry branch creation' })
+    expect(branchPicker().disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Return to editing head' }).disabled).toBe(true)
+    expect(restore).not.toHaveBeenCalled()
+    expect(create.mock.calls[0][2]?.aborted).toBe(false)
+    fireEvent.click(retry)
+    const discard = await screen.findByRole('button', { name: 'Discard edits and switch' })
+    fireEvent.click(discard)
+    await screen.findByText('Viewing editing head · alternate-new')
+    expect(create).toHaveBeenCalledTimes(2)
+    expect(create.mock.calls[1].slice(0, 2)).toEqual(create.mock.calls[0].slice(0, 2))
+    expect(create.mock.calls[1][1]).toBe(create.mock.calls[0][1])
+  })
+
+  it('blocks branch creation during a submitted restore and retains restore identity across an uncertain reply', async () => {
+    const { queries } = renderBranchWorkspace('main')
+    previewRestore()
+    const create = vi.spyOn(FormalRenderAPI, 'createEditingBranch')
+    const inFlight = deferred<void>()
+    const restore = vi.spyOn(FormalRenderAPI, 'commitBatch')
+      .mockImplementationOnce(async () => { await inFlight.promise; throw Error('response lost') })
+      .mockResolvedValueOnce({ revisionId: appliedHead.revisionId, contentHash: HASH_B })
+    fireEvent.click(await olderButton())
+    fireEvent.change(await screen.findByLabelText('Branch name'), { target: { value: 'alternate-new' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Preview restore' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm restore' }))
+    const fork = screen.getByRole<HTMLButtonElement>('button', { name: 'Create branch from viewed revision' })
+    expect(fork.disabled).toBe(true)
+    fireEvent.click(fork)
+    await act(async () => inFlight.resolve())
+    const retry = await screen.findByRole('button', { name: 'Retry confirmed restore' })
+    expect(fork.disabled).toBe(true)
+    expect(branchPicker().disabled).toBe(true)
+    expect(create).not.toHaveBeenCalled()
+    queries.headResult = { ok: true, value: appliedHead }
+    queries.historyResult = { ok: true, value: [appliedRevision, revision, olderRevision] }
+    fireEvent.click(retry)
+    await screen.findByText(/Restore accepted as revision revision-R1/)
+    expect(restore).toHaveBeenCalledTimes(2)
+    expect(restore.mock.calls[1].slice(0, 5)).toEqual(restore.mock.calls[0].slice(0, 5))
+    expect(restore.mock.calls[1][2]).toBe(restore.mock.calls[0][2])
+  })
+})
 
 describe('runtime NLE operation workspace', () => {
   afterEach(() => vi.restoreAllMocks())

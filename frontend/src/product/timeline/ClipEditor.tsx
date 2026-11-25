@@ -5,7 +5,7 @@ import { FormalRenderAPI, type ClipEdit } from '../../api/formal-render'
 import { audioRouteFor, IDENTITY_VIDEO_EFFECT, IDENTITY_VIDEO_TRANSFORM, projectSnapshotJson, videoTransformParameters, type ProjectedClip, type ProjectedAudioRoute, type ProjectedTrack, type ProjectedTransition, type ProjectedVideoEffect, type ProjectedVideoTransform } from './timeline-projection'
 import { readEditingBranch } from '../../api/app/timeline-query.gateway'
 import { projectId } from './types'
-import type { CanonicalHeadReference } from './gateways'
+import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import {
@@ -18,9 +18,11 @@ interface Props {
   head: CanonicalHeadReference | null
   historicalRevisionId?: string
   editingBranch?: string
+  trimAccess?: EditorCommandAccess
   onDraft?: (hasDraft: boolean) => void
   onWriteLock?: (locked: boolean) => void
   onRevisionChanged: () => Promise<void>
+  onTrimReadback?: () => Promise<CanonicalHeadReference | undefined>
   focusClipId?: string | null
   playhead?: number
   selectedTrackId?: string | null
@@ -46,8 +48,8 @@ function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
   }))
 }
 
-export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focusClipId = null, playhead = 0,
-  selectedTrackId, onSelectTrack, editingBranch = 'main', onDraft, onWriteLock }: Props) {
+export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTrimReadback, focusClipId = null, playhead = 0,
+  selectedTrackId, onSelectTrack, editingBranch = 'main', onDraft, onWriteLock, trimAccess }: Props) {
   const project = useProjectContext()
   const trimOnly = editingBranch !== "main"
   const [formChanged, setFormChanged] = useState(false)
@@ -107,6 +109,14 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
   const keys = useRef<Record<string, string>>({})
   const generation = useRef(0)
   const dragOrigin = useRef<number | null>(null)
+  const trimSubmitting = useRef(false)
+  const trimBlocked = trimAccess?.blocked ?? false
+  useEffect(() => {
+    if (!trimBlocked) return
+    dragOrigin.current = null
+    setPending(null)
+    setPreviewed(null)
+  }, [trimBlocked])
   const [moving, setMoving] = useState<{ clipId: string; start: Rational; originX: number } | null>(null)
   useEffect(() => {
     onDraft?.(formChanged || pending !== null || previewed !== null || moving !== null)
@@ -190,7 +200,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
   }
 
   function beginTrim(trimEdge: TrimEdge, event: ReactPointerEvent<HTMLSpanElement>) {
-    if (!head || !active || busy || retryCommand) return
+    if (!head || !active || busy || retryCommand || trimAccess?.canStart() === false) return
     dragOrigin.current = event.clientX
     setPending({ edge: trimEdge, delta: { numerator: 0n, denominator: 1n } })
     event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -212,12 +222,14 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
   }
 
   function cancelTrim() {
+    if (trimSubmitting.current) return
+    trimAccess?.release()
     setPending(null); setPreviewed(null); setRetryCommand(null); setActionFailed(false)
     setMessage(retryCommand?.digest ? 'Trim retry discarded.' : 'Trim preview discarded. No revision was written.')
   }
 
   async function previewTrim(trimEdge: TrimEdge, deltaValue: Rational) {
-    if (!head || !project.tenantId || !active || busy) return
+    if (!head || !project.tenantId || !active || busy || trimAccess?.canStart() === false) return
     setPreviewed(null); setRetryCommand(null)
     if (compare(deltaValue, { numerator: 0n, denominator: 1n }) <= 0) { setPending(null); return }
     setBusy(true); setMessage(''); setActionFailed(false)
@@ -229,6 +241,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     }
     try {
       const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+      if (trimAccess?.canStart() === false) return
       setPreviewed({ digest: plan.batchDigest, edge: trimEdge, delta: deltaValue, command })
       setPending({ edge: trimEdge, delta: deltaValue })
       const projected = projectTrim(active, trimEdge, deltaValue)
@@ -253,19 +266,42 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
       setMessage('The timeline changed after the preview. Preview the trim again.')
       return
     }
-    const { command, digest } = previewed
+    await submitConfirmedTrim(previewed.command, previewed.digest)
+  }
+
+  async function submitConfirmedTrim(command: ClipEdit, digest: string) {
+    if (!project.tenantId || trimSubmitting.current || trimAccess?.claim() === false) return
+    trimSubmitting.current = true
     setBusy(true); setMessage(''); setActionFailed(false)
+    let retainCommand = false
     try {
       const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, digest)
-      const authoritative = await readCommandHead(command)
-      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw headMismatch()
-      }
       setPending(null); setPreviewed(null); setRetryCommand(null)
-      await onRevisionChanged()
-      setMessage(`Trim applied at revision ${authoritative.revisionId}.`)
-    } catch (error) { handleFailure(error, 'Trim', command, true, digest) }
-    finally { setBusy(false) }
+      try {
+        const current = onTrimReadback ? await onTrimReadback() : await readCommandHead(command)
+        if (!onTrimReadback) await onRevisionChanged()
+        if (!current) throw new Error('Branch readback unavailable.')
+        if (current.revisionId !== accepted.revisionId) {
+          setMessage(`Trim applied at revision ${accepted.revisionId}. The branch is now at revision ${current.revisionId}.`)
+        } else if (current.contentHash !== accepted.contentHash) {
+          setActionFailed(true)
+          setMessage(`Trim accepted at revision ${accepted.revisionId}. The current content hash could not be verified.`)
+        } else {
+          setMessage(`Trim applied at revision ${accepted.revisionId}.`)
+        }
+      } catch {
+        setActionFailed(true)
+        setMessage(`Trim accepted at revision ${accepted.revisionId}. Reload the branch to refresh its current head.`)
+      }
+    } catch (error) {
+      retainCommand = handleFailure(error, 'Trim', command, true, digest, false)
+      const status = (error as { response?: { status?: number } })?.response?.status
+      if (status === 409 || status === 412) await onRevisionChanged()
+    } finally {
+      trimSubmitting.current = false
+      if (!retainCommand) trimAccess?.release()
+      setBusy(false)
+    }
   }
 
   async function applySimple() {
@@ -566,7 +602,8 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
       { response: { status: 409 } })
   }
 
-  function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean, digest?: string) {
+  function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean,
+    digest?: string, refreshOnConflict = true) {
     const status = (error as { response?: { status?: number } })?.response?.status
     const conflict = status === 409 || status === 412
     setPreviewed(null); setPending(null); setMoving(null)
@@ -574,26 +611,29 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     if (conflict) {
       setRetryCommand(null)
       setMessage(`${label} rejected: the authoritative HEAD has changed since this draft was loaded. Reloading the authoritative revision; re-preview before editing again.`)
-      void onRevisionChanged()
-      return
+      if (refreshOnConflict) void onRevisionChanged()
+      return false
     }
-    const retryable = keepForRetry && command !== null && (status === undefined || status >= 500)
+    const retryable = keepForRetry && command !== null && (status === undefined || status >= 500 || status === 429)
     if (retryable) {
       setRetryCommand({ command, label, digest })
       setMessage(`${label} could not be confirmed (${status ?? 'network error'}). The command is retained for a safe retry with the same command ID; no success is claimed.`)
-      return
+      return true
     }
     setRetryCommand(null)
     setMessage(error instanceof Error ? error.message : `${label} failed.`)
+    return false
   }
 
   async function retryApply() {
     if (!head || !project.tenantId || !retryCommand || busy) return
+    if (retryCommand.digest) {
+      await submitConfirmedTrim(retryCommand.command, retryCommand.digest)
+      return
+    }
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = retryCommand.digest
-        ? await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, retryCommand.command, retryCommand.digest)
-        : await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
+      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
       const authoritative = await readCommandHead(retryCommand.command)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
@@ -645,7 +685,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     const target = event.target as HTMLElement | null
     const tag = target?.tagName?.toLowerCase()
     if (tag === 'input' || tag === 'select' || tag === 'textarea' || target?.isContentEditable) return
-    if (!selected || busy) return
+    if (!selected || busy || retryCommand?.digest || trimSubmitting.current) return
     event.preventDefault()
     void deleteSelected()
   }
@@ -690,9 +730,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     data-viewed-revision={viewedRevisionId} tabIndex={historicalRevisionId ? undefined : 0}
     onKeyDown={historicalRevisionId || trimOnly ? undefined : onSectionKeyDown} onChangeCapture={() => setFormChanged(true)}>
     {!historicalRevisionId && <><div className="ff-nle-buttons">
-    <Button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</Button>
-    {!trimOnly && <><Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</Button>
-    <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</Button></>}
+    <Button type="button" disabled={!head || busy || !!retryCommand?.digest} onClick={() => void refresh()}>Refresh clips</Button>
+    {!trimOnly && <><Button type="button" disabled={!head || busy || !!retryCommand?.digest || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</Button>
+    <Button type="button" disabled={!head || busy || !!retryCommand?.digest || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</Button></>}
     </div>
     <label className="ff-nle-clip-picker">Clip <select className="ff-input" aria-label="Clip" disabled={busy || retryCommand !== null} value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} {clip.trackId && `(${clip.trackId})`}</option>)}
@@ -875,9 +915,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
       {formatRational(projectTrim(active, pending.edge, pending.delta).sourceEnd)}s).
     </p>}
     {(pending || retryCommand?.digest) && <Button type="button" disabled={busy} onClick={cancelTrim}>Cancel trim</Button>}
-    <Button type="button" disabled={!pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</Button>
+    <Button type="button" disabled={trimBlocked || !pending || busy || !previewValid} onClick={() => void applyTrim()}>Apply trim</Button>
 
-    {!trimOnly && <div className="ff-nle-clip-controls">
+    {!trimOnly && <div className="ff-nle-clip-controls" inert={!!retryCommand?.digest}>
     <label>Operation <select className="ff-input" aria-label="Clip operation" value={type} onChange={event => { setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option><option value="SPLIT_CLIP">Split</option>
     </select></label>
@@ -905,6 +945,6 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focu
     </div>}
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
-    {retryCommand && <Button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}
+    {retryCommand && <Button type="button" disabled={busy || (retryCommand.digest !== undefined && trimBlocked)} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}
   </section>
 }

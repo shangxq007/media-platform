@@ -55,7 +55,8 @@ if branches:
         'snapshots',(select count(*) from timeline.timeline_snapshot where {scoped}),
         'canonicalSnapshots',(select count(distinct snapshot_id) from timeline.timeline_revision where {scoped}),
         'commands',(select count(*) from timeline.apply_command where {scoped}));"""
-    checkpoints = ('initial','fork','duplicate','foreign','confirmation','trim','replay','switch','stale','independent')
+    checkpoints = ('initial','fork','duplicate','foreign','confirmation','trim','replay','switch',
+                   'later-committed','later-advanced','later-replay','stale','independent')
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -103,6 +104,11 @@ if branches:
     assert trim['refs']['alternate'] == c and trim['refs']['main'] == b and trim['rows'] == fork['rows'] + 1
     assert trim['canonicalSnapshots'] == fork['canonicalSnapshots'] + 1
     assert facts['switch'] == facts['replay'] == trim
+    committed, advanced = (facts[label] for label in ('later-committed', 'later-advanced'))
+    assert committed['rows'] == trim['rows'] + 1 and advanced['rows'] == committed['rows'] + 1
+    assert trim['refs']['main'] == committed['refs']['main'] == advanced['refs']['main'] == b
+    assert len({c, committed['refs']['alternate'], advanced['refs']['alternate']}) == 3
+    assert facts['stale'] == facts['later-replay'] == advanced
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

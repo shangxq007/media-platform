@@ -9,6 +9,7 @@ import { initialTimelineEditorState, timelineEditorReducer } from './editor-stat
 import type {
   AddMediaClipCommandDraft,
   CanonicalHeadReference,
+  EditorCommandAccess,
   GatewayFailure,
   GatewayResult,
   OperationGateway,
@@ -199,7 +200,7 @@ export function NleWorkspace({
   const [branches, setBranches] = useState<string[]>([])
   const [branchListError, setBranchListError] = useState(false)
   const [switchTarget, setSwitchTarget] = useState<string | null>(null)
-  const [createBusy, setCreateBusy] = useState(false)
+  const [createdBranch, setCreatedBranch] = useState<string | null>(null)
   const [clipDraft, setClipDraft] = useState(false)
   const [clipWriteLocked, setClipWriteLocked] = useState(false)
   const [restoreDraft, setRestoreDraft] = useState(false)
@@ -227,8 +228,9 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  const [restoreApplying, setRestoreApplying] = useState(false)
-  const restoreOwned = useRef(false)
+  type EditorCommand = 'trim' | 'create' | 'restore'
+  const issuedCommand = useRef<EditorCommand | null>(null)
+  const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
   const selectionPendingRef = useRef(false)
 
@@ -237,11 +239,26 @@ export function NleWorkspace({
     setSelectionPending(pending)
   }
 
-  function markRestoreOwned(owned: boolean) {
-    restoreOwned.current = owned
-    setRestoreApplying(owned)
-    if (!owned && mounted.current) setApplyOwnershipRelease(current => current + 1)
+  function commandAccess(command: EditorCommand): EditorCommandAccess {
+    const canStart = () => mounted.current && !selectionPendingRef.current && !applyInFlight.current
+      && (issuedCommand.current === null || issuedCommand.current === command)
+    return {
+      blocked: selectionPending || (commandOwner !== null && commandOwner !== command),
+      canStart,
+      claim: () => {
+        if (!canStart()) return false
+        issuedCommand.current = command
+        setCommandOwner(command)
+        return true
+      },
+      release: () => {
+        if (issuedCommand.current !== command) return
+        issuedCommand.current = null
+        if (mounted.current) setCommandOwner(null)
+      },
+    }
   }
+
   const [restoreMessage, setRestoreMessage] = useState('')
   const [queryMessage, setQueryMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -278,8 +295,10 @@ export function NleWorkspace({
     mounted.current && requestGeneration.current[kind] === generation
   )
 
-  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' = 'ORDINARY') => {
-    const authoritativeTransitionOwned = (restoreOwned.current && reason !== 'RESTORE_READBACK') || applyInFlight.current
+  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' = 'ORDINARY') => {
+    const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
+      || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
+    const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (authoritativeTransitionOwned) {
@@ -302,6 +321,7 @@ export function NleWorkspace({
       dispatch({ type: 'HEAD_LOADED', head: head.value, revisions: history.value })
       setConfirmed(false)
       setStableCommandId(null)
+      return head.value
     } catch (error) {
       if (!ownsRequest('head', generation)) return
       dispatch({ type: 'UNAVAILABLE', reason: error instanceof Error ? error.message : 'Project identity is invalid.' })
@@ -313,13 +333,13 @@ export function NleWorkspace({
   useEffect(() => { void loadHead('NAVIGATION') }, [project.projectId, queryGateway])
 
   useEffect(() => {
-    const authoritativeTransitionOwned = restoreOwned.current || applyInFlight.current
+    const authoritativeTransitionOwned = issuedCommand.current !== null || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (!deferredNavigationHeadLoad.current || authoritativeTransitionOwned) return
     deferredNavigationHeadLoad.current = false
     void loadHead()
-  }, [state.phase, project.projectId, queryGateway, applyOwnershipRelease])
+  }, [state.phase, project.projectId, queryGateway, applyOwnershipRelease, commandOwner])
 
   useEffect(() => {
     let active = true
@@ -345,7 +365,7 @@ export function NleWorkspace({
   }, [state.server.head?.revisionId, project.projectId])
 
   const selectRevision = async (selectedId: string) => {
-    const selectionLocked = createBusy || clipWriteLocked || restoreOwned.current || applyInFlight.current
+    const selectionLocked = clipWriteLocked || issuedCommand.current !== null || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (!state.server.head || selectionLocked) return
@@ -511,16 +531,22 @@ export function NleWorkspace({
   }
 
   const previewReady = state.draft.preview && !state.draft.previewRequired && state.draft.preview.failures.length === 0
-  const revisionSelectionLocked = createBusy || clipWriteLocked || restoreApplying || state.phase.kind === 'PendingApply'
+  const revisionSelectionLocked = commandOwner !== null || clipWriteLocked || state.phase.kind === 'PendingApply'
     || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
   const switchLocked = revisionSelectionLocked || initializing
   function requestSwitch(next: string) {
-    if (!onSwitchBranch || next === editingBranch || switchLocked) return
+    if (!onSwitchBranch || next === editingBranch || switchLocked || issuedCommand.current !== null) return
     const manualDraft = !['AppliedRevision', 'CanonicalHead'].includes(state.phase.kind) && state.draft.command !== null
       || (state.phase.kind !== 'AppliedRevision' && fields !== emptyFields)
     if (clipDraft || restoreDraft || manualDraft) setSwitchTarget(next)
     else onSwitchBranch(next)
   }
+  useEffect(() => {
+    if (!createdBranch || switchLocked) return
+    requestSwitch(createdBranch)
+    setCreatedBranch(null)
+  }, [createdBranch, switchLocked])
+
   const editingHead = state.server.head?.projectId === project.projectId ? state.server.head : null
   const selectedRevision = editingHead ? state.server.selected?.revision.id : undefined
   const historyRevision = selectedRevision && selectedRevision !== editingHead?.revisionId ? selectedRevision : undefined
@@ -545,7 +571,7 @@ export function NleWorkspace({
             {branchListError && <p role="alert">Editing branches could not be listed.</p>}
             {switchTarget && <section aria-label="Unsaved branch edits" role="alert">
               <p>Discard unsaved edits and switch to {switchTarget}?</p>
-              <Button disabled={switchLocked} onClick={() => onSwitchBranch(switchTarget)}>Discard edits and switch</Button>
+              <Button disabled={switchLocked} onClick={() => { if (!issuedCommand.current) onSwitchBranch(switchTarget) }}>Discard edits and switch</Button>
               <Button onClick={() => setSwitchTarget(null)}>Stay on this branch</Button>
             </section>}
           </>}
@@ -557,16 +583,15 @@ export function NleWorkspace({
           </>}
           {onSwitchBranch && historyRevision && !selectionPending && project.tenantId && <CreateEditingBranch
             key={historyRevision} projectId={project.projectId} source={historyRevision}
-            disabled={revisionSelectionLocked || loading} onBusy={setCreateBusy}
+            disabled={loading} access={commandAccess('create')}
             onCreated={ref => {
               setBranches(previous => previous.includes(ref) ? previous : [...previous, ref])
-              requestSwitch(ref)
+              setCreatedBranch(ref)
             }} />}
           {historyRevision && !defaultBranch && <p>Restore is available on main.</p>}
-          {defaultBranch && historyRevision && editingHead && project.tenantId && !selectionPending && (!loading || restoreApplying) && <RestoreRevisionControl
+          {defaultBranch && historyRevision && editingHead && project.tenantId && !selectionPending && (!loading || commandOwner === 'restore') && <RestoreRevisionControl
             key={JSON.stringify([project.projectId, editingHead.revisionId, editingHead.contentHash, historyRevision])}
-            head={editingHead} source={historyRevision} tenantId={project.tenantId} onApplying={markRestoreOwned} onDraft={setRestoreDraft}
-            canStart={() => !selectionPendingRef.current}
+            head={editingHead} source={historyRevision} tenantId={project.tenantId} access={commandAccess('restore')} onDraft={setRestoreDraft}
             onRefresh={async message => { setRestoreMessage(message); await loadHead('RESTORE_READBACK') }} />}
           {restoreMessage && <p role="status">{restoreMessage}</p>}
           {state.server.revisions.length ? <ol className="ff-revision-list">{state.server.revisions.map(revision => <li key={revision.id}><button type="button" aria-pressed={state.server.selected?.revision.id === revision.id} disabled={revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void selectRevision(revision.id) }}><span>r{revision.revisionNumber}</span><code>{revision.id}</code><small>{revision.message ?? 'No message'}</small></button></li>)}</ol> : <p>No accepted history projection.</p>}
@@ -579,10 +604,11 @@ export function NleWorkspace({
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
             head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
-            editingBranch={editingBranch} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}
+            editingBranch={editingBranch} trimAccess={commandAccess('trim')} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}
             selectedTrackId={state.presentation.selectedTrackId}
             onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
-            onRevisionChanged={() => loadHead()} />
+            onRevisionChanged={async () => { await loadHead('CLIP_READBACK') }}
+            onTrimReadback={() => loadHead('CLIP_READBACK')} />
         </Panel>
         {!defaultBranch && !historyRevision && <p>Source insertion and render controls are available on main.</p>}
         {defaultBranch && !historyRevision && <><Panel title="Add media clip" className="ff-operation-panel">

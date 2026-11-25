@@ -242,6 +242,20 @@ public final class EffectSemanticSnapshotAuthority {
         return snapshot;
     }
 
+    /** Validates preserved bindings against the new Timeline. Effect extent is derived from the clip. */
+    public void validatePreservedTargets(EffectSemanticSnapshot snapshot, TimelineDocument document) {
+        for (var entry : snapshot.entries()) {
+            switch (entry.target()) {
+                case ClipEffectTarget binding -> {
+                    var target = resolveTargetContext(document, binding.trackId(), binding.clipId(),
+                            entry.effectInstanceId(), entry.definitionSnapshot().definitionId());
+                    EffectSemanticSnapshotAuthorityInternal.deriveMediaType(
+                            target.trackType(), entry.definitionSnapshot().supportedMediaTypes());
+                }
+            }
+        }
+    }
+
     /** Resolves the typed target context from the canonical document (track type from TrackType). */
     private static EffectTargetContext resolveTargetContext(
             TimelineDocument document, String trackId, String clipId,

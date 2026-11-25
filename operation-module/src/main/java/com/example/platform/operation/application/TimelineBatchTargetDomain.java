@@ -194,6 +194,14 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.FINAL_VALIDATION_FAILED, null,
                     "final candidate rejected: " + diagnostics(result));
         }
+        if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+            try {
+                revisions.validateEditingBranchCandidate(new RevisionRef(batch.target().tenantId(),
+                        batch.target().projectId(), batch.target().refId()), batch.baseRevisionId(), candidate);
+            } catch (TimelineCanonicalRejectionException rejection) {
+                throw new BatchException(BatchErrorCode.FINAL_VALIDATION_FAILED, null, rejection.getMessage(), rejection);
+            }
+        }
     }
 
     @Override

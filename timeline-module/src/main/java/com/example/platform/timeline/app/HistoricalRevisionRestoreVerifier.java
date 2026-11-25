@@ -65,9 +65,12 @@ public final class HistoricalRevisionRestoreVerifier {
             TimelineDocument document,
             String timelineSchemaVersion,
             String timelineDigest,
-            EffectSemanticSnapshotReference effectReference,
+            EffectSemanticSnapshot effectSnapshot,
             String fullRevisionSemanticDigest,
             String digestContractVersion) {
+        public EffectSemanticSnapshotReference effectReference() {
+            return effectSnapshot.reference();
+        }
     }
 
     /**
@@ -161,7 +164,7 @@ public final class HistoricalRevisionRestoreVerifier {
                 document,
                 snapshot.schemaVersion(),
                 actualTimelineDigest,
-                reference,
+                effectSnapshot,
                 recomputedFull,
                 historicalContext.digestContractVersion());
     }

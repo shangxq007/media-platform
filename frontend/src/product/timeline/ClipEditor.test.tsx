@@ -201,8 +201,8 @@ describe('ClipEditor trim interaction', () => {
     fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 })
     fireEvent.pointerUp(handle, { clientX: 180, pointerId: 1 })
     await waitFor(() => expect(api.previewOperation).toHaveBeenCalledTimes(1))
-    // The server accepts under a different head; the editor must not present a false success.
-    api.head.mockResolvedValue({ ...head, revisionId: 'revision-OTHER' } as never)
+    // The server rejects the stale confirmation before committing a revision.
+    api.applyConfirmedClip.mockRejectedValueOnce(Object.assign(new Error('stale'), { response: { status: 409 } }))
     fireEvent.click(screen.getByRole('button', { name: 'Apply trim' }))
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
     expect(screen.getByRole('alert').textContent).toMatch(/HEAD has changed/)

@@ -33,8 +33,8 @@ const save = stage => {
   writeFileSync(join(out, 'branches-result.json'), JSON.stringify(result, null, 2))
 }
 
-async function api(path, expected, { body, digest, actor = token } = {}) {
-  const request = await context.request.fetch(base + path, {
+async function api(path, expected, { body, digest, actor = token, client = context.request } = {}) {
+  const request = await client.fetch(base + path, {
     method: body === undefined ? 'GET' : 'POST', data: body,
     headers: { Authorization: `Bearer ${actor}`, ...(digest ? { 'If-Match': `"${digest}"` } : {}) },
   })
@@ -124,6 +124,8 @@ try {
   await page.getByRole('button', { name: 'Create branch from viewed revision' }).click()
   const retryCreate = page.getByRole('button', { name: 'Retry branch creation' })
   await retryCreate.waitFor()
+  assert.equal(await page.getByRole('combobox', { name: 'Editing branch' }).isDisabled(), true)
+  assert.equal(await page.getByRole('button', { name: 'Preview restore' }).isDisabled(), true)
   const fork = await checkpoint('fork')
   assert.equal(fork.refs.alternate, a)
   assert.equal(fork.rows, initial.rows)
@@ -169,16 +171,16 @@ try {
   await otherEditor.goto(editor)
   await waitView('main', b, otherEditor)
   assert.equal(await page.getByRole('button', { name: 'Delete selected clip' }).count(), 0)
-  const handle = page.getByLabel('Trim start edge clip-red')
-  await handle.scrollIntoViewIfNeeded()
-  const box = await handle.boundingBox()
-  assert.ok(box)
-  const x = box.x + box.width / 2, y = box.y + box.height / 2
   // The initial left handle straddles the visible edge of the clip.
-  const drawTrim = async () => {
+  const drawTrim = async (pixels = 80) => {
+    const handle = page.getByLabel('Trim start edge clip-red')
+    await handle.scrollIntoViewIfNeeded()
+    const box = await handle.boundingBox()
+    assert.ok(box)
+    const x = box.x + box.width / 2, y = box.y + box.height / 2
     await page.mouse.move(x + 2, y)
     await page.mouse.down()
-    await page.mouse.move(x + 82, y, { steps: 8 })
+    await page.mouse.move(x + pixels + 2, y, { steps: 8 })
     await page.mouse.up()
     await page.getByText(/Preview valid:/).waitFor()
   }
@@ -258,15 +260,54 @@ try {
   save('Exact trim retry, branch switch, delayed read, reload and second editor')
 
   const current = await branch('alternate')
-  const left = trim('n02-same-ref-winner', 'alternate', c, current.contentHash)
   const right = trim('n02-same-ref-loser', 'alternate', c, current.contentHash, '1/2')
-  const leftPlan = await preview(left), rightPlan = await preview(right)
-  const winner = await apply(left, leftPlan.batchDigest)
+  const rightPlan = await preview(right)
+  await drawTrim(20)
+  const laterTrace = []
+  let signalCommit
+  const commitObserved = new Promise(resolve => { signalCommit = resolve })
+  await page.route('**' + batch + '/apply', async route => {
+    const req = route.request()
+    const response = await route.fetch()
+    laterTrace.push({ body: req.postData(), ifMatch: req.headers()['if-match'], status: response.status(), response: await response.json() })
+    if (laterTrace.length === 1) {
+      await route.abort('failed')
+      signalCommit()
+    } else await route.fulfill({ response })
+  })
+  await page.getByRole('button', { name: 'Apply trim', exact: true }).click()
+  await commitObserved
+  await retryApply.waitFor()
+  const laterCommitted = await checkpoint('later-committed')
+  const acceptedId = laterCommitted.refs.alternate
+  assert.equal(laterCommitted.rows, applied.rows + 1)
+  assert.equal(laterTrace[0].response.newRevisionId, acceptedId)
+  const accepted = await branch('alternate')
+  const laterEdit = trim('n02-after-lost-response', 'alternate', acceptedId, accepted.contentHash)
+  const laterPlan = await api(batch + '/preview', 200, { body: laterEdit, client: second.request })
+  const advanced = await api(batch + '/apply', 201, { body: laterEdit, digest: laterPlan.batchDigest, client: second.request })
+  const laterAdvanced = await checkpoint('later-advanced')
+  assert.equal(laterAdvanced.rows, laterCommitted.rows + 1)
+  assert.equal(laterAdvanced.refs.alternate, advanced.newRevisionId)
+  await retryApply.click()
+  await waitView('alternate', advanced.newRevisionId)
+  const acceptedMessage = `Trim applied at revision ${acceptedId}. The branch is now at revision ${advanced.newRevisionId}.`
+  await page.getByText(acceptedMessage, { exact: true }).waitFor()
+  assert.equal(await retryApply.count(), 0)
+  assert.deepEqual(laterTrace.map(e => e.status), [201, 200])
+  assert.equal(laterTrace[0].body, laterTrace[1].body)
+  assert.equal(laterTrace[0].ifMatch, laterTrace[1].ifMatch)
+  assert.equal(laterTrace[1].response.newRevisionId, acceptedId)
+  assert.equal(laterTrace[1].response.replayed, true)
+  const laterReplay = await checkpoint('later-replay')
+  assert.deepEqual(laterReplay, laterAdvanced)
+  await page.unroute('**' + batch + '/apply')
+  result.http.replayAfterAdvance = { trace: laterTrace, before: applied, committed: laterCommitted,
+    advanced: laterAdvanced, replay: laterReplay, acceptedMessage }
   const stale = await apply(right, rightPlan.batchDigest, 409)
   const sameRef = await checkpoint('stale')
-  assert.equal(sameRef.refs.alternate, winner.newRevisionId)
-  assert.equal(sameRef.rows, applied.rows + 1)
-  result.http.sameRef = { winner: 201, loser: 409, code: stale.errorCode, after: sameRef }
+  assert.deepEqual(sameRef, laterReplay)
+  result.http.sameRef = { loser: 409, code: stale.errorCode, before: laterReplay, after: sameRef }
 
   const mainEdit = trim('n02-independent-main', 'main', b, bHash)
   const mirrorEdit = trim('n02-independent-mirror', 'mirror', a, aHash)

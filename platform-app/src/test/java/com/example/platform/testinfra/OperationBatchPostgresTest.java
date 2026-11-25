@@ -58,6 +58,7 @@ import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotCanonicalSemantics;
 import com.example.platform.timeline.semantics.relationship.GroupId;
 import com.example.platform.timeline.semantics.relationship.SyncRelationship;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
@@ -669,17 +670,91 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 base.revisionId(), List.of(step), null);
     }
 
+    @Test
+    void namedBranchTrimPreservesOrderedEffectSemanticsAndExactReplay() {
+        TimelineRevision a = revisionWithEffects(null, List.of(blur("z-first", "4"), blur("a-second", "13")));
+        TimelineRevision b = revisionWithEffect(a.revisionId(), "99");
+        var actor = mutation().actor();
+        var target = new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "alternate");
+        long before = count("timeline.timeline_revision");
+        saveService.createEditingRef(mutation(), "alternate", a.revisionId(), "fork-effects").orElseThrow();
+        assertEquals(before, count("timeline.timeline_revision"));
+        assertEquals(a.revisionId(), refHead("alternate"));
+        assertEquals(b.revisionId(), refHead("main"));
+
+        var request = new OperationBatchRequest("trim-unrelated", target, a.revisionId(),
+                List.of(trim(a, "clip-b", "1/1")), null);
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        var context = OperationBatchContext.apply(request.batchId(), actor, null, "test", preview.batchDigest());
+        var result = batch.commit(request, context);
+        assertEquals(BatchCommitResult.APPLIED, result.status());
+        assertEquals(a.revisionId(), parentOf(result.newRevisionId()));
+        assertEquals(result.newRevisionId(), refHead("alternate"));
+        assertEquals(b.revisionId(), refHead("main"));
+        assertEquals(before + 1, count("timeline.timeline_revision"));
+        TimelineRevision c = saveService.findById(TENANT, result.newRevisionId());
+        var store = new JdbcEffectSemanticSnapshotStore(dsl);
+        var original = store.findById(PROJECT, TENANT, a.semanticContext().effectReference().snapshotId()).orElseThrow();
+        var inherited = store.findById(PROJECT, TENANT, c.semanticContext().effectReference().snapshotId()).orElseThrow();
+        assertEquals(a.semanticContext().effectReference(), c.semanticContext().effectReference());
+        assertEquals(original.entries(), inherited.entries());
+        assertEquals(List.of("z-first", "a-second"), inherited.entries().stream().map(entry -> entry.effectInstanceId()).toList());
+        assertEquals(List.of("4", "13"), inherited.entries().stream().map(entry -> entry.parameters().getFirst().value()).toList());
+        assertTrue(inherited.entries().stream().allMatch(entry -> entry.target().equals(new ClipEffectTarget("video-main", "clip-a"))));
+        EffectSemanticSnapshotCanonicalSemantics.verifySnapshotDigest(inherited);
+        assertNotEquals(a.semanticContext().revisionSemanticDigest(), c.semanticContext().revisionSemanticDigest());
+        var clips = saveService.findPayloadDocument(TENANT, c.revisionId()).orElseThrow().getTracks().getFirst().clips();
+        assertEquals(twoClipDocument().getTracks().getFirst().clips().getFirst().getEndTime(), clips.getFirst().getEndTime());
+        assertEquals(MediaTime.ofRational(9, 1), clips.get(1).getEndTime());
+        var replay = batch.commit(request, context);
+        assertTrue(replay.replayed());
+        assertEquals(c.revisionId(), replay.newRevisionId());
+        assertEquals(before + 1, count("timeline.timeline_revision"));
+        assertEquals(0, eventCount("timeline.restored"));
+
+        var trimBound = new OperationBatchRequest("trim-bound", target, c.revisionId(),
+                List.of(trim(c, "clip-a", "1/1")), null);
+        var boundPlan = batch.preview(trimBound, OperationBatchContext.preview(actor, "test"));
+        var boundResult = batch.commit(trimBound,
+                OperationBatchContext.apply(trimBound.batchId(), actor, null, "test", boundPlan.batchDigest()));
+        TimelineRevision d = saveService.findById(TENANT, boundResult.newRevisionId());
+        assertEquals(c.revisionId(), parentOf(d.revisionId()));
+        assertEquals(original.reference(), d.semanticContext().effectReference());
+        assertEquals(MediaTime.ofRational(3, 1), saveService.findPayloadDocument(TENANT, d.revisionId())
+                .orElseThrow().getTracks().getFirst().clips().getFirst().getEndTime());
+        var invalid = new OperationBatchRequest("delete-bound", target, d.revisionId(),
+                List.of(delete(d, "clip-a")), null);
+        assertEquals(BatchErrorCode.FINAL_VALIDATION_FAILED, assertThrows(BatchException.class,
+                () -> batch.preview(invalid, OperationBatchContext.preview(actor, "test"))).code());
+        assertEquals(before + 2, count("timeline.timeline_revision"));
+        assertEquals(d.revisionId(), refHead("alternate"));
+        assertEquals(b.revisionId(), refHead("main"));
+        System.out.printf("N02_EFFECT_PROOF a=%s b=%s c=%s d=%s parentC=%s main=%s alternate=%s "
+                        + "rowsBefore=%d rowsAfterC=%d rowsAfterReplay=%d rowsAfterD=%d "
+                        + "snapshot=%s digest=%s order=z-first,a-second parameters=4,13 target=video-main/clip-a%n",
+                a.revisionId(), b.revisionId(), c.revisionId(), d.revisionId(), result.parentRevisionId(),
+                refHead("main"), refHead("alternate"), before, before + 1, before + 1,
+                count("timeline.timeline_revision"), inherited.id().value(), inherited.contentDigest());
+    }
+
     private TimelineRevision revisionWithEffect(String parent, String radius) {
-        var effect = new EffectInstance("blur", "definition-blur", "1", EffectInstance.EffectMediaType.VIDEO, true,
+        return revisionWithEffects(parent, List.of(blur("blur", radius)));
+    }
+
+    private static EffectInstance blur(String id, String radius) {
+        return new EffectInstance(id, "definition-blur", "1", EffectInstance.EffectMediaType.VIDEO, true,
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(2, 1)),
                 Map.of("radiusPixels", radius), Map.of(), new ClipEffectTarget("video-main", "clip-a"),
                 EffectInstance.EffectProvenance.untracked());
+    }
+
+    private TimelineRevision revisionWithEffects(String parent, List<EffectInstance> effects) {
         var definition = new EffectInstance.EffectDefinition("definition-blur", "1", EffectInstance.EffectCategory.GAUSSIAN_BLUR,
                 List.of(EffectInstance.EffectMediaType.VIDEO),
                 Map.of("radiusPixels", new EffectInstance.ParameterSchema("radiusPixels", "string", null, null, "4", List.of())),
                 EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION, List.of("radiusPixels"),
                 List.of("video.effect.gaussian-blur"), List.of());
-        return saveService.saveRevisionWithEffects(mutation(), parent, twoClipDocument(), List.of(effect), List.of(definition));
+        return saveService.saveRevisionWithEffects(mutation(), parent, twoClipDocument(), effects, List.of(definition));
     }
 
     @Test
@@ -815,9 +890,13 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     private String head() {
+        return refHead("main");
+    }
+
+    private String refHead(String refId) {
         return jdbc.query(
-                "select head_revision_id from timeline.timeline_revision_ref where project_id = ?",
-                rs -> rs.next() ? rs.getString(1) : null, PROJECT);
+                "select head_revision_id from timeline.timeline_revision_ref where project_id = ? and ref_id = ?",
+                rs -> rs.next() ? rs.getString(1) : null, PROJECT, refId);
     }
 
     private String parentOf(String revisionId) {

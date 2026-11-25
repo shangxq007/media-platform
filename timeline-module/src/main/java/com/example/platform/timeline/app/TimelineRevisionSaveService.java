@@ -399,19 +399,19 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                     return replay;
                 }
             }
+            // Named branch edits carry the immutable sidecar of the exact CAS parent.
+            // Validate before writing a child. Replays return from the durable claim above.
+            var inheritedEffects = commandTargetRef != null && !RevisionRef.MAIN_REF.equals(commandTargetRef.refId())
+                    ? branchEffects(tx.dsl(), commandTargetRef, parentRevisionId, document) : null;
             int nextRevisionNumber = Math.toIntExact(
                     revisionNumberAllocator.allocate(tx.dsl(), productId));
             String snapshotId = persistSnapshotPayload(tx.dsl(), productId, tenantId, document);
 
-            // ROADMAP20 authority integration (blockers 1/4): every NEW canonical
-            // revision mints authoritative Effect semantics (EMPTY for the
-            // document save path — the canonical document carries no Effect
-            // authoring today), persists the snapshot durably, pins the exact
-            // reference and computes the FULL revision semantic digest
-            // H(timelineDigest, contractVersion, effectContentDigest).
-            var effectRef = restoredSource == null
-                    ? effectSnapshotAuthority.mintAndPersistTx(tx.dsl(), productId, tenantId, effects, definitions, document).reference()
-                    : restoredSource.verified().effectReference();
+            // Pin the verified effect commitment used by this revision and combine it with the
+            // new Timeline digest. Restore pins its source; named branch edits pin their parent.
+            var effectRef = restoredSource != null ? restoredSource.verified().effectReference()
+                    : inheritedEffects != null ? inheritedEffects
+                    : effectSnapshotAuthority.mintAndPersistTx(tx.dsl(), productId, tenantId, effects, definitions, document).reference();
             String revisionSemanticDigest =
                     com.example.platform.timeline.semantics.effect.TimelineRevisionEffectSemanticCommitment
                             .revisionEffectSemanticDigest(timelineDigest, effectRef);
@@ -541,6 +541,27 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
     @Override
     public String findEditingRefHead(RevisionRef ref) {
         return revisionRefMutation.currentHead(ref);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validateEditingBranchCandidate(RevisionRef ref, String parentRevisionId, TimelineDocument document) {
+        branchEffects(dsl, ref, parentRevisionId, document);
+    }
+
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference branchEffects(
+            DSLContext readDsl, RevisionRef ref, String parentRevisionId, TimelineDocument document) {
+        var parent = verifiedRestoreSource(readDsl, ref.projectId(), ref.tenantId(), parentRevisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Branch parent is unavailable in the target Timeline"));
+        try {
+            effectSnapshotAuthority.validatePreservedTargets(parent.effectSnapshot(), document);
+        } catch (IllegalArgumentException invalidTarget) {
+            throw new TimelineCanonicalRejectionException(new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                    TimelineCanonicalRejectionException.Code.TIMELINE_EFFECT_KEY_INVALID,
+                    com.example.platform.timeline.canonicalmodel.TimelineModelPath.root().field("effects"),
+                    invalidTarget.getMessage()));
+        }
+        return parent.effectReference();
     }
 
     @Override
@@ -864,11 +885,11 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
      * @return the owned row, or {@code null} when absent / not owned
      */
     private OwnedRevisionRow readOwnedRevisionRow(String revisionId, String tenantId) {
-        return readOwnedRevisionRow(revisionId, tenantId, null);
+        return readOwnedRevisionRow(dsl, revisionId, tenantId, null);
     }
 
-    private OwnedRevisionRow readOwnedRevisionRow(String revisionId, String tenantId, String projectId) {
-        org.jooq.Record row = dsl.select(
+    private OwnedRevisionRow readOwnedRevisionRow(DSLContext readDsl, String revisionId, String tenantId, String projectId) {
+        org.jooq.Record row = readDsl.select(
                         TIMELINE_REVISION.ID,
                         TIMELINE_REVISION.PROJECT_ID,
                         TIMELINE_REVISION.TENANT_ID,
@@ -907,11 +928,16 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
 
     private Optional<HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision> verifiedRestoreSource(
             String projectId, String tenantId, String revisionId) {
-        OwnedRevisionRow row = readOwnedRevisionRow(revisionId, tenantId, Objects.requireNonNull(projectId, "projectId"));
+        return verifiedRestoreSource(dsl, projectId, tenantId, revisionId);
+    }
+
+    private Optional<HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision> verifiedRestoreSource(
+            DSLContext readDsl, String projectId, String tenantId, String revisionId) {
+        OwnedRevisionRow row = readOwnedRevisionRow(readDsl, revisionId, tenantId, Objects.requireNonNull(projectId, "projectId"));
         if (row == null) return Optional.empty();
-        var context = revisionSemanticContextStore.findByRevisionId(dsl, projectId, tenantId, revisionId)
+        var context = revisionSemanticContextStore.findByRevisionId(readDsl, projectId, tenantId, revisionId)
                 .orElseThrow(() -> new IllegalStateException("Historical revision semantic context is unavailable"));
-        return Optional.of(restoreVerifier.verify(dsl, projectId, tenantId, row.snapshotId(), row.contentHash(), context));
+        return Optional.of(restoreVerifier.verify(readDsl, projectId, tenantId, row.snapshotId(), row.contentHash(), context));
     }
 
     /** The authoritative revision row read as ONE ownership-validated unit (R3). */

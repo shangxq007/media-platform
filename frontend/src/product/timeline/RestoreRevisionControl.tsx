@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { Button, PropertyRow } from '../../components/design-system'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
-import type { CanonicalHeadReference } from './gateways'
+import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
 
 interface RestorePreview {
   body: SemanticBatch
@@ -11,13 +11,12 @@ interface RestorePreview {
   noOp: boolean
 }
 
-export function RestoreRevisionControl({ head, source, tenantId, onApplying, onRefresh, canStart, onDraft }: {
+export function RestoreRevisionControl({ head, source, tenantId, access, onRefresh, onDraft }: {
   head: CanonicalHeadReference
   source: string
   tenantId: string
-  canStart: () => boolean
+  access: EditorCommandAccess
   onDraft?: (hasDraft: boolean) => void
-  onApplying: (busy: boolean) => void
   onRefresh: (message: string) => Promise<void>
 }) {
   const [plan, setPlan] = useState<RestorePreview | null>(null)
@@ -31,7 +30,7 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
   }, [onDraft, phase, plan])
 
   async function preview() {
-    if (request.current || phase !== 'idle' || !canStart()) return
+    if (request.current || phase !== 'idle' || !access.canStart()) return
     const controller = new AbortController()
     request.current = controller
     setPhase('previewing')
@@ -55,12 +54,11 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
   }
 
   async function apply() {
-    if (!plan || request.current || !canStart()) return
+    if (!plan || request.current || !access.claim()) return
     const controller = new AbortController()
     request.current = controller
     setPhase('applying')
     setMessage('')
-    onApplying(true)
     let retainOwnership = false
     try {
       const accepted = await FormalRenderAPI.commitBatch(tenantId, head.projectId, plan.body,
@@ -86,22 +84,22 @@ export function RestoreRevisionControl({ head, source, tenantId, onApplying, onR
       }
     } finally {
       request.current = null
-      if (!retainOwnership) onApplying(false)
+      if (!retainOwnership) access.release()
     }
     if (!controller.signal.aborted) setPhase('idle')
   }
 
   return <section aria-label="Restore historical revision">
-    {!plan && <Button disabled={phase !== 'idle'} onClick={() => void preview()}>Preview restore</Button>}
+    {!plan && <Button disabled={access.blocked || phase !== 'idle'} onClick={() => void preview()}>Preview restore</Button>}
     {plan && <>
       <PropertyRow label="Restore source"><code>{source}</code></PropertyRow>
       <PropertyRow label="Expected editing head"><code>{plan.body.baseRevisionId}</code></PropertyRow>
       <PropertyRow label="Restored content hash"><code>{plan.candidateHash}</code></PropertyRow>
       <p>{plan.noOp ? 'The content already matches the editing head.' : 'Confirm to append this content as a new revision.'}</p>
-      <Button variant="primary" disabled={phase === 'applying'} onClick={() => void apply()}>
+      <Button variant="primary" disabled={access.blocked || phase === 'applying'} onClick={() => void apply()}>
         {phase === 'retry' ? 'Retry confirmed restore' : 'Confirm restore'}
       </Button>
-      <Button disabled={phase === 'applying'} onClick={() => { setPlan(null); setPhase('idle'); setMessage(''); onApplying(false) }}>Discard restore</Button>
+      <Button disabled={access.blocked || phase === 'applying'} onClick={() => { setPlan(null); setPhase('idle'); setMessage(''); access.release() }}>Discard restore</Button>
     </>}
     {message && <p role="alert">{message}</p>}
   </section>

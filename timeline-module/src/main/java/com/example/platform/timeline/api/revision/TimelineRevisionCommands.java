@@ -90,6 +90,9 @@ RevisionWriteResult saveRestoreForCommand(TimelineMutationContext context, Revis
 
 String findEditingRefHead(RevisionRef ref);
 
+/** Validates effects inherited from the exact scoped parent before confirming a branch edit. */
+void validateEditingBranchCandidate(RevisionRef ref, String parentRevisionId, TimelineDocument document);
+
 record CreatedEditingRef(String refId, String sourceRevisionId, boolean replayed) {}
 
 Optional<CreatedEditingRef> createEditingRef(TimelineMutationContext context, String refId,

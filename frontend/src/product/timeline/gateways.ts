@@ -41,6 +41,14 @@ export interface GatewayFailure {
 
 export type GatewayResult<T> = { readonly ok: true; readonly value: T } | GatewayFailure
 
+/** The workspace holds one issued command across requests, readback and exact retry. */
+export interface EditorCommandAccess {
+  readonly blocked: boolean
+  canStart: () => boolean
+  claim: () => boolean
+  release: () => void
+}
+
 export interface CanonicalHeadReference {
   readonly projectId: ProjectId
   readonly timelineId: TimelineId
