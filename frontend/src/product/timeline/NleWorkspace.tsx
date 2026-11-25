@@ -24,6 +24,7 @@ import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timelin
 import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
+import { RestoreRevisionControl } from './RestoreRevisionControl'
 import { useTranslation } from '../../localization'
 import {
   ADD_MEDIA_CLIP_DEFINITION,
@@ -176,6 +177,8 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
+  const [restoreApplying, setRestoreApplying] = useState(false)
+  const [restoreMessage, setRestoreMessage] = useState('')
   const [queryMessage, setQueryMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
@@ -277,7 +280,7 @@ export function NleWorkspace({
   }, [state.server.head?.revisionId, project.projectId])
 
   const selectRevision = async (selectedId: string) => {
-    const selectionLocked = applyInFlight.current
+    const selectionLocked = restoreApplying || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
     if (!state.server.head || selectionLocked) return
@@ -443,8 +446,12 @@ export function NleWorkspace({
   }
 
   const previewReady = state.draft.preview && !state.draft.previewRequired && state.draft.preview.failures.length === 0
-  const revisionSelectionLocked = state.phase.kind === 'PendingApply'
+  const revisionSelectionLocked = restoreApplying || state.phase.kind === 'PendingApply'
     || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
+  const editingHead = state.server.head?.projectId === project.projectId ? state.server.head : null
+  const selectedRevision = editingHead ? state.server.selected?.revision.id : undefined
+  const historyRevision = selectedRevision && selectedRevision !== editingHead?.revisionId ? selectedRevision : undefined
+  const viewedRevision = historyRevision ?? editingHead?.revisionId
   return (
     <>
       <PageHeading eyebrow="Creative · NLE" title="Timeline editor" description="One canonical Timeline core with explicit server HEAD, read-only revision queries, and preview-before-apply operations." />
@@ -452,26 +459,37 @@ export function NleWorkspace({
       <EditorPhaseNotice phase={state.phase} readbackRetrying={readbackRetrying} onRetryReadback={() => void retryAuthoritativeReadback()} />
       <div className="ff-nle-layout">
         <Panel title="Canonical revision authority" actions={<Button onClick={() => void loadHead()} disabled={loading || revisionSelectionLocked}>Reload HEAD</Button>}>
-          {state.server.head ? <div className="ff-head-identity"><Status label="HEAD · main" tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
+          {state.server.head ? <div className="ff-head-identity"><Status label={historyRevision ? "Editing head · main" : "Viewing editing head · main"} tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
             <EmptyState title="HEAD unavailable" description="Create a Timeline to start editing this project." />
             <Button disabled={!project.tenantId || initializing || loading} onClick={() => void initialize()}>Initialize Timeline</Button>
             {initializeError && <p role="alert">{initializeError}</p>}
           </>}
           <h3>Revision history</h3>
-          {state.server.revisions.length ? <ol className="ff-revision-list">{state.server.revisions.map(revision => <li key={revision.id}><button type="button" aria-pressed={state.server.selected?.revision.id === revision.id} disabled={revisionSelectionLocked} onClick={() => void selectRevision(revision.id)}><span>r{revision.revisionNumber}</span><code>{revision.id}</code><small>{revision.message ?? 'No message'}</small></button></li>)}</ol> : <p>No accepted history projection.</p>}
+          {historyRevision && <PropertyRow label="Viewing revision"><code data-viewed-revision={viewedRevision}>{viewedRevision}</code></PropertyRow>}
+          {historyRevision && <>
+            <Status label="Read-only historical revision" tone="info" />
+            <Button disabled={loading || revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void loadHead() }}>Return to editing head</Button>
+          </>}
+          {historyRevision && editingHead && project.tenantId && <RestoreRevisionControl
+            key={JSON.stringify([project.projectId, editingHead.revisionId, editingHead.contentHash, historyRevision])}
+            head={editingHead} source={historyRevision} tenantId={project.tenantId} onApplying={setRestoreApplying}
+            onRefresh={async message => { setRestoreMessage(message); await loadHead() }} />}
+          {restoreMessage && <p role="status">{restoreMessage}</p>}
+          {state.server.revisions.length ? <ol className="ff-revision-list">{state.server.revisions.map(revision => <li key={revision.id}><button type="button" aria-pressed={state.server.selected?.revision.id === revision.id} disabled={revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void selectRevision(revision.id) }}><span>r{revision.revisionNumber}</span><code>{revision.id}</code><small>{revision.message ?? 'No message'}</small></button></li>)}</ol> : <p>No accepted history projection.</p>}
           {queryMessage ? <p role="status">{queryMessage}</p> : null}
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
         </Panel>
         <Panel title="Timeline media preview" className="ff-operation-panel">
-          <TimelineMediaPreview key={JSON.stringify([project.projectId, state.server.head?.revisionId])} head={state.server.head} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
+          <TimelineMediaPreview key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
-          <ClipEditor head={state.server.head} focusClipId={focusClipId} playhead={previewTime}
+          <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
+            head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision} focusClipId={focusClipId} playhead={previewTime}
             selectedTrackId={state.presentation.selectedTrackId}
             onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
             onRevisionChanged={() => loadHead()} />
         </Panel>
-        <Panel title="Add media clip" className="ff-operation-panel">
+        {!historyRevision && <><Panel title="Add media clip" className="ff-operation-panel">
           <SourceBrowser tenantId={project.tenantId} project={project.projectId} onSelect={source => {
             const selectedTrack = tracks.find(track => track.trackId === state.presentation.selectedTrackId)
             const selectedStream = source.streams.find(item => item.kind === selectedTrack?.type)
@@ -527,6 +545,7 @@ export function NleWorkspace({
             1000 * toSeconds(parseRational(appendStart) ?? { numerator: 0n, denominator: 1n })
           )} />
         </Panel>
+        </>}
         <Panel title="Server semantic comparison" className="ff-nle-diff-panel"><SemanticDiff comparison={state.server.comparison} actionFilter={state.presentation.comparisonActionFilter} onActionFilterChange={action => dispatch({ type: 'COMPARISON_FILTER_CHANGED', action })} /></Panel>
       </div>
     </>

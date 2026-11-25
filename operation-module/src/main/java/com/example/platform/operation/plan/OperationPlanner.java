@@ -90,6 +90,19 @@ public final class OperationPlanner {
             default -> throw new PlanException(PlanErrorCode.INVALID_PLAN,
                     "unsupported operation " + instance.definitionId());
         };
+        return finish(instance, candidate, changes);
+    }
+
+    /** Plans a restore from the scoped historical state resolved by the batch domain. */
+    public OperationPlan planRestore(OperationInstance instance, TimelineDocument historical) {
+        if (!instance.definitionId().equals(com.example.platform.operation.operation.OperationDefinition.V3.RESTORE_REVISION.definitionId())
+                || !(instance.parameters() instanceof OperationParameters.RestoreRevisionParameters restore)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "A resolved restore operation is required");
+        }
+        return finish(instance, historical, List.of(new PlannedChange.RevisionRestored(restore.sourceRevisionId())));
+    }
+
+    private OperationPlan finish(OperationInstance instance, TimelineDocument candidate, List<PlannedChange> changes) {
         String candidateHash = digester.digest(candidate);
         boolean noOp = candidateHash.equals(instance.baseContentHash());
         String digest = OperationPlanDigest.compute(

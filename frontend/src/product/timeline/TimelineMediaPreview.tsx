@@ -7,7 +7,6 @@ import { assetGateway } from '../../api/app/asset.gateway'
 import { toSeconds } from './trim'
 import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
-import type { CanonicalHeadReference } from './gateways'
 import { projectId as validateProjectId } from './types'
 
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
@@ -73,8 +72,8 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
-  head: CanonicalHeadReference | null
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }: {
+  revisionId: string | undefined
   tenantId: string | null
   projectId: string
   onTime?: (time: number) => void
@@ -89,7 +88,6 @@ export function TimelineMediaPreview({ head, tenantId, projectId, onTime }: {
   const [time, setTime] = useState(0)
   const [message, setMessage] = useState('')
   const [retry, setRetry] = useState(0)
-  const revisionId = head?.revisionId
 
   function publishTime(seconds: number) {
     setTime(seconds)

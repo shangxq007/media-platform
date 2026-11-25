@@ -160,6 +160,8 @@ public final class TimelineBatchCommandMapper {
                                            String projectId, String baseRevisionId,
                                            String baseContentHash, int index) {
         return switch (definitionId) {
+            case "timeline.revision.restore" -> new OperationParameters.RestoreRevisionParameters(
+                    requiredText(parameters, "sourceRevisionId"));
             case "timeline.media-clip.add" -> (OperationParameters.AddMediaClipParameters)
                     addMediaClip(parameters, baseRevisionId, baseContentHash, projectId).parameters();
             case "timeline.move" -> new OperationParameters.MoveParameters(

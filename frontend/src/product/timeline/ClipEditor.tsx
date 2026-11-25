@@ -14,6 +14,7 @@ import { describeMove, draggedStart, projectMove } from './move'
 
 interface Props {
   head: CanonicalHeadReference | null
+  historicalRevisionId?: string
   onRevisionChanged: () => Promise<void>
   focusClipId?: string | null
   playhead?: number
@@ -40,12 +41,13 @@ function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
   }))
 }
 
-export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhead = 0,
+export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, focusClipId = null, playhead = 0,
   selectedTrackId, onSelectTrack }: Props) {
   const project = useProjectContext()
   const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio | null>(null)
   const [aspectWidth, setAspectWidth] = useState('')
   const [aspectHeight, setAspectHeight] = useState('')
+  const viewedRevisionId = historicalRevisionId ?? head?.revisionId
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [audioRoutes, setAudioRoutes] = useState<readonly ProjectedAudioRoute[]>([])
   const [transforms, setTransforms] = useState<Record<string, ProjectedVideoTransform>>({})
@@ -96,10 +98,10 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const moveOrigin = useRef<number | null>(null)
 
   async function refresh() {
-    if (!head) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
+    if (!viewedRevisionId) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
     const owned = ++generation.current
     try {
-      const snapshot = await FormalRenderAPI.snapshot(project.projectId, head.revisionId)
+      const snapshot = await FormalRenderAPI.snapshot(project.projectId, viewedRevisionId)
       const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
       const rows = geometryOf(projection.clips)
       if (owned !== generation.current) return
@@ -121,7 +123,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     }
   }
 
-  useEffect(() => { void refresh(); return () => { generation.current += 1 } }, [head?.revisionId, project.projectId])
+  useEffect(() => { void refresh(); return () => { generation.current += 1 } }, [viewedRevisionId, project.projectId])
   useEffect(() => { setPending(null); setPreviewed(null); setMoving(null); setRetryCommand(current => current?.digest ? current : null) }, [head?.revisionId, head?.contentHash])
   useEffect(() => { setRetryCommand(null); setPreviewed(null); setPending(null) }, [project.tenantId, project.projectId])
   useEffect(() => {
@@ -659,15 +661,17 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     && compare(splitCandidate, active.start) > 0 && compare(splitCandidate, active.end) < 0
     ? { clipId: active.clipId, at: splitCandidate } : null
 
-  return <section aria-label="Edit existing clip" tabIndex={0} onKeyDown={onSectionKeyDown}>
-    <div className="ff-nle-buttons">
+  return <section aria-label={historicalRevisionId ? "Historical timeline" : "Edit existing clip"}
+    data-viewed-revision={viewedRevisionId} tabIndex={historicalRevisionId ? undefined : 0}
+    onKeyDown={historicalRevisionId ? undefined : onSectionKeyDown}>
+    {!historicalRevisionId && <><div className="ff-nle-buttons">
     <Button type="button" disabled={!head || busy} onClick={() => void refresh()}>Refresh clips</Button>
     <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('VIDEO')}>Add video track</Button>
     <Button type="button" disabled={!head || busy || !project.tenantId} onClick={() => void addTrack('AUDIO')}>Add audio track</Button>
     </div>
     <label className="ff-nle-clip-picker">Clip <select className="ff-input" aria-label="Clip" value={selected} onChange={event => { setSelected(event.target.value); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} {clip.trackId && `(${clip.trackId})`}</option>)}
-    </select></label>
+    </select></label></>}
 
     <div role="group" aria-label="Timeline trim" data-pixels-per-second={TRIM_PIXELS_PER_SECOND}
          style={{ position: 'relative', marginTop: 8, marginBottom: 8, overflowX: 'auto',
@@ -703,12 +707,12 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
           return <div key={clip.clipId} data-clip-id={clip.clipId}
                       data-clip-body={clip.clipId}
                       aria-label={`Timeline clip ${clip.clipId}`}
-                      onPointerDown={event => beginMove(clip, event)}
+                      onPointerDown={historicalRevisionId ? undefined : event => beginMove(clip, event)}
                       onClick={() => setSelected(clip.clipId)}
                       onPointerMove={dragMove}
                       onPointerUp={event => void endMove(event)}
                       onPointerCancel={() => { moveOrigin.current = null; setMoving(null) }}
-                      title="Drag the clip body to move it; drag an orange edge to trim"
+                      title={historicalRevisionId ? undefined : "Drag the clip body to move it; drag an orange edge to trim"}
                       style={{ position: 'absolute', left: left * TRIM_PIXELS_PER_SECOND,
                                width: Math.max(6, (right - left) * TRIM_PIXELS_PER_SECOND), top: 0, height: 40,
                                background: isActive ? '#1d4ed8aa' : '#374151aa',
@@ -720,7 +724,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
                        top: -4, width: 2, height: 48, background: '#facc15', zIndex: 2, pointerEvents: 'none' }} />}
             <span aria-hidden="true">{clip.clipId} · {toSeconds(projected ? projected.duration : subtract(clip.end, clip.start)).toFixed(2)}s
               · src {toSeconds(projected ? projected.sourceStart : clip.sourceStart).toFixed(2)}–{toSeconds(projected ? projected.sourceEnd : clip.sourceEnd).toFixed(2)}</span>
-            <span role="slider" tabIndex={0} aria-label={`Trim start edge ${clip.clipId}`} aria-valuetext="trim start"
+            {!historicalRevisionId && <><span role="slider" tabIndex={0} aria-label={`Trim start edge ${clip.clipId}`} aria-valuetext="trim start"
                   onPointerDown={event => { event.stopPropagation(); setSelected(clip.clipId); setType('TRIM_CLIP'); beginTrim('START', event) }}
                   onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={() => { dragOrigin.current = null; setPending(null) }}
                   style={{ position: 'absolute', left: -3, top: 0, width: 8, height: '100%', cursor: 'ew-resize',
@@ -729,7 +733,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
                   onPointerDown={event => { event.stopPropagation(); setSelected(clip.clipId); setType('TRIM_CLIP'); beginTrim('END', event) }}
                   onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={() => { dragOrigin.current = null; setPending(null) }}
                   style={{ position: 'absolute', right: -3, top: 0, width: 8, height: '100%', cursor: 'ew-resize',
-                           background: '#f59e0b', borderRadius: 2 }} />
+                           background: '#f59e0b', borderRadius: 2 }} /></>}
           </div>
         })}
                 </div>
@@ -740,7 +744,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       </div>
     </div>
 
-    {projection && !projection.valid && <p role="alert">{projection.reason}</p>}
+    {historicalRevisionId && message && <p role="alert">{message}</p>}
+    {!historicalRevisionId && <>{projection && !projection.valid && <p role="alert">{projection.reason}</p>}
     {moving && (() => { const clip = clips.find(row => row.clipId === moving.clipId); const projection = clip ? projectMove(clip, moving.start) : null; return projection
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     <Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || busy}
@@ -873,6 +878,6 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     </div>
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
-    {retryCommand && <Button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}
+    {retryCommand && <Button type="button" disabled={busy} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}
   </section>
 }

@@ -22,6 +22,7 @@ import java.util.TreeSet;
  */
 @org.springframework.modulith.NamedInterface("invocation")
 public sealed interface OperationParameters permits
+        OperationParameters.RestoreRevisionParameters,
         OperationParameters.InitializeTimelineParameters,
         OperationParameters.AddTrackParameters,
         OperationParameters.ImportTimelineParameters,
@@ -237,6 +238,16 @@ public sealed interface OperationParameters permits
         public TransitionDeleteParameters {
             if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("transitionId required");
         }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record RestoreRevisionParameters(String sourceRevisionId) implements OperationParameters {
+        public RestoreRevisionParameters {
+            if (sourceRevisionId == null || !sourceRevisionId.matches(SOURCE_REVISION_ID_PATTERN)) {
+                throw new IllegalArgumentException("Invalid historical revision identity");
+            }
+        }
+        public static final String SOURCE_REVISION_ID_PATTERN = "[A-Za-z0-9._:-]{1,64}";
     }
 
     @org.springframework.modulith.NamedInterface("invocation")

@@ -79,6 +79,13 @@ TimelineRevision restoreRevision(
             String historicalRevisionId,
             String expectedCurrentRevisionId);
 
+/** Loads verified immutable historical state for Operation planning within the exact project. */
+Optional<TimelineDocument> findRestoreSource(String projectId, String tenantId, String revisionId);
+
+RevisionWriteResult saveRestoreForCommand(TimelineMutationContext context, RevisionRef targetRef,
+            String expectedCurrentRevisionId, String sourceRevisionId, String candidateHash,
+            RevisionWriteCommand command, RevisionProvenance provenance);
+
 TimelineRevision findById(String tenantId, String revisionId);
 
 Optional<TimelineDocument> findPayloadDocument(String tenantId, String revisionId);

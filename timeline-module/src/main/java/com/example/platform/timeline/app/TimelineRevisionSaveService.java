@@ -181,6 +181,28 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                 targetRef.tenantId(), targetRef.projectId(), expectedCurrentRevisionId, document,
                 java.util.List.of(), java.util.List.of(), context.authorUserId(),
                 Objects.requireNonNull(command, "command"), targetRef, provenance);
+        return commandResult(outcome, expectedCurrentRevisionId);
+    }
+
+    @Override
+    public RevisionWriteResult saveRestoreForCommand(TimelineMutationContext context, RevisionRef targetRef,
+            String expectedCurrentRevisionId, String sourceRevisionId, String candidateHash,
+            RevisionWriteCommand command, com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
+        requireContextMatchesRef(context, targetRef);
+        authorizeMutation(context, "operation-apply");
+        var source = verifiedRestoreSource(targetRef.projectId(), targetRef.tenantId(), sourceRevisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Historical revision unavailable in the target Timeline"));
+        if (!source.timelineDigest().equals(candidateHash)) {
+            throw new IllegalArgumentException("Historical Timeline differs from the confirmed candidate");
+        }
+        SaveOutcome outcome = saveRevisionInternal(targetRef.tenantId(), targetRef.projectId(), expectedCurrentRevisionId,
+                source.document(), java.util.List.of(), java.util.List.of(), context.authorUserId(),
+                Objects.requireNonNull(command, "command"), targetRef, java.util.List.of(), "restore", null,
+                provenance, source);
+        return commandResult(outcome, expectedCurrentRevisionId);
+    }
+
+    private static RevisionWriteResult commandResult(SaveOutcome outcome, String expectedCurrentRevisionId) {
         if (outcome.replayed()) {
             return new RevisionWriteResult(outcome.revisionId(), expectedCurrentRevisionId,
                     outcome.timelineContentHash(), true);
@@ -268,7 +290,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
         return saveRevisionInternal(tenantId, productId, expectedCurrentRevisionId,
                 document, effects, definitions, createdBy, command, commandTargetRef,
-                java.util.List.of(), "api", null, provenance);
+                java.util.List.of(), "api", null, provenance, null);
     }
 
     /** Sole-boundary two-parent merge persistence: target/main first, source second. */
@@ -283,7 +305,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         return saveRevisionInternal(context.tenantId(), context.projectId(),
                 expectedMainHead, document,
                 java.util.List.of(), java.util.List.of(), context.authorUserId(), null, null,
-                java.util.List.of(sourceRevisionId), "merge", mergeBaseRevisionId, null).revision();
+                java.util.List.of(sourceRevisionId), "merge", mergeBaseRevisionId, null, null).revision();
     }
 
     private SaveOutcome saveRevisionInternal(
@@ -297,7 +319,8 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             java.util.List<String> additionalParents,
             String revisionSource,
             String mergeBaseRevisionId,
-            com.example.platform.timeline.api.revision.RevisionProvenance provenance) {
+            com.example.platform.timeline.api.revision.RevisionProvenance provenance,
+            HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision restoredSource) {
         requireOwnedProject(tenantId, productId);
         if (command != null && (commandTargetRef == null
                 || !productId.equals(commandTargetRef.projectId())
@@ -383,12 +406,9 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
             // authoring today), persists the snapshot durably, pins the exact
             // reference and computes the FULL revision semantic digest
             // H(timelineDigest, contractVersion, effectContentDigest).
-            com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot effectSnapshot =
-                    effectSnapshotAuthority.mintAndPersistTx(
-                            tx.dsl(), productId, tenantId,
-                            effects, definitions, document);
-            com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference effectRef =
-                    effectSnapshot.reference();
+            var effectRef = restoredSource == null
+                    ? effectSnapshotAuthority.mintAndPersistTx(tx.dsl(), productId, tenantId, effects, definitions, document).reference()
+                    : restoredSource.effectReference();
             String revisionSemanticDigest =
                     com.example.platform.timeline.semantics.effect.TimelineRevisionEffectSemanticCommitment
                             .revisionEffectSemanticDigest(timelineDigest, effectRef);
@@ -797,6 +817,10 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
      * @return the owned row, or {@code null} when absent / not owned
      */
     private OwnedRevisionRow readOwnedRevisionRow(String revisionId, String tenantId) {
+        return readOwnedRevisionRow(revisionId, tenantId, null);
+    }
+
+    private OwnedRevisionRow readOwnedRevisionRow(String revisionId, String tenantId, String projectId) {
         org.jooq.Record row = dsl.select(
                         TIMELINE_REVISION.ID,
                         TIMELINE_REVISION.PROJECT_ID,
@@ -810,6 +834,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(revisionId))
                 .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
+                .and(projectId == null ? DSL.noCondition() : TIMELINE_REVISION.PROJECT_ID.eq(projectId))
                 .fetchOne();
         if (row == null) {
             return null;
@@ -824,6 +849,22 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                 row.get(TIMELINE_REVISION.SNAPSHOT_ID),
                 row.get(TIMELINE_REVISION.CREATED_AT),
                 row.get(TIMELINE_REVISION.AUTHOR_USER_ID));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TimelineDocument> findRestoreSource(String projectId, String tenantId, String revisionId) {
+        return verifiedRestoreSource(projectId, tenantId, revisionId)
+                .map(HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision::document);
+    }
+
+    private Optional<HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision> verifiedRestoreSource(
+            String projectId, String tenantId, String revisionId) {
+        OwnedRevisionRow row = readOwnedRevisionRow(revisionId, tenantId, Objects.requireNonNull(projectId, "projectId"));
+        if (row == null) return Optional.empty();
+        var context = revisionSemanticContextStore.findByRevisionId(dsl, projectId, tenantId, revisionId)
+                .orElseThrow(() -> new IllegalStateException("Historical revision semantic context is unavailable"));
+        return Optional.of(restoreVerifier.verify(dsl, projectId, tenantId, row.snapshotId(), row.contentHash(), context));
     }
 
     /** The authoritative revision row read as ONE ownership-validated unit (R3). */

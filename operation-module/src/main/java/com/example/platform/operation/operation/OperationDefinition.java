@@ -129,6 +129,9 @@ public record OperationDefinition(
     /** Additive initialization vocabulary; the frozen V1 and V2 sets remain unchanged. */
     @org.springframework.modulith.NamedInterface("operation")
     public static final class V3 {
+        public static final OperationDefinition RESTORE_REVISION = new OperationDefinition(
+                OperationDefinitionId.of("timeline.revision.restore"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.RestoreRevisionParameters.class);
         public static final OperationDefinition INITIALIZE_TIMELINE = new OperationDefinition(
                 OperationDefinitionId.of("timeline.initialize"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1,
@@ -171,7 +174,7 @@ public record OperationDefinition(
                 OperationParameters.SplitParameters.class);
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
-                        java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE,
+                        java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE, RESTORE_REVISION,
                                 SPLIT_CLIP, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_VIDEO_TRANSFORM,
                                 SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
                                 UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE)).toList();

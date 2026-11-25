@@ -32,7 +32,10 @@ public final class TimelineBatchSchema {
                 "baseRevisionId", Map.of("type", "string", "minLength", 1, "maxLength", 64),
                 "baseContentHash", Map.of("type", "string", "pattern", "^" + TimelineBatchCommand.TIMELINE_DIGEST + "$"), "message", Map.of("type", "string", "maxLength", OperationBatchRequest.MAX_MESSAGE_LENGTH),
                 "operations", Map.of("type", "array", "minItems", 1, "maxItems", OperationBatchRequest.MAX_STEPS,
-                        "items", Map.of("oneOf", alternatives))), List.of("batchId", "baseRevisionId", "baseContentHash", "operations"));
+                        "items", Map.of("oneOf", alternatives),
+                        "if", Map.of("contains", Map.of("properties", Map.of("definitionId", literal(
+                                OperationDefinition.V3.RESTORE_REVISION.definitionId().value())))),
+                        "then", Map.of("maxItems", 1))), List.of("batchId", "baseRevisionId", "baseContentHash", "operations"));
     }
 
     public static Map<String, Object> step(OperationDefinition definition) {
@@ -84,6 +87,8 @@ public final class TimelineBatchSchema {
         return switch (type) {
             case "integer", "number", "boolean", "string" -> Map.of("type", type);
             case "composition-aspect-rational-v1" -> ASPECT;
+            case "revision-id" -> Map.of("type", "string", "pattern", "^"
+                    + com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters.SOURCE_REVISION_ID_PATTERN + "$");
             case "string-array" -> Map.of("type", "array", "items", ID);
             case "alignment-attribute-array" -> Map.of("type", "array", "items", Map.of("oneOf", List.of(
                     attribute("TEXT", STRING), attribute("NUMBER", Map.of("type", "integer")),

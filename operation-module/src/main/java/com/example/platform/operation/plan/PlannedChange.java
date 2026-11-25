@@ -14,6 +14,7 @@ import java.util.Set;
  * JsonNode, no Map<String,Object>.
  */
 public sealed interface PlannedChange permits
+        PlannedChange.RevisionRestored,
         PlannedChange.TrackAdded,
         PlannedChange.ClipAdded,
         PlannedChange.ClipRemoved,
@@ -32,6 +33,10 @@ public sealed interface PlannedChange permits
     record TransitionChanged(String transitionId, Action action) implements PlannedChange {
         public enum Action { CREATED, UPDATED, REMOVED }
         public boolean primary() { return true; }
+    }
+
+    record RevisionRestored(String sourceRevisionId) implements PlannedChange {
+        @Override public boolean primary() { return true; }
     }
 
     record TrackAdded(String trackId) implements PlannedChange {

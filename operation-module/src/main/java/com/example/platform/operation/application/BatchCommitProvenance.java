@@ -27,7 +27,9 @@ public final class BatchCommitProvenance {
             java.util.List<com.example.platform.operation.operation.OperationRequest> operations) {
         boolean hasInputs = operations.stream().anyMatch(op -> op.parameters() instanceof
                 com.example.platform.operation.operation.OperationParameters.CompositionAspectParameters aspect && aspect.input() != null);
-        String version = hasInputs ? "operation-batch-provenance-v2" : FORMAT_VERSION;
+        boolean restoring = operations.stream().anyMatch(op -> op.parameters() instanceof
+                com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters);
+        String version = restoring ? "operation-batch-provenance-v3" : hasInputs ? "operation-batch-provenance-v2" : FORMAT_VERSION;
         StringBuilder json = new StringBuilder(256 + plan.steps().size() * 220);
         json.append('{');
         field(json, "formatVersion", version).append(',');
@@ -40,6 +42,12 @@ public final class BatchCommitProvenance {
             json.append("null");
         } else {
             string(json, message);
+        }
+        if (restoring) {
+            var restore = (com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters)
+                    operations.getFirst().parameters();
+            json.append(',');
+            field(json, "sourceRevisionId", restore.sourceRevisionId());
         }
         json.append(",\"steps\":[");
         for (int index = 0; index < plan.steps().size(); index++) {

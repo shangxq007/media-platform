@@ -23,6 +23,7 @@ public final class TimelineOperationWireContract {
         var fields = new LinkedHashMap<String, Field>();
         boolean batch = true;
         switch (id) {
+            case "timeline.revision.restore" -> fields(fields, "revision-id", "sourceRevisionId");
             case "timeline.initialize", "timeline.import", "timeline.track.add" -> batch = false;
             case "timeline.media-clip.add" -> {
                 fields(fields, "string", "trackId", "clipId", "mediaAssetId", "mediaStreamId", "artifactId",

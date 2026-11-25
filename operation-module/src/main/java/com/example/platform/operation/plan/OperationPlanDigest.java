@@ -68,6 +68,7 @@ public final class OperationPlanDigest {
     public static String changeKey(PlannedChange c) {
         return switch (c) {
             case PlannedChange.TransitionChanged t -> "transition-" + t.action() + "(" + t.transitionId() + ")";
+            case PlannedChange.RevisionRestored r -> "restore-revision(" + r.sourceRevisionId() + ")";
             case PlannedChange.TrackAdded track -> "add-track(" + track.trackId() + ")";
             case PlannedChange.ClipAdded a -> "add(" + a.trackId() + ","
                     + a.newClip().getClipId().value() + ")";

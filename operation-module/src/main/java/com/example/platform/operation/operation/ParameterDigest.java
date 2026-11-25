@@ -75,6 +75,9 @@ public final class ParameterDigest {
                     + ",placement=" + a.placement().start() + ".." + a.placement().end()
                     + ",mapping=" + temporalMapping(a.temporalMapping()) + ")";
         }
+        if (p instanceof OperationParameters.RestoreRevisionParameters restore) {
+            return framed("restore-revision-v1", restore.sourceRevisionId());
+        }
         if (p instanceof OperationParameters.NoParameters) {
             return "none";
         }

@@ -90,8 +90,10 @@ export const FormalRenderAPI = {
     return { projectId: project, revisionId: revision, contentHash: result.timelineContentHash }
   },
   async snapshot(project: string, revision: string, signal?: AbortSignal) {
-    const schema = z.object({ canonicalTimelineJson: z.string(), schemaVersion: z.string() })
-    return schema.parse(await request(c => versionlessApi.get(`/render/projects/${part(project)}/timeline/revisions/${part(revision)}/snapshot`, c), signal))
+    const schema = z.object({ revisionId: id, canonicalTimelineJson: z.string(), schemaVersion: z.string() })
+    const snapshot = schema.parse(await request(c => versionlessApi.get(`/render/projects/${part(project)}/timeline/revisions/${part(revision)}/snapshot`, c), signal))
+    if (snapshot.revisionId !== revision) throw new Error('REVISION_SCOPE_MISMATCH')
+    return snapshot
   },
   async applyOperation(tenant: string, project: string, command: ClipEdit, signal?: AbortSignal) {
     return this.applyBatch(tenant, project, clipBatch(command), command.baseRevisionId, signal)
@@ -169,6 +171,14 @@ export const FormalRenderAPI = {
   },
   async previewBatch(tenant: string, project: string, body: SemanticBatch, signal?: AbortSignal) {
     return planSchema.parse(await request(c => versionlessApi.post(`${batchEndpoint(tenant, project)}/preview`, body, c), signal))
+  },
+  async previewRestore(tenant: string, project: string, body: SemanticBatch, signal?: AbortSignal) {
+    const schema = planSchema.extend({ batchId: id, baseRevisionId: id, baseContentHash: id,
+      finalCandidateHash: id, noOp: z.boolean() })
+    const result = schema.parse(await request(c => versionlessApi.post(`${batchEndpoint(tenant, project)}/preview`, body, c), signal))
+    if (result.batchId !== body.batchId || result.baseRevisionId !== body.baseRevisionId
+        || result.baseContentHash !== body.baseContentHash) throw new Error('RESTORE_PREVIEW_SCOPE_MISMATCH')
+    return result
   },
   async commitBatch(tenant: string, project: string, body: SemanticBatch, fallbackRevision: string, digest: string, signal?: AbortSignal) {
     const endpoint = batchEndpoint(tenant, project)

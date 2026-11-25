@@ -29,6 +29,7 @@ const head: CanonicalHeadReference = {
 }
 
 const snapshot = {
+  revisionId: head.revisionId,
   schemaVersion: 'timeline-1.0',
   canonicalTimelineJson: JSON.stringify({
     schemaVersion: 'timeline-1.0',
@@ -211,6 +212,7 @@ describe('ClipEditor trim interaction', () => {
 
 
 const multiClipSnapshot = {
+  revisionId: head.revisionId,
   schemaVersion: 'timeline-1.0',
   canonicalTimelineJson: JSON.stringify({
     schemaVersion: 'timeline-1.0',

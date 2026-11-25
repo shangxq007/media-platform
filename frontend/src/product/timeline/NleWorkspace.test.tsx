@@ -87,6 +87,7 @@ describe('runtime NLE operation workspace', () => {
 
   it('shows canonical track groups and uses their selection for the editor', async () => {
     vi.spyOn(FormalRenderAPI, 'snapshot').mockResolvedValue({
+      revisionId: head.revisionId,
       schemaVersion: 'timeline-1.0',
       canonicalTimelineJson: JSON.stringify({ schemaVersion: 'timeline-1.0', tracks: [
         { trackId: 'base', type: 'video', name: 'Camera', clips: [] },

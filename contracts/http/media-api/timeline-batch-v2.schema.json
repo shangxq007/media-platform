@@ -19,6 +19,16 @@
       "type" : "string"
     },
     "operations" : {
+      "if" : {
+        "contains" : {
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.revision.restore" ],
+              "type" : "string"
+            }
+          }
+        }
+      },
       "items" : {
         "oneOf" : [ {
           "additionalProperties" : false,
@@ -1952,6 +1962,31 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.revision.restore" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "sourceRevisionId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                }
+              },
+              "required" : [ "sourceRevisionId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.split" ],
               "type" : "string"
             },
@@ -2457,6 +2492,9 @@
       },
       "maxItems" : 200,
       "minItems" : 1,
+      "then" : {
+        "maxItems" : 1
+      },
       "type" : "array"
     }
   },

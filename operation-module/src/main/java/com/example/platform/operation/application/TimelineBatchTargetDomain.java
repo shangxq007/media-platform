@@ -142,7 +142,19 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         validateSource(instance, batch, currentCandidate, projectId);
         final OperationPlan plan;
         try {
-            plan = planner.plan(instance, batch.baseRevisionId(), currentCandidate, fonts);
+            if (instance.parameters() instanceof OperationParameters.RestoreRevisionParameters restore) {
+                if (batch.operations().size() != 1) {
+                    throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
+                            "Restore requires a single-operation batch");
+                }
+                TimelineDocument source = revisions.findRestoreSource(batch.target().projectId(),
+                                batch.target().tenantId(), restore.sourceRevisionId())
+                        .orElseThrow(() -> new BatchException(BatchErrorCode.BASE_REVISION_NOT_FOUND, null,
+                                "Historical revision not found in the target Timeline"));
+                plan = planner.planRestore(instance, source);
+            } else {
+                plan = planner.plan(instance, batch.baseRevisionId(), currentCandidate, fonts);
+            }
         } catch (PlanException failure) {
             throw new BatchException(BatchErrorCode.STEP_PLAN_FAILED, null,
                     failure.getMessage(), failure);
@@ -217,8 +229,12 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         batch.target().refId(), plan.outcomes(), result.replayed());
             }
             RevisionProvenance provenance = BatchCommitProvenance.of(plan, batch.message(), batch.operations());
-            TimelineRevisionCommands.RevisionWriteResult result = revisions.saveRevisionForCommand(mutationContext, targetRef,
-                    plan.baseRevisionId(), plan.finalCandidate(), command, provenance);
+            TimelineRevisionCommands.RevisionWriteResult result =
+                    batch.operations().getFirst().parameters() instanceof OperationParameters.RestoreRevisionParameters restore
+                    ? revisions.saveRestoreForCommand(mutationContext, targetRef, plan.baseRevisionId(),
+                            restore.sourceRevisionId(), plan.finalCandidateHash(), command, provenance)
+                    : revisions.saveRevisionForCommand(mutationContext, targetRef, plan.baseRevisionId(),
+                            plan.finalCandidate(), command, provenance);
             if (!plan.finalCandidateHash().equals(result.timelineContentHash())) {
                 throw new BatchException(BatchErrorCode.PERSISTENCE_FAILURE, null,
                         "canonical writer committed a different Timeline digest");
