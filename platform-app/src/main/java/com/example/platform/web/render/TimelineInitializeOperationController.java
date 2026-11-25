@@ -8,7 +8,7 @@ import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
-import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
+import com.example.platform.operation.application.TimelineMediaClipOperationService;
 import com.example.platform.timeline.canonical.TrackType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

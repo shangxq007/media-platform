@@ -1,7 +1,7 @@
 package com.example.platform.providerplugin;
 
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.binding.ProviderCandidateCanonicalCodec;
+import com.example.platform.execution.binding.ProviderDeclarationIdentity;
 import java.util.ArrayList;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
 import java.util.List;
@@ -40,8 +40,7 @@ public final class ProviderCandidateProjection {
     /** Compare the actual Worker contribution with the complete declaration recorded by planning. */
     public static void requireMatching(ProviderPluginContribution contribution, ProviderCandidate recorded) {
         var actual = project(List.of(contribution)).getFirst();
-        if (!java.util.Arrays.equals(ProviderCandidateCanonicalCodec.encode(actual),
-                ProviderCandidateCanonicalCodec.encode(recorded))) {
+        if (!ProviderDeclarationIdentity.matches(actual, recorded)) {
             throw new IllegalArgumentException("Worker provider declaration differs from immutable binding inputs");
         }
     }
@@ -62,7 +61,7 @@ public final class ProviderCandidateProjection {
             if (reference instanceof ProviderCapabilityProfileVersionOrDigest.DigestReference) {
                 var nativeContent = contribution.implementationContent().orElseThrow(() ->
                         new IllegalArgumentException("Digest-pinned provider has no native implementation identity"));
-                var declaration = ProviderCandidateCanonicalCodec.effectiveDeclaration(candidate.executionContract(),
+                var declaration = ProviderDeclarationIdentity.encode(candidate.executionContract(),
                         candidate.capabilityProfile().supportDeclarations(), candidate.staticCompatibility());
                 if (!reference.equals(nativeContent.profile(declaration))
                         || !reference.equals(candidate.capabilityProfile().reference())

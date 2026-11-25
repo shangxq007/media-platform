@@ -21,6 +21,11 @@ import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotStore;
 import com.example.platform.timeline.version.TimelineRevision;
+import com.example.platform.execution.binding.ProviderBindingException;
+import com.example.platform.execution.planning.ExecutionPlanningException;
+import com.example.platform.render.api.GraphRenderLifecycle.PreparationStage;
+import com.example.platform.render.domain.renderplan.RenderExtent;
+import com.example.platform.timeline.canonical.TimelineDocument;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -107,9 +112,9 @@ public class RevisionRenderPlanningAndBindingService {
         // Phase 3: input + context construction (unchanged API).
         RevisionRenderPlanningResult planning = planningApplicationService.prepare(request);
 
-        var stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.SNAPSHOT;
+        var stage = new java.util.concurrent.atomic.AtomicReference<>(PreparationStage.SNAPSHOT);
         try {
-        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
+        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage.get());
         // Complete hydration for #20.
         TimelineRevision revision = timelineRevisionCommands.findById(tenantId, revisionId);
         if (revision == null) {
@@ -123,6 +128,28 @@ public class RevisionRenderPlanningAndBindingService {
         var document = TimelineDocumentJsonSerializer.deserialize(payload.canonicalTimelineJson());
         TimelineRevision hydratedRevision = revision.hydrate(document);
 
+        var inputs = new RevisionRenderPlanningApplicationService.PlanningInputs(planning.renderRequest(),
+                planning.executionPlanId(), planning.sourceResolution(), planning.capabilityContext(), planning.declarations());
+        BoundGraphInputs boundGraphInputs = bind(tenantId, projectId, hydratedRevision, document, inputs,
+                next -> {
+                    stage.set(next);
+                    lifecycle.preparationStage(tenantId, planning.renderJobId(), next);
+                });
+        return new RevisionRenderPlanningAndBindingResult(
+                tenantId, planning.renderJobId(), planning.renderRequest().id(), boundGraphInputs);
+        } catch (RuntimeException preparationFailure) {
+            try { lifecycle.failPreparation(tenantId, planning.renderJobId(), stage.get()); }
+            catch (RuntimeException projectionFailure) { preparationFailure.addSuppressed(projectionFailure); }
+            if (preparationFailure instanceof com.example.platform.execution.binding.ProviderBindingException) {
+                throw new IllegalArgumentException("No supported execution for the requested media requirements and exact output raster",
+                        preparationFailure);
+            }
+            throw preparationFailure;
+        }
+    }
+    private BoundGraphInputs bind(String tenantId, String projectId, TimelineRevision hydratedRevision,
+            TimelineDocument document, RevisionRenderPlanningApplicationService.PlanningInputs planning,
+            java.util.function.Consumer<PreparationStage> onStage) {
         // The pinned Effect semantic snapshot (loaded by the revision's own exact pin).
         EffectSemanticSnapshotReference pin = hydratedRevision.effectSemanticSnapshotReference();
         EffectSemanticSnapshot pinnedEffectSnapshot = effectSemanticSnapshotStore
@@ -130,8 +157,7 @@ public class RevisionRenderPlanningAndBindingService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Pinned effect semantic snapshot unavailable: " + pin.snapshotId()));
 
-        stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.PLANNING;
-        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
+        onStage.accept(PreparationStage.PLANNING);
         // #20 logical render planning.
         RenderPlanningResult renderPlanningResult = renderPlanningEntryService.plan(
                 hydratedRevision,
@@ -144,7 +170,7 @@ public class RevisionRenderPlanningAndBindingService {
                         || diagnostic.code() == RenderPlanningDiagnosticCode.OUTPUT_RASTER_ASPECT_UNSUPPORTED)
                 .findFirst();
         if (rasterRejection.isPresent()) {
-            throw new IllegalArgumentException(rasterRejection.get().message());
+            throw new SemanticRejection(rasterRejection.get().code().name(), rasterRejection.get().message());
         }
 
         // #21 provider-neutral execution planning.
@@ -152,8 +178,7 @@ public class RevisionRenderPlanningAndBindingService {
                 renderPlanningResult, planning.executionPlanId());
         PhysicalExecutionPlan physicalPlan = planningResult.physicalExecutionPlan();
 
-        stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BINDING;
-        lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
+        onStage.accept(PreparationStage.BINDING);
         RenderSourceArtifacts.requireExecutableStreams(document, renderPlanningResult.graph(), tenantId, projectId, sourceFacts);
         // Declared provider candidates from the catalog projection.
         List<ProviderCandidate> candidates = ProviderCandidateProjection.project(providerPluginCatalog);
@@ -164,20 +189,52 @@ public class RevisionRenderPlanningAndBindingService {
                 physicalPlan, candidates, planning.declarations(), policy);
         ExecutableTaskGraphDigest expectedDigest = outcome.executableTaskGraph().digest();
 
-        BoundGraphInputs boundGraphInputs = new BoundGraphInputs(
+        return new BoundGraphInputs(
                 physicalPlan, candidates, planning.declarations(), expectedDigest, policy);
-        return new RevisionRenderPlanningAndBindingResult(
-                tenantId, planning.renderJobId(), planning.renderRequest().id(), boundGraphInputs);
-        } catch (RuntimeException preparationFailure) {
-            try { lifecycle.failPreparation(tenantId, planning.renderJobId(), stage); }
-            catch (RuntimeException projectionFailure) { preparationFailure.addSuppressed(projectionFailure); }
-            if (preparationFailure instanceof com.example.platform.execution.binding.ProviderBindingException) {
-                throw new IllegalArgumentException("No supported execution for the requested media requirements and exact output raster",
-                        preparationFailure);
-            }
-            throw preparationFailure;
+    }
+
+    public record StaticFeasibility(String revisionId, String contentHash, boolean feasible, String reason,
+            String logicalFingerprint, List<String> requiredCapabilities) {}
+
+    public StaticFeasibility feasibility(String tenantId, String projectId, String revisionId,
+            String contentHash, RenderExtent extent) {
+        var revision = timelineRevisionCommands.findById(tenantId, revisionId);
+        if (revision == null || !projectId.equals(revision.productId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Revision unavailable");
+        }
+        if (!revision.semanticContext().timelineContentDigest().equals(contentHash)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Revision content hash mismatch");
+        }
+        var payload = timelineRevisionQueries.getRevisionSnapshotPayload(projectId, tenantId, revisionId)
+                .orElseThrow(() -> new IllegalStateException("Revision snapshot unavailable"));
+        var document = TimelineDocumentJsonSerializer.deserialize(payload.canonicalTimelineJson());
+        var inputs = planningApplicationService.planningInputs(tenantId, payload, extent);
+        try {
+            var bound = bind(tenantId, projectId, revision.hydrate(document), document, inputs, ignored -> {});
+            return new StaticFeasibility(revisionId, contentHash, true, "STATICALLY_FEASIBLE",
+                    bound.physicalPlan().planFingerprint().sha256Hex(), bound.physicalPlan().units().stream()
+                            .flatMap(unit -> unit.capabilityRequirementRefs().stream())
+                            .filter(ref -> ref.declaration().required())
+                            .map(ref -> ref.declaration().capabilityId().value()).distinct().sorted().toList());
+        } catch (ProviderBindingException rejected) {
+            return new StaticFeasibility(revisionId, contentHash, false, rejected.reason().name(), null, List.of());
+        } catch (ExecutionPlanningException rejected) {
+            return new StaticFeasibility(revisionId, contentHash, false, rejected.reason().name(), null, List.of());
+        } catch (SemanticRejection rejected) {
+            return new StaticFeasibility(revisionId, contentHash, false, rejected.code, null, List.of());
         }
     }
+
+    static final class SemanticRejection extends IllegalArgumentException {
+        final String code;
+        SemanticRejection(String code, String message) {
+            super(message);
+            this.code = code;
+        }
+    }
+
     private ProviderSelectionPolicy selectionPolicy() {
         return mediaProvider.isEmpty() ? ProviderSelectionPolicy.PREFERRED : ProviderSelectionPolicy.restrictedTo(mediaProvider);
     }

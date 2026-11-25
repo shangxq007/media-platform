@@ -1,3 +1,4 @@
+import type { SemanticStep } from '../../contracts/semantic-batch.generated'
 import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 /**
  * Read-only projection of a canonical Timeline snapshot.
@@ -79,7 +80,9 @@ function projectedNumber(value: unknown, label: string, min: number, max: number
   return value
 }
 
-export function videoTransformParameters(draft: ProjectedVideoTransform): Record<string, number | string> {
+type TransformParameters = Extract<SemanticStep, { definitionId: 'timeline.clip.transform.set' }>['parameters']
+
+export function videoTransformParameters(draft: ProjectedVideoTransform): TransformParameters {
   const encoded = Object.fromEntries(Object.entries(TRANSFORM_FIELDS).map(([property, wire]) => {
     const value = draft[property as keyof ProjectedVideoTransform]
     if (!Number.isFinite(value)) throw new Error('Invalid transform ' + property)
@@ -87,7 +90,7 @@ export function videoTransformParameters(draft: ProjectedVideoTransform): Record
   }))
   const parameters = { ...encoded, format: FORMAT }
   projectTransform(parameters)
-  return parameters
+  return parameters as TransformParameters
 }
 
 function projectTransform(value: unknown): ProjectedVideoTransform {

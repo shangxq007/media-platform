@@ -227,9 +227,9 @@ operations=[
    'parameters':{'delta':'1/1','edge':'END'}}]
 batch_body={'batchId':'batch-split-1','baseRevisionId':batch_revision,'baseContentHash':batch_content,
     'message':'Split, move and trim','operations':operations}
-batch_preview=required('batch_preview',call(timeline(batch_project)+'/timeline-operations/batch/preview',batch_body),{200})
+batch_preview=required('batch_preview',call(timeline(batch_project)+'/timeline-operations/batch/v2/preview',batch_body),{200})
 assert len(batch_preview['steps'])==4 and not batch_preview['noOp'],batch_preview
-batch_applied=required('batch_apply',call(timeline(batch_project)+'/timeline-operations/batch/apply',batch_body),{201})
+batch_applied=required('batch_apply',call(timeline(batch_project)+'/timeline-operations/batch/v2/apply',batch_body,headers={'If-Match':chr(34)+batch_preview['batchDigest']+chr(34)}),{201})
 assert batch_applied['newRevisionId']!=batch_revision,batch_applied
 batch_document=json.loads(snapshot(batch_project,batch_applied['newRevisionId'])['canonicalTimelineJson'])
 batch_clips=[clip for track in batch_document['tracks'] for clip in track['clips']]

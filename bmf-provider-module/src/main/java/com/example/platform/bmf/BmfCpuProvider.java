@@ -80,7 +80,7 @@ public final class BmfCpuProvider {
     public static final List<ProviderCapabilitySupport> SUPPORTS = CAPABILITIES.stream()
             .map(capability -> ProviderCapabilitySupport.unpinned(capability, CAPABILITY_CONTRACT_RANGE)).toList();
     private static final String DECLARATION =
-            com.example.platform.execution.binding.ProviderCandidateCanonicalCodec.effectiveDeclaration(
+            com.example.platform.execution.binding.ProviderDeclarationIdentity.encode(
                     EXECUTION_CONTRACT, SUPPORTS, STATIC_COMPATIBILITY);
 
     private static final String IMPLEMENTATION = ProviderImplementationContent.indexedClasses(

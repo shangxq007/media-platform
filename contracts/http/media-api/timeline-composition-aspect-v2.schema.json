@@ -1,38 +1,62 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Timeline composition aspect Operation 2.0",
-  "description": "One step in POST /api/tenants/{tenantId}/projects/{projectId}/timeline-operations/batch/apply. The authenticated project is the Timeline target. Submit a tagged integer pair. The server reduces the input before committing and hashing.",
-  "type": "object",
-  "required": ["definitionId", "parameters"],
-  "additionalProperties": false,
-  "properties": {
-    "definitionId": { "const": "timeline.composition.aspect.set" },
-    "parameters": {
-      "type": "object",
-      "required": ["aspectRatio"],
-      "additionalProperties": false,
-      "properties": {
-        "aspectRatio": { "$ref": "#/$defs/ExactAspect" }
-      }
+  "additionalProperties" : false,
+  "properties" : {
+    "definitionId" : {
+      "enum" : [ "timeline.composition.aspect.set" ],
+      "type" : "string"
+    },
+    "input" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "artifactId" : {
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "contentDigest" : {
+          "pattern" : "^[0-9a-f]{64}$",
+          "type" : "string"
+        },
+        "streamId" : {
+          "minLength" : 1,
+          "type" : "string"
+        }
+      },
+      "required" : [ "artifactId", "contentDigest", "streamId" ],
+      "type" : "object"
+    },
+    "parameters" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "aspectRatio" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "denominator" : {
+              "maximum" : 2147483647,
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "format" : {
+              "enum" : [ "composition-aspect-rational-v1" ],
+              "type" : "string"
+            },
+            "numerator" : {
+              "maximum" : 2147483647,
+              "minimum" : 1,
+              "type" : "integer"
+            }
+          },
+          "required" : [ "format", "numerator", "denominator" ],
+          "type" : "object"
+        }
+      },
+      "required" : [ "aspectRatio" ],
+      "type" : "object"
+    },
+    "version" : {
+      "enum" : [ "2.0" ],
+      "type" : "string"
     }
   },
-  "$defs": {
-    "ExactAspect": {
-      "description": "Snapshot metadata and GET /api/tenants/{tenantId}/projects/{projectId}/source-media/{artifactId}/display-aspect use the same object with an already reduced pair. Match Source requires contentDigest and streamId query parameters and reports HTTP 422 when the selected stream has no trustworthy display aspect.",
-      "type": "object",
-      "required": ["format", "numerator", "denominator"],
-      "additionalProperties": false,
-      "properties": {
-        "format": { "const": "composition-aspect-rational-v1" },
-        "numerator": { "$ref": "#/$defs/PositiveComponent" },
-        "denominator": { "$ref": "#/$defs/PositiveComponent" }
-      }
-    },
-    "PositiveComponent": {
-      "$comment": "Send a JSON integer token. The executable contract rejects numeric strings, decimal tokens and exponent tokens.",
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 2147483647
-    }
-  }
+  "required" : [ "definitionId", "parameters" ],
+  "type" : "object"
 }

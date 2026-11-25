@@ -1,3 +1,4 @@
+import type { SemanticBatch, SemanticStep } from '../contracts/semantic-batch.generated'
 import { decodeCompositionAspect, type CompositionAspectRatio } from '../contracts/app/composition-aspect'
 import { z } from 'zod'
 import { versionlessApi } from './app/versionless-api'
@@ -10,7 +11,7 @@ export interface RenderIntent { revisionId: string; extent: { startMillis: numbe
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
 export interface ClipEdit { type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
 export interface VideoTransformCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
-  parameters: Record<string, number | string>; commandId: string }
+  parameters: Extract<SemanticStep, { definitionId: 'timeline.clip.transform.set' }>['parameters']; commandId: string }
 export interface VideoEffectCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
   brightness: number; contrast: number; saturation: number; grayscale: boolean;
   fadeInSeconds: number; fadeOutSeconds: number; enabled: boolean; commandId: string }
@@ -31,6 +32,36 @@ const RasterProfile = z.object({
   maxPixels: z.number().int().positive(), alignment: z.number().int().positive(),
 })
 export type RasterProfile = z.infer<typeof RasterProfile>
+
+function wireValue<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error('Incomplete clip operation')
+  return value
+}
+
+function clipBatch(command: ClipEdit): SemanticBatch {
+  const target = { clipId: command.clipId }
+  let step: SemanticStep
+  switch (command.type) {
+    case 'TRIM_CLIP': step = { definitionId: 'timeline.trim', target, parameters: { edge: wireValue(command.edge), delta: wireValue(command.delta) } }; break
+    case 'SPLIT_CLIP': step = { definitionId: 'timeline.clip.split', target,
+      parameters: { rightClipId: wireValue(command.rightClipId), splitTimelineTime: wireValue(command.splitTime) } }; break
+    case 'MOVE_CLIP': {
+      const parameters = { delta: wireValue(command.delta), absolute: command.absolute ?? false }
+      step = command.destinationTrackId
+        ? { definitionId: 'timeline.clip.relocate', target, parameters: { ...parameters, destinationTrackId: command.destinationTrackId } }
+        : { definitionId: 'timeline.move', target, parameters }
+      break
+    }
+    case 'DELETE_CLIP': step = { definitionId: 'timeline.delete', target }; break
+  }
+  return { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    baseContentHash: command.baseContentHash, operations: [step] }
+}
+
+const batchEndpoint = (tenant: string, project: string) =>
+  `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/v2`
+const planSchema = z.object({ batchDigest: z.string().regex(/^[0-9a-f]{64}$/),
+  steps: z.array(z.object({ changes: z.array(z.object({ identity: z.string(), primary: z.boolean() })) })) })
 
 export const FormalRenderAPI = {
   async outputRasters(project: string, signal?: AbortSignal) {
@@ -63,13 +94,13 @@ export const FormalRenderAPI = {
     return schema.parse(await request(c => versionlessApi.get(`/render/projects/${part(project)}/timeline/revisions/${part(revision)}/snapshot`, c), signal))
   },
   async applyOperation(tenant: string, project: string, command: ClipEdit, signal?: AbortSignal) {
-    const value = z.object({ newRevisionId: id.optional(), baseRevisionId: id, resultContentHash: id.optional(), unchangedContentHash: id.optional() })
-      .refine(v => (v.newRevisionId !== undefined && v.resultContentHash !== undefined && v.unchangedContentHash === undefined) || (v.newRevisionId === undefined && v.resultContentHash === undefined && v.unchangedContentHash !== undefined), 'Invalid Operation outcome')
-      .parse(await request(c => versionlessApi.post(`/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/apply`, command, c), signal))
-    return { revisionId: value.newRevisionId ?? value.baseRevisionId, contentHash: value.resultContentHash ?? value.unchangedContentHash ?? '' }
+    return this.applyBatch(tenant, project, clipBatch(command), command.baseRevisionId, signal)
+  },
+  async applyConfirmedClip(tenant: string, project: string, command: ClipEdit, digest: string, signal?: AbortSignal) {
+    return this.commitBatch(tenant, project, clipBatch(command), command.baseRevisionId, digest, signal)
   },
   async applyVideoTransform(tenant: string, project: string, command: VideoTransformCommand, signal?: AbortSignal) {
-    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    const body: SemanticBatch = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Video transform',
       operations: [{ definitionId: 'timeline.clip.transform.set',
         target: { clipId: command.clipId }, parameters: command.parameters }] }
@@ -86,16 +117,17 @@ export const FormalRenderAPI = {
   async setCompositionAspect(tenant: string, project: string, command: {
     baseRevisionId: string; baseContentHash: string; commandId: string;
     aspectRatio: CompositionAspectRatio
+    input?: { artifactId: string; contentDigest: string; streamId: string }
   }, signal?: AbortSignal) {
-    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    const body: SemanticBatch = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Set composition aspect ratio',
-      operations: [{ definitionId: 'timeline.composition.aspect.set',
+      operations: [{ definitionId: 'timeline.composition.aspect.set', ...(command.input && { input: command.input }),
         parameters: { aspectRatio: command.aspectRatio } }] }
     return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
   },
 
   async applyVideoEffect(tenant: string, project: string, command: VideoEffectCommand, signal?: AbortSignal) {
-    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    const body: SemanticBatch = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Video effect',
       operations: [{ definitionId: 'timeline.clip.effect.set',
         target: { clipId: command.clipId }, parameters: {
@@ -107,14 +139,14 @@ export const FormalRenderAPI = {
 
   async removeVideoEffect(tenant: string, project: string, command: Omit<VideoEffectCommand,
       'brightness' | 'contrast' | 'saturation' | 'grayscale' | 'fadeInSeconds' | 'fadeOutSeconds' | 'enabled'>, signal?: AbortSignal) {
-    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    const body: SemanticBatch = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Remove video effect',
       operations: [{ definitionId: 'timeline.clip.effect.remove', target: { clipId: command.clipId } }] }
     return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
   },
 
   async createTransition(tenant: string, project: string, command: Required<TransitionCommand>, signal?: AbortSignal) {
-    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    const body: SemanticBatch = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Cross dissolve',
       operations: [{ definitionId: 'timeline.transition.cross-dissolve.create',
         target: { clipId: command.outgoingClipId }, parameters: {
@@ -124,22 +156,30 @@ export const FormalRenderAPI = {
   },
 
   async deleteTransition(tenant: string, project: string, command: TransitionCommand, signal?: AbortSignal) {
-    const body = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
+    const body: SemanticBatch = { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash, message: 'Delete cross dissolve',
       operations: [{ definitionId: 'timeline.transition.cross-dissolve.delete',
-        target: { clipId: command.outgoingClipId }, parameters: { transitionId: command.transitionId } }] }
+        target: { transitionId: command.transitionId } }] }
     return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
   },
 
-  async applyBatch(tenant: string, project: string, body: unknown, fallbackRevision: string, signal?: AbortSignal) {
+  async applyBatch(tenant: string, project: string, body: SemanticBatch, fallbackRevision: string, signal?: AbortSignal) {
+    const preview = await this.previewBatch(tenant, project, body, signal)
+    return this.commitBatch(tenant, project, body, fallbackRevision, preview.batchDigest, signal)
+  },
+  async previewBatch(tenant: string, project: string, body: SemanticBatch, signal?: AbortSignal) {
+    return planSchema.parse(await request(c => versionlessApi.post(`${batchEndpoint(tenant, project)}/preview`, body, c), signal))
+  },
+  async commitBatch(tenant: string, project: string, body: SemanticBatch, fallbackRevision: string, digest: string, signal?: AbortSignal) {
+    const endpoint = batchEndpoint(tenant, project)
     const value = z.object({ status: z.enum(['APPLIED', 'NO_OP']), newRevisionId: id.nullable().optional(), newContentHash: id })
       .parse(await request(c => versionlessApi.post(
-        `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/apply`, body, c), signal))
+        `${endpoint}/apply`, body, { ...c, headers: { 'If-Match': `"${digest}"` } }), signal))
     return { revisionId: value.newRevisionId ?? fallbackRevision, contentHash: value.newContentHash }
   },
 
   async applyAudioMix(tenant: string, project: string, command: AudioMixCommand, signal?: AbortSignal) {
-    const body = {
+    const body: SemanticBatch = {
       batchId: command.commandId,
       baseRevisionId: command.baseRevisionId,
       baseContentHash: command.baseContentHash,
@@ -150,21 +190,10 @@ export const FormalRenderAPI = {
         { definitionId: 'audio.balance.set', target: { clipId: command.clipId, audioTrackId: command.trackId }, parameters: { value: command.pan } },
       ],
     }
-    const value = z.object({
-      status: z.enum(['APPLIED', 'NO_OP']),
-      newRevisionId: id.nullable().optional(),
-      newContentHash: id,
-    }).parse(await request(c => versionlessApi.post(
-      `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/batch/apply`, body, c), signal))
-    return { revisionId: value.newRevisionId ?? command.baseRevisionId, contentHash: value.newContentHash }
+    return this.applyBatch(tenant, project, body, command.baseRevisionId, signal)
   },
   async previewOperation(tenant: string, project: string, command: ClipEdit, signal?: AbortSignal) {
-    return z.object({ status: z.literal('VALID'), definitionId: z.string(), clipId: z.string(),
-      type: z.string(), edge: z.string().nullable(), delta: z.string().nullable(),
-      splitTime: z.string().nullable().optional(),
-      rightClipId: z.string().nullable().optional() })
-      .parse(await request(c => versionlessApi.post(
-        `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/clips/preview`, command, c), signal))
+    return this.previewBatch(tenant, project, clipBatch(command), signal)
   },
   async submit(intent: RenderIntent, key: string, signal?: AbortSignal) {
     return Submission.parse(await request(c => versionlessApi.post('/render-jobs', intent, { ...c, headers: { 'Idempotency-Key': key } }), signal))

@@ -149,7 +149,11 @@ class TransitionEffectOperationPlanningTest {
         String hash = DIGESTER.digest(base);
         return new OperationPlanner().plan(new OperationInstance(
                 definition.definitionId(), definition.version(), REV, hash,
-                new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope(REV, hash,
+                parameters instanceof OperationParameters.TransitionUpdateParameters update
+                        ? new OperationTarget.TransitionTarget(update.transitionId())
+                        : parameters instanceof OperationParameters.TransitionDeleteParameters delete
+                        ? new OperationTarget.TransitionTarget(delete.transitionId())
+                        : new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope(REV, hash,
                         List.of(TimelineClipId.of(clipId)), SelectionSpec.ExpansionPolicy.EXACT)),
                 parameters, "parameter-digest", "invocation"), REV, base);
     }

@@ -28,7 +28,7 @@ public record CanonicalTransition(
         Map<String, String> parameters) {
 
     public static final String CROSS_DISSOLVE = "video.cross-dissolve";
-    private static final String CROSS_DISSOLVE_VERSION = "1.0";
+    public static final String CROSS_DISSOLVE_VERSION = "1.0";
     private static final Map<String, String> LINEAR_CURVE = Map.of("curve", "LINEAR");
 
     public static CanonicalTransition crossDissolve(

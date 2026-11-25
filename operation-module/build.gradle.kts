@@ -20,6 +20,12 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":artifact-module"))
+    implementation(project(":identity-access-module"))
+    implementation(project(":media-module"))
+    implementation(project(":observability-module"))
+    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation(project(":timeline-module"))
     implementation(project(":shared-kernel"))
     implementation(project(":audio-module"))

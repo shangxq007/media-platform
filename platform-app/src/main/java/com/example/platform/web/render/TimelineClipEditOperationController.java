@@ -44,7 +44,7 @@ public class TimelineClipEditOperationController {
     @PostMapping("/apply")
     public ResponseEntity<OperationInvocationResult> apply(
             @PathVariable String tenantId, @PathVariable String projectId,
-            @RequestBody com.example.platform.render.app.operation.TimelineClipEditCommand body) {
+            @RequestBody com.example.platform.operation.application.TimelineClipEditCommand body) {
         requireId(tenantId, "tenantId");
         requireId(projectId, "projectId");
         CanonicalActor actor = actors.resolveCurrentActor()
@@ -70,7 +70,7 @@ public class TimelineClipEditOperationController {
     @PostMapping("/preview")
     public ResponseEntity<ClipEditPreview> preview(
             @PathVariable String tenantId, @PathVariable String projectId,
-            @RequestBody com.example.platform.render.app.operation.TimelineClipEditCommand body) {
+            @RequestBody com.example.platform.operation.application.TimelineClipEditCommand body) {
         requireId(tenantId, "tenantId");
         requireId(projectId, "projectId");
         CanonicalActor actor = actors.resolveCurrentActor()

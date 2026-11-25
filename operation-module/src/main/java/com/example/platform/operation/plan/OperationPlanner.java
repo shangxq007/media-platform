@@ -156,8 +156,8 @@ public final class OperationPlanner {
         OperationTargetRequest target = switch (instance.target()) {
             case OperationTarget.TimelineTarget t ->
                     new OperationTargetRequest.TimelineTargetRequest(t.timelineId());
-            default -> throw new PlanException(PlanErrorCode.INVALID_PLAN,
-                    "text operation requires a Timeline target");
+            case OperationTarget.TextElementTarget t -> new OperationTargetRequest.TextElementTargetRequest(t.id());
+            default -> throw new PlanException(PlanErrorCode.INVALID_PLAN, "Invalid text target");
         };
         return new OperationRequest(instance.definitionId(), instance.version(), target,
                 instance.parameters(), instance.baseRevisionId(), instance.baseContentHash(),
@@ -170,7 +170,9 @@ public final class OperationPlanner {
             case OperationTarget.ResolvedClipScopeTarget r ->
                     r.resolvedScope().resolvedClipIds().stream().map(TimelineClipId::value).toList();
             case OperationTarget.GroupTarget g -> List.of("group:" + g.groupId().value());
+            case OperationTarget.TransitionTarget t -> List.of("transition:" + t.transitionId());
             case OperationTarget.SyncTarget s -> List.of("sync:" + s.syncIdentityKey());
+            case OperationTarget.TextElementTarget t -> List.of("text:" + t.id().value());
             case OperationTarget.AudioTarget a -> List.of("audio:" + a.audioMixInput());
         };
     }
@@ -809,6 +811,7 @@ public final class OperationPlanner {
                 params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration());
         List<CanonicalTransition> transitions = new ArrayList<>(base.getTransitions());
         transitions.add(transition);
+        changes.add(new PlannedChange.TransitionChanged(params.transitionId(), PlannedChange.TransitionChanged.Action.CREATED));
         return withTransitions(base, transitions);
     }
 
@@ -817,17 +820,14 @@ public final class OperationPlanner {
         if (!(inst.parameters() instanceof OperationParameters.TransitionUpdateParameters params)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition update parameters required");
         }
-        List<TimelineClipId> scope = scopeOf(inst);
-        if (scope.size() != 1) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition update requires one outgoing target");
+        if (!(inst.target() instanceof OperationTarget.TransitionTarget target)
+                || !target.transitionId().equals(params.transitionId())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Transition identity mismatch");
         }
         List<CanonicalTransition> transitions = new ArrayList<>();
         boolean found = false;
         for (CanonicalTransition t : base.getTransitions()) {
             if (t.transitionId().equals(params.transitionId())) {
-                if (!t.outgoingClipId().equals(scope.get(0).value())) {
-                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition outgoing target mismatch");
-                }
                 if (!t.isCrossDissolve()) {
                     throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition definition mismatch");
                 }
@@ -839,6 +839,7 @@ public final class OperationPlanner {
         }
         if (!found) throw new PlanException(PlanErrorCode.TARGET_MISSING,
                 "transition " + params.transitionId() + " missing");
+        changes.add(new PlannedChange.TransitionChanged(params.transitionId(), PlannedChange.TransitionChanged.Action.UPDATED));
         return withTransitions(base, transitions);
     }
 
@@ -847,17 +848,14 @@ public final class OperationPlanner {
         if (!(inst.parameters() instanceof OperationParameters.TransitionDeleteParameters params)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition delete parameters required");
         }
-        List<TimelineClipId> scope = scopeOf(inst);
-        if (scope.size() != 1) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition delete requires one outgoing target");
+        if (!(inst.target() instanceof OperationTarget.TransitionTarget target)
+                || !target.transitionId().equals(params.transitionId())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Transition identity mismatch");
         }
         List<CanonicalTransition> transitions = new ArrayList<>();
         boolean found = false;
         for (CanonicalTransition t : base.getTransitions()) {
             if (t.transitionId().equals(params.transitionId())) {
-                if (!t.outgoingClipId().equals(scope.get(0).value())) {
-                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition outgoing target mismatch");
-                }
                 found = true;
             } else {
                 transitions.add(t);
@@ -865,6 +863,7 @@ public final class OperationPlanner {
         }
         if (!found) throw new PlanException(PlanErrorCode.TARGET_MISSING,
                 "transition " + params.transitionId() + " missing");
+        changes.add(new PlannedChange.TransitionChanged(params.transitionId(), PlannedChange.TransitionChanged.Action.REMOVED));
         return withTransitions(base, transitions);
     }
 

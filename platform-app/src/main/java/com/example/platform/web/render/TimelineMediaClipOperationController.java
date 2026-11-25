@@ -1,10 +1,10 @@
 package com.example.platform.web.render;
 
-import com.example.platform.render.app.operation.AddMediaClipCommand;
-import com.example.platform.render.app.operation.AddMediaClipPreview;
-import com.example.platform.render.app.operation.AddMediaClipResult;
-import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
-import com.example.platform.render.app.operation.TimelineOperationException;
+import com.example.platform.operation.application.AddMediaClipCommand;
+import com.example.platform.operation.application.AddMediaClipPreview;
+import com.example.platform.operation.application.AddMediaClipResult;
+import com.example.platform.operation.application.TimelineMediaClipOperationService;
+import com.example.platform.operation.application.TimelineOperationException;
 import com.example.platform.operation.invocation.OperationInvocationContext;
 import com.example.platform.operation.invocation.OperationInvocationPort;
 import com.example.platform.operation.invocation.OperationInvocationResult;

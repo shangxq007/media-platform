@@ -272,9 +272,18 @@ try {
   await applyTransition(videoB, videoC, 'transition-v2-v3')
   record('EFFECT_AND_CROSS_DISSOLVE_PERSISTED_THROUGH_BROWSER_CONTROLS')
 
+  async function applyConfirmed(options) {
+    const path = base + scope + '/timeline-operations/batch/v2'
+    const preview = await page.request.post(path + '/preview', options)
+    if (!preview.ok()) return preview
+    const plan = await preview.json()
+    return page.request.post(path + '/apply', {
+      ...options, headers: { ...options.headers, 'If-Match': `"${plan.batchDigest}"` },
+    })
+  }
   const rejectBatch = async (batchId, operations, diagnostic) => {
     const before = await head()
-    const rejected = await page.request.post(base + scope + '/timeline-operations/batch/apply',
+    const rejected = await applyConfirmed(
       { headers, data: { batchId, baseRevisionId: before.revisionId, baseContentHash: before.contentHash, operations } })
     const response = await rejected.text()
     assert.equal(rejected.ok(), false, response)
@@ -459,6 +468,16 @@ try {
   }
   report.revisionId = current.revisionId
   report.projectId = project
+  const descriptions = await page.request.get(base + scope + '/semantic/operations', { headers })
+  assert.equal(descriptions.status(), 200)
+  assert((await descriptions.json()).some(op => op.id === 'timeline.trim' && op.invocationModes.includes('PREVIEW')))
+  const extent = { startMillis: 0, endMillis: 1000, frameRateNumerator: 24, frameRateDenominator: 1 }
+  const feasibility = await page.request.post(base + `/api/render/projects/${project}/revisions/${current.revisionId}/feasibility`,
+    { headers, data: { contentHash: current.contentHash, extent } })
+  assert.equal(feasibility.status(), 200, await feasibility.text())
+  const staticPlan = await feasibility.json()
+  assert.equal(staticPlan.feasible, true, JSON.stringify(staticPlan))
+  report.staticFeasibility = staticPlan
   report.snapshot = reloaded
   record('REVISION_RELOAD_RESTORES_AUDIO_MIX_AND_VIDEO_TRANSFORMS')
 
@@ -673,14 +692,14 @@ try {
   record('DELIVERY_VIDEO_AND_AUDIO_PARITY_WITH_EMBEDDED_AUDIO')
 
   const batch = async (batchId, operations) => {
-    const response = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+    const response = await applyConfirmed( {
       headers, data: { batchId, baseRevisionId: current.revisionId, baseContentHash: current.contentHash, operations },
     })
     assert(response.ok(), await response.text())
     current = await head()
   }
   await batch('remove-dissolve-for-pattern', [{ definitionId: 'timeline.transition.cross-dissolve.delete',
-    target: { clipId: videoB }, parameters: { transitionId: 'transition-v2-v3' } }])
+    target: { transitionId: 'transition-v2-v3' } }])
   for (const clipId of [videoA, videoB, videoC, videoD, embeddedClip]) await deleteClip(clipId)
   const pattern = await addClip('composition-pattern.mp4', 'track-1', '0', '2', '2')
   await page.reload()
@@ -869,7 +888,7 @@ try {
   await selectPreset('16:9', aspect(16, 9))
   const landscapeHead = await head()
   const normalized = async (width, height) => {
-    const response = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+    const response = await applyConfirmed( {
       headers, data: { batchId: 'equivalent-ratio-replay', baseRevisionId: landscapeHead.revisionId,
         baseContentHash: landscapeHead.contentHash, operations: [aspectOperation(aspect(width, height))] },
     })
@@ -883,7 +902,7 @@ try {
   assert.equal(normalizedAgain.newContentHash, landscapeHead.contentHash)
   assert.deepEqual(await head(), landscapeHead)
   generalized.normalization = { unchangedHead: landscapeHead, first: normalizedFirst.status, replay: normalizedAgain.status }
-  const conflict = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+  const conflict = await applyConfirmed( {
     headers, data: { batchId: 'equivalent-ratio-replay', baseRevisionId: landscapeHead.revisionId,
       baseContentHash: landscapeHead.contentHash, operations: [aspectOperation(aspect(9, 16))] },
   })
@@ -894,7 +913,7 @@ try {
   const ambiguousBody = JSON.stringify({ batchId: 'duplicate-aspect-member', baseRevisionId: landscapeHead.revisionId,
     baseContentHash: landscapeHead.contentHash, operations: [aspectOperation(aspect(13, 11))] })
     .replace('"numerator":13', '"numerator":0,"numerator":13')
-  const ambiguous = await page.request.post(base + scope + '/timeline-operations/batch/apply', {
+  const ambiguous = await applyConfirmed( {
     headers: { ...headers, 'Content-Type': 'application/json' }, data: ambiguousBody,
   })
   assert.equal(ambiguous.status(), 400, await ambiguous.text())

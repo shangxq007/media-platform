@@ -69,33 +69,33 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationFailureCode.java": "bfd5bb23139b8b8d98bd6db3617faa981834bbd2aad703cc853e07ca735dd744",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationPort.java": "49bf945dd14511bae5c4e227c8e188ec759ca4c21c6b5169633183dc876be388",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationResult.java": "fafc52a4cf555fdf5380fefcd1b7c51e52a71a11550f19a8bd00c926ee917ff4",
-    "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java": "40a85147ac745d9fed3410b6db50b14b064a885a03621a4a6e4319149fecbbb5",
+    "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java": "5e784a7842e2b7362fd6695fb6d811f8f74e573ba8b920dd8a0dc3d87d7ec2d7",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionId.java": "2b8f1b6fb269f4008b056fbbf399bcd98b5826b8d670cfa77fa71be842b028eb",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionVersion.java": "4fd8c29fcb4ab015b32d83f7b364fa527e1ff2936ad3be71a5ce244c76e197ce",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationErrorCode.java": "3c87cc67c56966a0fa50032f405c56d89ec7659ef5c49e21e14239206404b13b",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationInstance.java": "edb0498ebe979829a449c71dc9c90d5c16575b9cd41a42f731e7e5231913d2eb",
-    "operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java": "ad3675897006e1fc64eef1d3720e8973efbddac27cc30afcfcb8d8aa9bb453c7",
+    "operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java": "75c2aaa46edcc36dff01e4823d3ff0c0e78df11508650f109dc9116b6bc41019",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationRequest.java": "ddda77c0e58bacd6de5d5e58aa93e5f690a10c1d110cc1d70540142a31def649",
-    "operation-module/src/main/java/com/example/platform/operation/operation/OperationRequestResolver.java": "77bc85fc71a831a0431059e2372c68192178d5687f1d2e379e886e756a5d7ea2",
+    "operation-module/src/main/java/com/example/platform/operation/operation/OperationRequestResolver.java": "6ba85ad4e7eb2c41d448ccf026d13d338ee501e913f32f3c3431addee9a69c3a",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationResolutionException.java": "c7d7992a674eadd2a839fb8117a68e3a97fcc7d8a8969cd141f97696142902b6",
-    "operation-module/src/main/java/com/example/platform/operation/operation/OperationTargetRequest.java": "aec65f8dcbc7e78c59eed4e1a6e9c3a74d557f527458d63d158c4693cc511e2e",
+    "operation-module/src/main/java/com/example/platform/operation/operation/OperationTargetRequest.java": "7dca0e19d7fea7dad49f7cedbf9ad663a7f6c2600fe66e3ef3850219423b1bc6",
     "operation-module/src/main/java/com/example/platform/operation/plan/ApplyContext.java": "47b9505d83a9979cde5f92023a9a7dcbd4a2aeb8d51745c68b2e26bdf689ca65",
     "operation-module/src/main/java/com/example/platform/operation/plan/ApplyResult.java": "c4ce033072c3df8fea05750928ef6c0faeb9a8eb23edb7365a8022113fa0120c",
     "operation-module/src/main/java/com/example/platform/operation/plan/AuthorizationDecision.java": "c62672415600104ac13e4eefe05d5ca013f31566db395063bb754dde5fbec18c",
     "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlan.java": "0886dbdcb705e90b1f6dae782cc77c7397c19e3f5fc3a623f6f3b68afea8694f",
-    "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanDigest.java": "b56b29ffc2adb432a62a86cf98af17953ec875cfcbe8b0f0f608bf1cb4f66c2b",
+    "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanDigest.java": "b57f906c8139fa60d5abb8b26ea4c2d5287f5dcf4efca157ff1edf837977b2af",
     "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanPreview.java": "12475f907cd003853ca5cd054812c2f60a6702bcceb5b5968a68d18b79908b1d",
-    "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java": "ac27bd562fcf758c622989ea711b046538dd0de202348ca5567aba7edcfdb552",
+    "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java": "b6804f8e6d6f27a249eae8319c74edd26788d181f1fda24010eba04f93a90601",
     "operation-module/src/main/java/com/example/platform/operation/plan/PlanErrorCode.java": "65767188af0add681d1a7b1baf4a3fc36a60f6e943f18eeecfd3e72bdd9864fd",
     "operation-module/src/main/java/com/example/platform/operation/plan/PlanException.java": "7ac7420787a16623891f8cab2bbff2e269fc9f8ebbfc67e6696fa067286fe5af",
     "operation-module/src/main/java/com/example/platform/operation/plan/TargetRevisionRef.java": "830ddf30c78343bb185b8cde6c9e446cc3569a376b5299600eda537e6a405b00",
-    "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipCommand.java": "da4359b9591b4f04f46de008d4972a9d60fb2c2f9ffd632f64e5a7792ab6e1f5",
-    "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipPreview.java": "64d37917bdc866d6a842d981e60e8a013f0d1cd77c3e678a6eb8b22ce062474c",
-    "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipResult.java": "58a0ed832754c16151e45382d853dc16f86767dbd92b998c2e18e7d6ef9df7de",
-    "render-module/src/main/java/com/example/platform/render/app/operation/CanonicalOperationInvocationService.java": "1d9d2ff8fbe1640e9b41f7728c27445fdbd9b369d601a200ed021b943cd234fd",
-    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "675c1fced8590d6c7c7dad45cf47fefde54118f53c7d3556e5c06156e667413d",
-    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineOperationException.java": "5d2a381fab95085537c6e50db781f96a540ba706ecbea9831a8a545438fa7195",
-    "render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java": "dd11ab42cfd973b7a2463c62a6370e6cc56a26650d12ae472e8ab28335b49b50",
+    "operation-module/src/main/java/com/example/platform/operation/application/AddMediaClipCommand.java": "245fde68c66a6e48a8fd9497c6ca32e60f09a9106849177a226b1a3412a599a1",
+    "operation-module/src/main/java/com/example/platform/operation/application/AddMediaClipPreview.java": "ea81c64c9c9409e56c851bc32a145451ee3ff05f6519e49a5b127811cab8487c",
+    "operation-module/src/main/java/com/example/platform/operation/application/AddMediaClipResult.java": "1c95bc74d00783fdfbbb404b0229d6c77f61661379fe0a9aef9df8395304a730",
+    "operation-module/src/main/java/com/example/platform/operation/application/CanonicalOperationInvocationService.java": "fbe974bc16eee3f4d80cd927e1474ec2144646124861b2ba7415704ba761e534",
+    "operation-module/src/main/java/com/example/platform/operation/application/TimelineMediaClipOperationService.java": "abd871c68c8d5bb511f857f204fd859d951710541b85fb867312a7c81b04c532",
+    "operation-module/src/main/java/com/example/platform/operation/application/TimelineOperationException.java": "a95327f79b06256dbd5964d9a6288035b2f22f1e9e2a48d3f57ce3817ec3cf72",
+    "operation-module/src/main/java/com/example/platform/operation/application/OperationPlanApplyService.java": "c801f35b1838c58895ac23977c26e9bd1bc397944f1886d02e9c35d299be18d2",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizableResourceRef.java": "0d5480a73113dad46a460df734c8f78e2af85f0a29a105dc6bde729dc94a4dfd",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationAction.java": "d81d141a81d6ee48df1c8a8d07bcbfd6fb0091f15a35d7ffd74e9540fb1c2b06",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationContext.java": "a4dd30141dad146a293535a626b7abf5657baccc7d21fb12a0a3e7f8f5deb975",
@@ -285,11 +285,11 @@ CLASSIFIED_RUNTIME_FQ_TYPES = {
     "com.example.platform.operation.operation.OperationDefinitionVersion": "public-contract",
     "com.example.platform.operation.operation.OperationTargetRequest": "public-contract",
     "com.example.platform.operation.operation.OperationParameters": "public-contract",
-    "com.example.platform.render.app.operation.CanonicalOperationInvocationService": "canonical-adapter",
-    "com.example.platform.render.app.operation.TimelineMediaClipOperationService": "delegated-coordinator",
-    "com.example.platform.render.app.operation.TimelineOperationException": "internal-delegated-failure",
-    "com.example.platform.render.app.operation.TimelineBatchCommandMapper": "operation-mechanic",
-    "com.example.platform.render.app.plan.OperationPlanApplyService": "lower-apply-boundary",
+    "com.example.platform.operation.application.CanonicalOperationInvocationService": "canonical-adapter",
+    "com.example.platform.operation.application.TimelineMediaClipOperationService": "delegated-coordinator",
+    "com.example.platform.operation.application.TimelineOperationException": "internal-delegated-failure",
+    "com.example.platform.operation.application.TimelineBatchCommandMapper": "operation-mechanic",
+    "com.example.platform.operation.application.OperationPlanApplyService": "lower-apply-boundary",
     "com.example.platform.timeline.app.TimelineRevisionSaveService": "canonical-timeline-writer",
     "com.example.platform.timeline.api.revision.TimelineRevisionCommands": "public-contract",
     "com.example.platform.timeline.app.HeadUpdatePort": "canonical-head-port",
@@ -297,8 +297,8 @@ CLASSIFIED_RUNTIME_FQ_TYPES = {
     "com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter": "canonical-head-adapter",
     # Delegated operation services, their planner/digest helpers, canonical DTOs, and
     # published-port HTTP consumers are runtime mechanics, not H8 invocation authority escapes.
-    "com.example.platform.render.app.operation.TextOperationService": "delegated-operation-service",
-    "com.example.platform.render.app.operation.AlignmentOperationService": "delegated-operation-service",
+    "com.example.platform.operation.application.TextOperationService": "delegated-operation-service",
+    "com.example.platform.operation.application.AlignmentOperationService": "delegated-operation-service",
     "com.example.platform.operation.operation.TextOperationPlanner": "operation-mechanic",
     "com.example.platform.operation.operation.ParameterDigest": "operation-mechanic",
     "com.example.platform.observability.context.TraceKeys": "observability-vocabulary",
@@ -355,13 +355,13 @@ KNOWN_RUNTIME_DIRECT_DEPENDENCY_FQ_TYPES = {
     "com.example.platform.operation.plan.PlanErrorCode",
     "com.example.platform.operation.plan.PlanException",
     "com.example.platform.operation.plan.TargetRevisionRef",
-    "com.example.platform.render.app.operation.AddMediaClipCommand",
-    "com.example.platform.render.app.operation.AddMediaClipPreview",
-    "com.example.platform.render.app.operation.AddMediaClipResult",
-    "com.example.platform.render.app.operation.CanonicalOperationInvocationService",
-    "com.example.platform.render.app.operation.TimelineMediaClipOperationService",
-    "com.example.platform.render.app.operation.TimelineOperationException",
-    "com.example.platform.render.app.plan.OperationPlanApplyService",
+    "com.example.platform.operation.application.AddMediaClipCommand",
+    "com.example.platform.operation.application.AddMediaClipPreview",
+    "com.example.platform.operation.application.AddMediaClipResult",
+    "com.example.platform.operation.application.CanonicalOperationInvocationService",
+    "com.example.platform.operation.application.TimelineMediaClipOperationService",
+    "com.example.platform.operation.application.TimelineOperationException",
+    "com.example.platform.operation.application.OperationPlanApplyService",
     "com.example.platform.shared.authorization.AuthorizableResourceRef",
     "com.example.platform.shared.authorization.AuthorizationAction",
     "com.example.platform.shared.authorization.AuthorizationContext",
@@ -396,12 +396,12 @@ KNOWN_RUNTIME_DIRECT_DEPENDENCY_FQ_TYPES = {
 }
 
 INTERNAL_RESULT_PROJECTIONS = {
-    "com.example.platform.render.app.operation.TimelineMediaClipOperationService": {
+    "com.example.platform.operation.application.TimelineMediaClipOperationService": {
         "InvocationOutcome", "ExecutionOutcome",
     },
 }
 INTERNAL_FAILURE_PROJECTIONS = {
-    "com.example.platform.render.app.operation.TimelineOperationException": {
+    "com.example.platform.operation.application.TimelineOperationException": {
         "TimelineOperationException", "Code",
     },
 }
@@ -1333,9 +1333,9 @@ def invocation_semantic_authorities(
             "public" in modifiers or nesting_depth > 0)
         allowed_internal_outcome = (
             owner_fq in {
-                "com.example.platform.render.app.operation.TimelineMediaClipOperationService",
-                "com.example.platform.render.app.operation.TextOperationService",
-                "com.example.platform.render.app.operation.AlignmentOperationService",
+                "com.example.platform.operation.application.TimelineMediaClipOperationService",
+                "com.example.platform.operation.application.TextOperationService",
+                "com.example.platform.operation.application.AlignmentOperationService",
             }
             and name == "InvocationOutcome"
             and nesting_depth > 0
@@ -2273,9 +2273,9 @@ def with_called_helper(
         call: str = "run(request)") -> dict[str, str]:
     changed = with_source(
         sources,
-        "render-module/src/main/java/com/example/platform/render/app/operation/"
+        "operation-module/src/main/java/com/example/platform/operation/application/"
         f"{helper_name}.java",
-        "package com.example.platform.render.app.operation; " + helper_source)
+        "package com.example.platform.operation.application; " + helper_source)
     return replace_once(
         changed, "CanonicalOperationInvocationService.java",
         "mediaClipService.invoke(request, context).result()",
@@ -2285,10 +2285,10 @@ def with_called_helper(
 
 def with_fully_qualified_called_helper(
         sources: dict[str, str], helper_name: str, helper_source: str) -> dict[str, str]:
-    package_name = "com.example.platform.render.app.operation.escape"
+    package_name = "com.example.platform.operation.application.escape"
     changed = with_source(
         sources,
-        "render-module/src/main/java/com/example/platform/render/app/operation/escape/"
+        "operation-module/src/main/java/com/example/platform/operation/application/escape/"
         f"{helper_name}.java",
         f"package {package_name}; " + helper_source)
     return replace_once(
@@ -2300,16 +2300,16 @@ def with_fully_qualified_called_helper(
 
 def with_imported_called_helper(
         sources: dict[str, str], helper_name: str, helper_source: str) -> dict[str, str]:
-    package_name = "com.example.platform.render.app.operation.escape"
+    package_name = "com.example.platform.operation.application.escape"
     changed = with_source(
         sources,
-        "render-module/src/main/java/com/example/platform/render/app/operation/escape/"
+        "operation-module/src/main/java/com/example/platform/operation/application/escape/"
         f"{helper_name}.java",
         f"package {package_name}; " + helper_source)
     changed = replace_once(
         changed, "CanonicalOperationInvocationService.java",
-        "package com.example.platform.render.app.operation;\n",
-        "package com.example.platform.render.app.operation;\n\n"
+        "package com.example.platform.operation.application;\n",
+        "package com.example.platform.operation.application;\n\n"
         f"import {package_name}.{helper_name};\n")
     return replace_once(
         changed, "CanonicalOperationInvocationService.java",
@@ -2444,8 +2444,8 @@ def run_self_test(
         "package com.example.platform.operation.invocation; interface PeerOperationInvocationPort {}")))
     cases.append(("second_port_implementation", ("OPERATION_INVOCATION_PORT_IMPLEMENTATION_COUNT",), with_source(
         sources,
-        "render-module/src/main/java/com/example/platform/render/app/operation/PeerInvocationService.java",
-        "package com.example.platform.render.app.operation; class PeerInvocationService implements OperationInvocationPort {}")))
+        "operation-module/src/main/java/com/example/platform/operation/application/PeerInvocationService.java",
+        "package com.example.platform.operation.application; class PeerInvocationService implements OperationInvocationPort {}")))
     cases.append(("workflow_peer_shadow", ("WORKFLOW_PEER_INVOCATION_PORT_COUNT",), with_source(
         sources,
         "workflow-module/src/main/java/com/example/platform/workflow/Peer.java",
@@ -2521,17 +2521,17 @@ def run_self_test(
     cases.append(("h8_direct_timeline_writer_access", (
         "H8_NEW_TIMELINE_WRITER_COUNT",), with_source(
             sources,
-            "render-module/src/main/java/com/example/platform/render/app/operation/"
+            "operation-module/src/main/java/com/example/platform/operation/application/"
             "DirectWriterOperationInvocationService.java",
-            "package com.example.platform.render.app.operation; "
+            "package com.example.platform.operation.application; "
             "final class DirectWriterOperationInvocationService implements OperationInvocationPort { "
             "TimelineRevisionSaveService writer; }")))
     cases.append(("h8_timeline_head_mutation_authority", (
         "H8_NEW_HEAD_AUTHORITY_COUNT",), with_source(
             sources,
-            "render-module/src/main/java/com/example/platform/render/app/operation/"
+            "operation-module/src/main/java/com/example/platform/operation/application/"
             "HeadMutatingOperationInvocationService.java",
-            "package com.example.platform.render.app.operation; "
+            "package com.example.platform.operation.application; "
             "final class HeadMutatingOperationInvocationService implements OperationInvocationPort { "
             "HeadUpdatePort headUpdatePort; }")))
     cases.append(("h8_operation_plan_shadow", (
@@ -2959,9 +2959,9 @@ def run_self_test(
             "            mediaClipService.invoke(request, context).result()")))
     cases.append(("invalid_unicode_escape_fails_closed", ("UNCLASSIFIED",), with_source(
         sources,
-        "render-module/src/main/java/com/example/platform/render/app/operation/"
+        "operation-module/src/main/java/com/example/platform/operation/application/"
         "InvalidUnicodeEscape.java",
-        "package com.example.platform.render.app.operation; "
+        "package com.example.platform.operation.application; "
         "final class InvalidUnicodeEscape { \\u12G4 }")))
     cases.append(("workflow_operation_request_structural_peer", (
         "NEW_OPERATION_REQUEST_PEER_TYPE_COUNT",), with_source(

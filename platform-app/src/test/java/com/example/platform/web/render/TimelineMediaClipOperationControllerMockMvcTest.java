@@ -9,9 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.platform.observability.monitoring.SentryMonitoringService;
-import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
+import com.example.platform.operation.application.TimelineMediaClipOperationService;
 import com.example.platform.operation.invocation.OperationInvocationPort;
-import com.example.platform.render.app.operation.TimelineOperationException;
+import com.example.platform.operation.application.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.web.TenantContext;

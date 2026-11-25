@@ -45,9 +45,15 @@ public interface BatchTargetDomain<S> {
             S candidate,
             String parameterDigest,
             String targetIdentity,
-            String stepPlanDigest) {
+            String stepPlanDigest,
+            java.util.List<BatchStepDescriptor.Change> changes) {
+        public StepPlan(S candidate, String parameterDigest, String targetIdentity, String stepPlanDigest) {
+            this(candidate, parameterDigest, targetIdentity, stepPlanDigest, java.util.List.of());
+        }
+
 
         public StepPlan {
+            changes = java.util.List.copyOf(changes);
             if (candidate == null) {
                 throw new IllegalArgumentException("step candidate required");
             }

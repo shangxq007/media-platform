@@ -9,8 +9,8 @@ import com.example.platform.operation.batch.BatchPreview;
 import com.example.platform.operation.batch.OperationBatchContext;
 import com.example.platform.operation.batch.OperationBatchRequest;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.render.app.operation.TimelineBatchCommand;
-import com.example.platform.render.app.operation.TimelineBatchCommandMapper;
+import com.example.platform.operation.application.TimelineBatchCommand;
+import com.example.platform.operation.application.TimelineBatchCommandMapper;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,13 +39,13 @@ import org.springframework.web.server.ResponseStatusException;
  * batch port. Single-operation endpoints are untouched.
  */
 @RestController
-@RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/timeline-operations/batch")
+@RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/timeline-operations/batch/v2")
 public class TimelineBatchOperationController {
 
     private static final ObjectMapper BATCH_JSON = new ObjectMapper()
             .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private final BatchInvocationPort invocations;
     private final TimelineBatchCommandMapper mapper;
@@ -76,19 +76,59 @@ public class TimelineBatchOperationController {
             @PathVariable String tenantId, @PathVariable String projectId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(schema = @Schema(implementation = TimelineBatchCommand.class)))
-            @RequestBody String body) {
+            @RequestBody String body,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "If-Match", required = false) String confirmation) {
         CanonicalActor actor = requireActor(tenantId, projectId);
         OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, decode(body));
         BatchCommitResult result = invocations.commit(batch,
-                OperationBatchContext.apply(batch.batchId(), actor, null, "timeline-batch-http"));
+                new OperationBatchContext(batch.batchId(), actor, null, "timeline-batch-http", planDigest(confirmation)));
         HttpStatus status = BatchCommitResult.APPLIED.equals(result.status()) && !result.replayed()
                 ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(result);
     }
 
-    private static TimelineBatchCommand decode(String body) {
+    private static String planDigest(String confirmation) {
+        if (confirmation == null) throw new IllegalArgumentException("Preview digest required in If-Match");
+        if (!confirmation.matches("\"[0-9a-f]{64}\"")) {
+            throw new IllegalArgumentException("If-Match must contain a quoted batch digest");
+        }
+        return confirmation.substring(1, confirmation.length() - 1);
+    }
+
+    static TimelineBatchCommand decode(String body) {
         try {
-            return BATCH_JSON.readValue(body, TimelineBatchCommand.class);
+            var root = BATCH_JSON.readTree(body);
+            if (root == null || !root.isObject()) throw new IllegalArgumentException("A batch object is required");
+            for (String key : java.util.List.of("batchId", "baseRevisionId", "baseContentHash")) {
+                if (!root.path(key).isTextual()) throw new IllegalArgumentException(key + " must be a string");
+            }
+            if (root.has("message") && !root.get("message").isTextual()) throw new IllegalArgumentException("Invalid message");
+            if (!root.path("baseContentHash").textValue().matches(TimelineBatchCommand.TIMELINE_DIGEST)) {
+                throw new IllegalArgumentException("An exact revision content digest is required");
+            }
+            var steps = root.path("operations");
+            if (!steps.isArray() || steps.isEmpty() || steps.size() > OperationBatchRequest.MAX_STEPS) {
+                throw new IllegalArgumentException("Invalid batch size");
+            }
+            for (var step : steps) {
+                if (!step.isObject() || !step.path("definitionId").isTextual()
+                        || step.has("version") && !step.path("version").isTextual()) {
+                    throw new IllegalArgumentException("Invalid operation identity");
+                }
+                for (String key : java.util.List.of("input", "parameters", "target")) {
+                    if (step.has(key) && !step.get(key).isObject()) throw new IllegalArgumentException("Invalid " + key);
+                }
+                for (String key : java.util.List.of("input", "target")) {
+                    for (var entry : step.path(key).properties()) {
+                        var value = entry.getValue();
+                        if ("clipIds".equals(entry.getKey()) && key.equals("target")) {
+                            if (!value.isArray() || value.isEmpty()) throw new IllegalArgumentException("Invalid clip list");
+                            for (var clip : value) if (!clip.isTextual()) throw new IllegalArgumentException("Invalid clip identity");
+                        } else if (!value.isTextual()) throw new IllegalArgumentException("Expected a stable identity string");
+                    }
+                }
+            }
+            return BATCH_JSON.treeToValue(root, TimelineBatchCommand.class);
         } catch (JsonProcessingException malformed) {
             throw new IllegalArgumentException("Invalid or ambiguous Timeline batch JSON");
         }

@@ -6,7 +6,7 @@ import com.example.platform.PlatformApplication;
 import com.example.platform.artifact.app.ArtifactSourcePinAuthority;
 import com.example.platform.media.api.MediaAssets;
 import com.example.platform.media.api.MediaStreamQueries;
-import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
+import com.example.platform.operation.application.TimelineMediaClipOperationService;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 import org.junit.jupiter.api.Test;

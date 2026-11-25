@@ -76,11 +76,11 @@ public final class RenderSourceArtifacts {
                 };
                 var facts = cache.computeIfAbsent(pin, key -> sourceFacts.findForExecution(tenant, project,
                         key.artifactId(), key.contentDigest()).orElseThrow(
-                                () -> new IllegalArgumentException("Verified source stream facts unavailable")));
+                                () -> new RevisionRenderPlanningAndBindingService.SemanticRejection("SOURCE_FACTS_UNAVAILABLE", "Verified source stream facts unavailable")));
                 var matches = facts.streams().stream().filter(stream -> stream.kind() == kind).toList();
                 if (facts.counts() == null || facts.counts().of(kind) != 1 || matches.size() != 1
                         || !embedded && !matches.getFirst().streamId().equals(authored.clip().getMediaStreamId())) {
-                    throw new IllegalArgumentException("Render requires one unambiguous selected source stream of the requested kind");
+                    throw new RevisionRenderPlanningAndBindingService.SemanticRejection("SOURCE_STREAM_AMBIGUOUS", "Render requires one unambiguous selected source stream of the requested kind");
                 }
             }
         }

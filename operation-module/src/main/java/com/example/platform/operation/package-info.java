@@ -1,6 +1,16 @@
 @org.springframework.modulith.ApplicationModule(
         displayName = "Operation",
         allowedDependencies = {
+            "artifact :: app",
+            "identity :: authorization",
+            "media :: identity",
+            "media :: stream",
+            "observability :: context",
+            "shared :: identity",
+            "timeline :: composition",
+            "timeline :: revision",
+            "timeline :: version",
+            "timeline :: revisioncommand",
             "audio :: mix",
             "fonttext :: diagnostics",
             "fonttext :: resolution",

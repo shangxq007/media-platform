@@ -67,6 +67,7 @@ public final class OperationPlanDigest {
     /** Deterministic key for one planned change (sorted by construction order — planner emits deterministic order). */
     public static String changeKey(PlannedChange c) {
         return switch (c) {
+            case PlannedChange.TransitionChanged t -> "transition-" + t.action() + "(" + t.transitionId() + ")";
             case PlannedChange.TrackAdded track -> "add-track(" + track.trackId() + ")";
             case PlannedChange.ClipAdded a -> "add(" + a.trackId() + ","
                     + a.newClip().getClipId().value() + ")";

@@ -240,8 +240,24 @@ public sealed interface OperationParameters permits
     }
 
     @org.springframework.modulith.NamedInterface("invocation")
-    record CompositionAspectParameters(com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio)
+    record SourceStreamInput(String artifactId, String contentDigest, String streamId) {
+        public SourceStreamInput {
+            if (artifactId == null || artifactId.isBlank() || artifactId.length() > 256
+                    || streamId == null || streamId.isBlank() || streamId.length() > 256
+                    || contentDigest == null || !contentDigest.matches("[0-9a-f]{64}")) {
+                throw new IllegalArgumentException("Invalid immutable source stream reference");
+            }
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record CompositionAspectParameters(com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio,
+                                       SourceStreamInput input)
             implements OperationParameters {
+        public CompositionAspectParameters(com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
+            this(aspectRatio, null);
+        }
+
         public CompositionAspectParameters {
             java.util.Objects.requireNonNull(aspectRatio, "composition aspect ratio");
         }
@@ -352,17 +368,22 @@ public sealed interface OperationParameters permits
             com.example.platform.fonttext.typography.FontRational duration) implements OperationParameters {
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
+    interface TextElementEdit {
+        com.example.platform.timeline.canonical.TextElementId textElementId();
+    }
+
     /** REMOVE_TEXT_ELEMENT: exact TextElementId target. */
     @org.springframework.modulith.NamedInterface("invocation")
     record RemoveTextElementParameters(com.example.platform.timeline.canonical.TextElementId textElementId)
-            implements OperationParameters {
+            implements OperationParameters, TextElementEdit {
     }
 
     /** REPLACE_TEXT_CONTENT: canonical authored Unicode content replacement (scalar-validated). */
     @org.springframework.modulith.NamedInterface("invocation")
     record ReplaceTextContentParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
-            com.example.platform.fonttext.text.TextContent content) implements OperationParameters {
+            com.example.platform.fonttext.text.TextContent content) implements OperationParameters, TextElementEdit {
     }
 
     /** SET_TEXT_STYLE_RANGE: scalar TextRange + canonical TextStyle (no lineHeight/fill by construction). */
@@ -370,14 +391,14 @@ public sealed interface OperationParameters permits
     record SetTextStyleRangeParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextRange range,
-            com.example.platform.fonttext.typography.TextStyle style) implements OperationParameters {
+            com.example.platform.fonttext.typography.TextStyle style) implements OperationParameters, TextElementEdit {
     }
 
     /** SET_PARAGRAPH_STYLE: sole lineHeight/baseDirection/alignment authority. */
     @org.springframework.modulith.NamedInterface("invocation")
     record SetParagraphStyleParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
-            com.example.platform.fonttext.typography.ParagraphStyle paragraphStyle) implements OperationParameters {
+            com.example.platform.fonttext.typography.ParagraphStyle paragraphStyle) implements OperationParameters, TextElementEdit {
     }
 
     /** SET_FONT_SELECTION: updates FontSelectionIntent (sole selection authority) over a scalar range. */
@@ -385,28 +406,28 @@ public sealed interface OperationParameters permits
     record SetFontSelectionParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextRange range,
-            com.example.platform.fonttext.typography.FontSelectionIntent fontSelection) implements OperationParameters {
+            com.example.platform.fonttext.typography.FontSelectionIntent fontSelection) implements OperationParameters, TextElementEdit {
     }
 
     /** SET_FONT_FALLBACK_POLICY: explicit ordered canonical fallback intent. */
     @org.springframework.modulith.NamedInterface("invocation")
     record SetFontFallbackPolicyParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
-            com.example.platform.fonttext.resolution.FontFallbackPolicy fallbackPolicy) implements OperationParameters {
+            com.example.platform.fonttext.resolution.FontFallbackPolicy fallbackPolicy) implements OperationParameters, TextElementEdit {
     }
 
     /** SET_VARIABLE_FONT_AXIS: updates FontSelectionIntent explicit axis overrides (exact Rational). */
     @org.springframework.modulith.NamedInterface("invocation")
     record SetVariableFontAxisParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
-            com.example.platform.fonttext.typography.VariationCoordinate coordinate) implements OperationParameters {
+            com.example.platform.fonttext.typography.VariationCoordinate coordinate) implements OperationParameters, TextElementEdit {
     }
 
     /** SET_TEXT_LAYOUT: authored layout intent (TextFrame) only; zero glyph geometry. */
     @org.springframework.modulith.NamedInterface("invocation")
     record SetTextLayoutParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
-            com.example.platform.fonttext.typography.TextFrame frame) implements OperationParameters {
+            com.example.platform.fonttext.typography.TextFrame frame) implements OperationParameters, TextElementEdit {
     }
 
     /**

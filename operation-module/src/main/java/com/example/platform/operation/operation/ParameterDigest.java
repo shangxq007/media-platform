@@ -119,6 +119,12 @@ public final class ParameterDigest {
             return "transition-delete(" + td.transitionId() + ")";
         }
         if (p instanceof OperationParameters.CompositionAspectParameters aspect) {
+            if (aspect.input() != null) {
+                var input = aspect.input();
+                return "match-source-v1(" + input.artifactId().length() + ":" + input.artifactId()
+                        + input.contentDigest() + input.streamId().length() + ":" + input.streamId()
+                        + aspect.aspectRatio() + ")";
+            }
             return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
         if (p instanceof OperationParameters.VideoTransformParameters vt) {

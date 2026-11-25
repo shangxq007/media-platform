@@ -52,7 +52,9 @@ public final class TextOperationRequests {
         requireBounded(baseRevisionId, "baseRevisionId");
         requireBounded(baseContentHash, "baseContentHash");
         return new OperationRequest(definition.definitionId(), definition.version(),
-                new OperationTargetRequest.TimelineTargetRequest(timelineId), parameters,
+                parameters instanceof OperationParameters.TextElementEdit edit
+                        ? new OperationTargetRequest.TextElementTargetRequest(timelineId, edit.textElementId())
+                        : new OperationTargetRequest.TimelineTargetRequest(timelineId), parameters,
                 baseRevisionId, baseContentHash, null);
     }
 

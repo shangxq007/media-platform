@@ -61,7 +61,9 @@ public final class OperationBatchPlanner {
             steps.add(new BatchStepDescriptor(index,
                     operation.definitionId().value(), operation.version().toString(),
                     step.parameterDigest(), step.targetIdentity(), step.stepPlanDigest(),
-                    candidateHash));
+                    candidateHash, step.changes(), operation.parameters() instanceof
+                            com.example.platform.operation.operation.OperationParameters.CompositionAspectParameters aspect
+                            ? aspect.input() : null));
             outcomes.add(new BatchStepOutcome(index,
                     candidateHash.equals(previousHash)
                             ? BatchStepOutcome.NO_OP : BatchStepOutcome.APPLIED,

@@ -26,7 +26,7 @@ export const TRIM_PIXELS_PER_SECOND = 80
 const DRAG_THRESHOLD_PX = 4
 
 interface PendingTrim { edge: TrimEdge; delta: Rational }
-interface PreviewedTrim extends PendingTrim { clipId: string; revisionId: string; contentHash: string; commandId: string }
+interface PreviewedTrim extends PendingTrim { digest: string; clipId: string; revisionId: string; contentHash: string; commandId: string }
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
 
@@ -88,7 +88,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [actionFailed, setActionFailed] = useState(false)
-  const [retryCommand, setRetryCommand] = useState<{ command: ClipEdit; label: string } | null>(null)
+  const [retryCommand, setRetryCommand] = useState<{ command: ClipEdit; label: string; digest?: string } | null>(null)
   const keys = useRef<Record<string, string>>({})
   const generation = useRef(0)
   const dragOrigin = useRef<number | null>(null)
@@ -206,14 +206,14 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       clipId: active.clipId, delta: formatRational(deltaValue), edge: trimEdge, commandId,
     }
     try {
-      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
-      setPreviewed({ edge: trimEdge, delta: deltaValue, clipId: active.clipId,
+      const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+      setPreviewed({ digest: plan.batchDigest, edge: trimEdge, delta: deltaValue, clipId: active.clipId,
         revisionId: head.revisionId, contentHash: head.contentHash, commandId })
       setPending({ edge: trimEdge, delta: deltaValue })
-      setRetryCommand({ command, label: 'Trim' })
+      setRetryCommand({ command, label: 'Trim', digest: plan.batchDigest })
       const projected = projectTrim(active, trimEdge, deltaValue)
       setMessage(`Preview valid: source ${formatRational(projected.sourceStart)}s → ${formatRational(projected.sourceEnd)}s, `
-        + `${toSeconds(projected.duration).toFixed(2)}s visible. Nothing was saved yet.`)
+        + `${toSeconds(projected.duration).toFixed(2)}s visible. Planned changes: ${plan.steps.flatMap(step => step.changes).length}.`)
     } catch (error) { handleFailure(error, 'Trim preview', null, false) }
     finally { setBusy(false) }
   }
@@ -233,7 +233,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     }
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
+      const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, previewed.digest)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
@@ -317,7 +317,8 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     finally { setBusy(false) }
   }
 
-  async function applyAspect(resolve: () => CompositionAspectRatio | Promise<CompositionAspectRatio>) {
+  async function applyAspect(resolve: () => CompositionAspectRatio | Promise<CompositionAspectRatio>,
+      input?: { artifactId: string; contentDigest: string; streamId: string }) {
     if (!head || !project.tenantId || !aspectRatio || busy) return
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
@@ -326,11 +327,11 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
         setMessage('The composition already uses this exact ratio.')
         return
       }
-      const fingerprint = JSON.stringify([project.projectId, head.revisionId, 'composition-aspect', next])
+      const fingerprint = JSON.stringify([project.projectId, head.revisionId, 'composition-aspect', next, input])
       keys.current[fingerprint] ??= crypto.randomUUID()
       const accepted = await FormalRenderAPI.setCompositionAspect(project.tenantId, project.projectId, {
         baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-        aspectRatio: next, commandId: keys.current[fingerprint] })
+        aspectRatio: next, ...(input && { input }), commandId: keys.current[fingerprint] })
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
@@ -350,7 +351,7 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
       } catch {
         throw new Error('Match Source unavailable for the selected stream.')
       }
-    })
+    }, { artifactId: active.artifactId, contentDigest: active.contentDigest, streamId: active.mediaStreamId })
   }
 
   function resetTransform() {
@@ -567,7 +568,9 @@ export function ClipEditor({ head, onRevisionChanged, focusClipId = null, playhe
     if (!head || !project.tenantId || !retryCommand || busy) return
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
+      const accepted = retryCommand.digest
+        ? await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, retryCommand.command, retryCommand.digest)
+        : await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
       const authoritative = await FormalRenderAPI.head(project.projectId)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()

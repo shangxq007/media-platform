@@ -20,8 +20,8 @@ import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
-import com.example.platform.render.app.operation.CanonicalBatchInvocationService;
-import com.example.platform.render.app.operation.TimelineBatchTargetDomain;
+import com.example.platform.operation.application.CanonicalBatchInvocationService;
+import com.example.platform.operation.application.TimelineBatchTargetDomain;
 import com.example.platform.shared.authorization.AuthorizationDecision;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.CanonicalActor;
@@ -365,19 +365,29 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void textOperationsAreRejectedAsUnsupported() {
-        TimelineRevision base = saveRevision(twoClipDocument());
-        OperationRequest text = new OperationRequest(
-                OperationDefinition.V1.ADD_TEXT_ELEMENT.definitionId(),
-                OperationDefinition.V1.ADD_TEXT_ELEMENT.version(),
-                new OperationTargetRequest.TimelineTargetRequest(PROJECT),
-                new OperationParameters.NoParameters(),
-                base.revisionId(), hash(base), null);
-        BatchException failure = assertThrows(BatchException.class,
-                () -> commit("batch-text", base, text, null));
-
-        assertEquals(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, failure.code());
-        assertEquals(1, count("timeline.timeline_revision"));
+    void removeTextElementResolvesItsIdentityAndCommitsOneRevision() throws Exception {
+        var doc = twoClipDocument();
+        var element = new com.fasterxml.jackson.databind.ObjectMapper().readValue("""
+                {"id":"title","start":{"numerator":0,"denominator":1},"duration":{"numerator":1,"denominator":1},
+                 "styledText":{"content":"Title","semanticRuns":[],"styleRuns":[],"paragraphStyle":{
+                    "alignment":"START","justification":"NONE","lineHeight":{"form":"RATIO","value":{"numerator":1,"denominator":1}},
+                    "wrapPolicy":"WRAP","baseDirection":"AUTO","lineBreakPolicy":"STANDARD"}},
+                 "frame":{"widthConstraint":{"numerator":100,"denominator":1},"horizontalAlignment":"START",
+                    "verticalAlignment":"TOP","wrapBehavior":"WRAP","overflowBehavior":"CLIP"},
+                 "fallbackPolicy":{"defaultChain":["Arial"],"scriptOverrides":[],"languageOverrides":[],"emojiChain":[]},
+                 "resolvedFontRuns":[]}
+                """, com.example.platform.timeline.canonical.TextElement.class);
+        TimelineRevision base = saveRevision(new TimelineDocument(doc.getSchemaVersion(), doc.getTracks(), doc.getMetadata(),
+                doc.getAudioMix(), doc.getSemanticRelationships(), List.of(element), doc.getTransitions(), doc.getAutomations()));
+        OperationRequest remove = new OperationRequest(OperationDefinition.V1.REMOVE_TEXT_ELEMENT.definitionId(),
+                OperationDefinition.V1.REMOVE_TEXT_ELEMENT.version(),
+                new OperationTargetRequest.TextElementTargetRequest(PROJECT, element.id()),
+                new OperationParameters.RemoveTextElementParameters(element.id()), base.revisionId(), hash(base), null);
+        var result = commit("text-remove", base, remove, null);
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertTrue(saveService.findPayloadDocument(TENANT, result.newRevisionId()).orElseThrow().getTextElements().isEmpty());
+        assertEquals(element.id(), saveService.findPayloadDocument(TENANT, base.revisionId())
+                .orElseThrow().getTextElements().getFirst().id());
     }
 
     @Test

@@ -101,7 +101,9 @@ class RevisionRenderPlanningApplicationServiceTest {
         assertThat(result.capabilityContext().supports(CapabilityId.of("render.output"))).isTrue();
         assertThat(result.capabilityContext().supports(CapabilityId.of("render.composite"))).isTrue();
         assertThat(result.capabilityContext().supports(CapabilityId.of("subtitle.rasterize"))).isTrue();
-        assertThat(result.capabilityContext().availableCapabilities()).hasSize(4);
+        assertThat(result.capabilityContext().availableCapabilities()).extracting(id -> id.value())
+                .containsExactlyInAnyOrder("video.decode", "audio.decode", "render.composite",
+                        "render.multitrack-composite", "render.output", "subtitle.rasterize");
         // P3-I: declarations come from the authority; V0 is empty.
         assertThat(result.declarations()).isEmpty();
         verify(authority).declarations();

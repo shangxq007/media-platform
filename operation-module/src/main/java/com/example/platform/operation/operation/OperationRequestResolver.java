@@ -70,7 +70,7 @@ public final class OperationRequestResolver {
                     "request base content hash mismatch");
         }
         // 5. target type matches definition contract
-        OperationTarget resolved = resolveTarget(def, request.target(), base);
+        OperationTarget resolved = resolveTarget(def, request, base);
         // 6. parameter type matches definition contract
         if (!def.parameterType().isInstance(request.parameters())) {
             throw new OperationResolutionException(OperationErrorCode.INVALID_PARAMETER,
@@ -98,9 +98,10 @@ public final class OperationRequestResolver {
                 "unknown operation definition: " + id);
     }
 
-    private static OperationTarget resolveTarget(OperationDefinition def, OperationTargetRequest target,
+    private static OperationTarget resolveTarget(OperationDefinition def, OperationRequest request,
                                                  OperationBaseContext base)
             throws OperationResolutionException {
+        OperationTargetRequest target = request.target();
         switch (def.targetKind()) {
             case TIMELINE -> {
                 if (!(target instanceof OperationTargetRequest.TimelineTargetRequest timelineReq)) {
@@ -158,9 +159,24 @@ public final class OperationRequestResolver {
                 }
                 return new OperationTarget.AudioTarget(audioReq.audioMixInput());
             }
+            case TRANSITION -> {
+                if (!(target instanceof OperationTargetRequest.TransitionTargetRequest t)
+                        || base.timeline().getTransitions().stream().filter(x -> x.transitionId().equals(t.transitionId())
+                            && x.isCrossDissolve()).count() != 1) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE, "Transition unavailable");
+                }
+                return new OperationTarget.TransitionTarget(t.transitionId());
+            }
             case TEXT -> {
-                // P2-5.5: text operations target the Timeline aggregate; the exact
-                // TextElementId is carried in the typed parameters, not the target.
+                if (request.parameters() instanceof OperationParameters.TextElementEdit edit) {
+                    if (!(target instanceof OperationTargetRequest.TextElementTargetRequest text)
+                            || (text.timelineId() != null && !text.timelineId().equals(base.timelineId()))
+                            || !text.textElementId().equals(edit.textElementId())
+                            || base.timeline().getTextElements().stream().noneMatch(e -> e.id().equals(text.textElementId()))) {
+                        throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE, "Text element unavailable");
+                    }
+                    return new OperationTarget.TextElementTarget(text.textElementId());
+                }
                 if (!(target instanceof OperationTargetRequest.TimelineTargetRequest timelineReq)) {
                     throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
                             "definition " + def.definitionId() + " requires Timeline target");
@@ -216,7 +232,9 @@ public final class OperationRequestResolver {
             case OperationTarget.ResolvedClipScopeTarget r -> r.resolvedScope().resolvedClipIds().size();
             case OperationTarget.GroupTarget g -> 1;
             case OperationTarget.SyncTarget s -> 1;
+            case OperationTarget.TransitionTarget t -> 1;
             case OperationTarget.AudioTarget a -> 1;
+            case OperationTarget.TextElementTarget t -> 1;
         };
         if (size < def.minCardinality() || size > def.maxCardinality()) {
             throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,

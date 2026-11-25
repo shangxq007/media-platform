@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Parses external-render sub-job JSON produced by {@link com.example.platform.render.app.planner.PipelineDagExecutorService}. */
+/** Parses external-render sub-job JSON produced by {@link com.example.platform.operation.applicationner.PipelineDagExecutorService}. */
 public final class ExternalRenderScriptParser {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

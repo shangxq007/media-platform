@@ -1,8 +1,8 @@
 package com.example.platform.web.render;
 
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
-import com.example.platform.render.app.operation.AlignmentOperationService;
-import com.example.platform.render.app.operation.TimelineOperationException;
+import com.example.platform.operation.application.AlignmentOperationService;
+import com.example.platform.operation.application.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.semantics.relationship.AlignmentAttribute;

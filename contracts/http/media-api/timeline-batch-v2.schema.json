@@ -1,0 +1,2463 @@
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "baseContentHash" : {
+      "pattern" : "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$",
+      "type" : "string"
+    },
+    "baseRevisionId" : {
+      "maxLength" : 64,
+      "minLength" : 1,
+      "type" : "string"
+    },
+    "batchId" : {
+      "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+      "type" : "string"
+    },
+    "message" : {
+      "maxLength" : 512,
+      "type" : "string"
+    },
+    "operations" : {
+      "items" : {
+        "oneOf" : [ {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.media-clip.add" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "artifactId" : {
+                  "type" : "string"
+                },
+                "clipId" : {
+                  "type" : "string"
+                },
+                "contentDigest" : {
+                  "type" : "string"
+                },
+                "direction" : {
+                  "type" : "string"
+                },
+                "mediaAssetId" : {
+                  "type" : "string"
+                },
+                "mediaStreamId" : {
+                  "type" : "string"
+                },
+                "rateDenominator" : {
+                  "type" : "integer"
+                },
+                "rateNumerator" : {
+                  "type" : "integer"
+                },
+                "sourceEnd" : {
+                  "type" : "string"
+                },
+                "sourceStart" : {
+                  "type" : "string"
+                },
+                "timelineEnd" : {
+                  "type" : "string"
+                },
+                "timelineStart" : {
+                  "type" : "string"
+                },
+                "trackId" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "artifactId", "clipId", "contentDigest", "mediaAssetId", "mediaStreamId", "rateDenominator", "rateNumerator", "sourceEnd", "sourceStart", "timelineEnd", "timelineStart", "trackId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.move" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "absolute" : {
+                  "type" : "boolean"
+                },
+                "delta" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "absolute", "delta" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 2147483647,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.delete" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 2147483647,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.trim" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "delta" : {
+                  "type" : "string"
+                },
+                "edge" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "delta", "edge" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.temporal.set-rate" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "denominator" : {
+                  "type" : "integer"
+                },
+                "numerator" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "denominator", "numerator" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 2147483647,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.temporal.set-direction" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "direction" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "direction" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 2147483647,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.temporal.freeze" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "sourcePosition" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "sourcePosition" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "audio.gain.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "linear" : {
+                  "type" : "number"
+                }
+              },
+              "required" : [ "linear" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "audioTrackId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "clipId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "audioTrackId", "clipId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "audio.mute.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "muted" : {
+                  "type" : "boolean"
+                }
+              },
+              "required" : [ "muted" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "audioTrackId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "clipId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "audioTrackId", "clipId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "audio.balance.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "value" : {
+                  "type" : "number"
+                }
+              },
+              "required" : [ "value" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "audioTrackId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "clipId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "audioTrackId", "clipId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.group.create" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "groupId" : {
+                  "type" : "string"
+                },
+                "members" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "minItems" : 2,
+                  "type" : "array",
+                  "uniqueItems" : true
+                }
+              },
+              "required" : [ "groupId", "members" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.group.update-members" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "membersToAdd" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "membersToRemove" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                }
+              },
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "groupId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "groupId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.group.remove" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "groupId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "groupId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.sync.create" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "endpointA" : {
+                  "type" : "string"
+                },
+                "endpointB" : {
+                  "type" : "string"
+                },
+                "localAnchorA" : {
+                  "type" : "string"
+                },
+                "localAnchorB" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "endpointA", "endpointB", "localAnchorA", "localAnchorB" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "syncIdentityKey" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "syncIdentityKey" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.sync.update-anchor" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "localAnchorA" : {
+                  "type" : "string"
+                },
+                "localAnchorB" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "localAnchorA", "localAnchorB" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "syncIdentityKey" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "syncIdentityKey" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.sync.remove" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "syncIdentityKey" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "syncIdentityKey" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.add" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "duration" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "denominator" : {
+                      "type" : "integer"
+                    },
+                    "numerator" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "numerator", "denominator" ],
+                  "type" : "object"
+                },
+                "fallbackPolicy" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "defaultChain" : {
+                      "items" : {
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "emojiChain" : {
+                      "items" : {
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "languageOverrides" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "chain" : {
+                            "items" : {
+                              "type" : "string"
+                            },
+                            "type" : "array"
+                          },
+                          "language" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "chain", "language" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "scriptOverrides" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "chain" : {
+                            "items" : {
+                              "type" : "string"
+                            },
+                            "type" : "array"
+                          },
+                          "script" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "chain", "script" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "defaultChain", "scriptOverrides", "languageOverrides", "emojiChain" ],
+                  "type" : "object"
+                },
+                "frame" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "heightConstraint" : {
+                      "anyOf" : [ {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "denominator" : {
+                            "type" : "integer"
+                          },
+                          "numerator" : {
+                            "type" : "integer"
+                          }
+                        },
+                        "required" : [ "numerator", "denominator" ],
+                        "type" : "object"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "horizontalAlignment" : {
+                      "enum" : [ "START", "END", "CENTER" ],
+                      "type" : "string"
+                    },
+                    "overflowBehavior" : {
+                      "enum" : [ "CLIP", "VISIBLE", "SCROLL" ],
+                      "type" : "string"
+                    },
+                    "verticalAlignment" : {
+                      "enum" : [ "TOP", "CENTER", "BOTTOM" ],
+                      "type" : "string"
+                    },
+                    "widthConstraint" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "denominator" : {
+                          "type" : "integer"
+                        },
+                        "numerator" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "numerator", "denominator" ],
+                      "type" : "object"
+                    },
+                    "wrapBehavior" : {
+                      "enum" : [ "WRAP", "NO_WRAP" ],
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "widthConstraint", "horizontalAlignment", "verticalAlignment", "wrapBehavior", "overflowBehavior" ],
+                  "type" : "object"
+                },
+                "start" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "denominator" : {
+                      "type" : "integer"
+                    },
+                    "numerator" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "numerator", "denominator" ],
+                  "type" : "object"
+                },
+                "styledText" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "content" : {
+                      "type" : "string"
+                    },
+                    "paragraphStyle" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "alignment" : {
+                          "enum" : [ "START", "END", "CENTER", "JUSTIFIED", "LEFT", "RIGHT" ],
+                          "type" : "string"
+                        },
+                        "baseDirection" : {
+                          "enum" : [ "AUTO", "LTR", "RTL" ],
+                          "type" : "string"
+                        },
+                        "justification" : {
+                          "enum" : [ "NONE", "INTER_WORD", "INTER_CHARACTER" ],
+                          "type" : "string"
+                        },
+                        "lineBreakPolicy" : {
+                          "enum" : [ "STANDARD", "STRICT" ],
+                          "type" : "string"
+                        },
+                        "lineHeight" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "form" : {
+                              "enum" : [ "RATIO", "ABSOLUTE" ],
+                              "type" : "string"
+                            },
+                            "value" : {
+                              "additionalProperties" : false,
+                              "properties" : {
+                                "denominator" : {
+                                  "type" : "integer"
+                                },
+                                "numerator" : {
+                                  "type" : "integer"
+                                }
+                              },
+                              "required" : [ "numerator", "denominator" ],
+                              "type" : "object"
+                            }
+                          },
+                          "required" : [ "form", "value" ],
+                          "type" : "object"
+                        },
+                        "wrapPolicy" : {
+                          "enum" : [ "WRAP", "NO_WRAP" ],
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "alignment", "justification", "lineHeight", "wrapPolicy", "baseDirection", "lineBreakPolicy" ],
+                      "type" : "object"
+                    },
+                    "semanticRuns" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "directionOverride" : {
+                            "enum" : [ "NONE", "LTR", "RTL" ],
+                            "type" : "string"
+                          },
+                          "language" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "range" : {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "end" : {
+                                "type" : "integer"
+                              },
+                              "start" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "start", "end" ],
+                            "type" : "object"
+                          },
+                          "script" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "range", "directionOverride" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "styleRuns" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "range" : {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "end" : {
+                                "type" : "integer"
+                              },
+                              "start" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "start", "end" ],
+                            "type" : "object"
+                          },
+                          "style" : {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "features" : {
+                                "additionalProperties" : false,
+                                "properties" : {
+                                  "settings" : {
+                                    "items" : {
+                                      "additionalProperties" : false,
+                                      "properties" : {
+                                        "state" : {
+                                          "enum" : [ "ENABLED", "DISABLED" ],
+                                          "type" : "string"
+                                        },
+                                        "tag" : {
+                                          "type" : "string"
+                                        }
+                                      },
+                                      "required" : [ "state", "tag" ],
+                                      "type" : "object"
+                                    },
+                                    "type" : "array"
+                                  }
+                                },
+                                "required" : [ "settings" ],
+                                "type" : "object"
+                              },
+                              "fontSelection" : {
+                                "additionalProperties" : false,
+                                "properties" : {
+                                  "explicitAxisOverrides" : {
+                                    "items" : {
+                                      "additionalProperties" : false,
+                                      "properties" : {
+                                        "axis" : {
+                                          "type" : "string"
+                                        },
+                                        "coordinate" : {
+                                          "additionalProperties" : false,
+                                          "properties" : {
+                                            "denominator" : {
+                                              "type" : "integer"
+                                            },
+                                            "numerator" : {
+                                              "type" : "integer"
+                                            }
+                                          },
+                                          "required" : [ "numerator", "denominator" ],
+                                          "type" : "object"
+                                        }
+                                      },
+                                      "required" : [ "axis", "coordinate" ],
+                                      "type" : "object"
+                                    },
+                                    "type" : "array"
+                                  },
+                                  "familyPreferences" : {
+                                    "items" : {
+                                      "type" : "string"
+                                    },
+                                    "type" : "array"
+                                  },
+                                  "opticalSizing" : {
+                                    "additionalProperties" : false,
+                                    "properties" : {
+                                      "explicitCoordinate" : {
+                                        "anyOf" : [ {
+                                          "additionalProperties" : false,
+                                          "properties" : {
+                                            "denominator" : {
+                                              "type" : "integer"
+                                            },
+                                            "numerator" : {
+                                              "type" : "integer"
+                                            }
+                                          },
+                                          "required" : [ "numerator", "denominator" ],
+                                          "type" : "object"
+                                        }, {
+                                          "type" : "null"
+                                        } ]
+                                      },
+                                      "kind" : {
+                                        "enum" : [ "DISABLED", "AUTO", "EXPLICIT" ],
+                                        "type" : "string"
+                                      }
+                                    },
+                                    "required" : [ "kind" ],
+                                    "type" : "object"
+                                  },
+                                  "slant" : {
+                                    "enum" : [ "NORMAL", "ITALIC", "OBLIQUE" ],
+                                    "type" : "string"
+                                  },
+                                  "stretch" : {
+                                    "enum" : [ "NORMAL", "CONDENSED", "EXPANDED" ],
+                                    "type" : "string"
+                                  },
+                                  "weight" : {
+                                    "enum" : [ "NORMAL", "MEDIUM", "SEMIBOLD", "BOLD", "EXTRABOLD", "BLACK", "THIN", "LIGHT" ],
+                                    "type" : "string"
+                                  }
+                                },
+                                "required" : [ "familyPreferences", "weight", "stretch", "slant", "opticalSizing", "explicitAxisOverrides" ],
+                                "type" : "object"
+                              },
+                              "fontSize" : {
+                                "additionalProperties" : false,
+                                "properties" : {
+                                  "value" : {
+                                    "additionalProperties" : false,
+                                    "properties" : {
+                                      "denominator" : {
+                                        "type" : "integer"
+                                      },
+                                      "numerator" : {
+                                        "type" : "integer"
+                                      }
+                                    },
+                                    "required" : [ "numerator", "denominator" ],
+                                    "type" : "object"
+                                  }
+                                },
+                                "required" : [ "value" ],
+                                "type" : "object"
+                              },
+                              "tracking" : {
+                                "additionalProperties" : false,
+                                "properties" : {
+                                  "denominator" : {
+                                    "type" : "integer"
+                                  },
+                                  "numerator" : {
+                                    "type" : "integer"
+                                  }
+                                },
+                                "required" : [ "numerator", "denominator" ],
+                                "type" : "object"
+                              }
+                            },
+                            "required" : [ "fontSelection", "fontSize", "tracking", "features" ],
+                            "type" : "object"
+                          }
+                        },
+                        "required" : [ "range", "style" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "content", "semanticRuns", "styleRuns", "paragraphStyle" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "duration", "fallbackPolicy", "frame", "start", "styledText" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.remove" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.replace-content" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "content" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "content" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.set-style-range" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "range" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "end" : {
+                      "type" : "integer"
+                    },
+                    "start" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "start", "end" ],
+                  "type" : "object"
+                },
+                "style" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "features" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "settings" : {
+                          "items" : {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "state" : {
+                                "enum" : [ "ENABLED", "DISABLED" ],
+                                "type" : "string"
+                              },
+                              "tag" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "state", "tag" ],
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }
+                      },
+                      "required" : [ "settings" ],
+                      "type" : "object"
+                    },
+                    "fontSelection" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "explicitAxisOverrides" : {
+                          "items" : {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "axis" : {
+                                "type" : "string"
+                              },
+                              "coordinate" : {
+                                "additionalProperties" : false,
+                                "properties" : {
+                                  "denominator" : {
+                                    "type" : "integer"
+                                  },
+                                  "numerator" : {
+                                    "type" : "integer"
+                                  }
+                                },
+                                "required" : [ "numerator", "denominator" ],
+                                "type" : "object"
+                              }
+                            },
+                            "required" : [ "axis", "coordinate" ],
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        },
+                        "familyPreferences" : {
+                          "items" : {
+                            "type" : "string"
+                          },
+                          "type" : "array"
+                        },
+                        "opticalSizing" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "explicitCoordinate" : {
+                              "anyOf" : [ {
+                                "additionalProperties" : false,
+                                "properties" : {
+                                  "denominator" : {
+                                    "type" : "integer"
+                                  },
+                                  "numerator" : {
+                                    "type" : "integer"
+                                  }
+                                },
+                                "required" : [ "numerator", "denominator" ],
+                                "type" : "object"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "kind" : {
+                              "enum" : [ "DISABLED", "AUTO", "EXPLICIT" ],
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "kind" ],
+                          "type" : "object"
+                        },
+                        "slant" : {
+                          "enum" : [ "NORMAL", "ITALIC", "OBLIQUE" ],
+                          "type" : "string"
+                        },
+                        "stretch" : {
+                          "enum" : [ "NORMAL", "CONDENSED", "EXPANDED" ],
+                          "type" : "string"
+                        },
+                        "weight" : {
+                          "enum" : [ "NORMAL", "MEDIUM", "SEMIBOLD", "BOLD", "EXTRABOLD", "BLACK", "THIN", "LIGHT" ],
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "familyPreferences", "weight", "stretch", "slant", "opticalSizing", "explicitAxisOverrides" ],
+                      "type" : "object"
+                    },
+                    "fontSize" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "value" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "denominator" : {
+                              "type" : "integer"
+                            },
+                            "numerator" : {
+                              "type" : "integer"
+                            }
+                          },
+                          "required" : [ "numerator", "denominator" ],
+                          "type" : "object"
+                        }
+                      },
+                      "required" : [ "value" ],
+                      "type" : "object"
+                    },
+                    "tracking" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "denominator" : {
+                          "type" : "integer"
+                        },
+                        "numerator" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "numerator", "denominator" ],
+                      "type" : "object"
+                    }
+                  },
+                  "required" : [ "fontSelection", "fontSize", "tracking", "features" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "range", "style" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.set-paragraph-style" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "paragraphStyle" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "alignment" : {
+                      "enum" : [ "START", "END", "CENTER", "JUSTIFIED", "LEFT", "RIGHT" ],
+                      "type" : "string"
+                    },
+                    "baseDirection" : {
+                      "enum" : [ "AUTO", "LTR", "RTL" ],
+                      "type" : "string"
+                    },
+                    "justification" : {
+                      "enum" : [ "NONE", "INTER_WORD", "INTER_CHARACTER" ],
+                      "type" : "string"
+                    },
+                    "lineBreakPolicy" : {
+                      "enum" : [ "STANDARD", "STRICT" ],
+                      "type" : "string"
+                    },
+                    "lineHeight" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "form" : {
+                          "enum" : [ "RATIO", "ABSOLUTE" ],
+                          "type" : "string"
+                        },
+                        "value" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "denominator" : {
+                              "type" : "integer"
+                            },
+                            "numerator" : {
+                              "type" : "integer"
+                            }
+                          },
+                          "required" : [ "numerator", "denominator" ],
+                          "type" : "object"
+                        }
+                      },
+                      "required" : [ "form", "value" ],
+                      "type" : "object"
+                    },
+                    "wrapPolicy" : {
+                      "enum" : [ "WRAP", "NO_WRAP" ],
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "alignment", "justification", "lineHeight", "wrapPolicy", "baseDirection", "lineBreakPolicy" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "paragraphStyle" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.set-font-selection" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "fontSelection" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "explicitAxisOverrides" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "axis" : {
+                            "type" : "string"
+                          },
+                          "coordinate" : {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "denominator" : {
+                                "type" : "integer"
+                              },
+                              "numerator" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "numerator", "denominator" ],
+                            "type" : "object"
+                          }
+                        },
+                        "required" : [ "axis", "coordinate" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "familyPreferences" : {
+                      "items" : {
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "opticalSizing" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "explicitCoordinate" : {
+                          "anyOf" : [ {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "denominator" : {
+                                "type" : "integer"
+                              },
+                              "numerator" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "numerator", "denominator" ],
+                            "type" : "object"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "kind" : {
+                          "enum" : [ "DISABLED", "AUTO", "EXPLICIT" ],
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "kind" ],
+                      "type" : "object"
+                    },
+                    "slant" : {
+                      "enum" : [ "NORMAL", "ITALIC", "OBLIQUE" ],
+                      "type" : "string"
+                    },
+                    "stretch" : {
+                      "enum" : [ "NORMAL", "CONDENSED", "EXPANDED" ],
+                      "type" : "string"
+                    },
+                    "weight" : {
+                      "enum" : [ "NORMAL", "MEDIUM", "SEMIBOLD", "BOLD", "EXTRABOLD", "BLACK", "THIN", "LIGHT" ],
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "familyPreferences", "weight", "stretch", "slant", "opticalSizing", "explicitAxisOverrides" ],
+                  "type" : "object"
+                },
+                "range" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "end" : {
+                      "type" : "integer"
+                    },
+                    "start" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "start", "end" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "fontSelection", "range" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.set-fallback-policy" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "fallbackPolicy" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "defaultChain" : {
+                      "items" : {
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "emojiChain" : {
+                      "items" : {
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "languageOverrides" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "chain" : {
+                            "items" : {
+                              "type" : "string"
+                            },
+                            "type" : "array"
+                          },
+                          "language" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "chain", "language" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "scriptOverrides" : {
+                      "items" : {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "chain" : {
+                            "items" : {
+                              "type" : "string"
+                            },
+                            "type" : "array"
+                          },
+                          "script" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "chain", "script" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "defaultChain", "scriptOverrides", "languageOverrides", "emojiChain" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "fallbackPolicy" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.set-variable-axis" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "coordinate" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "axis" : {
+                      "type" : "string"
+                    },
+                    "coordinate" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "denominator" : {
+                          "type" : "integer"
+                        },
+                        "numerator" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "numerator", "denominator" ],
+                      "type" : "object"
+                    }
+                  },
+                  "required" : [ "axis", "coordinate" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "coordinate" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.text.set-layout" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "frame" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "heightConstraint" : {
+                      "anyOf" : [ {
+                        "additionalProperties" : false,
+                        "properties" : {
+                          "denominator" : {
+                            "type" : "integer"
+                          },
+                          "numerator" : {
+                            "type" : "integer"
+                          }
+                        },
+                        "required" : [ "numerator", "denominator" ],
+                        "type" : "object"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "horizontalAlignment" : {
+                      "enum" : [ "START", "END", "CENTER" ],
+                      "type" : "string"
+                    },
+                    "overflowBehavior" : {
+                      "enum" : [ "CLIP", "VISIBLE", "SCROLL" ],
+                      "type" : "string"
+                    },
+                    "verticalAlignment" : {
+                      "enum" : [ "TOP", "CENTER", "BOTTOM" ],
+                      "type" : "string"
+                    },
+                    "widthConstraint" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "denominator" : {
+                          "type" : "integer"
+                        },
+                        "numerator" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "numerator", "denominator" ],
+                      "type" : "object"
+                    },
+                    "wrapBehavior" : {
+                      "enum" : [ "WRAP", "NO_WRAP" ],
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "widthConstraint", "horizontalAlignment", "verticalAlignment", "wrapBehavior", "overflowBehavior" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "frame" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "textElementId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "textElementId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.alignment.create" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "alignmentId" : {
+                  "type" : "string"
+                },
+                "attributes" : {
+                  "items" : {
+                    "oneOf" : [ {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "kind" : {
+                          "enum" : [ "TEXT" ],
+                          "type" : "string"
+                        },
+                        "tag" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "value" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "kind", "tag", "value" ],
+                      "type" : "object"
+                    }, {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "kind" : {
+                          "enum" : [ "NUMBER" ],
+                          "type" : "string"
+                        },
+                        "tag" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "value" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "kind", "tag", "value" ],
+                      "type" : "object"
+                    }, {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "kind" : {
+                          "enum" : [ "BOOLEAN" ],
+                          "type" : "string"
+                        },
+                        "tag" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "value" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "kind", "tag", "value" ],
+                      "type" : "object"
+                    } ]
+                  },
+                  "type" : "array"
+                },
+                "derivedUnits" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "sourceUnits" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                }
+              },
+              "required" : [ "alignmentId", "derivedUnits", "sourceUnits" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.clip.split" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "rightClipId" : {
+                  "type" : "string"
+                },
+                "splitTimelineTime" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "rightClipId", "splitTimelineTime" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.clip.relocate" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "absolute" : {
+                  "type" : "boolean"
+                },
+                "delta" : {
+                  "type" : "string"
+                },
+                "destinationTrackId" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "absolute", "delta", "destinationTrackId" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.composition.aspect.set" ],
+              "type" : "string"
+            },
+            "input" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "artifactId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "contentDigest" : {
+                  "pattern" : "^[0-9a-f]{64}$",
+                  "type" : "string"
+                },
+                "streamId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "artifactId", "contentDigest", "streamId" ],
+              "type" : "object"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "aspectRatio" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "denominator" : {
+                      "maximum" : 2147483647,
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "format" : {
+                      "enum" : [ "composition-aspect-rational-v1" ],
+                      "type" : "string"
+                    },
+                    "numerator" : {
+                      "maximum" : 2147483647,
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "format", "numerator", "denominator" ],
+                  "type" : "object"
+                }
+              },
+              "required" : [ "aspectRatio" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "2.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.clip.transform.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "cropBottomMicros" : {
+                  "type" : "integer"
+                },
+                "cropLeftMicros" : {
+                  "type" : "integer"
+                },
+                "cropRightMicros" : {
+                  "type" : "integer"
+                },
+                "cropTopMicros" : {
+                  "type" : "integer"
+                },
+                "format" : {
+                  "enum" : [ "composition-transform-micro-v1" ],
+                  "type" : "string"
+                },
+                "opacityMicros" : {
+                  "type" : "integer"
+                },
+                "positionXMicros" : {
+                  "type" : "integer"
+                },
+                "positionYMicros" : {
+                  "type" : "integer"
+                },
+                "rotationMicroDegrees" : {
+                  "type" : "integer"
+                },
+                "scaleXMicros" : {
+                  "type" : "integer"
+                },
+                "scaleYMicros" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "cropBottomMicros", "cropLeftMicros", "cropRightMicros", "cropTopMicros", "format", "opacityMicros", "positionXMicros", "positionYMicros", "rotationMicroDegrees", "scaleXMicros", "scaleYMicros" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "2.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.clip.effect.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "brightness" : {
+                  "type" : "number"
+                },
+                "contrast" : {
+                  "type" : "number"
+                },
+                "enabled" : {
+                  "type" : "boolean"
+                },
+                "fadeInSeconds" : {
+                  "type" : "number"
+                },
+                "fadeOutSeconds" : {
+                  "type" : "number"
+                },
+                "grayscale" : {
+                  "type" : "boolean"
+                },
+                "saturation" : {
+                  "type" : "number"
+                }
+              },
+              "required" : [ "brightness", "contrast", "enabled", "fadeInSeconds", "fadeOutSeconds", "grayscale", "saturation" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "2.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.clip.effect.remove" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.transition.cross-dissolve.create" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "duration" : {
+                  "type" : "string"
+                },
+                "incomingClipId" : {
+                  "type" : "string"
+                },
+                "transitionId" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "duration", "incomingClipId", "transitionId" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.transition.cross-dissolve.update" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "duration" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "duration" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "transitionId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "transitionId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "2.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.transition.cross-dissolve.delete" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "transitionId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "transitionId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "2.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        } ]
+      },
+      "maxItems" : 200,
+      "minItems" : 1,
+      "type" : "array"
+    }
+  },
+  "required" : [ "batchId", "baseRevisionId", "baseContentHash", "operations" ],
+  "type" : "object"
+}

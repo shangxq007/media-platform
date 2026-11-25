@@ -16,7 +16,13 @@ public sealed interface OperationTarget permits
         OperationTarget.ResolvedClipScopeTarget,
         OperationTarget.GroupTarget,
         OperationTarget.SyncTarget,
-        OperationTarget.AudioTarget {
+        OperationTarget.AudioTarget, OperationTarget.TextElementTarget, OperationTarget.TransitionTarget {
+    record TextElementTarget(com.example.platform.timeline.canonical.TextElementId id) implements OperationTarget {
+        public TextElementTarget {
+            java.util.Objects.requireNonNull(id, "text element identity");
+        }
+    }
+
 
     @org.springframework.modulith.NamedInterface("operation")
     record TimelineTarget(String timelineId) implements OperationTarget {
@@ -60,6 +66,12 @@ public sealed interface OperationTarget permits
             if (audioMixInput == null) {
                 throw new IllegalArgumentException("audioMixInput required");
             }
+        }
+    }
+    @org.springframework.modulith.NamedInterface("operation")
+    record TransitionTarget(String transitionId) implements OperationTarget {
+        public TransitionTarget {
+            if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("Transition identity required");
         }
     }
 }

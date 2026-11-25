@@ -26,6 +26,7 @@ public record OperationDefinition(
     public enum TargetKind {
         TIMELINE,
         CLIP_SCOPE,
+        TRANSITION,
         GROUP,
         SYNC,
         AUDIO,
@@ -158,11 +159,11 @@ public record OperationDefinition(
                 OperationDefinitionId.of("timeline.transition.cross-dissolve.create"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionCreateParameters.class);
         public static final OperationDefinition UPDATE_CROSS_DISSOLVE = new OperationDefinition(
-                OperationDefinitionId.of("timeline.transition.cross-dissolve.update"), OperationDefinitionVersion.of(1, 0),
-                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionUpdateParameters.class);
+                OperationDefinitionId.of("timeline.transition.cross-dissolve.update"), OperationDefinitionVersion.of(2, 0),
+                Lifecycle.ACTIVE, TargetKind.TRANSITION, 1, 1, OperationParameters.TransitionUpdateParameters.class);
         public static final OperationDefinition DELETE_CROSS_DISSOLVE = new OperationDefinition(
-                OperationDefinitionId.of("timeline.transition.cross-dissolve.delete"), OperationDefinitionVersion.of(1, 0),
-                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionDeleteParameters.class);
+                OperationDefinitionId.of("timeline.transition.cross-dissolve.delete"), OperationDefinitionVersion.of(2, 0),
+                Lifecycle.ACTIVE, TargetKind.TRANSITION, 1, 1, OperationParameters.TransitionDeleteParameters.class);
         /** SPLIT: one clip -> two adjacent clips, no ripple/gap/overlap. */
         public static final OperationDefinition SPLIT_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.split"), OperationDefinitionVersion.of(1, 0),

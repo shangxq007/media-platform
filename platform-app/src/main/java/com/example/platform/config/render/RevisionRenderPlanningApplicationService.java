@@ -100,6 +100,30 @@ public class RevisionRenderPlanningApplicationService {
                 .getRevisionSnapshotPayload(projectId, tenantId, revisionId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Timeline revision snapshot unavailable: " + revisionId));
+        var inputs = planningInputs(tenantId, payload, request.extent());
+
+        // 2. renderJobId via the existing render-job creation boundary (D1).
+        RenderInitiator initiator = request.initiator();
+        RenderJobResponse job = renderJobService.createForGraphPreparation(
+                tenantId,
+                projectId,
+                new CreateRenderJobRequest(projectId, payload.snapshotId(), request.profile()),
+                initiator);
+        String renderJobId = job.id();
+        renderJobService.pinRevision(tenantId, projectId, renderJobId, revisionId);
+
+
+        return new RevisionRenderPlanningResult(
+                renderJobId, inputs.renderRequest(), inputs.executionPlanId(), inputs.sourceResolution(),
+                inputs.capabilityContext(), inputs.declarations());
+    }
+
+    record PlanningInputs(RenderRequest renderRequest, ExecutionPlanId executionPlanId,
+            SourceResolutionInput sourceResolution, CapabilityContext capabilityContext,
+            List<ProviderBoundaryCompatibilityDeclaration> declarations) {}
+
+    PlanningInputs planningInputs(String tenantId, RevisionSnapshotPayload payload,
+            com.example.platform.render.domain.renderplan.RenderExtent extent) {
         TimelineDocument document =
                 TimelineDocumentJsonSerializer.deserialize(payload.canonicalTimelineJson());
         List<ArtifactId> sourceArtifacts = RenderSourceArtifacts.artifactIds(document);
@@ -107,7 +131,7 @@ public class RevisionRenderPlanningApplicationService {
         // 3. RenderRequest with an INDEPENDENT correlation id (D2) and a real RENDER_MASTER output.
         RenderRequest renderRequest = new RenderRequest(
                 new RenderRequestId(UUID.randomUUID().toString()),
-                request.extent(),
+                extent,
                 List.of(RenderOutputRequirement.of(RenderOutputRole.RENDER_MASTER)));
 
         // 4. Independent execution plan identity (D3).
@@ -129,20 +153,7 @@ public class RevisionRenderPlanningApplicationService {
         List<ProviderBoundaryCompatibilityDeclaration> declarations =
                 providerInteroperabilityAuthority.declarations();
 
-        // 2. renderJobId via the existing render-job creation boundary (D1).
-        RenderInitiator initiator = request.initiator();
-        RenderJobResponse job = renderJobService.createForGraphPreparation(
-                tenantId,
-                projectId,
-                new CreateRenderJobRequest(projectId, payload.snapshotId(), request.profile()),
-                initiator);
-        String renderJobId = job.id();
-        renderJobService.pinRevision(tenantId, projectId, renderJobId, revisionId);
-
-
-        return new RevisionRenderPlanningResult(
-                renderJobId, renderRequest, executionPlanId, sourceResolution, capabilityContext,
-                declarations);
+        return new PlanningInputs(renderRequest, executionPlanId, sourceResolution, capabilityContext, declarations);
     }
 
     private SourceResolutionInput resolveSources(String tenantId, List<ArtifactId> sourceArtifacts) {

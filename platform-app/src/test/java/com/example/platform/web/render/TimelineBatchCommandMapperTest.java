@@ -1,12 +1,13 @@
 package com.example.platform.web.render;
 
+import com.example.platform.operation.application.TimelineOperationStep;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.operation.batch.OperationBatchRequest;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
-import com.example.platform.render.app.operation.TimelineBatchCommand;
-import com.example.platform.render.app.operation.TimelineBatchCommandMapper;
+import com.example.platform.operation.application.TimelineBatchCommand;
+import com.example.platform.operation.application.TimelineBatchCommandMapper;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import java.util.List;
@@ -25,7 +26,7 @@ class TimelineBatchCommandMapperTest {
 
     @Test
     void splitMapsItsRightIdentityAndExactTime() {
-        OperationRequest request = map(new TimelineBatchCommand.Operation(
+        OperationRequest request = map(new TimelineOperationStep(
                 "timeline.clip.split",
                 new TimelineBatchCommand.Target("clip-a", null, null, null, null),
                 Map.of("rightClipId", "clip-b", "splitTimelineTime", "2/1")));
@@ -38,7 +39,7 @@ class TimelineBatchCommandMapperTest {
 
     @Test
     void groupCreateMapsItsMembersAsTheClipScope() {
-        OperationRequest request = map(new TimelineBatchCommand.Operation(
+        OperationRequest request = map(new TimelineOperationStep(
                 "timeline.group.create", null,
                 Map.of("groupId", "group-1", "members", List.of("clip-a", "clip-b"))));
 
@@ -54,7 +55,7 @@ class TimelineBatchCommandMapperTest {
 
     @Test
     void audioOperationMapsItsMixInputTarget() {
-        OperationRequest request = map(new TimelineBatchCommand.Operation(
+        OperationRequest request = map(new TimelineOperationStep(
                 "audio.gain.set",
                 new TimelineBatchCommand.Target("clip-a", null, null, null, "video-main"),
                 Map.of("linear", 0.5)));
@@ -66,7 +67,7 @@ class TimelineBatchCommandMapperTest {
 
     @Test
     void groupMembershipOperationMapsItsGroupTarget() {
-        OperationRequest request = map(new TimelineBatchCommand.Operation(
+        OperationRequest request = map(new TimelineOperationStep(
                 "timeline.group.update-members",
                 new TimelineBatchCommand.Target(null, null, "group-1", null, null),
                 Map.of("membersToAdd", List.of("clip-a"), "membersToRemove", List.of())));
@@ -78,7 +79,7 @@ class TimelineBatchCommandMapperTest {
 
     @Test
     void syncRemoveMapsItsSyncTarget() {
-        OperationRequest request = map(new TimelineBatchCommand.Operation(
+        OperationRequest request = map(new TimelineOperationStep(
                 "timeline.sync.remove",
                 new TimelineBatchCommand.Target(null, null, null, "SYNC(clip-a,clip-b)", null),
                 Map.of()));
@@ -88,7 +89,7 @@ class TimelineBatchCommandMapperTest {
         assertEquals("SYNC(clip-a,clip-b)", target.syncIdentityKey());
     }
 
-    private OperationRequest map(TimelineBatchCommand.Operation operation) {
+    private OperationRequest map(TimelineOperationStep operation) {
         OperationBatchRequest batch = mapper.toBatchRequest("tenant-1", "project-1",
                 new TimelineBatchCommand("batch-1", BASE, HASH, null, List.of(operation)));
         assertEquals(1, batch.operations().size());

@@ -15,7 +15,13 @@ public record OperationBatchContext(
         String applyCommandId,
         CanonicalActor actor,
         AuthorizationDecision authorization,
-        String correlationId) {
+        String correlationId,
+        String expectedBatchDigest) {
+    public OperationBatchContext(String applyCommandId, CanonicalActor actor,
+            AuthorizationDecision authorization, String correlationId) {
+        this(applyCommandId, actor, authorization, correlationId, null);
+    }
+
 
     public OperationBatchContext {
         if (actor == null) {

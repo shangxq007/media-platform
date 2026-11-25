@@ -17,7 +17,7 @@ public sealed interface OperationTargetRequest permits
         OperationTargetRequest.GroupTargetRequest,
         OperationTargetRequest.SyncTargetRequest,
         OperationTargetRequest.AudioTargetRequest,
-        OperationTargetRequest.TextElementTargetRequest {
+        OperationTargetRequest.TextElementTargetRequest, OperationTargetRequest.TransitionTargetRequest {
 
     /** Exact Timeline aggregate target; never a mutable-latest alias. */
     @org.springframework.modulith.NamedInterface("invocation")
@@ -77,12 +77,22 @@ public sealed interface OperationTargetRequest permits
 
     /** ROADMAP_19 (C37): Text operation target — exact authored TextElement. */
     @org.springframework.modulith.NamedInterface("invocation")
-    record TextElementTargetRequest(com.example.platform.timeline.canonical.TextElementId textElementId)
+    record TextElementTargetRequest(String timelineId, com.example.platform.timeline.canonical.TextElementId textElementId)
             implements OperationTargetRequest {
+        public TextElementTargetRequest(com.example.platform.timeline.canonical.TextElementId textElementId) {
+            this(null, textElementId);
+        }
+
         public TextElementTargetRequest {
             if (textElementId == null) {
                 throw new IllegalArgumentException("textElementId required");
             }
+        }
+    }
+    @org.springframework.modulith.NamedInterface("invocation")
+    record TransitionTargetRequest(String transitionId) implements OperationTargetRequest {
+        public TransitionTargetRequest {
+            if (transitionId == null || transitionId.isBlank()) throw new IllegalArgumentException("Transition identity required");
         }
     }
 }

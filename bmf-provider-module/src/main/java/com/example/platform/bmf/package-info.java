@@ -7,7 +7,7 @@
         ,
             "shared"
         ,
-            "execution :: compatibility",
+            "execution :: declaration", "execution :: compatibility",
             "execution :: composition",
             "execution :: domain",
             "execution :: planning",

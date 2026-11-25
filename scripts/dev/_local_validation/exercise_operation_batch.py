@@ -79,6 +79,21 @@ insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role
 commit;'''
 (app / 'batch-seed.sql').write_text(seed)
 psql(seed)
+psql("""
+insert into identity.workspace(id,tenant_id,name,created_at,updated_at) values ('workspace-private','tenant-fr-e2e','Other',now(),now());
+insert into identity.project(id,tenant_id,workspace_id,name,created_at) values
+ ('project-private','tenant-fr-e2e','workspace-private','Private',now()),('project-peer','tenant-fr-e2e','workspace-fr-e2e','Peer',now());
+insert into identity.account(id,issuer,subject,status,created_at) values ('reader-account','http://127.0.0.1:18081','reader-subject','ACTIVE',now());
+insert into identity."user"(id,tenant_id,account_id,username,email,role,status,created_at) values
+ ('reader-user','tenant-fr-e2e','reader-account','reader','reader@example.invalid','MEMBER','ACTIVE',now());
+insert into identity.workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values
+ ('reader-member','workspace-fr-e2e','reader-user','MEMBER','ACTIVE',now(),now());
+insert into identity.role(id,role_key,name,scope,created_at) values ('reader-role','G4_READER','Reader','WORKSPACE',now());
+insert into identity.role_permission(id,role_id,permission_id,created_at) select
+ 'reader-read','reader-role',id,now() from identity.permission where permission_key='READ';
+insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at)
+ values ('read-assignment','tenant-fr-e2e','workspace-fr-e2e','reader-user','reader-role',now());
+""")
 
 encode = lambda data: base64.urlsafe_b64encode(data).decode().rstrip('=')
 now = int(time.time())
@@ -90,6 +105,14 @@ signature = subprocess.run(['openssl', 'dgst', '-sha256', '-sign', str(R / '07-r
 token = unsigned + '.' + encode(signature)
 (app / 'token').write_text(token)
 (app / 'token').chmod(0o600)
+
+reader_claims = payload | {'sub':'reader-subject','sid':'reader-session'}
+reader_unsigned = unsigned.split('.')[0]+'.'+encode(json.dumps(reader_claims).encode())
+reader_sig = subprocess.run(['openssl','dgst','-sha256','-sign',str(R/'07-runtime/private/oidc-private.pem')],
+                            env=env,input=reader_unsigned.encode(),capture_output=True,check=True).stdout
+reader_path = app/'reader-token'
+reader_path.touch(mode=0o600)
+reader_path.write_text(reader_unsigned+'.'+encode(reader_sig))
 
 client = app / 'batch-client.py'
 client.write_text(r'''import json, pathlib, sys, time, urllib.request, urllib.error, uuid
@@ -106,7 +129,7 @@ def call(path,data=None,headers=None,auth=True):
     return {'status':status,'body':body.decode(errors='replace')}
 def required(name,result,expected):
     results[name]=result;(root/'batch-partial-results.json').write_text(json.dumps(results,indent=2))
-    assert result['status'] in expected,(name,result)
+    assert result['status'] in expected,(name,result['status'],result['body'][:1000])
     return json.loads(result['body']) if result['body'] else {}
 def upload(filename,key):
     boundary='owned-batch-'+uuid.uuid4().hex
@@ -139,33 +162,54 @@ operations=[add('clip-red',red,red_stream,'2','0','2'),
              'parameters':{'delta':'2/1','absolute':True}},
             {'definitionId':'timeline.trim','target':{'clipId':'clip-blue'},
              'parameters':{'delta':'1/2','edge':'END'}}]
+aspect={'format':'composition-aspect-rational-v1','numerator':4,'denominator':3}
+source={'artifactId':red['artifactId'],'contentDigest':red['contentDigest'],'streamId':red_stream}
+operations.append({'definitionId':'timeline.composition.aspect.set','version':'2.0',
+                   'parameters':{'aspectRatio':aspect},'input':source})
 body={'batchId':'batch-add-move-trim-1','baseRevisionId':revision,'baseContentHash':content,
       'message':'Batch add, move and trim','operations':operations}
-preview=required('batch_preview',call(project+'/timeline-operations/batch/preview',body),{200})
+definitions=required('definitions',call(project+'/semantic/operations'),{200})
+move=required('describe_move',call(project+'/semantic/operations/timeline.move/1.0'),{200})
+assert move in definitions and move['target']=='CLIP_SCOPE' and move['parameters']['delta']['required']
+preview=required('batch_preview',call(project+'/timeline-operations/batch/v2/preview',body),{200})
 assert preview['status']=='PLANNED' and preview['noOp'] is False,preview
-assert len(preview['steps'])==4 and [step['definitionId'] for step in preview['steps']]==[
-    'timeline.media-clip.add','timeline.media-clip.add','timeline.move','timeline.trim'],preview['steps']
-assert len(preview['outcomes'])==4 and all(item['status']=='APPLIED' for item in preview['outcomes']),preview['outcomes']
-applied=required('batch_apply',call(project+'/timeline-operations/batch/apply',body),{201})
+assert len(preview['steps'])==5 and [step['definitionId'] for step in preview['steps']]==[
+    'timeline.media-clip.add','timeline.media-clip.add','timeline.move','timeline.trim','timeline.composition.aspect.set'],preview['steps']
+assert len(preview['outcomes'])==5 and all(item['status']=='APPLIED' for item in preview['outcomes']),preview['outcomes']
+assert preview['steps'][-1]['input']==source
+reader={'Authorization':'Bearer '+(root/'reader-token').read_text()}
+required('reader_discovery',call(project+'/semantic/operations',headers=reader),{200})
+required('reader_apply_denied',call(project+'/timeline-operations/batch/v2/apply',body,reader|{'If-Match':'"'+preview['batchDigest']+'"'}),{403})
+required('foreign_tenant',call(project.replace('tenant-fr-e2e','foreign-tenant')+'/semantic/operations'),{403})
+required('foreign_workspace',call(project.replace('project-fr-e2e','project-private')+'/semantic/operations'),{403})
+required('peer_revision_denied',call(project.replace('project-fr-e2e','project-peer')+'/timeline-operations/batch/v2/preview',body),{404})
+for name,step in [('unknown',operations[-1]|{'unknown':False}),('version',operations[-1]|{'version':'3.9'}),
+                  ('null',operations[-1]|{'input':None}),('extra_params',operations[-1]|{'parameters':{'aspectRatio':aspect,'other':1}})]:
+    required('reject_'+name,call(project+'/timeline-operations/batch/v2/preview',body|{'operations':[step]}),{400,422})
+wrong_source=operations[-1]|{'input':source|{'contentDigest':'0'*64}}
+required('source_substitution',call(project+'/timeline-operations/batch/v2/preview',body|{'operations':[wrong_source]}),{422})
+required('missing_confirmation',call(project+'/timeline-operations/batch/v2/apply',body),{400})
+required('wrong_confirmation',call(project+'/timeline-operations/batch/v2/apply',body,{'If-Match':'"'+('0'*64)+'"'}),{409})
+applied=required('batch_apply',call(project+'/timeline-operations/batch/v2/apply',body,{'If-Match':chr(34)+preview['batchDigest']+chr(34)}),{201})
 assert applied['status']=='APPLIED' and applied['replayed'] is False,applied
 assert applied['baseRevisionId']==revision and applied['parentRevisionId']==revision,applied
 assert applied['newRevisionId'] and applied['newRevisionId']!=revision,applied
 assert applied['batchDigest']==preview['batchDigest'],(applied,preview)
 new_revision=applied['newRevisionId'];new_content=applied['newContentHash']
-replay=required('batch_replay',call(project+'/timeline-operations/batch/apply',body),{200})
+replay=required('batch_replay',call(project+'/timeline-operations/batch/v2/apply',body,{'If-Match':chr(34)+preview['batchDigest']+chr(34)}),{200})
 assert replay['replayed'] is True and replay['newRevisionId']==new_revision,replay
 conflict=body|{'operations':[add('clip-red',red,red_stream,'2','0','2'),
     {'definitionId':'timeline.move','target':{'clipId':'clip-red'},'parameters':{'delta':'1/1','absolute':True}}]}
-required('batch_id_conflict',call(project+'/timeline-operations/batch/apply',conflict),{409})
+required('batch_id_conflict',call(project+'/timeline-operations/batch/v2/apply',conflict,{'If-Match':chr(34)+preview['batchDigest']+chr(34)}),{409})
 failed=body|{'batchId':'batch-fail-1','operations':[{'definitionId':'timeline.delete',
     'target':{'clipId':'clip-missing'},'parameters':{}}]}
-failed_result=required('batch_step_failure',call(project+'/timeline-operations/batch/apply',failed),{422})
+failed_result=required('batch_step_failure',call(project+'/timeline-operations/batch/v2/preview',failed),{422})
 assert 'STEP_' in failed_result['errorCode'] or failed_result['errorCode'] in (
     'STEP_RESOLUTION_FAILED','STEP_PLAN_FAILED'),failed_result
 text_batch=body|{'batchId':'batch-text-1','operations':[{'definitionId':'timeline.text.add',
     'parameters':{'text':'owned'}}]}
-text_result=required('batch_text_rejected',call(project+'/timeline-operations/batch/apply',text_batch),{422})
-assert text_result['errorCode']=='UNSUPPORTED_BATCH_OPERATION',text_result
+text_result=required('batch_text_rejected',call(project+'/timeline-operations/batch/v2/preview',text_batch),{400})
+assert text_result['errorCode']=='INVALID_REQUEST',text_result
 head=required('head',call('/api/timeline-git/products/project-fr-e2e/revisions/current'),{200})
 assert head['revisionId']==new_revision,(head,new_revision)
 snapshot=required('canonical_snapshot',call('/api/render/projects/project-fr-e2e/timeline/revisions/'+new_revision+'/snapshot'),{200})
@@ -175,8 +219,29 @@ assert [clip['clipId'] for clip in clips]==['clip-red','clip-blue'],clips
 by={clip['clipId']:clip for clip in clips}
 assert by['clip-red']['startTime'] in ('0','0/1') and by['clip-red']['endTime'] in ('2','2/1'),by['clip-red']
 assert by['clip-blue']['startTime'] in ('2','2/1') and by['clip-blue']['endTime'] in ('5/2','2.5'),by['clip-blue']
+extent={'startMillis':0,'endMillis':2500,'frameRateNumerator':24,'frameRateDenominator':1,'width':320,'height':240}
+def barrier(stage):
+    (root/(stage+'.ready')).touch()
+    deadline=time.monotonic()+90
+    while not (root/(stage+'.continue')).exists():
+        if time.monotonic()>deadline: raise RuntimeError('Witness timeout')
+        time.sleep(.1)
+barrier('before-query')
+query='/api/render/projects/project-fr-e2e/revisions/'+new_revision+'/feasibility'
+params={'contentHash':new_content,'extent':extent}
+supported=required('static_ffmpeg',call(query,params),{200})
+assert supported['feasible'] and supported['requiredCapabilities'] and supported['logicalFingerprint']
+assert supported==required('repeat_static',call(query,params),{200})
+bad=required('static_raster_rejection',call(query,params|{'extent':extent|{'width':320,'height':320}}),{200})
+assert not bad['feasible'] and bad['reason'].startswith('OUTPUT_RASTER')
+required('stale_feasibility',call(query,params|{'contentHash':content}),{409})
+from urllib.parse import urlencode
+objects=required('clip_page',call(project+'/semantic/revisions/'+new_revision+'/objects/CLIP?'+urlencode(
+    {'contentHash':new_content,'limit':1})),{200})
+assert len(objects['items'])==1 and objects['nextOffset']==1
+barrier('after-query')
 submitted=required('formal_render',call('/api/render-jobs',{'revisionId':new_revision,
-    'extent':{'startMillis':0,'endMillis':2500,'frameRateNumerator':24,'frameRateDenominator':1},
+    'extent':extent,
     'outputFormat':'MP4','profile':'default'}),{201})
 results['snapshot']={'status':201,'body':json.dumps({'revisionId':new_revision})}
 (root/'http-results.json').write_text(json.dumps(results,indent=2))
@@ -187,7 +252,26 @@ print(json.dumps({'revisionId':new_revision,'contentHash':new_content,'renderJob
 
 argv = prefix + ['/usr/bin/python3', '-B', str(client), str(app)]
 with (app / 'batch-http.stdout').open('w') as out, (app / 'batch-http.stderr').open('w') as err:
-    process = subprocess.run(argv, env=env, stdout=out, stderr=err, timeout=600)
+    process = subprocess.Popen(argv, env=env, stdout=out, stderr=err)
+    counts = {}
+    for stage in ('before-query','after-query'):
+        deadline = time.monotonic() + 300
+        while not (app / (stage+'.ready')).exists() and process.poll() is None:
+            if time.monotonic() > deadline: raise RuntimeError('HTTP witness timeout: '+stage)
+            time.sleep(.2)
+        if process.poll() is not None: break
+        tables = ['timeline.timeline_revision','render.render_job','artifacts.artifact','render.render_graph_execution','worker_fabric.wf_execution_attempt',
+                  'entitlement.quota_usage','entitlement.quota_usage_operation','billing.credit_reservation']
+        counters = psql('select json_build_array('+','.join('(select count(*) from '+t+')' for t in tables)+');')
+        temporal_id = (R/'07-runtime/temporal-id').read_text().strip()
+        workflows = json.loads(subprocess.check_output(base+['exec',temporal_id,'temporal','--address','127.0.0.1:7233',
+            '--namespace','f8-pg18-'+RUN_ID,'workflow','list','--output','json'],env=podenv,timeout=30))
+        counts[stage] = dict(zip(tables,json.loads(counters))) | {'workflows': len(workflows if isinstance(workflows,list) else workflows['executions'])}
+        (app / (stage+'.continue')).touch()
+    process.wait(timeout=600)
+    if process.returncode == 0:
+        assert counts['before-query']==counts['after-query'], counts
+        (R/'04-tests/semantic-query-counts.json').write_text(json.dumps(counts,indent=2))
 (app / 'batch-http.command.json').write_text(json.dumps({'argv': argv, 'cwd': str(R), 'exit_code': process.returncode}, indent=2) + '\n')
 print('BATCH_HTTP_EXIT', process.returncode, flush=True)
 if process.returncode:
@@ -234,7 +318,8 @@ assert revision_facts['head'] == out['revisionId'], revision_facts
 assert revision_facts['batchRevision']['parent_revision_id'] == out['initRevisionId'], revision_facts
 assert revision_facts['batchRevision']['message'] == 'Batch add, move and trim', revision_facts
 provenance = revision_facts['batchRevision']['change_summary_json']
-assert '"formatVersion":"operation-batch-provenance-v1"' in provenance, provenance
+assert '"formatVersion":"operation-batch-provenance-v2"' in provenance, provenance
+assert json.loads(provenance)['steps'][-1]['input']['kind']=='source-display-aspect-v1'
 assert provenance.index('timeline.media-clip.add') < provenance.index('timeline.move') < provenance.index('timeline.trim'), provenance
 assert len(revision_facts['batchCommands']) == 1, revision_facts
 command = revision_facts['batchCommands'][0]

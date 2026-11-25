@@ -135,3 +135,10 @@ tasks.register<Test>("renderIntegrationTest") {
 
 // Both official application assemblies are required build deliverables.
 tasks.named("assemble") { dependsOn(ffmpegWorkerBootJar) }
+
+tasks.register<JavaExec>("exportSemanticContract") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.example.platform.web.render.SemanticWireContractTest")
+    args(rootProject.file("contracts/http/media-api").absolutePath)
+}

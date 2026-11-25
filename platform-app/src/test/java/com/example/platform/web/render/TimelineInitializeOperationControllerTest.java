@@ -2,7 +2,7 @@ package com.example.platform.web.render;
 
 import com.example.platform.operation.invocation.*;
 import com.example.platform.operation.operation.*;
-import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
+import com.example.platform.operation.application.TimelineMediaClipOperationService;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import java.util.Set;

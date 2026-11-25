@@ -9,7 +9,7 @@ import com.example.platform.operation.invocation.*;
 import com.example.platform.render.api.GraphRenderLifecycle;
 import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.render.app.RenderJobService;
-import com.example.platform.render.app.operation.TimelineClipEditCommand;
+import com.example.platform.operation.application.TimelineClipEditCommand;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;

@@ -12,9 +12,14 @@ public record BatchStepDescriptor(
         String parameterDigest,
         String targetIdentity,
         String stepPlanDigest,
-        String candidateHash) {
+        String candidateHash,
+        java.util.List<Change> changes,
+        com.example.platform.operation.operation.OperationParameters.SourceStreamInput input) {
+    public record Change(String identity, boolean primary) {}
+
 
     public BatchStepDescriptor {
+        changes = java.util.List.copyOf(changes);
         if (index < 0) {
             throw new IllegalArgumentException("step index must be non-negative");
         }

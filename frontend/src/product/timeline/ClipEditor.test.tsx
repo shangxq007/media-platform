@@ -12,7 +12,7 @@ vi.mock('../../foundation/projectContext', () => ({
 
 vi.mock('../../api/formal-render', () => ({
   FormalRenderAPI: {
-    snapshot: vi.fn(), previewOperation: vi.fn(), applyOperation: vi.fn(), head: vi.fn(),
+    snapshot: vi.fn(), previewOperation: vi.fn(), applyConfirmedClip: vi.fn(), applyOperation: vi.fn(), head: vi.fn(),
   },
 }))
 
@@ -43,10 +43,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   api.snapshot.mockResolvedValue(snapshot)
   api.previewOperation.mockResolvedValue({
-    status: 'VALID', definitionId: 'timeline.trim', clipId: 'clip-0', type: 'TRIM_CLIP',
-    edge: 'START', delta: '2/1',
+    batchDigest: 'a'.repeat(64), steps: [{ changes: [{ identity: 'clip-0', primary: true }] }],
   })
   api.applyOperation.mockResolvedValue({ revisionId: 'revision-R1', contentHash: 'B'.repeat(42) + 'E=' })
+  api.applyConfirmedClip.mockResolvedValue({ revisionId: 'revision-R1', contentHash: 'B'.repeat(42) + 'E=' })
   api.head.mockResolvedValue({ ...head, revisionId: 'revision-R1', contentHash: 'B'.repeat(42) + 'E=' } as never)
 })
 
@@ -73,7 +73,7 @@ describe('ClipEditor trim interaction', () => {
     expect(command.edge).toBe('START')
     expect(command.delta).toBe('2/1')
     expect(command.baseRevisionId).toBe(head.revisionId)
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.getByText(/Preview valid/)).toBeTruthy())
   })
 
@@ -88,9 +88,10 @@ describe('ClipEditor trim interaction', () => {
     const apply = screen.getByRole('button', { name: 'Apply trim' }) as HTMLButtonElement
     await waitFor(() => expect(apply.disabled).toBe(false))
     fireEvent.click(apply)
-    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
-    expect(api.applyOperation.mock.calls[0][2].commandId).toBe(api.previewOperation.mock.calls[0][2].commandId)
-    expect(api.applyOperation.mock.calls[0][2].delta).toBe('1/1')
+    await waitFor(() => expect(api.applyConfirmedClip).toHaveBeenCalledTimes(1))
+    expect(api.applyConfirmedClip.mock.calls[0][2].commandId).toBe(api.previewOperation.mock.calls[0][2].commandId)
+    expect(api.applyConfirmedClip.mock.calls[0][3]).toBe('a'.repeat(64))
+    expect(api.applyConfirmedClip.mock.calls[0][2].delta).toBe('1/1')
     await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledTimes(1))
     expect(await screen.findByText(/Trim applied at revision revision-R1/)).toBeTruthy()
   })
@@ -104,7 +105,7 @@ describe('ClipEditor trim interaction', () => {
     fireEvent.pointerUp(handle, { clientX: 260, pointerId: 1 })
     await waitFor(() => expect(screen.getByRole('button', { name: 'Cancel trim' })).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Cancel trim' }))
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
     expect(await screen.findByText(/No revision was written/)).toBeTruthy()
   })
 
@@ -119,7 +120,7 @@ describe('ClipEditor trim interaction', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
     expect(screen.getByRole('alert').textContent).toMatch(/positive media range/)
     expect((screen.getByRole('button', { name: 'Apply trim' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
   })
 
   it('refuses to apply when the authoritative revision changed after preview', async () => {

@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.observability.monitoring.SentryMonitoringService;
-import com.example.platform.render.app.operation.TextOperationService;
-import com.example.platform.render.app.operation.TextOperationService.TextOperationPreview;
-import com.example.platform.render.app.operation.TextOperationService.TextOperationResult;
-import com.example.platform.render.app.operation.TimelineOperationException;
+import com.example.platform.operation.application.TextOperationService;
+import com.example.platform.operation.application.TextOperationService.TextOperationPreview;
+import com.example.platform.operation.application.TextOperationService.TextOperationResult;
+import com.example.platform.operation.application.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.GlobalExceptionHandler;

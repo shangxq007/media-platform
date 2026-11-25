@@ -1,4 +1,4 @@
-package com.example.platform.render.app.planner;
+package com.example.platform.operation.applicationner;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class Pre21PlannerPurityGuardTest {
 
-    private static final String PLANNER_PACKAGE = "com.example.platform.render.app.planner";
+    private static final String PLANNER_PACKAGE = "com.example.platform.operation.applicationner";
 
     private static final List<String> FORBIDDEN_RUNTIME_SYMBOLS = List.of(
             "ProductRuntimeService",

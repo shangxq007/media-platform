@@ -1,4 +1,4 @@
-package com.example.platform.render.app.planner;
+package com.example.platform.operation.applicationner;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,6 @@
 package com.example.platform.web.render;
 
-import com.example.platform.render.app.operation.AlignmentOperationService;
+import com.example.platform.operation.application.AlignmentOperationService;
 import com.example.platform.timeline.semantics.relationship.AlignmentAttributeValue;
 import org.junit.jupiter.api.Test;
 

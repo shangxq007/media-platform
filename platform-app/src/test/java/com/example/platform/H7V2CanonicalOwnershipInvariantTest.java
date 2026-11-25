@@ -341,18 +341,18 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
                                 List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream(
                                         mediaStreamId, com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO,
                                         MediaTime.ofTicks(20, 1))))));
-        var operationService = new com.example.platform.render.app.operation.TimelineMediaClipOperationService(
+        var operationService = new com.example.platform.operation.application.TimelineMediaClipOperationService(
                 saveService,
                 sourceValidator,
                 new com.example.platform.timeline.app.InternalTimelineValidationService(),
                 request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("test"),
-                new com.example.platform.render.app.plan.OperationPlanApplyService(saveService));
-        var command = new com.example.platform.render.app.operation.AddMediaClipCommand(
+                new com.example.platform.operation.application.OperationPlanApplyService(saveService));
+        var command = new com.example.platform.operation.application.AddMediaClipCommand(
                 base.revisionId(), base.semanticContext().timelineContentDigest(),
                 "video-main", "clip-h7", mediaAssetId, mediaStreamId,
                 artifactId, contentDigest,
                 "10/1", "20/1", "0/1", "10/1", 1, 1,
-                com.example.platform.render.app.operation.AddMediaClipCommand.Direction.FORWARD);
+                com.example.platform.operation.application.AddMediaClipCommand.Direction.FORWARD);
 
         var preview = operationService.preview("ta", project, command, actor);
         assertEquals(mediaAssetId, preview.sourceBinding().mediaAssetId().value());
@@ -367,7 +367,7 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
                 com.example.platform.operation.operation.OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
                 com.example.platform.operation.operation.OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
                 typedParameters);
-        String expectedFingerprint = com.example.platform.render.app.plan.OperationPlanApplyService.fingerprint(
+        String expectedFingerprint = com.example.platform.operation.application.OperationPlanApplyService.fingerprint(
                 preview.planDigest(),
                 new com.example.platform.operation.plan.TargetRevisionRef(RevisionRef.MAIN_REF),
                 base.revisionId(), project, "ta", actor.actorId(),
