@@ -19,8 +19,8 @@ public class ProviderBindingException extends RuntimeException {
         /** No supplied candidate is statically feasible for one physical plan unit. */
         UNIT_UNBINDABLE,
 
-        /** More than one candidate is statically feasible and V1 defines no selection policy. */
-        UNIT_AMBIGUOUS,
+        /** The bounded policy could not establish a complete homogeneous assignment. */
+        NO_HOMOGENEOUS_BINDING,
 
         /** The provider-local composition evaluator did not prove ALLOWED for one unit. */
         COMPOSITION_FORBIDDEN,

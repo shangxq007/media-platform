@@ -23,8 +23,7 @@ import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 /**
- * BMF-PROVIDER-INTEGRATION-001: BMF's eight declarations, its own capability profile/contract (the
- * frozen BMF constants are empty), and its declared-but-not-yet-integrated runtime.
+ * BMF-PROVIDER-INTEGRATION-001: BMF's shared native identity, published capability contract and Worker admission requirements.
  */
 class BmfProviderExtensionTest {
 
@@ -34,7 +33,7 @@ class BmfProviderExtensionTest {
     void identityComesFromTheFrozenBmfConstants() {
         assertThat(EXTENSION.pluginId()).isEqualTo("media.bmf.cpu");
         assertThat(EXTENSION.pluginVersion()).isEqualTo(BmfCpuProvider.VERSION.value());
-        assertThat(EXTENSION.providerDescriptor()).isSameAs(BmfCpuProvider.DESCRIPTOR);
+        assertThat(EXTENSION.providerDescriptor()).isEqualTo(BmfCpuProvider.DESCRIPTOR);
         assertThat(EXTENSION.providerBindingPin()).isSameAs(BmfCpuProvider.BINDING);
         assertThat(EXTENSION.providerStaticCompatibility())
                 .isSameAs(BmfCpuProvider.STATIC_COMPATIBILITY);

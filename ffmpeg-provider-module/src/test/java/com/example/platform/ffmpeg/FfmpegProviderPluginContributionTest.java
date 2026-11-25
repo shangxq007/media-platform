@@ -43,7 +43,7 @@ class FfmpegProviderPluginContributionTest {
     void contribution_creates_only_the_existing_typed_provider_native_binding() {
         ProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
         ProviderPluginRuntimeContext context = new ProviderPluginRuntimeContext(
-                Path.of("/usr/bin/ffmpeg"), temp.resolve("workspace"),
+                Path.of(System.getProperty("media.platform.ffmpeg.binary-dir"), "ffmpeg"), temp.resolve("workspace"),
                 Duration.ofSeconds(10), 1024 * 1024, SandboxCancellation.never(), null);
 
         assertThat(contribution.createRuntimeBinding(context)).isNotNull();

@@ -126,7 +126,12 @@ class RevisionRenderPlanningAndBindingServiceTest {
 
         RevisionRenderPlanningAndBindingService service = new RevisionRenderPlanningAndBindingService(
                 phase3, revisionSaveService, revisionQueryService, effectStore, catalog,
-                render20, plan21, bind22, mock(com.example.platform.render.api.GraphRenderLifecycle.class));
+                render20, plan21, bind22, mock(com.example.platform.render.api.GraphRenderLifecycle.class),
+                    (tenant, project, id, digest) -> java.util.Optional.of(
+                        new com.example.platform.artifact.contract.ArtifactSourceFacts(MediaTime.ofMillis(2000),
+                                List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream(
+                                        "stream-0", com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO,
+                                        MediaTime.ofMillis(2000))), new com.example.platform.artifact.contract.ArtifactSourceFacts.StreamCounts(1, 0))));
 
         // --- stubs ---------------------------------------------------------
         String json = TimelineDocumentJsonSerializer.serialize(document());
@@ -195,7 +200,8 @@ class RevisionRenderPlanningAndBindingServiceTest {
         ArgumentCaptor<List<com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration>>
                 declarationsCaptor = ArgumentCaptor.forClass(List.class);
         verify(bind22, times(1)).bind(
-                planCaptor.capture(), candidatesCaptor.capture(), declarationsCaptor.capture());
+                planCaptor.capture(), candidatesCaptor.capture(), declarationsCaptor.capture(),
+                org.mockito.ArgumentMatchers.eq(com.example.platform.execution.binding.ProviderSelectionPolicy.PREFERRED));
         assertThat(planCaptor.getValue()).isSameAs(physicalPlan);
         assertThat(candidatesCaptor.getValue()).isEqualTo(projected);
         assertThat(declarationsCaptor.getValue()).isEqualTo(phase3Result.get().declarations());

@@ -2,6 +2,8 @@ plugins {
     id("java-library")
 }
 
+apply(from = rootProject.file("gradle/provider-implementation.gradle.kts"))
+
 group = "com.example.platform"
 version = "1.3.0"
 
@@ -25,8 +27,6 @@ dependencies {
     implementation(project(":worker-fabric-module"))
     implementation(project(":sandbox-isolation-module"))
     implementation(project(":extension-module"))
-    // ABI companion referenced by canonical execution-plan record signatures.
-    compileOnly(project(":render-module"))
     // #20 timed-text rasterization lowering reads the typed TimedTextMaterializationRequirement
     // and its authored StyledText/TextFrame values (no cycle: font-text -> shared-kernel only).
     compileOnly(project(":font-text-module"))

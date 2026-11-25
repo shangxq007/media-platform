@@ -34,7 +34,7 @@ public final class BoundGraphRederivation {
                 .bind(
                         inputs.physicalPlan(),
                         inputs.candidates(),
-                        inputs.transitionDeclarations())
+                        inputs.transitionDeclarations(), inputs.selectionPolicy())
                 .executableTaskGraph();
         String expected = inputs.expectedExecutableTaskGraphDigest().sha256Hex();
         String actual = graph.digest().sha256Hex();

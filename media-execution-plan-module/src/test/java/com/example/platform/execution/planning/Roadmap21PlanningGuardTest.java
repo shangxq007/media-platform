@@ -378,7 +378,7 @@ class Roadmap21PlanningGuardTest {
         // RAW text (comments included): a compatibility constructor/factory
         // declaration is surface evidence even in javadoc form
         String rn = Files.readString(repoRoot().resolve(
-                "render-module/src/main/java/com/example/platform/render/domain/renderplan/RenderNode.java"));
+                "render-plan-contracts/src/main/java/com/example/platform/render/domain/renderplan/RenderNode.java"));
         assertFalse(rn.contains("Compatibility constructor"),
                 "RENDER_NODE_COMPATIBILITY_CONSTRUCTOR_COUNT=0");
         assertFalse(rn.contains("Backwards-compatible"),
@@ -450,7 +450,7 @@ class Roadmap21PlanningGuardTest {
                 "exact #20-owned projection used");
         // no float/double/millisecond text-time conversion in the BRIDGE
         String projection = stripComments(Files.readString(repoRoot().resolve(
-                "render-module/src/main/java/com/example/platform/render/domain/renderplan/ExactTextTimelineTimeProjection.java")));
+                "render-plan-contracts/src/main/java/com/example/platform/render/domain/renderplan/ExactTextTimelineTimeProjection.java")));
         assertFalse(projection.contains("doubleValue()") || projection.contains("toDouble")
                         || projection.contains("BigDecimal") || projection.contains("toMillis"),
                 "TIMED_TEXT_FLOAT_TIME_CONVERSION_COUNT=0 — bridge is exact rational only");

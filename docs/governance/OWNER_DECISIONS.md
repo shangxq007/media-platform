@@ -26,6 +26,8 @@
 | OD-018 | Use one PostgreSQL application database with domain schemas, one write owner for each business state, one Flyway chain and one jOOQ generator. Preserve cross-domain local transactions. | ACTIVE | Persistence and execution | API, Worker, migration and read-only access have distinct privileges. |
 | OD-019 | Codex freezes and pushes the task candidate. ChatGPT independently reviews the remote source and retained evidence. | ACTIVE | Candidate delivery | Owner acceptance and integration require separate authorization. Add no new machine architecture gates at this stage. |
 | OD-020 | Preserve the canonical applied V1 and upgrade it through V2. Transition the known historical V1 into an independently initialized target in isolation. | ACTIVE | G2.2 database lineages | Match both catalog and history. Shared rollout requires separate authorization. |
+| OD-021 | Binding evaluates exact capability support and interoperability across the plan, then applies a deterministic versioned policy. Prefer BMF among legal choices and honor explicit restrictions. | ACTIVE | #22, Restore, Worker Fabric | A replacement Worker must execute the pinned implementation and distribution. Provider substitution requires a new binding. |
+| OD-022 | High-frequency media analysis prefers local pretrained models. External API capabilities complement the same platform execution foundation. Optimize sharing, fusion and sampling only under preserved semantics and result ownership. | ACTIVE | Media Analysis Foundation and performance measurement | Model weights, versions, licenses and hardware remain open. OD-015 governs observations and independent result commitment. |
 
 ## Change control
 

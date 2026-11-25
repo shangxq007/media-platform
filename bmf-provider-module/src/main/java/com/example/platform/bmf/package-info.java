@@ -3,7 +3,6 @@
         displayName = "Bmf",
         allowedDependencies = {
             "render :: renderplan",
-            "timeline :: effect",
             "workerfabric :: providernative"
         ,
             "shared"

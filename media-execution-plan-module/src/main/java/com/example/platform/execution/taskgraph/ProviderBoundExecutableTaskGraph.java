@@ -15,6 +15,7 @@ import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPla
 import com.example.platform.graph.api.DirectedGraphView;
 import com.example.platform.graph.api.GraphAlgorithms;
 import com.example.platform.graph.result.TopologicalOrderResult;
+import com.example.platform.execution.binding.ProviderSelectionPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,7 +36,7 @@ import java.util.TreeSet;
  */
 public final class ProviderBoundExecutableTaskGraph {
 
-    public static final String GRAPH_SCHEMA_VERSION = "roadmap22.provider-bound-etg.v2";
+    public static final String GRAPH_SCHEMA_VERSION = "roadmap22.provider-bound-etg.v3";
 
     private final PhysicalExecutionPlan sourcePhysicalPlan;
     private final ProviderFeasibilityView providerFeasibilityView;
@@ -79,6 +80,16 @@ public final class ProviderBoundExecutableTaskGraph {
             ProviderFeasibilityView providerFeasibilityView,
             Collection<ExecutableTask> tasks,
             Collection<ExecutionArtifactBoundary> executionArtifactBoundaries) {
+        return derive(sourcePhysicalPlan, providerFeasibilityView, tasks, executionArtifactBoundaries,
+                ProviderSelectionPolicy.PREFERRED);
+    }
+
+    public static ProviderBoundExecutableTaskGraph derive(
+            PhysicalExecutionPlan sourcePhysicalPlan,
+            ProviderFeasibilityView providerFeasibilityView,
+            Collection<ExecutableTask> tasks,
+            Collection<ExecutionArtifactBoundary> executionArtifactBoundaries,
+            ProviderSelectionPolicy policy) {
         Objects.requireNonNull(sourcePhysicalPlan, "sourcePhysicalPlan");
         Objects.requireNonNull(providerFeasibilityView, "providerFeasibilityView");
         Objects.requireNonNull(tasks, "tasks");
@@ -154,7 +165,7 @@ public final class ProviderBoundExecutableTaskGraph {
         validateAcyclic(canonicalTasks, externalDependencies);
 
         String graphCanonical = ExecutableTaskCanonicalCodec.graphSemantics(
-                GRAPH_SCHEMA_VERSION,
+                GRAPH_SCHEMA_VERSION, policy.canonical(),
                 sourcePhysicalPlan.formatVersion(),
                 sourcePhysicalPlan.schemaVersion().value(),
                 sourcePhysicalPlan.planFingerprint().sha256Hex(),

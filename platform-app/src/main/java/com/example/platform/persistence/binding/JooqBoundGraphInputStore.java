@@ -8,9 +8,8 @@ import com.example.platform.execution.binding.BoundGraphInputs;
 import com.example.platform.execution.binding.BoundGraphReference;
 import com.example.platform.execution.binding.PhysicalExecutionPlanCanonicalCodec;
 import com.example.platform.execution.binding.ProviderBoundaryCompatibilityDeclarationCanonicalCodec;
-import com.example.platform.execution.binding.ProviderCandidateCanonicalCodec;
+import com.example.platform.execution.binding.BoundGraphInputsCanonicalCodec;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
-import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.planning.PhysicalExecutionPlan;
 import com.example.platform.execution.taskgraph.ExecutableTaskGraphDigest;
 import java.nio.charset.StandardCharsets;
@@ -26,15 +25,9 @@ import org.springframework.stereotype.Repository;
  * Composition-root adapter for {@link BoundGraphInputStore} over the canonical
  * {@code render_binding_inputs} table (P2-5a2c).
  *
- * <p>The owning module (media-execution-plan) has no persistence infrastructure and keeps only
- * the port, the bounded V1 canonical codecs and the digest rules. This adapter encodes the
- * {@link PhysicalExecutionPlan} with {@link PhysicalExecutionPlanCanonicalCodec} and stores one
- * canonical frame per candidate/declaration, addressed by {@code (tenant_id, render_job_id)}.
- *
- * <p>Container format for the repeated rows: the canonical codec bytes of each element are
- * Base64-encoded and joined with {@code '\n'} (Base64 never contains a newline), preserving list
- * order. The plan is stored as its exact canonical bytes; {@code planDigest} is the lowercase
- * SHA-256 of those bytes and is re-verified on load.
+ * <p>The plan and selection are independently versioned canonical frames. The selection includes
+ * the policy and the full sorted catalog. Transition declarations are separately framed in Base64.
+ * The adapter verifies both stored SHA-256 digests and rederives the expected graph on restore.
  */
 @Repository
 public class JooqBoundGraphInputStore implements BoundGraphInputStore {
@@ -53,24 +46,25 @@ public class JooqBoundGraphInputStore implements BoundGraphInputStore {
         byte[] planJson = PhysicalExecutionPlanCanonicalCodec.encode(inputs.physicalPlan());
         String planDigest = PhysicalExecutionPlanCanonicalCodec.digestHex(inputs.physicalPlan());
         String etgDigest = inputs.expectedExecutableTaskGraphDigest().sha256Hex();
-        byte[] candidatesJson = encodeCandidates(inputs.candidates());
+        byte[] candidatesJson = BoundGraphInputsCanonicalCodec.encodeSelection(inputs);
         byte[] declarationsJson = encodeDeclarations(inputs.transitionDeclarations());
+        String selectionDigest = sha256(candidatesJson);
 
         dsl.insertInto(RENDER_BINDING_INPUTS)
                 .columns(RENDER_BINDING_INPUTS.TENANT_ID, RENDER_BINDING_INPUTS.RENDER_JOB_ID,
                         RENDER_BINDING_INPUTS.PLAN_REF, RENDER_BINDING_INPUTS.PLAN_DIGEST,
                         RENDER_BINDING_INPUTS.EXPECTED_ETG_DIGEST, RENDER_BINDING_INPUTS.PLAN_JSON,
                         RENDER_BINDING_INPUTS.CANDIDATES_JSON, RENDER_BINDING_INPUTS.DECLARATIONS_JSON,
-                        RENDER_BINDING_INPUTS.CREATED_AT)
+                        RENDER_BINDING_INPUTS.CANDIDATE_SET_DIGEST, RENDER_BINDING_INPUTS.CREATED_AT)
                 .values(tenantId, renderJobId, planRef, planDigest, etgDigest, planJson,
-                        candidatesJson, declarationsJson, Instant.now())
+                        candidatesJson, declarationsJson, selectionDigest, Instant.now())
                 .onConflict(RENDER_BINDING_INPUTS.TENANT_ID, RENDER_BINDING_INPUTS.RENDER_JOB_ID)
                 .doNothing()
                 .execute();
         var frozen = dsl.selectFrom(RENDER_BINDING_INPUTS)
                 .where(RENDER_BINDING_INPUTS.TENANT_ID.eq(tenantId))
                 .and(RENDER_BINDING_INPUTS.RENDER_JOB_ID.eq(renderJobId)).fetchSingle();
-        if (!planRef.equals(frozen.getPlanRef()) || !planDigest.equals(frozen.getPlanDigest())
+        if (!selectionDigest.equals(frozen.getCandidateSetDigest()) || !planRef.equals(frozen.getPlanRef()) || !planDigest.equals(frozen.getPlanDigest())
                 || !etgDigest.equals(frozen.getExpectedEtgDigest())
                 || !java.util.Arrays.equals(planJson, frozen.getPlanJson())
                 || !java.util.Arrays.equals(candidatesJson, frozen.getCandidatesJson())
@@ -99,11 +93,17 @@ public class JooqBoundGraphInputStore implements BoundGraphInputStore {
                     "no bound-graph inputs stored for " + reference.planRef());
         }
 
+        if (!reference.planRef().equals(row.get(RENDER_BINDING_INPUTS.PLAN_REF))) {
+            throw new IllegalArgumentException("Stored plan reference does not match the requested binding");
+        }
         byte[] planJson = row.get(RENDER_BINDING_INPUTS.PLAN_JSON);
         String storedPlanDigest = row.get(RENDER_BINDING_INPUTS.PLAN_DIGEST);
 
         PhysicalExecutionPlan plan = PhysicalExecutionPlanCanonicalCodec.decode(planJson);
-        String actualPlanDigest = PhysicalExecutionPlanCanonicalCodec.digestHex(plan);
+        String actualPlanDigest = sha256(planJson);
+        if (!java.util.Arrays.equals(planJson, PhysicalExecutionPlanCanonicalCodec.encode(plan))) {
+            throw new IllegalStateException("Noncanonical physical plan bytes");
+        }
         if (!actualPlanDigest.equals(reference.planDigest())
                 || !actualPlanDigest.equals(storedPlanDigest)) {
             throw new BoundGraphDigestMismatchException(reference.planDigest(), actualPlanDigest);
@@ -115,27 +115,26 @@ public class JooqBoundGraphInputStore implements BoundGraphInputStore {
                     reference.expectedExecutableTaskGraphDigest(), storedEtgDigest);
         }
 
-        return new BoundGraphInputs(
+        byte[] candidatesJson = row.get(RENDER_BINDING_INPUTS.CANDIDATES_JSON);
+        var selection = BoundGraphInputsCanonicalCodec.decodeSelection(candidatesJson);
+        var inputs = new BoundGraphInputs(
                 plan,
-                decodeCandidates(row.get(RENDER_BINDING_INPUTS.CANDIDATES_JSON)),
+                selection.candidates(),
                 decodeDeclarations(row.get(RENDER_BINDING_INPUTS.DECLARATIONS_JSON)),
-                new ExecutableTaskGraphDigest(storedEtgDigest));
+                new ExecutableTaskGraphDigest(storedEtgDigest), selection.policy());
+        String actualSelectionDigest = sha256(candidatesJson);
+        if (!actualSelectionDigest.equals(row.get(RENDER_BINDING_INPUTS.CANDIDATE_SET_DIGEST))) {
+            throw new IllegalStateException("Frozen provider selection checksum mismatch");
+        }
+        return inputs;
     }
 
-    private static byte[] encodeCandidates(List<ProviderCandidate> candidates) {
-        List<String> frames = new ArrayList<>(candidates.size());
-        for (ProviderCandidate candidate : candidates) {
-            frames.add(Base64.getEncoder().encodeToString(ProviderCandidateCanonicalCodec.encode(candidate)));
+    private static String sha256(byte[] bytes) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
         }
-        return join(frames);
-    }
-
-    private static List<ProviderCandidate> decodeCandidates(byte[] payload) {
-        List<ProviderCandidate> candidates = new ArrayList<>();
-        for (String frame : split(payload)) {
-            candidates.add(ProviderCandidateCanonicalCodec.decode(Base64.getDecoder().decode(frame)));
-        }
-        return List.copyOf(candidates);
     }
 
     private static byte[] encodeDeclarations(List<ProviderBoundaryCompatibilityDeclaration> declarations) {
@@ -144,6 +143,7 @@ public class JooqBoundGraphInputStore implements BoundGraphInputStore {
             frames.add(Base64.getEncoder()
                     .encodeToString(ProviderBoundaryCompatibilityDeclarationCanonicalCodec.encode(declaration)));
         }
+        frames.sort(String::compareTo);
         return join(frames);
     }
 

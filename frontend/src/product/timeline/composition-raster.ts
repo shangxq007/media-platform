@@ -1,3 +1,4 @@
+import type { RasterProfile } from '../../api/formal-render'
 import { exactCompositionAspect, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 
 export const COMPOSITION_PRESETS = [
@@ -13,34 +14,39 @@ export function customCompositionAspect(width: string, height: string): Composit
 }
 
 interface Raster { readonly width: number; readonly height: number }
-const OUTPUT_LIMITS = { minimum: 16, maximum: 1920, pixels: 2_073_600, even: true }
-
-function suggestRaster(aspect: CompositionAspectRatio,
-  limits: { minimum: number; maximum: number; pixels: number; even: boolean }): Raster | null {
+function suggestRaster(aspect: CompositionAspectRatio, limits: RasterProfile): Raster | null {
   const { numerator, denominator } = aspect
-  const alignment = limits.even && (numerator % 2 || denominator % 2) ? 2 : 1
-  const minimumScale = Math.ceil(limits.minimum / Math.min(numerator, denominator) / alignment) * alignment
-  const preferredScale = Math.floor(320 / Math.max(numerator, denominator) / alignment) * alignment
-  const scale = Math.max(minimumScale, preferredScale)
-  const width = numerator * scale
-  const height = denominator * scale
-  return width <= limits.maximum && height <= limits.maximum && width * height <= limits.pixels
-    ? { width, height } : null
+  // A reduced aspect has coprime axes. Both dimensions align iff the scale aligns.
+  const a = limits.alignment
+  const min = Math.ceil(Math.max(limits.minWidth / numerator, limits.minHeight / denominator) / a) * a
+  const max = Math.floor(Math.min(limits.maxWidth / numerator, limits.maxHeight / denominator,
+    Math.sqrt(limits.maxPixels / numerator / denominator)) / a) * a
+  if (min > max) return null
+  const preferred = Math.floor(320 / Math.max(numerator, denominator) / a) * a
+  const scale = Math.max(min, Math.min(max, preferred))
+  return { width: numerator * scale, height: denominator * scale }
 }
 
 export function previewRaster(aspect: CompositionAspectRatio): Raster | null {
-  return suggestRaster(aspect, { minimum: 1, maximum: 1280, pixels: 1280 * 1280, even: false })
+  return suggestRaster(aspect, { minWidth: 1, minHeight: 1, maxWidth: 1280, maxHeight: 1280,
+    maxPixels: 1280 * 1280, alignment: 1 })
 }
 
-export function suggestedOutputRaster(aspect: CompositionAspectRatio): Raster | null {
-  return suggestRaster(aspect, OUTPUT_LIMITS)
+export function suggestedOutputRaster(aspect: CompositionAspectRatio, profiles: RasterProfile[]): Raster | null {
+  for (const profile of profiles) {
+    const raster = suggestRaster(aspect, profile)
+    if (raster) return raster
+  }
+  return null
 }
 
-export function outputRasterError(aspect: CompositionAspectRatio, width: number, height: number): string {
-  if (!suggestedOutputRaster(aspect)) return 'No supported output raster exactly matches the authored composition aspect ratio.'
-  if (![width, height].every(value => Number.isInteger(value) && value >= OUTPUT_LIMITS.minimum
-      && value <= OUTPUT_LIMITS.maximum && value % 2 === 0) || width * height > OUTPUT_LIMITS.pixels) {
-    return 'Output requires even dimensions from 16 to 1920 and at most 2073600 pixels.'
+export function outputRasterError(aspect: CompositionAspectRatio, width: number, height: number,
+  profiles: RasterProfile[]): string {
+  if (!suggestedOutputRaster(aspect, profiles)) return 'No supported output raster exactly matches the authored composition aspect ratio.'
+  if (!Number.isInteger(width) || !Number.isInteger(height) || !profiles.some(p => width >= p.minWidth
+      && height >= p.minHeight && width <= p.maxWidth && height <= p.maxHeight
+      && width % p.alignment === 0 && height % p.alignment === 0 && width * height <= p.maxPixels)) {
+    return 'The requested output dimensions are outside the supported raster limits.'
   }
   return width * aspect.denominator === height * aspect.numerator
     ? '' : 'Output raster must match the authored composition aspect ratio.'

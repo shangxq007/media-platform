@@ -64,7 +64,8 @@ public final class CompatibilityKernel {
         evaluateExecutionIntents(request, candidate, failures, evidence);
         evaluateAdditionalConstraints(request, candidate, failures, evidence);
 
-        if (candidate.staticCompatibility().loweringSupport() == LoweringSupport.UNSUPPORTED) {
+        if (candidate.staticCompatibility().loweringSupport() == LoweringSupport.UNSUPPORTED
+                || !candidate.staticCompatibility().mediaLowering().supports(request.physicalPlanUnit())) {
             add(failures, evidence,
                     StaticCompatibilityFailure.LOWERING_SEMANTICALLY_UNREPRESENTABLE,
                     ReferenceKind.LOWERING,

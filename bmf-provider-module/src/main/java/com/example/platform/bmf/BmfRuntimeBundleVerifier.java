@@ -18,6 +18,11 @@ public final class BmfRuntimeBundleVerifier {
     private BmfRuntimeBundleVerifier() {}
 
     public static boolean verify(Path root) {
+        return verify(root, BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256)
+                || verify(root, BmfCpuProvider.RUNTIME_BUNDLE_SHA256);
+    }
+
+    public static boolean verify(Path root, String requiredDigest) {
         if (root == null || !root.isAbsolute() || !root.equals(root.normalize())) {
             return false;
         }
@@ -36,8 +41,8 @@ public final class BmfRuntimeBundleVerifier {
                     || !"3.9.2".equals(metadata.getProperty("python.version"))
                     || !"1.19.5".equals(metadata.getProperty("numpy.version"))
                     || !BmfCpuProvider.SOURCE_ARCHIVE_SHA256.equals(metadata.getProperty("source.sha256"))
-                    || !List.of(BmfCpuProvider.RUNTIME_BUNDLE_SHA256,
-                            BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256).contains(recordedDigest)
+                    || !requiredDigest.equals(recordedDigest)
+                    || !List.of(BmfCpuProvider.RUNTIME_BUNDLE_SHA256, BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256).contains(requiredDigest)
                     || !Files.isExecutable(root.resolve("host-bundle/usr/bin/python3.9"))
                     || !insideBundle(root, root.resolve("output/bmf/lib/libbuiltin_modules.so"))) {
                 return false;

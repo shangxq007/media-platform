@@ -88,6 +88,31 @@ final class FfmpegCanonicalGraphFixture {
                 plan, feasibilityView, List.of(task), List.of());
     }
 
+    /** Two disconnected required outputs in one plan. Each port has its own exact source pin. */
+    static ProviderBoundExecutableTaskGraph independentSources(List<String> digests) {
+        var units = new java.util.ArrayList<PhysicalPlanUnit>();
+        for (int i = 0; i < digests.size(); i++) {
+            String logical = "logical-source-" + i;
+            var step = new ExecutionStepId("transcode-" + i);
+            var node = new RenderNodeId("render-source-" + i);
+            var input = new InputBinding(new ExecutionInputId("input-" + i), logical, step, node,
+                    null, null, null, null, new SourceArtifact(
+                    new ArtifactId("source-" + i), ContentDigest.sha256(digests.get(i))), null);
+            var finalOutput = new com.example.platform.render.domain.renderplan.RenderArtifactReference.FinalArtifactExpectation(
+                    i == 0 ? RenderOutputRole.RENDER_MASTER : RenderOutputRole.DERIVED_MEDIA);
+            var output = new OutputDeclaration(new ExecutionOutputId("output-" + i), logical, node,
+                    List.of(), List.of(), List.of(), List.of(finalOutput));
+            units.add(new PhysicalPlanUnit(step, logical, node, new RenderNodeKind.Decode(), "transcode",
+                    List.of(input), List.of(output), List.of(), null, null, List.of(), List.of(), null, true));
+        }
+        var plan = new PhysicalExecutionPlan("1", new ExecutionPlanId("independent-transcodes"),
+                ExecutionPlanSchemaVersion.V1, new RenderPlanFingerprint("independent-synthetic-sources"),
+                units, null, new PhysicalExecutionPlanDigest("independent-transcodes"));
+        var candidates = com.example.platform.providerplugin.ProviderCandidateProjection.project(
+                List.of(new FfmpegProviderPluginContribution()));
+        return new com.example.platform.execution.binding.ProviderBindingEntryService().bind(plan, candidates, List.of()).executableTaskGraph();
+    }
+
     private static ProviderCandidate candidate() {
         ProviderStaticCompatibility compatibility = new ProviderStaticCompatibility(
                 ProviderStaticCompatibility.Knowledge.DECLARED,

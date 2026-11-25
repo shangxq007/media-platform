@@ -4,7 +4,6 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderCapabilityContractReference;
 import com.example.platform.execution.domain.provider.ProviderCapabilitySupport;
-import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
 import com.example.platform.execution.domain.provider.ProviderDescriptor;
 import com.example.platform.execution.domain.provider.ProviderExecutionContract;
@@ -39,8 +38,8 @@ public final class FfmpegCpuProvider {
     public static final ProviderExecutionContractVersion EXECUTION_CONTRACT_VERSION =
             ProviderExecutionContractVersion.of(1, 2);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
-            ProviderCapabilityProfileVersionOrDigest.version(
-                    ProviderCapabilityProfileVersion.of(1, 2));
+            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
+                    FfmpegCpuProvider.class, "ffmpeg-provider-module", FfmpegRuntimeFiles.DISTRIBUTION_ID);
     public static final RuntimeSupportIdentifier RUNTIME_SUPPORT_IDENTIFIER =
             RuntimeSupportIdentifier.of("ffmpeg.cpu.v1");
     public static final CapabilityId COVER_CAPABILITY = CapabilityId.of("media.cover-image");
@@ -147,7 +146,8 @@ public final class FfmpegCpuProvider {
                     List.of(ProviderStaticCompatibility.SandboxMode.SANDBOXED),
                     List.of(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC),
                     List.of(),
-                    ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
+                    ProviderStaticCompatibility.LoweringSupport.SUPPORTED,
+                    com.example.platform.execution.compatibility.MediaLoweringEnvelope.TIMED_TEXT_H264_V1);
 
     private FfmpegCpuProvider() {}
 }

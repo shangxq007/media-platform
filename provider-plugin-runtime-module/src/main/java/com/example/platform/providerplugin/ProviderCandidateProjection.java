@@ -13,10 +13,10 @@ import java.util.Objects;
  * contract, capability profile and {@link ProviderPluginContribution#providerStaticCompatibility()
  * static compatibility declaration}. Nothing is derived, defaulted or invented here.</p>
  *
- * <p>No provider selection policy exists in V1 and none is introduced here: the
+ * <p>The
  * projection returns every declared candidate in the caller's order (the
  * {@link ProviderPluginCatalog} order is canonical: plugin id, then plugin
- * version). Binding, ambiguity rejection and materialization decisions remain
+ * version). Binding, complete-plan selection and materialization decisions remain
  * with the Stage-1 feasibility view and the #22 binding entry.</p>
  *
  * <p>Locating this beside the catalog is deliberate: this module owns the

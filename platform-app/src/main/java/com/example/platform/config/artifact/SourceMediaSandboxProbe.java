@@ -60,7 +60,16 @@ public class SourceMediaSandboxProbe implements ArtifactSourceProbePort {
                         streamDuration, stream.kind() == StreamKind.VIDEO
                                 ? SourceDisplayAspect.fromProbe(raw).orElse(null) : null));
             }
-            return new ArtifactSourceFacts(normalized.duration(), streams);
+            int video = 0;
+            int audio = 0;
+            for (var raw : rawStreams) {
+                switch (raw.path("codec_type").asText()) {
+                    case "video" -> video++;
+                    case "audio" -> audio++;
+                    default -> { }
+                }
+            }
+            return new ArtifactSourceFacts(normalized.duration(), streams, new ArtifactSourceFacts.StreamCounts(video, audio));
         } catch (java.io.IOException unavailable) {
             throw new IllegalStateException("source probe unavailable", unavailable);
         } finally {

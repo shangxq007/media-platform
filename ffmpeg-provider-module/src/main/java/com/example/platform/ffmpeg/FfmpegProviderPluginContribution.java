@@ -171,6 +171,11 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
     @Override
     public ProviderNativeRuntimeBinding<?> createRuntimeBinding(
             ProviderPluginRuntimeContext context) {
+        if (!FfmpegRuntimeFiles.matchesDistribution(context.executable(), context.fontFile())) {
+            throw new com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure(
+                    com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH,
+                    "Configured FFmpeg runtime differs from the bound distribution");
+        }
         return FfmpegCpuRuntimeBindingFactory.createRender(
                 context.executable(),
                 FfmpegSandboxWorkspace.under(context.workspaceRoot()),

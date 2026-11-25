@@ -15,6 +15,8 @@
             "providerplugin :: execution",
             "shared"
         ,
+            "audio :: mix",
+            "shared :: digest",
             "artifact :: app",
             "artifact :: domain",
             "composition :: app",

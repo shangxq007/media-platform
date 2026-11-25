@@ -3,7 +3,6 @@ package com.example.platform.bmf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
-import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractVersion;
 import com.example.platform.workerfabric.domain.CpuArchitecture;
@@ -26,8 +25,7 @@ class BmfCpuProviderContractTest {
         assertThat(BmfCpuProvider.EXECUTION_CONTRACT_VERSION)
                 .isEqualTo(ProviderExecutionContractVersion.of(1, 0));
         assertThat(BmfCpuProvider.CAPABILITY_PROFILE_REFERENCE)
-                .isEqualTo(ProviderCapabilityProfileVersionOrDigest.version(
-                        ProviderCapabilityProfileVersion.of(1, 0)));
+                .isInstanceOf(ProviderCapabilityProfileVersionOrDigest.DigestReference.class);
 
         assertThat(BmfCpuProvider.IMPLEMENTATION_ID.value())
                 .doesNotContain("fingerprint", "runtime");
@@ -43,13 +41,6 @@ class BmfCpuProviderContractTest {
                 .isEqualTo(BmfCpuProvider.EXECUTION_CONTRACT_VERSION);
         assertThat(BmfCpuProvider.DESCRIPTOR.providerCapabilityProfileReference())
                 .isEqualTo(BmfCpuProvider.CAPABILITY_PROFILE_REFERENCE);
-
-        assertThat(BmfCpuProvider.EXECUTION_CONTRACT.contractVersion())
-                .isEqualTo(BmfCpuProvider.EXECUTION_CONTRACT_VERSION);
-        assertThat(BmfCpuProvider.EXECUTION_CONTRACT.capabilityContractReferences()).isEmpty();
-        assertThat(BmfCpuProvider.CAPABILITY_PROFILE.reference())
-                .isEqualTo(BmfCpuProvider.CAPABILITY_PROFILE_REFERENCE);
-        assertThat(BmfCpuProvider.CAPABILITY_PROFILE.supportDeclarations()).isEmpty();
 
         assertThat(BmfCpuProvider.BINDING.providerId()).isEqualTo(BmfCpuProvider.PROVIDER_ID);
         assertThat(BmfCpuProvider.BINDING.providerImplementationId())

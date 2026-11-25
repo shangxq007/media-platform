@@ -3,12 +3,8 @@ package com.example.platform.bmf;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
-import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
-import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
 import com.example.platform.execution.domain.provider.ProviderDescriptor;
-import com.example.platform.execution.domain.provider.ProviderExecutionContract;
-import com.example.platform.execution.domain.provider.ProviderExecutionContractSchemaVersion;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractVersion;
 import com.example.platform.execution.domain.provider.ProviderId;
 import com.example.platform.execution.domain.provider.ProviderImplementationId;
@@ -42,9 +38,12 @@ public final class BmfCpuProvider {
     public static final ProviderVersion VERSION = ProviderVersion.of("1.2.0");
     public static final ProviderExecutionContractVersion EXECUTION_CONTRACT_VERSION =
             ProviderExecutionContractVersion.of(1, 0);
+    private static final ProviderCapabilityProfileVersionOrDigest ORIGINAL_PROFILE =
+            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
+                    BmfCpuProvider.class, "bmf-provider-module", RUNTIME_BUNDLE_SHA256);
     public static final ProviderCapabilityProfileVersionOrDigest CAPABILITY_PROFILE_REFERENCE =
-            ProviderCapabilityProfileVersionOrDigest.version(
-                    ProviderCapabilityProfileVersion.of(1, 0));
+            com.example.platform.execution.domain.provider.ProviderImplementationContent.profile(
+                    BmfCpuProvider.class, "bmf-provider-module", RUNTIME_BUNDLE_WITH_SNDIO_SHA256);
 
     public static final ProviderDescriptor DESCRIPTOR = new ProviderDescriptor(
             PROVIDER_ID,
@@ -53,15 +52,6 @@ public final class BmfCpuProvider {
             EXECUTION_CONTRACT_VERSION,
             CAPABILITY_PROFILE_REFERENCE);
 
-    public static final ProviderExecutionContract EXECUTION_CONTRACT =
-            new ProviderExecutionContract(
-                    ProviderExecutionContractSchemaVersion.of(1),
-                    EXECUTION_CONTRACT_VERSION,
-                    List.of());
-
-    public static final ProviderCapabilityProfile CAPABILITY_PROFILE =
-            new ProviderCapabilityProfile(CAPABILITY_PROFILE_REFERENCE, List.of());
-
     public static final ProviderBindingPin BINDING = new ProviderBindingPin(
             PROVIDER_ID,
             IMPLEMENTATION_ID,
@@ -69,6 +59,21 @@ public final class BmfCpuProvider {
             EXECUTION_CONTRACT_VERSION,
             CAPABILITY_PROFILE_REFERENCE,
             List.of());
+
+    private static final ProviderBindingPin ORIGINAL_BINDING = new ProviderBindingPin(
+            PROVIDER_ID, IMPLEMENTATION_ID, VERSION, EXECUTION_CONTRACT_VERSION, ORIGINAL_PROFILE, List.of());
+
+    public static ProviderBindingPin bindingFor(String bundleDigest) {
+        return switch (bundleDigest) {
+            case RUNTIME_BUNDLE_SHA256 -> ORIGINAL_BINDING;
+            case RUNTIME_BUNDLE_WITH_SNDIO_SHA256 -> BINDING;
+            default -> throw new IllegalArgumentException("Unknown BMF runtime distribution");
+        };
+    }
+
+    static boolean recognizes(ProviderBindingPin pin) {
+        return BINDING.equals(pin) || ORIGINAL_BINDING.equals(pin);
+    }
 
     public static final ProviderStaticCompatibility STATIC_COMPATIBILITY =
             new ProviderStaticCompatibility(
@@ -83,7 +88,8 @@ public final class BmfCpuProvider {
                     List.of(ProviderStaticCompatibility.SandboxMode.SANDBOXED),
                     List.of(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC),
                     List.of(),
-                    ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
+                    ProviderStaticCompatibility.LoweringSupport.SUPPORTED,
+                    com.example.platform.execution.compatibility.MediaLoweringEnvelope.TIMED_TRACKS_H264_V1);
 
     /** Exact top-level B0 closure inputs; H1 remains the dependency authority. */
     public static final List<RuntimeDependencyRequirement> RUNTIME_DEPENDENCY_REQUIREMENTS = List.of(

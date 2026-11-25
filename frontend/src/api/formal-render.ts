@@ -25,7 +25,18 @@ const Head = z.object({ revisionId: id, revision: z.object({ revisionId: id, pro
 const Lifecycle = z.object({ renderJobId: id, timelineRevisionId: id, projectId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable() })
 
 const jobPath = (tenant: string, project: string, job: string) => `/tenants/${part(tenant)}/projects/${part(project)}/render-jobs/${part(job)}`
+const RasterProfile = z.object({
+  minWidth: z.number().int().positive(), minHeight: z.number().int().positive(),
+  maxWidth: z.number().int().positive(), maxHeight: z.number().int().positive(),
+  maxPixels: z.number().int().positive(), alignment: z.number().int().positive(),
+})
+export type RasterProfile = z.infer<typeof RasterProfile>
+
 export const FormalRenderAPI = {
+  async outputRasters(project: string, signal?: AbortSignal) {
+    const path = `/render/projects/${part(project)}/output-rasters`
+    return RasterProfile.array().parse(await request(c => versionlessApi.get(path, c), signal))
+  },
   async initializeTimeline(tenant: string, project: string, commandId: string) {
     return request(c => versionlessApi.post(
       `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/initialize`,

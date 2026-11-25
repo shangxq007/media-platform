@@ -40,7 +40,7 @@ import java.util.Objects;
  */
 public final class ProviderCandidateCanonicalCodec {
 
-    public static final String FORMAT = "p25a.provider-candidate.v1";
+    public static final String FORMAT = "p25a.provider-candidate.v2";
 
     private ProviderCandidateCanonicalCodec() {
     }
@@ -243,6 +243,7 @@ public final class ProviderCandidateCanonicalCodec {
                 .list(values(compatibility.supportedBoundaryContracts(),
                         boundary -> boundary.value()))
                 .field("loweringSupport", compatibility.loweringSupport().name())
+                .field("mediaLowering", compatibility.mediaLowering().name())
                 .build();
     }
 
@@ -274,7 +275,8 @@ public final class ProviderCandidateCanonicalCodec {
                 ProviderStaticCompatibility.LoweringSupport.class, reader.field("loweringSupport"));
         return new ProviderStaticCompatibility(
                 knowledge, artifacts, codecs, devices, runtimes, sandboxes, determinism,
-                boundaries, lowering);
+                boundaries, lowering, enumValue(com.example.platform.execution.compatibility.MediaLoweringEnvelope.class,
+                        reader.field("mediaLowering")));
     }
 
     // ---------- shared scalars ----------

@@ -48,10 +48,11 @@ public class ProviderPluginManagerConfiguration {
     @Bean
     @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "API", matchIfMissing = true)
     ProviderPluginCatalog providerPluginCatalog(ProviderPluginHost providerPluginHost,
-            @Value("${platform.bmf-provider.enabled:false}") boolean bmfEnabled) {
+            @Value("${platform.bmf-provider.enabled:false}") boolean bmfEnabled,
+            @Value("${platform.bmf.bundle-sha256:}") String bundleDigest) {
         return InProcessProviderPlugins.catalogWith(
                 providerPluginHost.catalog(), bmfEnabled
-                        ? List.of(new BmfProviderExtension()) : List.of());
+                        ? List.of(new BmfProviderExtension(null, bundleDigest)) : List.of());
     }
 }
 

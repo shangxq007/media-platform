@@ -2,6 +2,8 @@ plugins {
     id("java-library")
 }
 
+apply(from = rootProject.file("gradle/provider-implementation.gradle.kts"))
+
 group = "com.example.platform"
 version = "1.2.0"
 
@@ -23,8 +25,6 @@ dependencies {
     implementation(project(":sandbox-isolation-module"))
     implementation(project(":media-execution-plan-module"))
     implementation(project(":worker-fabric-module"))
-    // ABI companions referenced by canonical execution-plan signatures.
-    compileOnly(project(":render-module"))
     compileOnly(project(":extension-module"))
 
     testImplementation(project(":render-module"))

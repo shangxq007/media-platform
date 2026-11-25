@@ -146,7 +146,7 @@ final class FrameReader {
 
     int listCount() {
         long value = exactLong();
-        if (value < 0 || value > Integer.MAX_VALUE) {
+        if (value < 0 || value > (bytes.length - offset) / 2) {
             throw new UnsupportedPersistedConstructException("malformed list count");
         }
         return (int) value;

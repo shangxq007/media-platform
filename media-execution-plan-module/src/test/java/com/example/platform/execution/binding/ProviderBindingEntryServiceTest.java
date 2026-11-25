@@ -249,13 +249,23 @@ class ProviderBindingEntryServiceTest {
     }
 
     @Test
-    void bindFailsClosedWhenSeveralCandidatesAreFeasible() {
-        ProviderBindingException failure = assertThrows(ProviderBindingException.class,
-                () -> service.bind(
-                        singleUnitPlan(),
-                        List.of(candidate("provider-a"), candidate("provider-b")),
-                        List.of()));
-        assertEquals(ProviderBindingException.Reason.UNIT_AMBIGUOUS, failure.reason());
+    void completeLegalChoicesAreRankedAfterFeasibility() {
+        var plan = dependentPlan();
+        var bmf = candidate("bmf");
+        var ffmpeg = candidate("ffmpeg");
+        var preferred = service.bind(plan, List.of(ffmpeg, bmf), List.of());
+        assertEquals(preferred.executableTaskGraph().digest(),
+                service.bind(plan, List.of(bmf, ffmpeg), List.of()).executableTaskGraph().digest());
+        assertTrue(preferred.tasks().stream().allMatch(t -> t.providerBindingPin().equals(bmf.bindingPin())));
+        var restriction = ProviderSelectionPolicy.restrictedTo("ffmpeg");
+        assertTrue(service.bind(plan, List.of(bmf, ffmpeg), List.of(), restriction).tasks().stream()
+                .allMatch(t -> t.providerBindingPin().equals(ffmpeg.bindingPin())));
+        assertThrows(ProviderBindingException.class, () -> service.bind(plan, List.of(bmf), List.of(), restriction));
+        var unavailable = service.bind(plan, List.of(unknownCandidate("bmf"), ffmpeg), List.of());
+        assertTrue(unavailable.tasks().stream().allMatch(t -> t.providerBindingPin().equals(ffmpeg.bindingPin())));
+        var incompatible = declaration(plan, bmf, Declaration.INCOMPATIBLE);
+        assertTrue(service.bind(plan, List.of(bmf, ffmpeg), List.of(incompatible)).tasks().stream()
+                .allMatch(t -> t.providerBindingPin().equals(ffmpeg.bindingPin())));
     }
 
     @Test

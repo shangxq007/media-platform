@@ -57,10 +57,7 @@ import java.util.TreeMap;
  *   <li>Compatibility is decided ONLY by kernel-emitted proofs inside
  *       {@link ProviderFeasibilityView}; nothing here may declare a pair
  *       compatible.</li>
- *   <li>V1 defines NO provider selection policy, so a unit is bound only when
- *       exactly one declared candidate is statically feasible. Zero feasible
- *       candidates fail closed (UNIT_UNBINDABLE); more than one fail closed
- *       (UNIT_AMBIGUOUS) rather than inventing a preference.</li>
+ *   <li>The recorded policy ranks legal homogeneous assignments for the entire plan.</li>
  *   <li>Tasks are 1:1 with physical plan units (no fusion), so every source
  *       dependency is an inter-task transfer. Each dependency that the
  *       feasibility view marks ARTIFACT_MATERIALIZATION_REQUIRED gets exactly
@@ -83,6 +80,15 @@ public final class ProviderBindingEntryService {
             PhysicalExecutionPlan physicalExecutionPlan,
             List<ProviderCandidate> candidates,
             List<ProviderBoundaryCompatibilityDeclaration> transitionDeclarations) {
+        return bind(physicalExecutionPlan, candidates, transitionDeclarations, ProviderSelectionPolicy.PREFERRED);
+    }
+
+    public ProviderBindingOutcome bind(
+            PhysicalExecutionPlan physicalExecutionPlan,
+            List<ProviderCandidate> candidates,
+            List<ProviderBoundaryCompatibilityDeclaration> transitionDeclarations,
+            ProviderSelectionPolicy policy) {
+        Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(physicalExecutionPlan, "physicalExecutionPlan");
         Objects.requireNonNull(candidates, "candidates");
         Objects.requireNonNull(transitionDeclarations, "transitionDeclarations");
@@ -102,19 +108,18 @@ public final class ProviderBindingEntryService {
         Map<ExecutionStepId, List<BoundaryAction>> terminalActions =
                 TerminalOutputDeriver.derive(physicalExecutionPlan);
         Map<ExecutionStepId, ExecutableTask> taskByUnit = new LinkedHashMap<>();
-        for (PhysicalPlanUnit unit : physicalExecutionPlan.units()) {
-            ProviderCandidate candidate = singleFeasibleCandidate(feasibilityView, unit);
-            taskByUnit.put(unit.stepId(), executableTask(
-                    feasibilityView,
-                    candidate,
-                    unit,
-                    terminalActions.getOrDefault(unit.stepId(), List.of())));
+        if (!physicalExecutionPlan.units().isEmpty()) {
+            ProviderCandidate candidate = select(feasibilityView, policy);
+            for (PhysicalPlanUnit unit : physicalExecutionPlan.units()) {
+                taskByUnit.put(unit.stepId(), executableTask(feasibilityView, candidate, unit,
+                        terminalActions.getOrDefault(unit.stepId(), List.of())));
+            }
         }
 
         List<ExecutionArtifactBoundary> boundaries = executionArtifactBoundaries(
                 physicalExecutionPlan, feasibilityView, taskByUnit);
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                physicalExecutionPlan, feasibilityView, List.copyOf(taskByUnit.values()), boundaries);
+                physicalExecutionPlan, feasibilityView, List.copyOf(taskByUnit.values()), boundaries, policy);
         return new ProviderBindingOutcome(feasibilityView, graph);
     }
 
@@ -140,25 +145,43 @@ public final class ProviderBindingEntryService {
 
     // ── unit binding ─────────────────────────────────────────────────────────
 
-    private static ProviderCandidate singleFeasibleCandidate(
-            ProviderFeasibilityView view, PhysicalPlanUnit unit) {
-        List<ProviderCandidate> feasible = view.unitCandidates().stream()
-                .filter(node -> node.compatibilityRequest().physicalPlanUnit().equals(unit))
-                .flatMap(node -> node.compatibilityProofs().stream())
+    private static ProviderCandidate select(ProviderFeasibilityView view, ProviderSelectionPolicy policy) {
+        // UnitCandidates already orders distinct pins by their canonical bytes.
+        var nodes = view.unitCandidates();
+        for (var node : nodes) {
+            if (node.feasibleProviderBindings().stream().noneMatch(pin ->
+                    policy.requiredProvider().map(pin.providerId()::equals).orElse(true))) {
+                throw new ProviderBindingException(ProviderBindingException.Reason.UNIT_UNBINDABLE,
+                        "no eligible implementation for unit " + node.physicalPlanUnitId().value());
+            }
+        }
+        var ranked = nodes.getFirst().compatibilityProofs().stream()
                 .map(proof -> proof.providerCandidate())
+                .filter(c -> policy.requiredProvider().map(c.bindingPin().providerId()::equals).orElse(true))
+                .filter(c -> nodes.stream().allMatch(n -> n.feasibleProviderBindings().contains(c.bindingPin())))
+                .sorted(Comparator.comparing(c -> !c.bindingPin().providerId().value().equals("bmf")))
                 .toList();
-        if (feasible.isEmpty()) {
-            throw new ProviderBindingException(
-                    ProviderBindingException.Reason.UNIT_UNBINDABLE,
-                    "no declared candidate is statically feasible for unit " + unit.stepId().value());
+        ProviderBindingException lastRejection = null;
+        for (ProviderCandidate candidate : ranked) {
+            var pin = candidate.bindingPin();
+            var rejected = view.transitions().stream()
+                    .filter(t -> t.producerBindingPin().equals(pin) && t.consumerBindingPin().equals(pin))
+                    .filter(t -> switch (t.decision()) {
+                        case UNKNOWN_FAIL_CLOSED, INCOMPATIBLE -> true;
+                        default -> false;
+                    }).findFirst();
+            if (rejected.isEmpty()) return candidate;
+            var edge = rejected.orElseThrow();
+            var reason = switch (edge.decision()) {
+                case INCOMPATIBLE -> ProviderBindingException.Reason.TRANSITION_INCOMPATIBLE;
+                default -> ProviderBindingException.Reason.TRANSITION_UNKNOWN;
+            };
+            lastRejection = new ProviderBindingException(reason,
+                    "homogeneous binding rejected on " + edge.sourceDependency().edgeId().value());
         }
-        if (feasible.size() > 1) {
-            throw new ProviderBindingException(
-                    ProviderBindingException.Reason.UNIT_AMBIGUOUS,
-                    "unit " + unit.stepId().value() + " has " + feasible.size()
-                            + " statically feasible candidates and V1 defines no selection policy");
-        }
-        return feasible.getFirst();
+        if (ranked.size() == 1 && lastRejection != null) throw lastRejection;
+        throw new ProviderBindingException(ProviderBindingException.Reason.NO_HOMOGENEOUS_BINDING,
+                "no complete assignment under " + ProviderSelectionPolicy.VERSION);
     }
 
     private static ExecutableTask executableTask(

@@ -99,7 +99,12 @@ class FirstRenderPreparationPostgresTest {
             if ("BINDING".equals(fault)) when(catalog.contributions()).thenReturn(List.of());
             var inputs=new RevisionRenderPlanningApplicationService(render,commands,queries,artifacts,interoperability);
             planning=new RevisionRenderPlanningAndBindingService(inputs,commands,queries,effects,catalog,
-                    new RenderPlanningEntryService(),new PhysicalPlanningEntryService(),new ProviderBindingEntryService(),lifecycle);
+                    new RenderPlanningEntryService(),new PhysicalPlanningEntryService(),new ProviderBindingEntryService(),lifecycle,
+                    (tenant, project, id, digest) -> java.util.Optional.of(
+                        new com.example.platform.artifact.contract.ArtifactSourceFacts(MediaTime.ofMillis(2000),
+                                List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream(
+                                        "stream", com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.VIDEO,
+                                        MediaTime.ofMillis(2000))), new com.example.platform.artifact.contract.ArtifactSourceFacts.StreamCounts(1, 0))));
             if("BOUND_GRAPH_SAVE".equals(fault)) {
                 db.execute("create function reject_bound_graph_save() returns trigger language plpgsql as $$ begin raise exception 'synthetic save failure'; end $$");
                 db.execute("create trigger reject_bound_graph_save before insert on render.render_binding_inputs for each row execute function reject_bound_graph_save()");

@@ -69,8 +69,9 @@ public class FfmpegWorkerPluginConfiguration {
     @Bean
     @ConditionalOnProperty(name = "platform.bmf-provider.enabled", havingValue = "true")
     BmfProviderExtension bmfProviderExtension(
-            @Value("${platform.bmf-worker.runtime-root}") String runtimeRoot) {
-        return new BmfProviderExtension(Path.of(runtimeRoot));
+            @Value("${platform.bmf-worker.runtime-root}") String runtimeRoot,
+            @Value("${platform.bmf.bundle-sha256:}") String bundleDigest) {
+        return new BmfProviderExtension(Path.of(runtimeRoot), bundleDigest);
     }
 
     /**

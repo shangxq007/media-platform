@@ -8,4 +8,8 @@ import java.util.Optional;
 /** Artifact-owned source structure, bound to tenant, project, identity, and exact digest. */
 public interface ArtifactSourceFactsQuery {
     Optional<ArtifactSourceFacts> find(String tenantId, String projectId, ArtifactId artifactId, ContentDigest digest);
+    default Optional<ArtifactSourceFacts> findForExecution(String tenantId, String projectId,
+            ArtifactId artifactId, ContentDigest digest) {
+        return find(tenantId, projectId, artifactId, digest);
+    }
 }

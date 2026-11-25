@@ -79,6 +79,30 @@ class BoundGraphRederivationTest {
     }
 
     @Test
+    void restoreUsesPersistedRestrictionAndRejectsPolicyChangesOrDamagedFrames() {
+        var original = inputsForBoundPlan();
+        var policy = ProviderSelectionPolicy.restrictedTo(original.candidates().getFirst().bindingPin().providerId().value());
+        var graph = new ProviderBindingEntryService().bind(original.physicalPlan(), original.candidates(),
+                original.transitionDeclarations(), policy).executableTaskGraph();
+        var restricted = new BoundGraphInputs(original.physicalPlan(), original.candidates(),
+                original.transitionDeclarations(), graph.digest(), policy);
+        byte[] bytes = BoundGraphInputsCanonicalCodec.encode(restricted);
+        var restored = BoundGraphInputsCanonicalCodec.decode(bytes);
+        assertThat(restored.selectionPolicy()).isEqualTo(policy);
+        assertThat(BoundGraphInputsCanonicalCodec.encode(restored)).isEqualTo(bytes);
+        assertThat(BoundGraphRederivation.rederive(restored).tasks().getFirst().providerBindingPin())
+                .isEqualTo(graph.tasks().getFirst().providerBindingPin());
+        assertThatThrownBy(() -> BoundGraphRederivation.rederive(new BoundGraphInputs(original.physicalPlan(),
+                original.candidates(), original.transitionDeclarations(), graph.digest(), ProviderSelectionPolicy.PREFERRED)))
+                .isInstanceOf(BoundGraphDigestMismatchException.class);
+        assertThatThrownBy(() -> BoundGraphInputsCanonicalCodec.decode(java.util.Arrays.copyOf(bytes, bytes.length - 1)))
+                .isInstanceOf(UnsupportedPersistedConstructException.class);
+        assertThatThrownBy(() -> BoundGraphInputsCanonicalCodec.decodeSelection(
+                "20:binding-selection-v0".getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .isInstanceOf(UnsupportedPersistedConstructException.class);
+    }
+
+    @Test
     void rederivationRejectsNullInputs() {
         assertThatThrownBy(() -> BoundGraphRederivation.rederive(null))
                 .isInstanceOf(NullPointerException.class);

@@ -21,7 +21,23 @@ public record ProviderStaticCompatibility(
         List<SandboxMode> supportedSandboxModes,
         List<DeterminismClass> supportedDeterminismClasses,
         List<BoundaryContractId> supportedBoundaryContracts,
+        LoweringSupport loweringSupport,
+        MediaLoweringEnvelope mediaLowering) {
+
+    public ProviderStaticCompatibility(
+        Knowledge knowledge,
+        List<ArtifactRequirementKind> supportedArtifactRequirements,
+        List<CodecId> supportedCodecs,
+        List<StaticCompatibilityConstraint.ProviderDeviceKind> supportedDeviceKinds,
+        List<ProviderRuntimeClass> supportedRuntimeClasses,
+        List<SandboxMode> supportedSandboxModes,
+        List<DeterminismClass> supportedDeterminismClasses,
+        List<BoundaryContractId> supportedBoundaryContracts,
         LoweringSupport loweringSupport) {
+        this(knowledge, supportedArtifactRequirements, supportedCodecs, supportedDeviceKinds,
+                supportedRuntimeClasses, supportedSandboxModes, supportedDeterminismClasses,
+                supportedBoundaryContracts, loweringSupport, MediaLoweringEnvelope.GENERIC);
+    }
 
     public ProviderStaticCompatibility {
         Objects.requireNonNull(knowledge, "knowledge");
@@ -42,6 +58,7 @@ public record ProviderStaticCompatibility(
                 Comparator.comparing(BoundaryContractId::value),
                 "supportedBoundaryContracts");
         Objects.requireNonNull(loweringSupport, "loweringSupport");
+        Objects.requireNonNull(mediaLowering, "mediaLowering");
     }
 
     public static ProviderStaticCompatibility unknown() {

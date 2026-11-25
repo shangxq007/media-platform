@@ -66,6 +66,7 @@ final class ExecutableTaskCanonicalCodec {
 
     static String graphSemantics(
             String graphSchemaVersion,
+            String selectionPolicy,
             String sourcePlanFormatVersion,
             int sourcePlanSchemaVersion,
             String sourcePlanFingerprint,
@@ -123,8 +124,9 @@ final class ExecutableTaskCanonicalCodec {
         List<String> inputPins = requiredInputArtifactPins.stream()
                 .map(ExecutableTaskCanonicalCodec::requiredInputArtifactPin).sorted().toList();
         return new CanonicalWriter()
-                .tag("roadmap22.provider-bound-executable-task-graph.v2")
+                .tag("roadmap22.provider-bound-executable-task-graph.v3")
                 .field("graphSchemaVersion", graphSchemaVersion)
+                .field("selectionPolicy", selectionPolicy)
                 .field("sourcePlanFormatVersion", sourcePlanFormatVersion)
                 .field("sourcePlanSchemaVersion", Integer.toString(sourcePlanSchemaVersion))
                 .field("sourcePlanFingerprint", sourcePlanFingerprint)

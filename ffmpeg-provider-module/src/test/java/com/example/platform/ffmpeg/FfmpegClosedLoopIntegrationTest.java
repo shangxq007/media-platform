@@ -161,6 +161,46 @@ class FfmpegClosedLoopIntegrationTest {
     }
 
     @Test
+    void oneBoundGraphExecutesTwoIndependentSourcePortsAndCommitsBothRequiredOutputs() throws Exception {
+        Path ffmpeg = binary("ffmpeg");
+        Harness harness = new Harness(temp.resolve("independent"));
+        var normal = Files.readAllBytes(generateInput(ffmpeg, temp.resolve("first.mp4")));
+        var wide = Files.readAllBytes(generateInput(ffmpeg, temp.resolve("second.mp4"), "color=blue:size=96x64:rate=5"));
+        var graph = FfmpegCanonicalGraphFixture.independentSources(List.of(
+                harness.seedSource("source-0", normal), harness.seedSource("source-1", wide)));
+        var binding = FfmpegCpuRuntimeBindingFactory.create(ffmpeg, FfmpegSandboxWorkspace.under(harness.workspace),
+                Duration.ofSeconds(20), 8 * 1024 * 1024, SandboxCancellation.never());
+        var executed = harness.execute(graph, binding, "two-ports");
+        assertThat(executed.executedTaskResults()).hasSize(2);
+        assertThat(harness.completionCount).isEqualTo(2);
+        assertThat(harness.authority.commitCount).isEqualTo(2);
+        var accepted = new java.util.HashSet<ArtifactId>();
+        for (var task : graph.tasks()) {
+            var unit = task.memberships().getFirst().physicalPlanUnit();
+            var pin = unit.typedInputs().getFirst().sourceArtifact();
+            boolean first = pin.artifactId().value().equals("source-0");
+            var result = executed.executedTaskResults().get(task.id()).durableArtifactCommit();
+            var artifact = result.artifactCommitResult().artifact();
+            assertThat(artifact.artifactKind()).isEqualTo(first ? ArtifactKind.RENDER_MASTER : ArtifactKind.DERIVED_MEDIA);
+            assertThat(accepted.add(artifact.artifactId())).isTrue();
+            try (var input = harness.storage.openRead(new StorageReadRequest(result.storagePublication().objectId(),
+                    Optional.empty(), IntegrityRequirement.VERIFY_DIGEST)).orElseThrow()) {
+                var bytes = input.readAllBytes();
+                assertThat(digest(bytes)).isEqualTo(artifact.contentDigest());
+                var output = Files.write(temp.resolve(task.id().sha256Hex() + ".mp4"), bytes);
+                var probe = ffprobe(binary("ffprobe"), output);
+                assertThat(probe.width()).isEqualTo(first ? 64 : 96);
+                assertThat(probe.height()).isEqualTo(first ? 48 : 64);
+                assertThat(probe.codecName()).isEqualTo("h264");
+                System.out.printf("MULTI_OUTPUT source=%s port=%s role=%s artifact=%s digest=%s raster=%dx%d%n",
+                        pin.artifactId().value(), unit.typedOutputs().getFirst().outputId().value(),
+                        artifact.artifactKind(), artifact.artifactId().value(), artifact.contentDigest(),
+                        probe.width(), probe.height());
+            }
+        }
+    }
+
+    @Test
     void bounded_probe_returns_exact_version_build_evidence_without_eligibility_authority() {
         Path ffmpeg = binary("ffmpeg");
         Path workspaceRoot = temp.resolve("probe-workspace").toAbsolutePath().normalize();
@@ -225,9 +265,13 @@ class FfmpegClosedLoopIntegrationTest {
     }
 
     private Path generateInput(Path ffmpeg, Path output) throws Exception {
+        return generateInput(ffmpeg, output, "testsrc=size=64x48:rate=5");
+    }
+
+    private Path generateInput(Path ffmpeg, Path output, String source) throws Exception {
         Process process = new ProcessBuilder(
                 ffmpeg.toString(), "-hide_banner", "-loglevel", "error", "-y",
-                "-f", "lavfi", "-i", "testsrc=size=64x48:rate=5",
+                "-f", "lavfi", "-i", source,
                 "-t", "1", "-c:v", "mpeg4", "-pix_fmt", "yuv420p", output.toString())
                 .redirectErrorStream(true)
                 .start();
@@ -302,45 +346,40 @@ class FfmpegClosedLoopIntegrationTest {
         }
 
         private ProviderBoundExecutableTaskGraph seedSource(byte[] bytes) throws Exception {
+            return FfmpegCanonicalGraphFixture.single(seedSource("source-media", bytes));
+        }
+
+        private String seedSource(String id, byte[] bytes) throws Exception {
             ContentDigest digest = digest(bytes);
             StorageWriteSession session = storage.beginWrite(
-                    "seed-source", namespace(), digest, bytes.length);
+                    "seed-" + id, namespace(), digest, bytes.length);
             storage.write(session, bytes, 0, bytes.length);
             WriteSessionResult stored = storage.completeWrite(session, digest);
             Artifact source = new Artifact(
-                    new ArtifactId("source-media"), TENANT, digest, bytes.length,
+                    new ArtifactId(id), TENANT, digest, bytes.length,
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE,
                     Artifact.CURRENT_SCHEMA_VERSION, NOW);
             authority.add(source, new ArtifactReplicaBinding(
-                    "seed-binding", source.artifactId(), stored.objectId(), stored.replicaId(),
+                    "binding-" + id, source.artifactId(), stored.objectId(), stored.replicaId(),
                     storage.providerId(), ReplicaRole.PRIMARY, "local", NOW));
-            return FfmpegCanonicalGraphFixture.single(digest.canonicalValue());
+            return digest.canonicalValue();
         }
 
         private RuntimeClosedLoopResult execute(
                 ProviderBoundExecutableTaskGraph graph,
                 ProviderNativeRuntimeBinding<FfmpegCpuTranscodePlan> binding,
                 String run) throws IOException {
-            ExecutableTask task = graph.tasks().getFirst();
-            ExecutionAttemptId attempt = ExecutionAttemptId.of("attempt-" + run);
-            ExecutionOwnershipGeneration generation = ExecutionOwnershipGeneration.first();
-            CompletionEvidence completion = new CompletionEvidence(
-                    new CompletionEventId("completion-" + run),
-                    RemoteProviderExecutionHandle.forRemoteExecution(
-                            attempt, generation, new RemoteExecutionId("runtime-" + run)),
-                    task.id(),
-                    ObservedExecutionState.SUCCEEDED,
-                    new ExpectedOutputValidation(
-                            "validation-" + run, ExpectedOutputValidation.Status.VALID));
-            TaskRuntimeExecution execution = new TaskRuntimeExecution(
-                    new RuntimeExecutionContext(task.id(), task.providerBindingPin(), attempt, generation),
-                    completion,
-                    new DurableOutputTarget(storage.providerId(), namespace(), "write-" + run),
-                    new ArtifactCommitMetadata(
-                            new ArtifactId("output-" + run), TENANT,
-                            ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER,
-                            Artifact.CURRENT_SCHEMA_VERSION, ReplicaRole.PRIMARY, "local",
-                            List.of(), NOW, NOW, null, null));
+            var executions = new java.util.LinkedHashMap<ExecutableTaskId, TaskRuntimeExecution>();
+            var cacheability = new java.util.LinkedHashMap<ExecutableTaskId, Cacheability>();
+            for (var task : graph.tasks()) {
+                String key = graph.tasks().size() == 1 ? run : run + "-" + task.id().sha256Hex();
+                var output = task.memberships().getFirst().physicalPlanUnit().typedOutputs().getFirst();
+                var kind = output.finalArtifactExpectations().stream().anyMatch(expectation ->
+                        expectation.role() == com.example.platform.render.domain.renderplan.RenderOutputRole.DERIVED_MEDIA)
+                        ? ArtifactKind.DERIVED_MEDIA : ArtifactKind.RENDER_MASTER;
+                executions.put(task.id(), execution(task, key, kind));
+                cacheability.put(task.id(), Cacheability.CACHEABLE);
+            }
             var metrics = new Phase16RuntimeMetrics(new SimpleMeterRegistry());
             var orchestrator = new RuntimeClosedLoopOrchestrator(
                     new ArtifactReuseResolver(index, authority),
@@ -356,9 +395,29 @@ class FfmpegClosedLoopIntegrationTest {
                     Map.of(FfmpegCpuProvider.BINDING, binding),
                     metrics, (ignoredPublicationTask, ignoredPublicationContext, publicationAction) -> publicationAction.commit());
             return orchestrator.execute(new RuntimeClosedLoopRequest(
-                    TENANT, graph, Set.of(task.id()),
-                    Map.of(task.id(), Cacheability.CACHEABLE),
-                    Map.of(task.id(), execution)));
+                    TENANT, graph, executions.keySet(), cacheability, executions));
+        }
+
+        private TaskRuntimeExecution execution(ExecutableTask task, String run, ArtifactKind kind) {
+            ExecutionAttemptId attempt = ExecutionAttemptId.of("attempt-" + run);
+            ExecutionOwnershipGeneration generation = ExecutionOwnershipGeneration.first();
+            CompletionEvidence completion = new CompletionEvidence(
+                    new CompletionEventId("completion-" + run),
+                    RemoteProviderExecutionHandle.forRemoteExecution(
+                            attempt, generation, new RemoteExecutionId("runtime-" + run)),
+                    task.id(),
+                    ObservedExecutionState.SUCCEEDED,
+                    new ExpectedOutputValidation(
+                            "validation-" + run, ExpectedOutputValidation.Status.VALID));
+            return new TaskRuntimeExecution(
+                    new RuntimeExecutionContext(task.id(), task.providerBindingPin(), attempt, generation),
+                    completion,
+                    new DurableOutputTarget(storage.providerId(), namespace(), "write-" + run),
+                    new ArtifactCommitMetadata(
+                            new ArtifactId("output-" + run), TENANT,
+                            ArtifactMediaType.VIDEO, kind,
+                            Artifact.CURRENT_SCHEMA_VERSION, ReplicaRole.PRIMARY, "local",
+                            List.of(), NOW, NOW, null, null));
         }
 
         private CompletionAuthorityPort completionAuthority() {

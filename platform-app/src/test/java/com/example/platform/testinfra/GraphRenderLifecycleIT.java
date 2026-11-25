@@ -123,7 +123,10 @@ class GraphRenderLifecycleIT {
         try (var w = new World()) {
             String hash = "d".repeat(64);
             w.db.execute("insert into artifacts.artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values ('source-facts','tenant-a','project-a','workspace-a',?,10,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())", hash);
-            var store = new com.example.platform.artifact.infrastructure.ArtifactSourceFactsStore(w.db);
+            var store = new com.example.platform.artifact.infrastructure.ArtifactSourceFactsStore(w.db, org.mockito.Mockito.mock(
+                    com.example.platform.artifact.app.ArtifactContentRead.class),
+                    new org.springframework.beans.factory.support.DefaultListableBeanFactory().getBeanProvider(
+                            com.example.platform.artifact.contract.ArtifactSourceProbePort.class));
             var scope = new com.example.platform.artifact.contract.ArtifactScope("tenant-a", "workspace-a", "project-a");
             var id = new com.example.platform.shared.identity.ArtifactId("source-facts");
             var digest = com.example.platform.shared.digest.ContentDigest.sha256(hash);

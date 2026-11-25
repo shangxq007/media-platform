@@ -62,9 +62,8 @@ import java.time.Instant;
  * provider) and is registered in-process rather than as a plugin JAR.
  *
  * <p>Honest declarations only: identity, descriptor, binding, static compatibility, hardware
- * requirements and runtime dependencies are the frozen {@link BmfCpuProvider} constants; the
- * capability profile and execution contract are declared here because those constants carry
- * no support declarations. The Worker form requires an exact verified runtime bundle.
+ * requirements and runtime dependencies are owned by {@link BmfCpuProvider}. The contribution publishes the capability
+ * profile and execution contract derived from the native operations. The Worker form requires an exact verified runtime bundle.
  */
 public final class BmfProviderExtension implements ProviderPluginContribution {
 
@@ -78,20 +77,26 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     public static final ContractVersionRange CAPABILITY_CONTRACT_RANGE =
             ContractVersionRange.exactly(ContractVersion.of(1, 0));
 
-    private static final List<CapabilityId> CAPABILITIES = List.of(
-            TRANSCODE_CAPABILITY, VIDEO_DECODE_CAPABILITY, COMPOSITE_CAPABILITY, OUTPUT_CAPABILITY,
-            AUDIO_DECODE_CAPABILITY, MULTITRACK_CAPABILITY);
+    private static final List<CapabilityId> CAPABILITIES = com.example.platform.bmf.BmfOperation.capabilityIds().stream()
+            .map(CapabilityId::of).toList();
 
     private final Path runtimeRoot;
+    private final String bundleDigest;
+    private final ProviderBindingPin binding;
 
     /** Declaration-only form used by API planning; a Worker supplies the pinned distribution root. */
     public BmfProviderExtension() {
-        this.runtimeRoot = null;
+        this(null, BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256);
     }
 
     public BmfProviderExtension(Path runtimeRoot) {
-        this.runtimeRoot = java.util.Objects.requireNonNull(runtimeRoot, "runtimeRoot")
-                .toAbsolutePath().normalize();
+        this(java.util.Objects.requireNonNull(runtimeRoot), BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256);
+    }
+
+    public BmfProviderExtension(Path runtimeRoot, String bundleDigest) {
+        this.runtimeRoot = runtimeRoot == null ? null : runtimeRoot.toAbsolutePath().normalize();
+        this.bundleDigest = bundleDigest.isEmpty() ? BmfCpuProvider.RUNTIME_BUNDLE_WITH_SNDIO_SHA256 : bundleDigest;
+        this.binding = BmfCpuProvider.bindingFor(this.bundleDigest);
     }
 
     /** Exact executable inside the distribution supplied to this Worker. */
@@ -102,14 +107,6 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
         return runtimeRoot.resolve("host-bundle/usr/bin/python3.9");
     }
 
-    private static final ProviderCapabilityProfile CAPABILITY_PROFILE =
-            new ProviderCapabilityProfile(
-                    BmfCpuProvider.CAPABILITY_PROFILE_REFERENCE,
-                    CAPABILITIES.stream()
-                            .map(capability -> ProviderCapabilitySupport.unpinned(
-                                    capability, CAPABILITY_CONTRACT_RANGE))
-                            .toList());
-
     private static final ProviderExecutionContract EXECUTION_CONTRACT =
             new ProviderExecutionContract(
                     ProviderExecutionContractSchemaVersion.of(1),
@@ -118,12 +115,6 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
                             .map(capability -> new ProviderCapabilityContractReference(
                                     capability, CAPABILITY_CONTRACT_RANGE))
                             .toList());
-
-    private static final WorkerRuntimeSupportRequirement RUNTIME_SUPPORT_REQUIREMENT =
-            new WorkerRuntimeSupportRequirement(
-                    BmfCpuProvider.BINDING,
-                    RuntimeLifecycleKind.EPHEMERAL_TASK,
-                    RuntimeSupportIdentifier.of("bmf.cpu.v1"));
 
     private static final PluginDescriptor PLUGIN_DESCRIPTOR = new PluginDescriptor(
             PLUGIN_ID,
@@ -180,7 +171,8 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
 
     @Override
     public ProviderDescriptor providerDescriptor() {
-        return BmfCpuProvider.DESCRIPTOR;
+        return new ProviderDescriptor(binding.providerId(), binding.providerImplementationId(), binding.providerVersion(),
+                binding.providerExecutionContractVersion(), binding.providerCapabilityProfileVersionOrDigest());
     }
 
     @Override
@@ -190,7 +182,12 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
 
     @Override
     public ProviderCapabilityProfile providerCapabilityProfile() {
-        return CAPABILITY_PROFILE;
+        return new ProviderCapabilityProfile(
+                    binding.providerCapabilityProfileVersionOrDigest(),
+                    CAPABILITIES.stream()
+                            .map(capability -> ProviderCapabilitySupport.unpinned(
+                                    capability, CAPABILITY_CONTRACT_RANGE))
+                            .toList());
     }
 
     @Override
@@ -222,17 +219,20 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
     @Override
     public Optional<ProviderBackendExecutionSupport> providerBackendExecutionSupport() {
         return Optional.of(ProviderBackendExecutionSupport.declared(
-                BmfCpuProvider.BINDING, Set.of(ExecutionBackend.NATIVE_PULL_WORKER)));
+                binding, Set.of(ExecutionBackend.NATIVE_PULL_WORKER)));
     }
 
     @Override
     public WorkerRuntimeSupportRequirement workerRuntimeSupportRequirement() {
-        return RUNTIME_SUPPORT_REQUIREMENT;
+        return new WorkerRuntimeSupportRequirement(
+                    binding,
+                    RuntimeLifecycleKind.EPHEMERAL_TASK,
+                    RuntimeSupportIdentifier.of("bmf.cpu.v1"));
     }
 
     @Override
     public ProviderBindingPin providerBindingPin() {
-        return BmfCpuProvider.BINDING;
+        return binding;
     }
 
     /** Provider-local evidence is emitted only for the verified, exact runtime distribution. */
@@ -240,7 +240,7 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
             PhysicalHostId hostId, CpuArchitecture architecture, Instant observedAt,
             Instant expiresAt) {
         if (runtimeRoot == null || architecture != CpuArchitecture.X86_64
-                || !BmfRuntimeBundleVerifier.verify(runtimeRoot)) {
+                || !BmfRuntimeBundleVerifier.verify(runtimeRoot, bundleDigest)) {
             return Optional.empty();
         }
         var hardware = new ProviderHardwareObservation(BmfCpuProvider.IMPLEMENTATION_ID,
@@ -278,7 +278,7 @@ public final class BmfProviderExtension implements ProviderPluginContribution {
                     ProviderNativeFailureCode.RUNTIME_ADAPTER_UNSUPPORTED_PLAN,
                     "BMF Worker runtime root is not configured");
         }
-        if (!BmfRuntimeBundleVerifier.verify(runtimeRoot)) {
+        if (!BmfRuntimeBundleVerifier.verify(runtimeRoot, bundleDigest)) {
             throw new ProviderNativeExecutionFailure(
                     ProviderNativeFailureCode.RUNTIME_ADAPTER_UNSUPPORTED_PLAN,
                     "BMF Worker runtime bundle failed verification");

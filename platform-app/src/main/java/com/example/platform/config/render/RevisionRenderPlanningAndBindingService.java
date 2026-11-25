@@ -1,6 +1,7 @@
 package com.example.platform.config.render;
 
 import com.example.platform.execution.binding.BoundGraphInputs;
+import com.example.platform.execution.binding.ProviderSelectionPolicy;
 import com.example.platform.execution.binding.ProviderBindingEntryService;
 import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.planning.ExecutionPlanningEntry;
@@ -54,13 +55,14 @@ public class RevisionRenderPlanningAndBindingService {
     private final TimelineRevisionQueries timelineRevisionQueries;
     private final EffectSemanticSnapshotStore effectSemanticSnapshotStore;
     private final ProviderPluginCatalog providerPluginCatalog;
+    private final com.example.platform.artifact.app.ArtifactSourceFactsQuery sourceFacts;
     private final RenderPlanningEntryService renderPlanningEntryService;
     private final PhysicalPlanningEntryService physicalPlanningEntryService;
     private final ProviderBindingEntryService providerBindingEntryService;
 
     /** Internal planning input: the selected media provider is persisted in each bound task pin. */
-    @Value("${platform.render.media-provider:ffmpeg}")
-    private String mediaProvider = "ffmpeg";
+    @Value("${platform.render.media-provider:}")
+    private String mediaProvider = "";
 
     public RevisionRenderPlanningAndBindingService(
             RevisionRenderPlanningApplicationService planningApplicationService,
@@ -71,7 +73,9 @@ public class RevisionRenderPlanningAndBindingService {
             RenderPlanningEntryService renderPlanningEntryService,
             PhysicalPlanningEntryService physicalPlanningEntryService,
             ProviderBindingEntryService providerBindingEntryService,
-            com.example.platform.render.api.GraphRenderLifecycle lifecycle) {
+            com.example.platform.render.api.GraphRenderLifecycle lifecycle,
+            com.example.platform.artifact.app.ArtifactSourceFactsQuery sourceFacts) {
+        this.sourceFacts = Objects.requireNonNull(sourceFacts, "sourceFacts");
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.planningApplicationService = Objects.requireNonNull(
                 planningApplicationService, "planningApplicationService");
@@ -116,8 +120,8 @@ public class RevisionRenderPlanningAndBindingService {
                 .getRevisionSnapshotPayload(projectId, tenantId, revisionId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Timeline revision snapshot unavailable: " + revisionId));
-        TimelineRevision hydratedRevision = revision.hydrate(
-                TimelineDocumentJsonSerializer.deserialize(payload.canonicalTimelineJson()));
+        var document = TimelineDocumentJsonSerializer.deserialize(payload.canonicalTimelineJson());
+        TimelineRevision hydratedRevision = revision.hydrate(document);
 
         // The pinned Effect semantic snapshot (loaded by the revision's own exact pin).
         EffectSemanticSnapshotReference pin = hydratedRevision.effectSemanticSnapshotReference();
@@ -150,38 +154,42 @@ public class RevisionRenderPlanningAndBindingService {
 
         stage = com.example.platform.render.api.GraphRenderLifecycle.PreparationStage.BINDING;
         lifecycle.preparationStage(tenantId, planning.renderJobId(), stage);
+        RenderSourceArtifacts.requireExecutableStreams(document, tenantId, projectId, sourceFacts);
         // Declared provider candidates from the catalog projection.
-        if ("ffmpeg".equals(mediaProvider) && !request.extent().raster().equals(
-                com.example.platform.render.domain.renderplan.RenderRaster.DEFAULT)) {
-            throw new IllegalArgumentException("The configured render capability requires the default output raster");
-        }
-        List<ProviderCandidate> candidates = selectedMediaCandidates(
-                ProviderCandidateProjection.project(providerPluginCatalog), mediaProvider);
+        List<ProviderCandidate> candidates = ProviderCandidateProjection.project(providerPluginCatalog);
+        ProviderSelectionPolicy policy = selectionPolicy();
 
         // #22 provider binding (pure): the digest comes only from the real binding result.
         ProviderBindingEntryService.ProviderBindingOutcome outcome = providerBindingEntryService.bind(
-                physicalPlan, candidates, planning.declarations());
+                physicalPlan, candidates, planning.declarations(), policy);
         ExecutableTaskGraphDigest expectedDigest = outcome.executableTaskGraph().digest();
 
         BoundGraphInputs boundGraphInputs = new BoundGraphInputs(
-                physicalPlan, candidates, planning.declarations(), expectedDigest);
+                physicalPlan, candidates, planning.declarations(), expectedDigest, policy);
         return new RevisionRenderPlanningAndBindingResult(
                 tenantId, planning.renderJobId(), planning.renderRequest().id(), boundGraphInputs);
         } catch (RuntimeException preparationFailure) {
             try { lifecycle.failPreparation(tenantId, planning.renderJobId(), stage); }
             catch (RuntimeException projectionFailure) { preparationFailure.addSuppressed(projectionFailure); }
+            if (preparationFailure instanceof com.example.platform.execution.binding.ProviderBindingException) {
+                throw new IllegalArgumentException("No supported execution for the requested media requirements and exact output raster",
+                        preparationFailure);
+            }
             throw preparationFailure;
         }
     }
-
-    static List<ProviderCandidate> selectedMediaCandidates(
-            List<ProviderCandidate> candidates, String mediaProvider) {
-        if (!mediaProvider.equals("ffmpeg") && !mediaProvider.equals("bmf")) {
-            throw new IllegalArgumentException("unsupported internal media provider selection: " + mediaProvider);
-        }
-        String excluded = mediaProvider.equals("bmf") ? "ffmpeg" : "bmf";
-        return candidates.stream()
-                .filter(candidate -> !candidate.bindingPin().providerId().value().equals(excluded))
-                .toList();
+    private ProviderSelectionPolicy selectionPolicy() {
+        return mediaProvider.isEmpty() ? ProviderSelectionPolicy.PREFERRED : ProviderSelectionPolicy.restrictedTo(mediaProvider);
     }
+
+    public List<com.example.platform.execution.compatibility.MediaLoweringEnvelope.OutputRasters> outputRasters() {
+        var required = selectionPolicy().requiredProvider();
+        return ProviderCandidateProjection.project(providerPluginCatalog).stream()
+                .filter(c -> required.map(c.bindingPin().providerId()::equals).orElse(true))
+                .filter(c -> c.capabilityProfile().supportDeclarations().stream()
+                        .anyMatch(d -> d.capabilityId().value().equals("render.output")))
+                .flatMap(c -> c.staticCompatibility().mediaLowering().outputRasters().stream())
+                .distinct().toList();
+    }
+
 }

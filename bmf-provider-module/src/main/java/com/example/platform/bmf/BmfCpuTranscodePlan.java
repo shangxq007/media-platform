@@ -93,18 +93,9 @@ public record BmfCpuTranscodePlan(
     public record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
                                  double left, double right, double top, double bottom, double opacity) {
         static final VideoPlacement IDENTITY = new VideoPlacement(0, 0, 1, 1, 0, 0, 1, 0, 1, 1);
-        private static final long INTERMEDIATE_PIXEL_LIMIT = 8_294_400;
-
         static boolean fitsIntermediateRaster(RenderRaster raster, double scaleX, double scaleY, double degrees) {
-            double width = Math.ceil(raster.width() * scaleX);
-            double height = Math.ceil(raster.height() * scaleY);
-            if (width * height > INTERMEDIATE_PIXEL_LIMIT) return false;
-            if (degrees % 90 == 0) return true;
-            double angle = Math.toRadians(degrees);
-            double cos = Math.abs(Math.cos(angle));
-            double sin = Math.abs(Math.sin(angle));
-            return Math.ceil(width * cos + height * sin) * Math.ceil(width * sin + height * cos)
-                    <= INTERMEDIATE_PIXEL_LIMIT;
+            return com.example.platform.execution.compatibility.MediaLoweringEnvelope
+                    .fitsIntermediateRaster(raster, scaleX, scaleY, degrees);
         }
     }
 
@@ -149,7 +140,7 @@ public record BmfCpuTranscodePlan(
         Objects.requireNonNull(outputId, "outputId");
         Objects.requireNonNull(sourceWindow, "sourceWindow");
         Objects.requireNonNull(raster, "raster");
-        if (!BmfCpuProvider.BINDING.equals(providerBindingPin)) {
+        if (!BmfCpuProvider.recognizes(providerBindingPin)) {
             throw new IllegalArgumentException("BMF render unit requires the exact provider binding");
         }
         if (sourceWindow.isPresent() && operation != BmfOperation.DECODE && operation != BmfOperation.AUDIO_DECODE) {

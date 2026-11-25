@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input } from '../../components/design-system'
-import { FormalRenderAPI, type RenderResult } from '../../api/formal-render'
+import { FormalRenderAPI, type RasterProfile, type RenderResult } from '../../api/formal-render'
 import { DeliveryAPI, type Delivery } from '../../api/delivery'
 import { renderReadSource } from '../../api/render-jobs'
 import type { RenderJobSummary } from '../../contracts/app/render-job'
@@ -28,10 +28,23 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = D
   const [fps, setFps] = useState(24)
   const [raster, setRaster] = useState<{ aspect: string; width: number; height: number } | null>(null)
   const aspect = aspectLabel(aspectRatio)
-  const dimensions = raster?.aspect === aspect ? raster : suggestedOutputRaster(aspectRatio)
+  const [profiles, setProfiles] = useState<RasterProfile[] | null>(null)
+  const [profileError, setProfileError] = useState('')
+  useEffect(() => {
+    const controller = new AbortController()
+    setProfiles(null); setProfileError('')
+    if (project.tenantId && project.projectId) {
+      FormalRenderAPI.outputRasters(project.projectId, controller.signal).then(result => {
+        if (!controller.signal.aborted) setProfiles(result)
+      }).catch(() => { if (!controller.signal.aborted) setProfileError('Output capabilities unavailable.') })
+    }
+    return () => controller.abort()
+  }, [project.tenantId, project.projectId])
+  const dimensions = raster?.aspect === aspect ? raster : suggestedOutputRaster(aspectRatio, profiles ?? [])
   const width = dimensions?.width ?? 0
   const height = dimensions?.height ?? 0
-  const rasterError = outputRasterError(aspectRatio, width, height)
+  const rasterError = profiles ? outputRasterError(aspectRatio, width, height, profiles)
+    : profileError || 'Loading output capabilities.'
   const [jobs, setJobs] = useState<RenderJobSummary[]>([])
   const [job, setJob] = useState<RenderResult | null>(null)
   const [deliveries, setDeliveries] = useState<Delivery[]>([])

@@ -29,13 +29,20 @@ public record BoundGraphInputs(
         PhysicalExecutionPlan physicalPlan,
         List<ProviderCandidate> candidates,
         List<ProviderBoundaryCompatibilityDeclaration> transitionDeclarations,
-        ExecutableTaskGraphDigest expectedExecutableTaskGraphDigest) {
+        ExecutableTaskGraphDigest expectedExecutableTaskGraphDigest,
+        ProviderSelectionPolicy selectionPolicy) {
+
+    public BoundGraphInputs(PhysicalExecutionPlan physicalPlan, List<ProviderCandidate> candidates,
+            List<ProviderBoundaryCompatibilityDeclaration> declarations, ExecutableTaskGraphDigest digest) {
+        this(physicalPlan, candidates, declarations, digest, ProviderSelectionPolicy.PREFERRED);
+    }
 
     public BoundGraphInputs {
         Objects.requireNonNull(physicalPlan, "physicalPlan");
         Objects.requireNonNull(candidates, "candidates");
         Objects.requireNonNull(transitionDeclarations, "transitionDeclarations");
         Objects.requireNonNull(expectedExecutableTaskGraphDigest, "expectedExecutableTaskGraphDigest");
+        Objects.requireNonNull(selectionPolicy, "selectionPolicy");
         candidates = List.copyOf(candidates);
         transitionDeclarations = List.copyOf(transitionDeclarations);
     }

@@ -24,8 +24,8 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
     public BmfCpuTranscodePlan lower(ExecutableTask task, StaticProviderExecutionContext context) {
         Objects.requireNonNull(task, "task");
         Objects.requireNonNull(context, "context");
-        if (!BmfCpuProvider.BINDING.equals(task.providerBindingPin())
-                || !BmfCpuProvider.BINDING.equals(context.providerBindingPin())) {
+        if (!BmfCpuProvider.recognizes(task.providerBindingPin())
+                || !task.providerBindingPin().equals(context.providerBindingPin())) {
             throw failure(ProviderNativeFailureCode.PROVIDER_BINDING_MISMATCH,
                     "BMF lowering requires its exact provider binding");
         }
@@ -102,7 +102,7 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                 throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
                         "BMF multitrack composition requires exact audio or video placement");
             }
-            var placement = placement(timed.transform());
+            var placement = placement(timed.placement());
             if (!timed.audio() && !BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(
                     extent.raster(), placement.scaleX(), placement.scaleY(), placement.degrees())) {
                 throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
@@ -132,14 +132,10 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
     }
 
     private static BmfCpuTranscodePlan.VideoPlacement placement(
-            com.example.platform.timeline.semantics.effect.VideoTransform transform) {
-        double unit = com.example.platform.timeline.semantics.effect.VideoTransform.UNIT;
-        return new BmfCpuTranscodePlan.VideoPlacement(
-                transform.positionXMicros() / unit, transform.positionYMicros() / unit,
-                transform.scaleXMicros() / unit, transform.scaleYMicros() / unit,
-                transform.rotationMicroDegrees() / unit, transform.cropLeftMicros() / unit,
-                transform.cropRightMicros() / unit, transform.cropTopMicros() / unit,
-                transform.cropBottomMicros() / unit, transform.opacityMicros() / unit);
+            RenderDependency.VideoPlacement transform) {
+        return new BmfCpuTranscodePlan.VideoPlacement(transform.x(), transform.y(), transform.scaleX(),
+                transform.scaleY(), transform.degrees(), transform.left(), transform.right(),
+                transform.top(), transform.bottom(), transform.opacity());
     }
 
     private static boolean isMultiInputComposite(

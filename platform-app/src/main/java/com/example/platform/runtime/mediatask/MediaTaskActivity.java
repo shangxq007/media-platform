@@ -397,6 +397,10 @@ public final class MediaTaskActivity {
             Map<ExecutableTaskId,ArtifactPin> inputs) {
         Map<String,Object> event=new LinkedHashMap<>();
         event.put("job",prepared.renderJobId());event.put("task",task.id().sha256Hex());
+        event.put("provider",task.providerBindingPin().providerId().value());
+        event.put("implementation",task.providerBindingPin().providerImplementationId().value());
+        event.put("profile",task.providerBindingPin().providerCapabilityProfileVersionOrDigest());
+        event.put("graphDigest",graph.digest().sha256Hex());
         event.put("cacheability",cacheability.name());event.put("reuseKeyVersion",key.version());event.put("reuseKey",key.stableDigest());
         event.put("decision",incremental==null?"FULL_RENDER":incremental.impact().decisions().get(task.id()).reason());
         event.put("resolver",incremental==null?"EXACT_OUTPUT_POLICY":incremental.decisions().get(task.id()).outcome().name());

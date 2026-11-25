@@ -65,11 +65,13 @@ class ArtifactCapabilityPlanningTest {
         for(var changed:variants)assertNotEquals(plan(base).digest(),plan(changed).digest());
         assertEquals(plan(base).digest(),plan(request("1".repeat(64),"source-a","a".repeat(64),"0.2500","media.cover-image")).digest());
     }
-    @Test void bindingRejectsNoCandidateAmbiguityAndForgedIdentityThroughActualKernel() {
+    @Test void bindingHandlesMultipleChoicesAndRejectsMissingOrForgedCandidatesThroughActualKernel() {
         var plan=plan(request("1".repeat(64),"source-a","a".repeat(64),"0","media.thumbnail"));
         var binder=new ProviderBindingEntryService();var first=candidate("ffmpeg","1.0.0");
         assertThrows(ProviderBindingException.class,()->binder.bind(plan,List.of(),List.of()));
-        assertThrows(ProviderBindingException.class,()->binder.bind(plan,List.of(first,candidate("other","1.0.0")),List.of()));
+        var choices = List.of(first, candidate("other","1.0.0"));
+        assertEquals(binder.bind(plan, choices, List.of()).executableTaskGraph().digest(),
+                binder.bind(plan, choices.reversed(), List.of()).executableTaskGraph().digest());
         var other=candidate("other","1.0.0");
         var forged=new ProviderCandidate(first.bindingPin(),other.descriptor(),first.executionContract(),first.capabilityProfile(),first.staticCompatibility());
         assertThrows(ProviderBindingException.class,()->binder.bind(plan,List.of(forged),List.of()));
