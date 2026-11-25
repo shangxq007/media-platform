@@ -128,7 +128,9 @@ if branches:
     n03 = browser_result['http']['n03']
     assert [step['source'] for step in n03['steps'][:4]] == [n03[k] for k in ('B','A','B','C')]
     ids = [n03[k] for k in 'ABC'] + [step['accepted'] for step in n03['steps']]
-    assert len(ids) == len(set(ids)) and all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in ids)
+    assert len(ids) == len(set(ids))
+    ids = sorted(set(ids) | {step['source'] for step in n03['steps']})
+    assert all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in ids)
     sql_ids = ','.join("'" + value + "'" for value in ids)
     revisions = psql(f"""select json_object_agg(id,row_to_json(r)) from (
         select rev.id,rev.parent_revision_id,rev.content_hash,s.payload_json::json as commitment
@@ -144,6 +146,8 @@ if branches:
         assert row['commitment'] == revisions[step['source']]['commitment']
     sequence = ('a','b','c','undo1','undo2','redo1','redo2')
     assert [facts['n03-' + label]['rows'] for label in sequence] == list(range(facts['n03-a']['rows'], facts['n03-a']['rows'] + 7))
+    for before, after in zip(sequence, sequence[1:]):
+        assert revisions[facts['n03-' + after]['refs']['main']]['parent_revision_id'] == facts['n03-' + before]['refs']['main']
     assert facts['n03-undo1-lost'] == facts['n03-undo1']
     assert facts['n03-redo1-lost'] == facts['n03-redo1']
     assert facts['n03-reopened'] == facts['n03-redo2']
