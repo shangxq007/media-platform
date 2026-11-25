@@ -143,6 +143,19 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         if (instance.parameters() instanceof OperationParameters.PasteClipsParameters paste) {
             validatePaste(batch, paste, currentCandidate);
         }
+        if (instance.parameters() instanceof OperationParameters.MoveParameters
+                && instance.target() instanceof OperationTarget.ResolvedClipScopeTarget clips
+                && clips.resolvedScope().resolvedClipIds().size() > 1) {
+            if (!multiMove(operation)) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Multi-clip move requires an explicit selection");
+            }
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, "Multi-clip move is only available on the default editing branch");
+            }
+            if (batch.operations().size() != 1) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Multi-clip move must be the only operation in its batch");
+            }
+        }
         validateSource(instance, batch, currentCandidate, projectId);
         final OperationPlan plan;
         try {
@@ -189,10 +202,18 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         }
     }
 
+    private static boolean multiMove(OperationRequest operation) {
+        return operation.parameters() instanceof OperationParameters.MoveParameters
+                && operation.target() instanceof com.example.platform.operation.operation.OperationTargetRequest.ClipSelectionTargetRequest request
+                && request.selectionSpec() instanceof com.example.platform.timeline.semantics.selection.SelectionSpec.ExplicitObjectSelection selection
+                && selection.clipIds().size() > 1;
+    }
+
     private static boolean preservesParentEffects(OperationBatchRequest batch) {
         return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
                 instanceof OperationParameters.TrimParameters
-                || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters);
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
+                || multiMove(batch.operations().getFirst()));
     }
 
     private void validatePaste(OperationBatchRequest batch, OperationParameters.PasteClipsParameters paste,

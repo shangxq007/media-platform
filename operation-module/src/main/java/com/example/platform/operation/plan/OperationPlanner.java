@@ -545,6 +545,11 @@ public final class OperationPlanner {
 
     private TimelineDocument planMove(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
         var params = (OperationParameters.MoveParameters) inst.parameters();
+        var scope = scopeOf(inst);
+        if (scope.size() > 1) return planMultiMove(base, scope, params, changes);
+        if (params.backward()) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Use an absolute destination for single-clip Move");
+        }
         TimelineDocument cur = base;
         for (TimelineClipId id : scopeOf(inst)) {
             rejectTransitionMutation(base, id, "move");
@@ -557,6 +562,68 @@ public final class OperationPlanner {
             cur = replaceClip(cur, id, moved);
         }
         return cur;
+    }
+
+    private TimelineDocument planMultiMove(TimelineDocument base, List<TimelineClipId> scope,
+            OperationParameters.MoveParameters params, List<PlannedChange> changes) {
+        var selected = Set.copyOf(scope);
+        var track = base.getTracks().stream().filter(t ->
+                t.clips().stream().filter(c -> selected.contains(c.getClipId())).count() == selected.size())
+                .findFirst().orElseThrow(() -> new PlanException(PlanErrorCode.INVALID_PLAN,
+                        "All selected clips must be on one track"));
+        if (params.absolute()) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "A multi-clip move requires a common relative offset");
+        }
+        if (params.delta().equals(MediaTime.ZERO)) return base;
+        var layout = new ArrayList<TimelineClip>();
+        for (var clip : track.clips()) {
+            var id = clip.getClipId();
+            if (!selected.contains(id)) { layout.add(clip); continue; }
+            rejectMultiMoveBindings(base, clip);
+            if (params.backward() && clip.getStartTime().isLessThan(params.delta())) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Move would produce a negative start: " + id.value());
+            }
+            try {
+                var start = params.backward() ? clip.getStartTime().subtract(params.delta()) : clip.getStartTime().add(params.delta());
+                var end = params.backward() ? clip.getEndTime().subtract(params.delta()) : clip.getEndTime().add(params.delta());
+                var moved = withPlacement(clip, start, end);
+                layout.add(moved);
+                changes.add(new PlannedChange.ClipReplaced(id, moved));
+            } catch (ArithmeticException invalid) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Move exceeds the exact Timeline range: " + id.value());
+            }
+        }
+        // Compare destinations to the final layout, not to the selected clips' old positions.
+        for (var moved : layout) {
+            if (!selected.contains(moved.getClipId())) continue;
+            for (var other : layout) {
+                if (moved != other && moved.getStartTime().isLessThan(other.getEndTime())
+                        && moved.getEndTime().isGreaterThan(other.getStartTime())) {
+                    throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Moving " + moved.getClipId().value()
+                            + " would overlap " + other.getClipId().value());
+                }
+            }
+        }
+        var tracks = base.getTracks().stream()
+                .map(t -> t == track ? new TimelineTrack(t.trackId(), t.name(), t.type(), layout) : t).toList();
+        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
+    }
+
+    private static void rejectMultiMoveBindings(TimelineDocument base, TimelineClip clip) {
+        var id = clip.getClipId();
+        for (var relation : base.getSemanticRelationships()) {
+            if (relation instanceof GroupRelationship group && group.members().contains(id)) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Multi-clip move cannot move group binding for " + id.value());
+            }
+            if (relation instanceof SyncRelationship sync && (id.equals(sync.endpointA()) || id.equals(sync.endpointB()))) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Multi-clip move cannot move sync binding for " + id.value());
+            }
+        }
+        rejectTransitionMutation(base, id, "multi-clip move");
+        if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
+                || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Multi-clip move cannot move automation binding for " + id.value());
+        }
     }
 
     private TimelineDocument planRelocate(OperationInstance instance, TimelineDocument base,

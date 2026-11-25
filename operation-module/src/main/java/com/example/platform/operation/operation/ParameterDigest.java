@@ -88,7 +88,7 @@ public final class ParameterDigest {
             return "none";
         }
         if (p instanceof OperationParameters.MoveParameters m) {
-            return "move(" + m.delta() + ",absolute=" + m.absolute() + ")";
+            return "move(" + (m.backward() ? "-" : "") + m.delta() + ",absolute=" + m.absolute() + ")";
         }
         if (p instanceof OperationParameters.RelocateClipParameters relocate) {
             return "relocate(" + relocate.delta() + ",absolute=" + relocate.absolute()

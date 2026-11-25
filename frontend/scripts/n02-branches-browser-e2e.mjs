@@ -775,8 +775,173 @@ try {
       overlapApply: 422, apply: write.status() })
   }
   result.http.n04.endpointRegression = exactEndpoints
-  result.status = 'PASS'
   save('N04 F1 exact timeline endpoints and no-write genuine overlap')
+
+  const currentN05 = await branch()
+  const seedN05 = { ...reset, batchId: 'n05-seed', baseRevisionId: currentN05.headRevisionId, baseContentHash: currentN05.contentHash }
+  const seededN05 = await apply(seedN05, (await preview(seedN05)).batchDigest)
+  const clipsOn = document => document.tracks.find(t => t.trackId === 'track-1').clips
+  const originalsN05 = clipsOn(await snapshot(seededN05.newRevisionId))
+  const addN05 = (id, source, start, end) => ({ definitionId: 'timeline.media-clip.add', parameters: {
+    trackId: 'track-1', clipId: id, mediaAssetId: source.artifactId, mediaStreamId: source.mediaStreamId,
+    artifactId: source.artifactId, contentDigest: source.contentDigest, sourceStart: '0', sourceEnd: '1',
+    timelineStart: start, timelineEnd: end, rateNumerator: 1, rateDenominator: 1, direction: 'FORWARD' } })
+  const makeMove = (target, delta, absolute = false) => ({
+    definitionId: 'timeline.move', target, parameters: { delta, absolute } })
+  const editsN05 = { batchId: 'n05-three-clips', baseRevisionId: seededN05.newRevisionId,
+    baseContentHash: seededN05.newContentHash, operations: [
+      { definitionId: 'timeline.delete', target: { clipId: 'clip-blue' } },
+      { definitionId: 'timeline.trim', target: { clipId: 'clip-red' }, parameters: { edge: 'END', delta: '1' } },
+      addN05('clip-blue', originalsN05.find(c => c.clipId === 'clip-blue'), '1', '2'),
+      addN05('clip-gray', originalsN05.find(c => c.clipId === 'clip-red'), '4', '5'),
+      { definitionId: 'timeline.clip.effect.set', version: '2.0', target: { clipId: 'clip-gray' },
+        parameters: { brightness: 0, contrast: 1, saturation: 1, grayscale: true,
+          fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true } },
+    ] }
+  const n05Base = await apply(editsN05, (await preview(editsN05)).batchDigest)
+  await page.reload()
+  await waitView('main', n05Base.newRevisionId)
+  const moveTools = page.getByRole('region', { name: 'Move selected clips' })
+  const movePreview = moveTools.getByRole('button', { name: 'Preview selected move' })
+  const moveConfirm = moveTools.getByRole('button', { name: 'Confirm selected move' })
+  const moveRetry = moveTools.getByRole('button', { name: 'Retry confirmed move' })
+  const moveSelect = id => moveTools.getByRole('checkbox', { name: 'Select for move ' + id })
+  const cp5 = name => checkpoint('n05-' + name)
+  const wire5 = suffix => page.waitForResponse(res => res.url().endsWith(batch + suffix) && res.request().method() === 'POST')
+  async function pair5() {
+    await moveSelect('clip-red').check()
+    await moveSelect('clip-blue').check()
+    await moveTools.getByText('2 selected', { exact: true }).waitFor()
+  }
+  async function plan5(delta, expected = 200) {
+    await moveTools.getByLabel('Move offset (seconds)').fill(delta)
+    const awaited = wire5('/preview')
+    await movePreview.click()
+    const res = await awaited
+    const payload = await res.json()
+    assert.equal(res.status(), expected, JSON.stringify(payload))
+    if (expected === 200) await moveConfirm.waitFor()
+    return { body: res.request().postDataJSON(), payload }
+  }
+  const before5 = await cp5('before')
+  await pair5()
+  await moveTools.getByRole('button', { name: 'Clear move selection' }).click()
+  await moveTools.getByText('0 selected', { exact: true }).waitFor()
+  await pair5()
+  assert.deepEqual(await cp5('selection'), before5)
+  const collision5 = await plan5('3', 422)
+  assert.match(collision5.payload.detail, /clip-blue would overlap clip-gray/)
+  assert.match((await apply(collision5.body, '0'.repeat(64), 422)).detail, /would overlap/)
+  assert.deepEqual(await cp5('collision'), before5)
+  const negativeRejection = await plan5('-1', 422)
+  assert.match(negativeRejection.payload.detail, /negative start/)
+  assert.match((await apply(negativeRejection.body, '0'.repeat(64), 422)).detail, /negative start/)
+  assert.deepEqual(await cp5('negative-reject'), before5)
+  const positive5 = await plan5('1')
+  const denied5 = await apply(positive5.body, positive5.payload.batchDigest, 403, reader)
+  const isolated5 = await api(batch.replace(project, 'project-peer') + '/apply', 404,
+    { body: positive5.body, digest: positive5.payload.batchDigest })
+  assert.deepEqual(await cp5('preview'), before5)
+  const moveWire = []
+  await page.route('**' + batch + '/apply', async route => {
+    const req = route.request(), res = await route.fetch()
+    moveWire.push({ target: req.url(), body: req.postData(), ifMatch: req.headers()['if-match'],
+      status: res.status(), receipt: await res.json() })
+    if (moveWire.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  await moveConfirm.click()
+  await moveRetry.waitFor()
+  const committed5 = await cp5('committed')
+  const moveRevision = moveWire[0].receipt.newRevisionId
+  assert.equal(committed5.refs.main, moveRevision)
+  assert.equal(committed5.rows, before5.rows + 1)
+  assert.equal(committed5.commands, before5.commands + 1)
+  assert.equal(await deleteClip.isDisabled(), true)
+  assert.equal(await page.getByRole('combobox', { name: 'Editing branch' }).isDisabled(), true)
+  await moveRetry.click()
+  await moveTools.getByText('Move accepted at revision ' + moveRevision + '.', { exact: true }).waitFor()
+  await page.unroute('**' + batch + '/apply')
+  assert.deepEqual(moveWire.map(x => x.status), [201, 200])
+  for (const key of ['target', 'body', 'ifMatch']) assert.equal(moveWire[0][key], moveWire[1][key])
+  assert.equal(moveWire[0].ifMatch, '"' + positive5.payload.batchDigest + '"')
+  assert.equal(moveWire[1].receipt.newRevisionId, moveRevision)
+  assert.equal(moveWire[1].receipt.replayed, true)
+  assert.deepEqual(await cp5('replay'), committed5)
+  await page.reload()
+  await waitView('main', moveRevision)
+  const mediaSamples = {}
+  const canvas5 = page.getByLabel('Timeline preview canvas', { exact: true })
+  for (const [at, colour] of [['1.4', 'red'], ['2.4', 'blue'], ['4.4', 'gray']]) {
+    await seek(at)
+    await page.waitForFunction(colour => {
+      const c = document.querySelector('canvas[aria-label="Timeline preview canvas"]')
+      const [r, g, b] = c.getContext('2d').getImageData(c.width / 2, c.height / 2, 1, 1).data
+      return colour === 'red' ? r > 80 && r > 2 * Math.max(g, b) : colour === 'blue' ? b > 80 && b > 2 * Math.max(r, g)
+        : Math.min(r, g, b) > 30 && Math.max(r, g, b) - Math.min(r, g, b) < 6
+    }, colour)
+    mediaSamples[at] = await canvas5.evaluate(c =>
+      Array.from(c.getContext('2d').getImageData(c.width / 2, c.height / 2, 1, 1).data).slice(0, 3))
+    await canvas5.screenshot({ path: join(out, 'n05-' + colour + '-picture.png') })
+  }
+  await page.getByRole('group', { name: 'Timeline trim' }).screenshot({ path: join(out, 'n05-reopened-timeline.png') })
+  assert.deepEqual(await cp5('reopened'), committed5)
+  await pair5()
+  const zero5 = await plan5('0')
+  assert.equal(zero5.payload.noOp, true)
+  const zeroWire = wire5('/apply')
+  await moveConfirm.click()
+  const zeroResponse = await zeroWire
+  assert.equal(zeroResponse.status(), 200)
+  assert.equal((await zeroResponse.json()).status, 'NO_OP')
+  await moveTools.getByText(/No revision was added/).waitFor()
+  const checkpointZero = await cp5('zero')
+  assert.equal(checkpointZero.rows, committed5.rows)
+  assert.deepEqual(checkpointZero.refs, committed5.refs)
+
+  const addGap5 = { batchId: 'n05-rational-gap', baseRevisionId: moveRevision,
+    baseContentHash: moveWire[0].receipt.newContentHash, operations: [makeMove({ clipId: 'clip-blue' }, '61/30', true)] }
+  const gapReceipt5 = await apply(addGap5, (await preview(addGap5)).batchDigest)
+  const gap5 = await cp5('gap-base')
+  await page.reload()
+  await waitView('main', gapReceipt5.newRevisionId)
+  await pair5()
+  const backwards5 = await plan5('-1/30')
+  assert.equal(backwards5.body.operations[0].parameters.delta, '-1/30')
+  const negativeWire = wire5('/apply')
+  await moveConfirm.click()
+  const negativeResponse = await negativeWire
+  assert.equal(negativeResponse.status(), 201)
+  const negativeReceipt5 = await negativeResponse.json()
+  await waitView('main', negativeReceipt5.newRevisionId)
+  assert.equal((await cp5('negative')).rows, gap5.rows + 1)
+
+  await pair5()
+  await plan5('1/30')
+  const competitor5 = trim('n05-other-session', 'main', negativeReceipt5.newRevisionId, negativeReceipt5.newContentHash, '1/8')
+  const other5 = await api(batch + '/apply', 201, { body: competitor5, digest: (await preview(competitor5)).batchDigest, client: second.request })
+  const staleBase5 = await cp5('stale-before')
+  const staleWire = wire5('/apply')
+  await moveConfirm.click()
+  const staleResponse = await staleWire
+  assert.equal(staleResponse.status(), 409)
+  assert.equal((await staleResponse.json()).errorCode, 'STALE_BASE_REVISION')
+  await moveTools.getByText(/Move conflict/).waitFor()
+  assert.deepEqual(await cp5('stale-after'), staleBase5)
+  await reloadHead.click()
+  await waitView('main', other5.newRevisionId)
+  await select('alternate')
+  await waitView('alternate', independent.refs.alternate)
+  assert.equal(await moveTools.count(), 0)
+  await select('main')
+  await waitView('main', other5.newRevisionId)
+  await moveTools.getByText('0 selected', { exact: true }).waitFor()
+  result.http.n05 = { base: n05Base.newRevisionId, moved: moveRevision, gapBase: gapReceipt5.newRevisionId,
+    reversed: negativeReceipt5.newRevisionId, competitor: other5.newRevisionId, mediaSamples, moveWire,
+    collision: { preview: collision5.payload.errorCode, apply: 422 }, negativeStart: negativeRejection.payload.errorCode,
+    authorization: { reader: denied5.errorCode, foreign: isolated5.errorCode }, zero: zeroResponse.status(), stale: staleResponse.status() }
+  result.status = 'PASS'
+  save('N05 atomic common offset, overlap rollback, exact replay, reopen, signed rational gap, zero and stale conflict')
 } finally {
   await browser.close()
 }

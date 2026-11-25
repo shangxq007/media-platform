@@ -80,7 +80,7 @@ async function prepareConfirmedPreview() {
   fireEvent.click(screen.getByLabelText(/I confirm this exact frozen draft/i))
 }
 
-function renderBranchWorkspace(initial: string, clipEnd = '6') {
+function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = false) {
   const queries = new ScriptedTimelineQueryGateway({
     head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision] },
     detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
@@ -101,7 +101,11 @@ function renderBranchWorkspace(initial: string, clipEnd = '6') {
         clipId: 'clip-0', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream',
         contentDigest: 'a'.repeat(64), startTime: '0', endTime: clipEnd, trimStart: '0', trimEnd: clipEnd,
         temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
-      }] },
+      }, ...(withSecondClip ? [{
+        clipId: 'clip-1', sourceKind: 'MEDIA_STREAM', artifactId: 'other', mediaStreamId: 'stream',
+        contentDigest: 'b'.repeat(64), startTime: '7', endTime: '8', trimStart: '0', trimEnd: '1',
+        temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
+      }] : [])] },
     ] }),
   }))
   function Workspace() {
@@ -266,6 +270,44 @@ describe('clipboard playhead precision at the editor entry point', () => {
     if (step.definitionId !== 'timeline.clip.paste') throw new Error('Expected a paste operation')
     expect(step.parameters.timelineStart).toBe(timelineStart)
     expect(apply).not.toHaveBeenCalled()
+  })
+})
+
+describe('same-track multi-clip move', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('previews a canonical signed offset and retains the exact confirmed batch across lost response', async () => {
+    renderBranchWorkspace('main', '6', true)
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const apply = vi.spyOn(FormalRenderAPI, 'commitBatch').mockRejectedValueOnce(new Error('lost response'))
+      .mockResolvedValueOnce({ revisionId: 'moved', contentHash: HASH_B })
+    const clip0 = await screen.findByRole('checkbox', { name: 'Select for move clip-0' })
+    const clip1 = screen.getByRole('checkbox', { name: 'Select for move clip-1' })
+    fireEvent.click(clip1)
+    fireEvent.click(clip0)
+    expect(screen.getByText('2 selected', { exact: true })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear move selection' }))
+    expect(screen.getByText('0 selected', { exact: true })).toBeTruthy()
+    expect(preview).not.toHaveBeenCalled()
+    fireEvent.click(clip0)
+    fireEvent.click(clip1)
+    fireEvent.change(screen.getByLabelText('Move offset (seconds)'), { target: { value: '-2/60' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Preview selected move' }))
+    const confirm = await screen.findByRole('button', { name: 'Confirm selected move' })
+    expect(preview.mock.calls[0][2].operations).toEqual([{ definitionId: 'timeline.move', version: '1.0',
+      target: { clipIds: ['clip-0', 'clip-1'] }, parameters: { delta: '-1/30', absolute: false } }])
+    expect(apply).not.toHaveBeenCalled()
+    fireEvent.click(confirm)
+    const retry = await screen.findByRole('button', { name: 'Retry confirmed move' })
+    expect(branchPicker().disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview selected move' }).closest('fieldset')?.disabled).toBe(true)
+    fireEvent.click(retry)
+    await screen.findByText(/Move accepted at revision moved/)
+    expect(apply).toHaveBeenCalledTimes(2)
+    expect(apply.mock.calls[0].slice(0, 5)).toEqual(apply.mock.calls[1].slice(0, 5))
+    expect(apply.mock.calls[0][2]).toBe(preview.mock.calls[0][2])
+    expect(apply.mock.calls[1][4]).toBe(HASH_C)
+    expect(branchPicker().disabled).toBe(false)
   })
 })
 

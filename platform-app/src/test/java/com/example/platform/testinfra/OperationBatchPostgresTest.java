@@ -799,6 +799,65 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(0, count("timeline.apply_command"));
     }
 
+    @Test
+    void multiMoveRetainsParentEffectsAndWritesOneRevision() {
+        var source = revisionWithEffects(null, List.of(blur("z-first", "4"), blur("a-second", "13")));
+        var request = multiMoveRequest("n05-keep-effects", source);
+        var actor = mutation().actor();
+        var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
+        var context = OperationBatchContext.apply(request.batchId(), actor, null, "test", plan.batchDigest());
+        var applied = batch.commit(request, context);
+        assertEquals(source.revisionId(), parentOf(applied.newRevisionId()));
+        assertEquals(applied.newRevisionId(), head());
+        var moved = saveService.findById(TENANT, applied.newRevisionId());
+        assertEquals(source.semanticContext().effectReference(), moved.semanticContext().effectReference());
+        assertNotEquals(source.semanticContext().revisionSemanticDigest(), moved.semanticContext().revisionSemanticDigest());
+        var replay = batch.commit(request, context);
+        assertEquals(applied.newRevisionId(), replay.newRevisionId());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+        System.out.printf("N05_EFFECTS source=%s moved=%s parent=%s snapshot=%s digest=%s rows=2 commands=1%n",
+                source.revisionId(), moved.revisionId(), moved.parentRevisionId(),
+                moved.semanticContext().effectReference().snapshotId(),
+                moved.semanticContext().effectReference().contentDigest());
+    }
+
+    @Test
+    void multiMoveRejectsGroupInPreviewAndApplyWithoutLedgerEntry() {
+        var source = saveRevision(twoClipDocument());
+        var create = new OperationRequest(OperationDefinition.V1.CREATE_GROUP.definitionId(),
+                OperationDefinition.V1.CREATE_GROUP.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                        new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b"))),
+                        SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.CreateGroupParameters(GroupId.of("group-1"),
+                        List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b"))),
+                source.revisionId(), hash(source), null);
+        var grouped = saveService.findById(TENANT, commit("n05-fixture-group", source, create, null).newRevisionId());
+        var request = multiMoveRequest("n05-reject-group", grouped);
+        var actor = mutation().actor();
+        var preview = assertThrows(BatchException.class,
+                () -> batch.preview(request, OperationBatchContext.preview(actor, "test")));
+        assertTrue(preview.getMessage().contains("group binding"), preview.getMessage());
+        var rejected = assertThrows(BatchException.class, () -> batch.commit(request,
+                OperationBatchContext.apply(request.batchId(), actor, null, "test", "0".repeat(64))));
+        assertTrue(rejected.getMessage().contains("group binding"), rejected.getMessage());
+        assertEquals(grouped.revisionId(), head());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+    }
+
+    private static OperationBatchRequest multiMoveRequest(String id, TimelineRevision source) {
+        var selected = new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"), TimelineClipId.of("clip-b")));
+        var op = new OperationRequest(OperationDefinition.V1.MOVE.definitionId(), OperationDefinition.V1.MOVE.version(),
+                new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT, selected, SelectionSpec.ExpansionPolicy.EXACT),
+                new OperationParameters.MoveParameters(time("1/30"), false), source.revisionId(), hash(source), null);
+        return new OperationBatchRequest(id, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                source.revisionId(), List.of(op), null);
+    }
+
     private TimelineRevision revisionWithEffect(String parent, String radius) {
         return revisionWithEffects(parent, List.of(blur("blur", radius)));
     }

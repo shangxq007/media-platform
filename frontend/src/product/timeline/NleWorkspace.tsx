@@ -19,6 +19,7 @@ import type {
 } from './gateways'
 import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
+import { MultiClipMove } from './MultiClipMove'
 import { ClipClipboard } from './ClipClipboard'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
@@ -230,7 +231,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'multi-move'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -298,11 +299,12 @@ export function NleWorkspace({
     mounted.current && requestGeneration.current[kind] === generation
   )
 
-  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' | 'PASTE_READBACK' = 'ORDINARY') => {
+  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' | 'PASTE_READBACK' | 'MULTI_MOVE_READBACK' = 'ORDINARY') => {
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
       || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
+      || (issuedCommand.current === 'multi-move' && reason === 'MULTI_MOVE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
@@ -629,6 +631,10 @@ export function NleWorkspace({
             playhead={previewTime} exactEnd={parseRational(appendStart)} visible={!historyRevision}
             disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
             access={commandAccess('paste')} readback={() => loadHead('PASTE_READBACK')} />}
+          {defaultBranch && <MultiClipMove key={JSON.stringify(['multi-move', project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} tracks={projectionRevision === editingHead?.revisionId ? tracks : []}
+            visible={!historyRevision} disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
+            access={commandAccess('multi-move')} readback={() => loadHead('MULTI_MOVE_READBACK')} />}
           <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
             head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
             editingBranch={editingBranch} trimAccess={commandAccess('trim')} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}

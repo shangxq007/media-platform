@@ -171,8 +171,19 @@ public final class TimelineBatchCommandMapper {
                     requiredText(parameters, "sourceRevisionId"));
             case "timeline.media-clip.add" -> (OperationParameters.AddMediaClipParameters)
                     addMediaClip(parameters, baseRevisionId, baseContentHash, projectId).parameters();
-            case "timeline.move" -> new OperationParameters.MoveParameters(
-                    time(parameters, "delta"), requiredBoolean(parameters, "absolute"));
+            case "timeline.move" -> {
+                String offset = requiredText(parameters, "delta").strip();
+                boolean absolute = requiredBoolean(parameters, "absolute");
+                if (!offset.startsWith("-")) {
+                    yield new OperationParameters.MoveParameters(time(parameters, "delta"), absolute);
+                }
+                String magnitude = offset.substring(1);
+                if (!magnitude.matches("[0-9]+(/[1-9][0-9]*)?")) {
+                    throw new IllegalArgumentException("Move offset must be an exact signed rational");
+                }
+                yield new OperationParameters.MoveParameters(
+                        MediaTime.parse(magnitude.contains("/") ? magnitude : magnitude + "/1"), absolute, true);
+            }
             case "timeline.clip.relocate" -> new OperationParameters.RelocateClipParameters(
                     time(parameters, "delta"), requiredBoolean(parameters, "absolute"),
                     requiredText(parameters, "destinationTrackId"));

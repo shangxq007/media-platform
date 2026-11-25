@@ -165,11 +165,16 @@ public sealed interface OperationParameters permits
 
     /** MOVE (OE1): exact MediaTime delta OR absolute destination; non-ripple intent. */
     @org.springframework.modulith.NamedInterface("invocation")
-    record MoveParameters(MediaTime delta, boolean absolute) implements OperationParameters {
+    record MoveParameters(MediaTime delta, boolean absolute, boolean backward) implements OperationParameters {
+        public MoveParameters(MediaTime delta, boolean absolute) {
+            this(delta, absolute, false);
+        }
+
         public MoveParameters {
-            if (delta == null) {
-                throw new IllegalArgumentException("delta required");
+            if (delta == null || absolute && backward) {
+                throw new IllegalArgumentException("Move requires a delta and an absolute destination cannot be negative");
             }
+            if (delta.equals(MediaTime.ZERO)) backward = false;
         }
     }
 

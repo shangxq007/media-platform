@@ -68,6 +68,8 @@ if branches:
         'replay','reopened','stale-before','stale-after','branch-return'))
     checkpoints += tuple(f'n04-f1-{fixture}-{stage}'
         for fixture in ('centisecond', 'fractional') for stage in ('before', 'overlap', 'preview', 'commit', 'reopened'))
+    checkpoints += tuple('n05-' + stage for stage in ('before', 'selection', 'collision', 'negative-reject',
+        'preview', 'committed', 'replay', 'reopened', 'zero', 'gap-base', 'negative', 'stale-before', 'stale-after'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -221,6 +223,44 @@ if branches:
         case['persisted'] = persisted
         case['checkpoints'] = dict(before=before, overlap=overlap, preview=previewed, commit=committed, reopened=reopened)
     (out / 'n04-f1-postgres.json').write_text(json.dumps(endpoints, indent=2))
+    move = browser_result['http']['n05']
+    move_ids = [move[k] for k in ('base', 'moved', 'gapBase', 'reversed', 'competitor')]
+    assert all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in move_ids)
+    id_sql = ','.join("'" + value + "'" for value in move_ids)
+    move_rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (
+        select rev.id, rev.parent_revision_id, rev.content_hash, s.payload_json::json as snapshot
+        from timeline.timeline_revision rev join timeline.timeline_snapshot s
+          on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+        where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
+          and rev.id in ({id_sql})) r;""")
+    assert all(move_rows[child]['parent_revision_id'] == parent for parent, child in zip(move_ids, move_ids[1:]))
+    source, moved, gap, reversed_, competing = [
+        {clip['clipId']:clip for clip in track(move_rows[rev])} for rev in move_ids]
+    assert source.keys() == moved.keys() == gap.keys() == reversed_.keys() == {'clip-red', 'clip-blue', 'clip-gray'}
+    assert source['clip-gray'] == moved['clip-gray'] == gap['clip-gray'] == reversed_['clip-gray']
+    for clip_id in source:
+        def placement(clip):
+            return tuple(Fraction(clip[key]) for key in ('startTime', 'endTime'))
+        def authored(clip):
+            return {k:v for k,v in clip.items() if k not in ('startTime', 'endTime')}
+        assert authored(source[clip_id]) == authored(moved[clip_id]) == authored(gap[clip_id]) == authored(reversed_[clip_id])
+        if clip_id != 'clip-gray':
+            assert placement(moved[clip_id]) == tuple(v+1 for v in placement(source[clip_id]))
+            assert placement(reversed_[clip_id]) == tuple(v-Fraction(1,30) for v in placement(gap[clip_id]))
+    assert placement(source['clip-red']) == (0,1) and placement(source['clip-blue']) == (1,2)
+    assert placement(source['clip-gray']) == (4,5)
+    assert placement(gap['clip-blue']) == (Fraction(61,30), Fraction(91,30))
+    assert placement(reversed_['clip-blue'])[0] - placement(reversed_['clip-red'])[1] == Fraction(1,30)
+    checkpoints5 = {k.removeprefix('n05-'):v for k,v in facts.items() if k.startswith('n05-')}
+    assert all(checkpoints5[k] == checkpoints5['before'] for k in ('selection', 'preview', 'collision', 'negative-reject'))
+    assert checkpoints5['replay'] == checkpoints5['reopened'] == checkpoints5['committed']
+    assert checkpoints5['committed']['rows'] == checkpoints5['before']['rows'] + 1
+    assert checkpoints5['committed']['commands'] == checkpoints5['before']['commands'] + 1
+    assert checkpoints5['zero']['rows'] == checkpoints5['committed']['rows']
+    assert checkpoints5['zero']['commands'] == checkpoints5['committed']['commands'] + 1
+    assert checkpoints5['negative']['rows'] == checkpoints5['gap-base']['rows'] + 1
+    assert checkpoints5['stale-before'] == checkpoints5['stale-after']
+    (out / 'n05-postgres.json').write_text(json.dumps(dict(move=move, persisted=move_rows, checkpoints=checkpoints5), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)
