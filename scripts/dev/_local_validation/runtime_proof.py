@@ -76,14 +76,15 @@ if split_e2e.exists():
     (app/'split-frame-evidence.json').write_text(json.dumps(frame_evidence, indent=2))
 elif batch_e2e.exists():
     frame_evidence = {}
+    pixels = batch['media']['width'] * batch['media']['height']
     for check in batch['sampleChecks']:
         second = str(check['time']); dominant = 0 if check['dominant'] == 'red' else 2
         frame_command = [str(tools/'ffmpeg'), '-hide_banner', '-loglevel', 'error', '-nostdin',
             '-ss', second, '-i', str(app/'downloaded-final.mp4'), '-frames:v', '1',
             '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']
         frame = subprocess.run(frame_command, env=env, capture_output=True, timeout=30)
-        assert frame.returncode == 0 and len(frame.stdout) == 320*240*3, (check, frame.stderr[:300])
-        averages = [sum(frame.stdout[channel::3])/(320*240) for channel in range(3)]
+        assert frame.returncode == 0 and len(frame.stdout) == pixels*3, (check, frame.stderr[:300])
+        averages = [sum(frame.stdout[channel::3])/(pixels) for channel in range(3)]
         assert averages[dominant] > 80 and averages[dominant] > 2*max(
             averages[(dominant+1)%3], averages[(dominant+2)%3]), (check, averages)
         frame_evidence[str(second)] = {'timestampSeconds': second, 'averageRgb': averages}

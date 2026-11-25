@@ -59,7 +59,7 @@ public final class TextParameterSchema {
         if (c.isRecord()) {
             var properties = new TreeMap<String, Object>();
             for (var component : c.getRecordComponents()) properties.put(component.getName(), shape(component.getGenericType()));
-            return Map.of("type", "object", "properties", properties, "required", List.copyOf(properties.keySet()),
+            return Map.of("type", "object", "properties", properties, "required", properties.keySet().stream().sorted().toList(),
                     "additionalProperties", false);
         }
         var creator = Arrays.stream(c.getDeclaredConstructors()).filter(k -> k.isAnnotationPresent(JsonCreator.class))
@@ -80,6 +80,6 @@ public final class TextParameterSchema {
             fields.put(key, optional ? Map.of("anyOf", List.of(field, Map.of("type", "null"))) : field);
             if (!optional) required.add(key);
         }
-        return Map.of("type", "object", "properties", fields, "required", required, "additionalProperties", false);
+        return Map.of("type", "object", "properties", fields, "required", required.stream().sorted().toList(), "additionalProperties", false);
     }
 }

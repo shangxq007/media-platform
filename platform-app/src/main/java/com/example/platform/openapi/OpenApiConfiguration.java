@@ -60,7 +60,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("web-api")
                 .displayName("Web API (JWT/Session)")
-                .pathsToMatch("/api/render/jobs/**", "/api/prompts/**", "/api/tenants/**", "/api/artifacts/**")
+                .pathsToMatch("/api/render/jobs/**", "/api/render/projects/*/revisions/*/feasibility", "/api/prompts/**", "/api/tenants/**", "/api/artifacts/**")
                 .build();
     }
 

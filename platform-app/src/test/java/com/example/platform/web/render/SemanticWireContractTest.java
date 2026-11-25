@@ -31,6 +31,19 @@ class SemanticWireContractTest {
                 JSON.readTree(directory.resolve("timeline-composition-aspect-v2.schema.json").toFile()));
     }
 
+    @Test void openApi31PublishesTheCompleteAdmissionSchema() throws Exception {
+        var operation = new io.swagger.v3.oas.models.Operation().requestBody(
+                new io.swagger.v3.oas.models.parameters.RequestBody().content(
+                        new io.swagger.v3.oas.models.media.Content().addMediaType("application/json",
+                                new io.swagger.v3.oas.models.media.MediaType())));
+        var api = new io.swagger.v3.oas.models.OpenAPI().path("/project/timeline-operations/batch/v2/preview",
+                new io.swagger.v3.oas.models.PathItem().post(operation));
+        new SemanticOpenApiConfiguration().semanticBatchRequestSchema().customise(api);
+        var actual = operation.getRequestBody().getContent().get("application/json").getSchema();
+        var serialized = io.swagger.v3.core.util.Json31.mapper().writeValueAsString(actual);
+        assertEquals(JSON.valueToTree(TimelineBatchSchema.batch()), JSON.readTree(serialized));
+    }
+
     @Test void actualDecoderRejectsInvalidWireVariantsBeforePlanning() throws Exception {
         var batch = Map.of("batchId", "sample", "baseRevisionId", "r1", "baseContentHash", "A".repeat(43) + "=");
         var target = Map.of("textElementId", "title");

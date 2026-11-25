@@ -759,7 +759,7 @@
                       "type" : "integer"
                     }
                   },
-                  "required" : [ "numerator", "denominator" ],
+                  "required" : [ "denominator", "numerator" ],
                   "type" : "object"
                 },
                 "fallbackPolicy" : {
@@ -816,7 +816,7 @@
                       "type" : "array"
                     }
                   },
-                  "required" : [ "defaultChain", "scriptOverrides", "languageOverrides", "emojiChain" ],
+                  "required" : [ "defaultChain", "emojiChain", "languageOverrides", "scriptOverrides" ],
                   "type" : "object"
                 },
                 "frame" : {
@@ -833,7 +833,7 @@
                             "type" : "integer"
                           }
                         },
-                        "required" : [ "numerator", "denominator" ],
+                        "required" : [ "denominator", "numerator" ],
                         "type" : "object"
                       }, {
                         "type" : "null"
@@ -861,7 +861,7 @@
                           "type" : "integer"
                         }
                       },
-                      "required" : [ "numerator", "denominator" ],
+                      "required" : [ "denominator", "numerator" ],
                       "type" : "object"
                     },
                     "wrapBehavior" : {
@@ -869,7 +869,7 @@
                       "type" : "string"
                     }
                   },
-                  "required" : [ "widthConstraint", "horizontalAlignment", "verticalAlignment", "wrapBehavior", "overflowBehavior" ],
+                  "required" : [ "horizontalAlignment", "overflowBehavior", "verticalAlignment", "widthConstraint", "wrapBehavior" ],
                   "type" : "object"
                 },
                 "start" : {
@@ -882,7 +882,7 @@
                       "type" : "integer"
                     }
                   },
-                  "required" : [ "numerator", "denominator" ],
+                  "required" : [ "denominator", "numerator" ],
                   "type" : "object"
                 },
                 "styledText" : {
@@ -927,7 +927,7 @@
                                   "type" : "integer"
                                 }
                               },
-                              "required" : [ "numerator", "denominator" ],
+                              "required" : [ "denominator", "numerator" ],
                               "type" : "object"
                             }
                           },
@@ -939,7 +939,7 @@
                           "type" : "string"
                         }
                       },
-                      "required" : [ "alignment", "justification", "lineHeight", "wrapPolicy", "baseDirection", "lineBreakPolicy" ],
+                      "required" : [ "alignment", "baseDirection", "justification", "lineBreakPolicy", "lineHeight", "wrapPolicy" ],
                       "type" : "object"
                     },
                     "semanticRuns" : {
@@ -967,7 +967,7 @@
                                 "type" : "integer"
                               }
                             },
-                            "required" : [ "start", "end" ],
+                            "required" : [ "end", "start" ],
                             "type" : "object"
                           },
                           "script" : {
@@ -978,7 +978,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "range", "directionOverride" ],
+                        "required" : [ "directionOverride", "range" ],
                         "type" : "object"
                       },
                       "type" : "array"
@@ -997,7 +997,7 @@
                                 "type" : "integer"
                               }
                             },
-                            "required" : [ "start", "end" ],
+                            "required" : [ "end", "start" ],
                             "type" : "object"
                           },
                           "style" : {
@@ -1047,7 +1047,7 @@
                                               "type" : "integer"
                                             }
                                           },
-                                          "required" : [ "numerator", "denominator" ],
+                                          "required" : [ "denominator", "numerator" ],
                                           "type" : "object"
                                         }
                                       },
@@ -1076,7 +1076,7 @@
                                               "type" : "integer"
                                             }
                                           },
-                                          "required" : [ "numerator", "denominator" ],
+                                          "required" : [ "denominator", "numerator" ],
                                           "type" : "object"
                                         }, {
                                           "type" : "null"
@@ -1103,7 +1103,7 @@
                                     "type" : "string"
                                   }
                                 },
-                                "required" : [ "familyPreferences", "weight", "stretch", "slant", "opticalSizing", "explicitAxisOverrides" ],
+                                "required" : [ "explicitAxisOverrides", "familyPreferences", "opticalSizing", "slant", "stretch", "weight" ],
                                 "type" : "object"
                               },
                               "fontSize" : {
@@ -1119,7 +1119,7 @@
                                         "type" : "integer"
                                       }
                                     },
-                                    "required" : [ "numerator", "denominator" ],
+                                    "required" : [ "denominator", "numerator" ],
                                     "type" : "object"
                                   }
                                 },
@@ -1136,11 +1136,11 @@
                                     "type" : "integer"
                                   }
                                 },
-                                "required" : [ "numerator", "denominator" ],
+                                "required" : [ "denominator", "numerator" ],
                                 "type" : "object"
                               }
                             },
-                            "required" : [ "fontSelection", "fontSize", "tracking", "features" ],
+                            "required" : [ "features", "fontSelection", "fontSize", "tracking" ],
                             "type" : "object"
                           }
                         },
@@ -1150,7 +1150,7 @@
                       "type" : "array"
                     }
                   },
-                  "required" : [ "content", "semanticRuns", "styleRuns", "paragraphStyle" ],
+                  "required" : [ "content", "paragraphStyle", "semanticRuns", "styleRuns" ],
                   "type" : "object"
                 }
               },
@@ -1249,7 +1249,7 @@
                       "type" : "integer"
                     }
                   },
-                  "required" : [ "start", "end" ],
+                  "required" : [ "end", "start" ],
                   "type" : "object"
                 },
                 "style" : {
@@ -1299,7 +1299,7 @@
                                     "type" : "integer"
                                   }
                                 },
-                                "required" : [ "numerator", "denominator" ],
+                                "required" : [ "denominator", "numerator" ],
                                 "type" : "object"
                               }
                             },
@@ -1328,7 +1328,7 @@
                                     "type" : "integer"
                                   }
                                 },
-                                "required" : [ "numerator", "denominator" ],
+                                "required" : [ "denominator", "numerator" ],
                                 "type" : "object"
                               }, {
                                 "type" : "null"
@@ -1355,7 +1355,7 @@
                           "type" : "string"
                         }
                       },
-                      "required" : [ "familyPreferences", "weight", "stretch", "slant", "opticalSizing", "explicitAxisOverrides" ],
+                      "required" : [ "explicitAxisOverrides", "familyPreferences", "opticalSizing", "slant", "stretch", "weight" ],
                       "type" : "object"
                     },
                     "fontSize" : {
@@ -1371,7 +1371,7 @@
                               "type" : "integer"
                             }
                           },
-                          "required" : [ "numerator", "denominator" ],
+                          "required" : [ "denominator", "numerator" ],
                           "type" : "object"
                         }
                       },
@@ -1388,11 +1388,11 @@
                           "type" : "integer"
                         }
                       },
-                      "required" : [ "numerator", "denominator" ],
+                      "required" : [ "denominator", "numerator" ],
                       "type" : "object"
                     }
                   },
-                  "required" : [ "fontSelection", "fontSize", "tracking", "features" ],
+                  "required" : [ "features", "fontSelection", "fontSize", "tracking" ],
                   "type" : "object"
                 }
               },
@@ -1463,7 +1463,7 @@
                               "type" : "integer"
                             }
                           },
-                          "required" : [ "numerator", "denominator" ],
+                          "required" : [ "denominator", "numerator" ],
                           "type" : "object"
                         }
                       },
@@ -1475,7 +1475,7 @@
                       "type" : "string"
                     }
                   },
-                  "required" : [ "alignment", "justification", "lineHeight", "wrapPolicy", "baseDirection", "lineBreakPolicy" ],
+                  "required" : [ "alignment", "baseDirection", "justification", "lineBreakPolicy", "lineHeight", "wrapPolicy" ],
                   "type" : "object"
                 }
               },
@@ -1530,7 +1530,7 @@
                                 "type" : "integer"
                               }
                             },
-                            "required" : [ "numerator", "denominator" ],
+                            "required" : [ "denominator", "numerator" ],
                             "type" : "object"
                           }
                         },
@@ -1559,7 +1559,7 @@
                                 "type" : "integer"
                               }
                             },
-                            "required" : [ "numerator", "denominator" ],
+                            "required" : [ "denominator", "numerator" ],
                             "type" : "object"
                           }, {
                             "type" : "null"
@@ -1586,7 +1586,7 @@
                       "type" : "string"
                     }
                   },
-                  "required" : [ "familyPreferences", "weight", "stretch", "slant", "opticalSizing", "explicitAxisOverrides" ],
+                  "required" : [ "explicitAxisOverrides", "familyPreferences", "opticalSizing", "slant", "stretch", "weight" ],
                   "type" : "object"
                 },
                 "range" : {
@@ -1599,7 +1599,7 @@
                       "type" : "integer"
                     }
                   },
-                  "required" : [ "start", "end" ],
+                  "required" : [ "end", "start" ],
                   "type" : "object"
                 }
               },
@@ -1688,7 +1688,7 @@
                       "type" : "array"
                     }
                   },
-                  "required" : [ "defaultChain", "scriptOverrides", "languageOverrides", "emojiChain" ],
+                  "required" : [ "defaultChain", "emojiChain", "languageOverrides", "scriptOverrides" ],
                   "type" : "object"
                 }
               },
@@ -1739,7 +1739,7 @@
                           "type" : "integer"
                         }
                       },
-                      "required" : [ "numerator", "denominator" ],
+                      "required" : [ "denominator", "numerator" ],
                       "type" : "object"
                     }
                   },
@@ -1792,7 +1792,7 @@
                             "type" : "integer"
                           }
                         },
-                        "required" : [ "numerator", "denominator" ],
+                        "required" : [ "denominator", "numerator" ],
                         "type" : "object"
                       }, {
                         "type" : "null"
@@ -1820,7 +1820,7 @@
                           "type" : "integer"
                         }
                       },
-                      "required" : [ "numerator", "denominator" ],
+                      "required" : [ "denominator", "numerator" ],
                       "type" : "object"
                     },
                     "wrapBehavior" : {
@@ -1828,7 +1828,7 @@
                       "type" : "string"
                     }
                   },
-                  "required" : [ "widthConstraint", "horizontalAlignment", "verticalAlignment", "wrapBehavior", "overflowBehavior" ],
+                  "required" : [ "horizontalAlignment", "overflowBehavior", "verticalAlignment", "widthConstraint", "wrapBehavior" ],
                   "type" : "object"
                 }
               },
@@ -2110,7 +2110,7 @@
                       "type" : "integer"
                     }
                   },
-                  "required" : [ "format", "numerator", "denominator" ],
+                  "required" : [ "denominator", "format", "numerator" ],
                   "type" : "object"
                 }
               },
@@ -2458,6 +2458,6 @@
       "type" : "array"
     }
   },
-  "required" : [ "batchId", "baseRevisionId", "baseContentHash", "operations" ],
+  "required" : [ "baseContentHash", "baseRevisionId", "batchId", "operations" ],
   "type" : "object"
 }

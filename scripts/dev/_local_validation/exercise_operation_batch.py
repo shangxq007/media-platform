@@ -30,7 +30,7 @@ source_ffmpeg = os.environ.get('MEDIA_PLATFORM_SOURCE_FFMPEG', '/usr/bin/ffmpeg'
 for name, colour, seconds in (('batch-source-red.mp4', 'red', 2), ('batch-source-blue.mp4', 'blue', 1)):
     command = prefix + [source_ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
                         '-f', 'lavfi', '-i', f'color=c={colour}:s={WIDTH}x{HEIGHT}:r={FRAME_RATE}',
-                        '-t', str(seconds), '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', str(app / name)]
+                        '-t', str(seconds), '-c:v', 'libopenh264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(app / name)]
     process = subprocess.run(command, env=env, capture_output=True, text=True, timeout=120)
     (app / (name + '.stderr')).write_text(process.stderr)
     assert process.returncode == 0, process.stderr
@@ -169,6 +169,13 @@ operations.append({'definitionId':'timeline.composition.aspect.set','version':'2
 body={'batchId':'batch-add-move-trim-1','baseRevisionId':revision,'baseContentHash':content,
       'message':'Batch add, move and trim','operations':operations}
 definitions=required('definitions',call(project+'/semantic/operations'),{200})
+schema=required('batch_schema',call(project+'/semantic/operations/batch-schema'),{200})
+oas=required('web_openapi',call('/v3/api-docs/web-api'),{200})
+for action in ('preview','apply'):
+    path=next(key for key in oas['paths'] if key.endswith('/batch/v2/'+action))
+    published=oas['paths'][path]['post']['requestBody']['content']['application/json']['schema']
+    assert published==schema, ('OpenAPI request schema differs',action)
+assert any(key.endswith('/feasibility') for key in oas['paths'])
 move=required('describe_move',call(project+'/semantic/operations/timeline.move/1.0'),{200})
 assert move in definitions and move['target']=='CLIP_SCOPE' and move['parameters']['delta']['required']
 preview=required('batch_preview',call(project+'/timeline-operations/batch/v2/preview',body),{200})
@@ -369,7 +376,7 @@ probe = json.loads(subprocess.check_output(['/usr/bin/ffprobe', '-v', 'error', '
 video = [stream for stream in probe['streams'] if stream['codec_type'] == 'video']
 assert len(video) == 1 and len(probe['streams']) == 1, probe
 video = video[0]
-assert (video['codec_name'], video['width'], video['height']) == ('h264', 320, 240), video
+assert (video['codec_name'], video['width'], video['height']) == ('h264', WIDTH, HEIGHT), video
 assert int(video['nb_read_frames']) == 60, video
 assert abs(float(probe['format']['duration']) - 2.5) <= 1e-3, probe['format']
 subprocess.run(['/usr/bin/ffmpeg', '-v', 'error', '-nostdin', '-i', str(downloaded), '-f', 'null', '-'], env=env, check=True)

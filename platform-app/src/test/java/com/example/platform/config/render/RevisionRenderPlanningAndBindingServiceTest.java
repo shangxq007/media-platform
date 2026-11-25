@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.artifact.domain.ArtifactQueryService;
+import com.example.platform.artifact.contract.ArtifactSourceFacts;
+import com.example.platform.artifact.app.ArtifactSourceFactsQuery;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.config.providerinteroperability.ProviderInteroperabilityAuthority;
 import com.example.platform.execution.binding.BoundGraphInputs;
@@ -212,6 +214,49 @@ class RevisionRenderPlanningAndBindingServiceTest {
                 .executableTaskGraph().digest().sha256Hex();
         assertThat(inputs.expectedExecutableTaskGraphDigest().sha256Hex()).isEqualTo(recomputed);
         assertThat(inputs.expectedExecutableTaskGraphDigest().sha256Hex()).matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    void feasibilityUsesTheExactStreamAndRestrictedCatalogWithoutPreparingWork() {
+        var jobs = mock(RenderJobService.class);
+        var lifecycle = mock(com.example.platform.render.api.GraphRenderLifecycle.class);
+        var revisions = mock(TimelineRevisionSaveService.class);
+        var snapshots = mock(TimelineRevisionQueryService.class);
+        var artifacts = mock(ArtifactQueryService.class);
+        var interoperability = mock(ProviderInteroperabilityAuthority.class);
+        var effects = mock(EffectSemanticSnapshotStore.class);
+        var facts = mock(ArtifactSourceFactsQuery.class);
+        var service = new RevisionRenderPlanningAndBindingService(
+                new RevisionRenderPlanningApplicationService(jobs, revisions, snapshots, artifacts, interoperability),
+                revisions, snapshots, effects, FirstRenderPlanningFixture.catalog(), new RenderPlanningEntryService(),
+                new PhysicalPlanningEntryService(), new ProviderBindingEntryService(), lifecycle, facts);
+        var json = TimelineDocumentJsonSerializer.serialize(document());
+        var pinned = revision(json);
+        var digest = pinned.semanticContext().timelineContentDigest();
+        when(revisions.findById(TENANT, REVISION)).thenReturn(pinned);
+        when(snapshots.getRevisionSnapshotPayload(PROJECT, TENANT, REVISION))
+                .thenReturn(Optional.of(new RevisionSnapshotPayload(SNAPSHOT_ID, json, "timeline-1.0")));
+        when(artifacts.getArtifact(TENANT, new ArtifactId(ARTIFACT_ID)))
+                .thenReturn(Optional.of(mock(com.example.platform.artifact.domain.Artifact.class)));
+        when(effects.findById(PROJECT, TENANT, PINNED_EMPTY.reference().snapshotId()))
+                .thenReturn(Optional.of(PINNED_EMPTY));
+        var duration = MediaTime.ofMillis(2000);
+        var video = new ArtifactSourceFacts.Stream("stream-0", ArtifactSourceFacts.Kind.VIDEO, duration);
+        var extent = new RenderExtent(MediaTime.ZERO, duration, FrameRate.of(30, 1));
+        when(facts.findForExecution(any(), any(), any(), any())).thenReturn(Optional.empty(),
+                Optional.of(new ArtifactSourceFacts(duration, List.of(video), new ArtifactSourceFacts.StreamCounts(2, 0))),
+                Optional.of(new ArtifactSourceFacts(duration, List.of(video), new ArtifactSourceFacts.StreamCounts(1, 0))));
+        assertThat(service.feasibility(TENANT, PROJECT, REVISION, digest, extent).reason()).isEqualTo("SOURCE_FACTS_UNAVAILABLE");
+        assertThat(service.feasibility(TENANT, PROJECT, REVISION, digest, extent).reason()).isEqualTo("SOURCE_STREAM_AMBIGUOUS");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "mediaProvider", "ffmpeg");
+        var supported = service.feasibility(TENANT, PROJECT, REVISION, digest, extent);
+        assertThat(supported.feasible()).isTrue();
+        assertThat(service.feasibility(TENANT, PROJECT, REVISION, digest, extent)).isEqualTo(supported);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "mediaProvider", "bmf");
+        var rejected = service.feasibility(TENANT, PROJECT, REVISION, digest, extent);
+        assertThat(rejected.feasible()).isFalse();
+        assertThat(rejected.reason()).isIn("UNIT_UNBINDABLE", "NO_CANDIDATES", "NO_HOMOGENEOUS_BINDING");
+        org.mockito.Mockito.verifyNoInteractions(jobs, lifecycle);
     }
 
     @Test

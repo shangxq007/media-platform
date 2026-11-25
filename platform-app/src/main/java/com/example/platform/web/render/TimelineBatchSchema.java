@@ -107,7 +107,7 @@ public final class TimelineBatchSchema {
         schema.put("type", "object");
         schema.put("properties", properties);
         schema.put("additionalProperties", false);
-        if (!required.isEmpty()) schema.put("required", required);
+        if (!required.isEmpty()) schema.put("required", required.stream().sorted().toList());
         return Map.copyOf(schema);
     }
 }
