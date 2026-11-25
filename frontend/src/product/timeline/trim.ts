@@ -67,7 +67,7 @@ export function rational(numerator: bigint, denominator: bigint): Rational {
 /** Accepts the canonical exact forms the Operation transport accepts: "n", "-n", "n/d", "+n/d". */
 export function parseRational(value: string | null | undefined): Rational | null {
   if (typeof value !== 'string') return null
-  const match = /^\+?(-?\d+)(?:\/([1-9]\d*))?$/.exec(value.trim())
+  const match = /^([+-]?\d+)(?:\/([1-9]\d*))?$/.exec(value.trim())
   if (!match) return null
   return rational(BigInt(match[1]), match[2] ? BigInt(match[2]) : 1n)
 }

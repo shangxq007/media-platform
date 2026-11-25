@@ -20,6 +20,7 @@ import type {
 import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { MultiClipMove } from './MultiClipMove'
+import { playheadTime } from './snapping'
 import { ClipClipboard } from './ClipClipboard'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
@@ -273,10 +274,12 @@ export function NleWorkspace({
   const [projectionRevision, setProjectionRevision] = useState<string | null>(null)
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [previewTime, setPreviewTime] = useState(0)
+  const [snapEnabled, setSnapEnabled] = useState(false)
   const [initializing, setInitializing] = useState(false)
   const [initializeError, setInitializeError] = useState('')
   const initializeCommand = useRef<{ projectId: string; id: string } | null>(null)
   const [appendStart, setAppendStart] = useState('0/1')
+  const snapPlayhead = playheadTime(previewTime, parseRational(appendStart))
   const [focusClipId, setFocusClipId] = useState<string | null>(null)
   const [stableCommandId, setStableCommandId] = useState<ReturnType<typeof applyCommandId> | null>(null)
   const mounted = useRef(true)
@@ -631,18 +634,25 @@ export function NleWorkspace({
             playhead={previewTime} exactEnd={parseRational(appendStart)} visible={!historyRevision}
             disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
             access={commandAccess('paste')} readback={() => loadHead('PASTE_READBACK')} />}
-          {defaultBranch && <MultiClipMove key={JSON.stringify(['multi-move', project.tenantId, project.projectId, editingBranch])}
+          {defaultBranch && !historyRevision && <Button type="button" variant={snapEnabled ? "primary" : "secondary"} aria-pressed={snapEnabled}
+            disabled={loading || revisionSelectionLocked || selectionPending} onClick={() => setSnapEnabled(value => !value)}>
+            Snap
+          </Button>}
+          <MultiClipMove key={JSON.stringify(['multi-move', project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={projectionRevision === editingHead?.revisionId ? tracks : []}
-            visible={!historyRevision} disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
-            access={commandAccess('multi-move')} readback={() => loadHead('MULTI_MOVE_READBACK')} />}
-          <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
-            head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
-            editingBranch={editingBranch} trimAccess={commandAccess('trim')} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}
-            selectedTrackId={state.presentation.selectedTrackId}
-            onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
-            onRevisionChanged={async () => { await loadHead('CLIP_READBACK') }}
-            onTrimAccepted={defaultBranch ? trimHistory.recordTrim : undefined}
-            onTrimReadback={() => loadHead('CLIP_READBACK')} />
+            visible={defaultBranch && !historyRevision} disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
+            snap={snapEnabled} playhead={snapPlayhead}
+            access={commandAccess('multi-move')} readback={() => loadHead('MULTI_MOVE_READBACK')}>
+            {gesture => <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
+              head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
+              editingBranch={editingBranch} trimAccess={commandAccess('trim')} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}
+              snap={defaultBranch && snapEnabled} snapPlayhead={snapPlayhead} multiMove={gesture}
+              selectedTrackId={state.presentation.selectedTrackId}
+              onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
+              onRevisionChanged={async () => { await loadHead('CLIP_READBACK') }}
+              onTrimAccepted={defaultBranch ? trimHistory.recordTrim : undefined}
+              onTrimReadback={() => loadHead('CLIP_READBACK')} />}
+          </MultiClipMove>
         </Panel>
         {!defaultBranch && !historyRevision && <p>Source insertion and render controls are available on main.</p>}
         {defaultBranch && !historyRevision && <><Panel title="Add media clip" className="ff-operation-panel">

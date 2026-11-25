@@ -9,10 +9,12 @@ import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
 import { Button, Input } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import {
-  clampTrimDelta, compare, formatRational, parseRational, pixelsToDelta, projectTrim, subtract, toSeconds,
-  type ClipGeometry, type Rational, type TrimEdge,
+  add, clampTrimDelta, compare, formatRational, parseRational, pixelsToDelta, projectTrim, subtract, toSeconds,
+  type ClipGeometry, type Rational, type TrimEdge, ZERO,
 } from './trim'
 import { describeMove, draggedStart, projectMove } from './move'
+import { DRAG_THRESHOLD_PX, TIMELINE_PIXELS_PER_SECOND, movePlacement, nearestSnap, shiftedRange, snapDescription, snapTargets, type SnapMatch } from './snapping'
+import type { MultiMoveGesture } from './MultiClipMove'
 
 interface Props {
   head: CanonicalHeadReference | null
@@ -26,16 +28,19 @@ interface Props {
   onTrimReadback?: () => Promise<CanonicalHeadReference | undefined>
   focusClipId?: string | null
   playhead?: number
+  snap?: boolean
+  snapPlayhead?: Rational | null
+  multiMove?: MultiMoveGesture
   selectedTrackId?: string | null
   onSelectTrack?: (trackId: string) => void
 }
 
 /** Horizontal scale of the trim strip: one second of timeline occupies this many pixels. */
-export const TRIM_PIXELS_PER_SECOND = 80
-const DRAG_THRESHOLD_PX = 4
+export const TRIM_PIXELS_PER_SECOND = TIMELINE_PIXELS_PER_SECOND
 
-interface PendingTrim { edge: TrimEdge; delta: Rational }
+interface PendingTrim { edge: TrimEdge; delta: Rational; match?: SnapMatch }
 interface PreviewedTrim extends PendingTrim { digest: string; command: ClipEdit }
+interface RetryClip { command: ClipEdit; label: string; digest?: string }
 interface ConfirmedTrim { command: ClipEdit; digest: string; tenantId: string; projectId: string }
 
 const DEFAULT_RATE: Rational = { numerator: 1n, denominator: 1n }
@@ -51,7 +56,7 @@ function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
 }
 
 export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTrimReadback, onTrimAccepted, focusClipId = null, playhead = 0,
-  selectedTrackId, onSelectTrack, editingBranch = 'main', onDraft, onWriteLock, trimAccess }: Props) {
+  selectedTrackId, onSelectTrack, snap = false, snapPlayhead = null, multiMove, editingBranch = 'main', onDraft, onWriteLock, trimAccess }: Props) {
   const project = useProjectContext()
   const trimOnly = editingBranch !== "main"
   const [formChanged, setFormChanged] = useState(false)
@@ -106,7 +111,12 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
   const [message, setMessage] = useState('')
   const [actionFailed, setActionFailed] = useState(false)
-  const [retryCommand, setRetryCommand] = useState<{ command: ClipEdit; label: string } | null>(null)
+  const [retryCommand, setRetryCommandState] = useState<RetryClip | null>(null)
+  const retryCommandRef = useRef<RetryClip | null>(null)
+  function setRetryCommand(value: RetryClip | null) {
+    retryCommandRef.current = value
+    setRetryCommandState(value)
+  }
   // A confirmed trim exclusively owns its frozen request until acknowledgement, rejection or explicit discard.
   const [confirmedTrim, setConfirmedTrimState] = useState<ConfirmedTrim | null>(null)
   const confirmedTrimRef = useRef<ConfirmedTrim | null>(null)
@@ -115,9 +125,10 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     setConfirmedTrimState(value)
   }
   const trimBlocked = trimAccess?.blocked ?? false
-  const editsDisabled = busy || confirmedTrim !== null || trimBlocked
-  const trimGestureDisabled = editsDisabled || retryCommand !== null
-  const canEdit = () => !busyRef.current && confirmedTrimRef.current === null && trimAccess?.canStart() !== false
+  const writeBlocked = busy || confirmedTrim !== null || trimBlocked
+  const editsDisabled = writeBlocked || retryCommand !== null
+  const canRetry = () => !busyRef.current && confirmedTrimRef.current === null && trimAccess?.canStart() !== false
+  const canEdit = () => canRetry() && retryCommandRef.current === null
   useEffect(() => {
     onWriteLock?.(busy || confirmedTrim !== null || retryCommand !== null)
     return () => onWriteLock?.(false)
@@ -126,19 +137,20 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
 
   const keys = useRef<Record<string, string>>({})
   const generation = useRef(0)
-  const dragOrigin = useRef<number | null>(null)
+  const trimDrag = useRef<{ clip: ClipGeometry; edge: TrimEdge; x: number; pointer: number } | null>(null)
+  const moveDrag = useRef<{ clip: ClipGeometry; x: number; pointer: number } | null>(null)
+  const groupPointer = useRef<number | null>(null)
+  const [moving, setMoving] = useState<{ clipId: string; start: Rational; match?: SnapMatch } | null>(null)
+  const multiFeedback = multiMove?.feedback
+  const currentSnap = pending?.match ?? moving?.match ?? multiFeedback?.match
   useEffect(() => {
-    if (!trimBlocked) return
-    dragOrigin.current = null
-    setPending(null)
-    setPreviewed(null)
-  }, [trimBlocked])
-  const [moving, setMoving] = useState<{ clipId: string; start: Rational; originX: number } | null>(null)
+    trimDrag.current = null; moveDrag.current = null; groupPointer.current = null
+    setPending(null); setPreviewed(null); setMoving(null)
+  }, [head?.revisionId, head?.contentHash, trimBlocked])
   useEffect(() => {
-    onDraft?.(formChanged || pending !== null || previewed !== null || moving !== null)
+    onDraft?.(formChanged || pending !== null || previewed !== null || moving !== null || !!multiFeedback)
     return () => onDraft?.(false)
-  }, [onDraft, formChanged, pending, previewed, moving])
-  const moveOrigin = useRef<number | null>(null)
+  }, [onDraft, formChanged, pending, previewed, moving, multiFeedback])
 
   async function refresh() {
     if (!viewedRevisionId) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
@@ -217,30 +229,60 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
 
   function beginTrim(clip: ClipGeometry, trimEdge: TrimEdge, event: ReactPointerEvent<HTMLSpanElement>) {
     event.stopPropagation()
-    if (!head || !canEdit() || retryCommand) return
+    if (!head || !canEdit() || trimDrag.current || moveDrag.current || groupPointer.current !== null) return
     setSelected(clip.clipId); setType('TRIM_CLIP')
-    dragOrigin.current = event.clientX
-    setPending({ edge: trimEdge, delta: { numerator: 0n, denominator: 1n } })
+    setPreviewed(null)
+    trimDrag.current = { clip, edge: trimEdge, x: event.clientX, pointer: event.pointerId }
+    setPending({ edge: trimEdge, delta: ZERO })
+    event.currentTarget.focus({ preventScroll: true })
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
 
+  function trimPlacement(drag: NonNullable<typeof trimDrag.current>, x: number): PendingTrim {
+    const { clip, edge } = drag
+    const pixels = x - drag.x
+    const match = snap && !trimOnly ? nearestSnap(
+      [{ time: edge === 'START' ? clip.start : clip.end, label: clip.clipId + (edge === 'START' ? ' start' : ' end') }],
+      snapTargets(clips, clip.trackId, new Set([clip.clipId]), snapPlayhead), pixels, TRIM_PIXELS_PER_SECOND) : undefined
+    const delta = match
+      ? edge === 'START' ? match.delta : subtract(ZERO, match.delta)
+      : clampTrimDelta(clip, pixelsToDelta(pixels, TRIM_PIXELS_PER_SECOND))
+    return { edge, delta, match }
+  }
+
   function moveTrim(event: ReactPointerEvent<HTMLSpanElement>) {
-    if (dragOrigin.current === null || !active || !pending) return
-    const raw = pixelsToDelta(event.clientX - dragOrigin.current, TRIM_PIXELS_PER_SECOND)
-    setPending({ edge: pending.edge, delta: clampTrimDelta(active, raw) })
+    event.stopPropagation()
+    const drag = trimDrag.current
+    if (drag?.pointer !== event.pointerId || !drag || !canEdit()) return
+    setPending(trimPlacement(drag, event.clientX))
+  }
+
+  function cancelTrimDrag(event?: ReactPointerEvent<HTMLSpanElement>) {
+    event?.stopPropagation()
+    if (!trimDrag.current || (event && event.pointerId !== trimDrag.current.pointer)) return
+    trimDrag.current = null
+    setPending(null)
+    setPreviewed(null)
   }
 
   async function endTrim(event: ReactPointerEvent<HTMLSpanElement>) {
-    const origin = dragOrigin.current
-    dragOrigin.current = null
-    if (origin === null || !pending) return
-    const moved = Math.abs(event.clientX - origin)
-    if (moved < DRAG_THRESHOLD_PX) { setPending(null); return }
-    await previewTrim(pending.edge, pending.delta)
+    event.stopPropagation()
+    const drag = trimDrag.current
+    if (!drag || drag.pointer !== event.pointerId) return
+    trimDrag.current = null
+    if (Math.abs(event.clientX - drag.x) < DRAG_THRESHOLD_PX || !canEdit()) { setPending(null); return }
+    const draft = trimPlacement(drag, event.clientX)
+    setPending(draft)
+    if (draft.match) {
+      const projected = projectTrim(drag.clip, draft.edge, draft.delta)
+      if (!projected.valid) return
+    }
+    await previewTrim(draft.edge, draft.delta, draft.match, drag.clip)
   }
 
   async function cancelTrim() {
     if (busyRef.current) return
+    trimDrag.current = null
     setPending(null); setPreviewed(null); setActionFailed(false)
     if (!confirmedTrimRef.current) {
       setMessage('Trim preview discarded. No revision was written.')
@@ -263,23 +305,23 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     }
   }
 
-  async function previewTrim(trimEdge: TrimEdge, deltaValue: Rational) {
-    if (!head || !project.tenantId || !active || !canEdit()) return
+  async function previewTrim(trimEdge: TrimEdge, deltaValue: Rational, match?: SnapMatch, clip: ClipGeometry | null = active) {
+    if (!head || !project.tenantId || !clip || !canEdit()) return
     setPreviewed(null); setRetryCommand(null)
     if (compare(deltaValue, { numerator: 0n, denominator: 1n }) <= 0) { setPending(null); return }
     setBusy(true); setMessage(''); setActionFailed(false)
-    const commandId = commandIdFor(active.clipId, 'TRIM_CLIP', deltaValue, trimEdge)
+    const commandId = commandIdFor(clip.clipId, 'TRIM_CLIP', deltaValue, trimEdge)
     const command: ClipEdit = {
       type: 'TRIM_CLIP', refId: trimOnly ? editingBranch : undefined,
       baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-      clipId: active.clipId, delta: formatRational(deltaValue), edge: trimEdge, commandId,
+      clipId: clip.clipId, delta: formatRational(deltaValue), edge: trimEdge, commandId,
     }
     try {
       const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
       if (trimAccess?.canStart() === false) return
-      setPreviewed({ digest: plan.batchDigest, edge: trimEdge, delta: deltaValue, command })
-      setPending({ edge: trimEdge, delta: deltaValue })
-      const projected = projectTrim(active, trimEdge, deltaValue)
+      setPreviewed({ digest: plan.batchDigest, edge: trimEdge, delta: deltaValue, match, command })
+      setPending({ edge: trimEdge, delta: deltaValue, match })
+      const projected = projectTrim(clip, trimEdge, deltaValue)
       setMessage(`Preview valid: source ${formatRational(projected.sourceStart)}s → ${formatRational(projected.sourceEnd)}s, `
         + `${toSeconds(projected.duration).toFixed(2)}s visible. Planned changes: ${plan.steps.flatMap(step => step.changes).length}.`)
     } catch (error) { handleFailure(error, 'Trim preview', null, false) }
@@ -563,90 +605,112 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   function beginMove(clip: ClipGeometry, event: ReactPointerEvent<HTMLDivElement>) {
-    if (!head || !canEdit()) return
+    if (!head || !canEdit() || moveDrag.current || trimDrag.current || groupPointer.current !== null) return
     event.stopPropagation()
+    if (multiMove?.ids.includes(clip.clipId)) {
+      if (!multiMove.begin(clip.clipId, event.pointerId, event.clientX)) return
+      groupPointer.current = event.pointerId
+    } else {
+      moveDrag.current = { clip, x: event.clientX, pointer: event.pointerId }
+      setMoving({ clipId: clip.clipId, start: clip.start })
+    }
     setSelected(clip.clipId); setType('MOVE_CLIP')
     setPending(null); setPreviewed(null)
-    moveOrigin.current = event.clientX
-    setMoving({ clipId: clip.clipId, start: clip.start, originX: event.clientX })
+    event.currentTarget.focus({ preventScroll: true })
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
 
+  function singlePlacement(drag: NonNullable<typeof moveDrag.current>, x: number) {
+    const pixels = x - drag.x
+    const { match } = movePlacement([drag.clip], clips, pixels, TRIM_PIXELS_PER_SECOND, snap, snapPlayhead)
+    return { clipId: drag.clip.clipId, match, start: match
+      ? add(drag.clip.start, match.delta) : draggedStart(drag.clip, pixels, TRIM_PIXELS_PER_SECOND) }
+  }
+
   function dragMove(event: ReactPointerEvent<HTMLDivElement>) {
-    if (moveOrigin.current === null || !moving) return
-    const clip = clips.find(row => row.clipId === moving.clipId)
-    if (!clip) return
-    setMoving({ ...moving, start: draggedStart(clip, event.clientX - moveOrigin.current, TRIM_PIXELS_PER_SECOND) })
+    if (groupPointer.current === event.pointerId) {
+      multiMove?.move(event.pointerId, event.clientX)
+    } else if (moveDrag.current?.pointer === event.pointerId && moveDrag.current && canEdit()) {
+      setMoving(singlePlacement(moveDrag.current, event.clientX))
+    }
+  }
+
+  function cancelMove(event?: ReactPointerEvent<HTMLDivElement>) {
+    if (groupPointer.current !== null && (!event || groupPointer.current === event.pointerId)) {
+      multiMove?.cancel(groupPointer.current)
+      groupPointer.current = null
+    }
+    if (moveDrag.current && (!event || moveDrag.current.pointer === event.pointerId)) {
+      moveDrag.current = null
+      setMoving(null)
+    }
   }
 
   async function endMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const origin = moveOrigin.current
-    moveOrigin.current = null
-    const current = moving
-    setMoving(null)
-    if (origin === null || !current || !canEdit()) return
-    if (Math.abs(event.clientX - origin) < DRAG_THRESHOLD_PX) return
-    const clip = clips.find(row => row.clipId === current.clipId)
-    if (!clip) return
-    const projection = projectMove(clip, current.start)
-    if (!projection.valid) { setActionFailed(true); setMessage(projection.reason ?? 'Move rejected.'); return }
-    await applyMove(clip, projection.start)
-  }
-
-  async function applyMove(clip: ClipGeometry, targetStart: Rational) {
-    if (!head || !project.tenantId || !canEdit()) return
-    setBusy(true); setMessage(''); setActionFailed(false)
-    const commandId = commandIdFor(clip.clipId, 'MOVE_CLIP', targetStart)
-    const command: ClipEdit = {
-      type: 'MOVE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-      clipId: clip.clipId, delta: formatRational(targetStart), absolute: true, commandId,
-    }
-    try {
-      await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
-    } catch (error) {
-      setActionFailed(true)
-      setMessage(error instanceof Error ? error.message : 'Move preview was rejected.')
-      void onRevisionChanged()
-      setBusy(false)
+    if (groupPointer.current === event.pointerId) {
+      groupPointer.current = null
+      multiMove?.end(event.pointerId, event.clientX)
       return
     }
+    const drag = moveDrag.current
+    if (!drag || drag.pointer !== event.pointerId) return
+    cancelMove(event)
+    if (!canEdit() || Math.abs(event.clientX - drag.x) < DRAG_THRESHOLD_PX) return
+    const { start, match } = singlePlacement(drag, event.clientX)
+    const projection = projectMove(drag.clip, start)
+    if (!projection.valid) { setActionFailed(true); setMessage(projection.reason ?? 'Move rejected.'); return }
+    await applyMove(drag.clip, projection.start, match)
+  }
+
+  async function previewAndCommit(command: ClipEdit, label: string, success: (revision: string) => string) {
+    if (!project.tenantId || !canEdit()) return
+    setBusy(true); setMessage(''); setActionFailed(false); setPending(null); setPreviewed(null)
+    let attempt: RetryClip | undefined
     try {
-      setRetryCommand({ command, label: 'Move' })
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
-      const authoritative = await FormalRenderAPI.head(project.projectId)
+      const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+      if (trimAccess?.claim() === false) return
+      attempt = { command, label, digest: plan.batchDigest }
+      setRetryCommand(attempt)
+      const accepted = await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, command, plan.batchDigest)
+      const authoritative = await readCommandHead(command)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
       }
       setRetryCommand(null)
-      await onRevisionChanged()
-      const projection = projectMove(clip, targetStart)
-      setMessage(`Clip moved to ${describeMove(projection)} at revision ${authoritative.revisionId}.`)
-    } catch (error) { handleFailure(error, 'Move', command, true) }
-    finally { setBusy(false) }
+      if (onTrimReadback) await onTrimReadback()
+      else await onRevisionChanged()
+      setMessage(success(authoritative.revisionId))
+    } catch (error) {
+      handleFailure(error, attempt ? label : label + ' preview', attempt?.command ?? null, !!attempt, false, attempt?.digest)
+      if (!retryCommandRef.current) {
+        if (label === 'Move' || [409, 412].includes(httpStatus(error) ?? 0)) {
+          if (attempt && onTrimReadback) await onTrimReadback()
+          else await onRevisionChanged()
+        }
+      }
+    } finally {
+      if (attempt && !retryCommandRef.current) trimAccess?.release()
+      setBusy(false)
+    }
+  }
+
+  async function applyMove(clip: ClipGeometry, targetStart: Rational, match?: SnapMatch) {
+    if (!head || !canEdit()) return
+    await previewAndCommit({
+      type: 'MOVE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: clip.clipId, delta: formatRational(targetStart), absolute: true,
+      commandId: commandIdFor(clip.clipId, 'MOVE_CLIP', targetStart),
+    }, 'Move', revision => (match ? snapDescription(match) + ' ' : '')
+      + `Clip moved to ${describeMove(projectMove(clip, targetStart))} at revision ${revision}.`)
   }
 
   async function deleteSelected() {
-    if (!head || !project.tenantId || !selected || !canEdit()) return
-    setBusy(true); setMessage(''); setActionFailed(false)
-    const commandId = commandIdFor(selected, 'DELETE_CLIP', { numerator: 0n, denominator: 1n })
-    const removed = clips.find(clip => clip.clipId === selected)
-    const command: ClipEdit = {
+    if (!head || !selected || !canEdit()) return
+    const clipId = selected
+    await previewAndCommit({
       type: 'DELETE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
-      clipId: selected, commandId,
-    }
-    setRetryCommand({ command, label: 'Delete' })
-    try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, command)
-      const authoritative = await FormalRenderAPI.head(project.projectId)
-      if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
-        throw headMismatch()
-      }
-      setRetryCommand(null)
-      await onRevisionChanged()
-      setMessage(`Clip ${removed?.clipId ?? selected} deleted at revision ${authoritative.revisionId}. `
-        + 'The source media is retained.')
-    } catch (error) { handleFailure(error, 'Delete', command, true) }
-    finally { setBusy(false) }
+      clipId, commandId: commandIdFor(clipId, 'DELETE_CLIP', ZERO),
+    }, 'Delete', revision => `Clip ${clipId} deleted at revision ${revision}. The source media is retained.`)
   }
 
   function headMismatch(): Error {
@@ -667,7 +731,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   function handleFailure(error: unknown, label: string, command: ClipEdit | null, keepForRetry: boolean,
-    refreshOnConflict = true) {
+    refreshOnConflict = true, digest?: string) {
     const status = httpStatus(error)
     const conflict = status === 409 || status === 412
     setPreviewed(null); setPending(null); setMoving(null)
@@ -679,7 +743,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       return
     }
     if (keepForRetry && command && isUncertainOutcome(status)) {
-      setRetryCommand({ command, label })
+      setRetryCommand({ command, label, digest })
       showUnconfirmed(label, status)
       return
     }
@@ -688,19 +752,33 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   async function retryApply() {
-    if (!head || !project.tenantId || !retryCommand || !canEdit()) return
+    const attempt = retryCommandRef.current
+    if (!head || !project.tenantId || !attempt || !canRetry()) return
     setBusy(true); setMessage(''); setActionFailed(false)
     try {
-      const accepted = await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, retryCommand.command)
-      const authoritative = await readCommandHead(retryCommand.command)
+      const accepted = attempt.digest
+        ? await FormalRenderAPI.applyConfirmedClip(project.tenantId, project.projectId, attempt.command, attempt.digest)
+        : await FormalRenderAPI.applyOperation(project.tenantId, project.projectId, attempt.command)
+      const authoritative = await readCommandHead(attempt.command)
       if (accepted.revisionId !== authoritative.revisionId || accepted.contentHash !== authoritative.contentHash) {
         throw headMismatch()
       }
       setRetryCommand(null)
-      await onRevisionChanged()
-      setMessage(`${retryCommand.label} applied at revision ${authoritative.revisionId}.`)
-    } catch (error) { handleFailure(error, retryCommand.label, retryCommand.command, true) }
-    finally { setBusy(false) }
+      if (attempt.digest && onTrimReadback) await onTrimReadback()
+      else await onRevisionChanged()
+      setMessage(`${attempt.label} applied at revision ${authoritative.revisionId}.`)
+    } catch (error) {
+      handleFailure(error, attempt.label, attempt.command, true, !attempt.digest, attempt.digest)
+      if (attempt.digest && !retryCommandRef.current) {
+        if ([409, 412].includes(httpStatus(error) ?? 0)) {
+          if (onTrimReadback) await onTrimReadback()
+          else await onRevisionChanged()
+        }
+      }
+    } finally {
+      if (attempt.digest && !retryCommandRef.current) trimAccess?.release()
+      setBusy(false)
+    }
   }
 
   async function splitSelected() {
@@ -739,6 +817,11 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   function onSectionKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape' && (trimDrag.current || moveDrag.current || groupPointer.current !== null)) {
+      event.preventDefault()
+      cancelTrimDrag(); cancelMove()
+      return
+    }
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
     const target = event.target as HTMLElement | null
     const tag = target?.tagName?.toLowerCase()
@@ -805,6 +888,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
         </div>
         <i aria-label={`Playhead at ${playhead.toFixed(2)} seconds`} style={{ position: 'absolute', top: 20, bottom: 0,
           left: 100 + playhead * TRIM_PIXELS_PER_SECOND, borderLeft: '2px solid #facc15', zIndex: 3, pointerEvents: 'none' }} />
+        {currentSnap && <i data-snap-guide aria-hidden="true" style={{ position: 'absolute', top: 20, bottom: 0,
+          left: 100 + toSeconds(currentSnap.target.time) * TRIM_PIXELS_PER_SECOND, borderLeft: '2px solid #38bdf8',
+          zIndex: 4, pointerEvents: 'none' }} />}
         {(['VIDEO', 'AUDIO'] as const).map(type => {
           const group = tracks.filter(track => track.type === type)
           const ordered = type === 'VIDEO' ? [...group].reverse() : group
@@ -825,21 +911,24 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
           const end = projected ? toSeconds(projected.timelineEnd) : toSeconds(clip.end)
           const movingThis = moving?.clipId === clip.clipId
           const moveProjection = movingThis ? projectMove(clip, moving.start) : null
-          const left = movingThis && moveProjection?.valid ? toSeconds(moveProjection.start) : start
-          const right = movingThis && moveProjection?.valid ? toSeconds(moveProjection.end) : end
+          const grouped = multiMove?.ids.includes(clip.clipId)
+          const groupPosition = grouped && multiFeedback ? shiftedRange(clip, multiFeedback.delta) : null
+          const left = groupPosition ? toSeconds(groupPosition.start) : movingThis && moveProjection?.valid ? toSeconds(moveProjection.start) : start
+          const right = groupPosition ? toSeconds(groupPosition.end) : movingThis && moveProjection?.valid ? toSeconds(moveProjection.end) : end
           return <div key={clip.clipId} data-clip-id={clip.clipId}
-                      data-clip-body={clip.clipId}
+                      data-clip-body={clip.clipId} data-multimove-selected={grouped || undefined}
+                      tabIndex={historicalRevisionId ? undefined : -1}
                       aria-label={`Timeline clip ${clip.clipId}`}
                       onPointerDown={historicalRevisionId || trimOnly || editsDisabled || retryCommand ? undefined : event => beginMove(clip, event)}
                       onClick={() => { if (historicalRevisionId || canEdit()) setSelected(clip.clipId) }}
                       onPointerMove={dragMove}
                       onPointerUp={event => void endMove(event)}
-                      onPointerCancel={() => { moveOrigin.current = null; setMoving(null) }}
+                      onPointerCancel={cancelMove} onLostPointerCapture={cancelMove}
                       title={historicalRevisionId ? undefined : trimOnly ? "Drag a trim handle to preview a trim" : "Drag the clip body to move it; drag an orange edge to trim"}
                       style={{ position: 'absolute', left: left * TRIM_PIXELS_PER_SECOND,
                                width: Math.max(6, (right - left) * TRIM_PIXELS_PER_SECOND), top: 0, height: 40,
                                background: isActive ? '#1d4ed8aa' : '#374151aa',
-                               border: isActive ? '1px solid #60a5fa' : '1px solid #4b5563', borderRadius: 3,
+                               border: grouped ? '2px solid #38bdf8' : isActive ? '1px solid #60a5fa' : '1px solid #4b5563', borderRadius: 3,
                                display: 'flex', alignItems: 'center', justifyContent: 'center',
                                fontSize: 11, color: '#e5e7eb', whiteSpace: 'nowrap', overflow: 'hidden' }}>
             {splitMarker?.clipId === clip.clipId && <span data-split-marker aria-hidden="true"
@@ -847,14 +936,14 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
                        top: -4, width: 2, height: 48, background: '#facc15', zIndex: 2, pointerEvents: 'none' }} />}
             <span aria-hidden="true">{clip.clipId} · {toSeconds(projected ? projected.duration : subtract(clip.end, clip.start)).toFixed(2)}s
               · src {toSeconds(projected ? projected.sourceStart : clip.sourceStart).toFixed(2)}–{toSeconds(projected ? projected.sourceEnd : clip.sourceEnd).toFixed(2)}</span>
-            {!historicalRevisionId && <><span role="slider" tabIndex={trimGestureDisabled ? -1 : 0} aria-disabled={trimGestureDisabled} aria-label={`Trim start edge ${clip.clipId}`} aria-valuetext="trim start"
+            {!historicalRevisionId && <><span role="slider" tabIndex={editsDisabled ? -1 : 0} aria-disabled={editsDisabled} aria-label={`Trim start edge ${clip.clipId}`} aria-valuetext="trim start"
                   onPointerDown={event => beginTrim(clip, 'START', event)}
-                  onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={() => { dragOrigin.current = null; setPending(null) }}
+                  onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={cancelTrimDrag} onLostPointerCapture={cancelTrimDrag}
                   style={{ position: 'absolute', left: -3, top: 0, width: 8, height: '100%', cursor: 'ew-resize',
                            background: '#f59e0b', borderRadius: 2 }} />
-            <span role="slider" tabIndex={trimGestureDisabled ? -1 : 0} aria-disabled={trimGestureDisabled} aria-label={`Trim end edge ${clip.clipId}`} aria-valuetext="trim end"
+            <span role="slider" tabIndex={editsDisabled ? -1 : 0} aria-disabled={editsDisabled} aria-label={`Trim end edge ${clip.clipId}`} aria-valuetext="trim end"
                   onPointerDown={event => beginTrim(clip, 'END', event)}
-                  onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={() => { dragOrigin.current = null; setPending(null) }}
+                  onPointerMove={moveTrim} onPointerUp={event => void endTrim(event)} onPointerCancel={cancelTrimDrag} onLostPointerCapture={cancelTrimDrag}
                   style={{ position: 'absolute', right: -3, top: 0, width: 8, height: '100%', cursor: 'ew-resize',
                            background: '#f59e0b', borderRadius: 2 }} /></>}
           </div>
@@ -867,8 +956,10 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       </div>
     </div>
 
+    {currentSnap && <p role="status" data-snap-feedback>{snapDescription(currentSnap)}</p>}
     {historicalRevisionId && message && <p role="alert">{message}</p>}
     {!historicalRevisionId && <>{projection && !projection.valid && <p role="alert">{projection.reason}</p>}
+    {multiFeedback && <p role="status">Moving {multiMove?.ids.length} selected clips by {formatRational(multiFeedback.delta)}s.</p>}
     {moving && (() => { const clip = clips.find(row => row.clipId === moving.clipId); const projection = clip ? projectMove(clip, moving.start) : null; return projection
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     {!trimOnly && <><Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || editsDisabled}
@@ -1004,6 +1095,6 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     {clips.length === 0 && <p>No clips in this revision.</p>}
     {message && <p role={actionFailed ? 'alert' : 'status'}>{message}</p>}
     {confirmedTrim && !busy && <Button type="button" disabled={trimBlocked} onClick={retryTrim}>Retry Trim with the same command ID</Button>}
-    {retryCommand && <Button type="button" disabled={editsDisabled} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}
+    {retryCommand && <Button type="button" disabled={writeBlocked} onClick={() => void retryApply()}>Retry {retryCommand.label} with the same command ID</Button>}</>}
   </section>
 }

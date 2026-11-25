@@ -70,6 +70,10 @@ if branches:
         for fixture in ('centisecond', 'fractional') for stage in ('before', 'overlap', 'preview', 'commit', 'reopened'))
     checkpoints += tuple('n05-' + stage for stage in ('before', 'selection', 'collision', 'negative-reject',
         'preview', 'committed', 'replay', 'reopened', 'zero', 'gap-base', 'negative', 'stale-before', 'stale-after'))
+    checkpoints += tuple('n06-' + stage for stage in ('free-before', 'free-after', 'edge-before', 'edge-after',
+        'cancel', 'playhead-before', 'playhead-after', 'trim-before', 'trim-preview', 'trim-after',
+        'pair-before', 'invalid-offsets', 'illegal', 'pair-preview', 'pair-committed', 'pair-locked', 'pair-replay',
+        'button-before', 'button-after', 'keyboard-before', 'keyboard-after'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -261,6 +265,76 @@ if branches:
     assert checkpoints5['negative']['rows'] == checkpoints5['gap-base']['rows'] + 1
     assert checkpoints5['stale-before'] == checkpoints5['stale-after']
     (out / 'n05-postgres.json').write_text(json.dumps(dict(move=move, persisted=move_rows, checkpoints=checkpoints5), indent=2))
+    snap = browser_result['http']['n06']
+    snap_ids = {case['revision'] for case in snap['moves'] + snap['deletions']}
+    snap_ids |= {case['apply']['body']['baseRevisionId'] for case in snap['moves'] + snap['deletions']}
+    assert all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in snap_ids)
+    id_sql = ','.join("'" + value + "'" for value in sorted(snap_ids))
+    snap_rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (
+        select rev.id, rev.parent_revision_id, rev.content_hash, s.payload_json::json as snapshot
+        from timeline.timeline_revision rev join timeline.timeline_snapshot s
+          on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+        where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
+          and rev.id in ({id_sql})) r;""")
+    counts6 = {k.removeprefix('n06-'):v for k,v in facts.items() if k.startswith('n06-')}
+    assert counts6['cancel'] == counts6['edge-before']
+    assert counts6['trim-preview'] == counts6['trim-before']
+    assert all(counts6[k] == counts6['pair-before'] for k in ('invalid-offsets','illegal','pair-preview'))
+    assert counts6['pair-locked'] == counts6['pair-replay'] == counts6['pair-committed']
+    def by_id(revision):
+        return {clip['clipId']:clip for clip in track(snap_rows[revision])}
+    def assert_commit6(case, base_count, after_count):
+        base = case['apply']['body']['baseRevisionId']
+        accepted = case['revision']
+        assert counts6[base_count]['refs']['main'] == base and counts6[after_count]['refs']['main'] == accepted
+        assert counts6[after_count]['rows'] == counts6[base_count]['rows'] + 1
+        assert counts6[after_count]['commands'] == counts6[base_count]['commands'] + 1
+        assert snap_rows[accepted]['parent_revision_id'] == base
+        assert snap_rows[accepted]['content_hash'] == case['apply']['payload']['newContentHash']
+        assert case['preview']['body'] == case['apply']['body']
+        assert case['apply']['ifMatch'] == '"' + case['preview']['payload']['batchDigest'] + '"'
+        return by_id(base), by_id(accepted)
+    for case in snap['moves']:
+        label = case['label']
+        start, saved = assert_commit6(case, label+'-before', 'pair-committed' if label == 'pair' else label+'-after')
+        assert start.keys() == saved.keys()
+        value = Fraction(case['expected'])
+        assert Fraction(case['apply']['body']['operations'][0]['parameters']['delta']) == value
+        if label == 'trim':
+            assert Fraction(saved['clip-red']['endTime']) == Fraction(start['clip-red']['endTime']) - value == Fraction(1,2)
+            assert Fraction(saved['clip-red']['trimEnd']) == Fraction(1,2)
+            assert start['clip-blue'] == saved['clip-blue']
+        else:
+            moving = ('clip-red','clip-blue') if label == 'pair' else ('clip-red',)
+            for clip_id, clip in saved.items():
+                if clip_id not in moving: assert clip == start[clip_id]
+                else:
+                    original = start[clip_id]
+                    assert {k:v for k,v in original.items() if k not in ('startTime','endTime')} == {
+                        k:v for k,v in clip.items() if k not in ('startTime','endTime')}
+                    duration = Fraction(original['endTime']) - Fraction(original['startTime'])
+                    assert Fraction(clip['endTime']) - Fraction(clip['startTime']) == duration
+                    if label == 'pair':
+                        assert Fraction(clip['startTime']) == Fraction(original['startTime']) + value
+                    else: assert Fraction(clip['startTime']) == value
+            if label == 'pair':
+                assert Fraction(saved['clip-blue']['endTime']) == Fraction(saved['clip-gray']['startTime']) == 4
+                assert Fraction(saved['clip-blue']['startTime']) - Fraction(saved['clip-red']['endTime']) == Fraction(1,2)
+    before_documents = []
+    after_documents = []
+    for case in snap['deletions']:
+        label = case['entry']
+        start,saved = assert_commit6(case,label+'-before',label+'-after')
+        assert set(start) == {'clip-red','clip-blue','clip-gray'}
+        assert set(saved) == {'clip-red','clip-gray'}
+        for clip_id, placement in zip(('clip-red','clip-blue','clip-gray'),((0,2),(2,5),(5,7))):
+            assert tuple(Fraction(start[clip_id][k]) for k in ('startTime','endTime')) == placement
+        assert all(clip == start[clip_id] for clip_id,clip in saved.items())
+        assert case['picturesAfter']['3'] == [0,0,0]
+        before_documents.append(start)
+        after_documents.append(saved)
+    assert before_documents[0] == before_documents[1] and after_documents[0] == after_documents[1]
+    (out / 'n06-postgres.json').write_text(json.dumps(dict(snap=snap, persisted=snap_rows, checkpoints=counts6), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

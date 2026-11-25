@@ -276,6 +276,51 @@ describe('clipboard playhead precision at the editor entry point', () => {
 describe('same-track multi-clip move', () => {
   afterEach(() => vi.restoreAllMocks())
 
+  it('withdraws a valid confirmation when the offset changes to a double sign', async () => {
+    renderBranchWorkspace('main','6',true)
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const apply = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select for move clip-0' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select for move clip-1' }))
+    const snap = screen.getByRole('button', { name: /^Snap$/ })
+    fireEvent.click(snap)
+    expect(snap.getAttribute('aria-pressed')).toBe('true')
+    const input = screen.getByLabelText('Move offset (seconds)')
+    const button = screen.getByRole('button', { name: 'Preview selected move' })
+    for (const [inputText, exact] of [['+2/60','1/30'],['-2/60','-1/30'],['0','0/1']]) {
+      fireEvent.change(input, { target: { value: inputText } })
+      fireEvent.click(button)
+      await screen.findByRole('button', { name: 'Confirm selected move' })
+      expect(preview.mock.lastCall?.[2].operations[0].parameters).toEqual({ delta: exact, absolute: false })
+    }
+    for (const value of ['+-2/60','-+2/60','++1','--1']) {
+      fireEvent.change(input, { target: { value } })
+      expect(screen.queryByRole('button', { name: 'Confirm selected move' })).toBeNull()
+      expect(input.getAttribute('aria-invalid')).toBe('true')
+      expect(screen.getByText(/at most one sign/)).toBeTruthy()
+      fireEvent.click(button)
+    }
+    expect(preview).toHaveBeenCalledTimes(3)
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('projects a selected pair locally and cancels without previewing or writing', async () => {
+    renderBranchWorkspace('main','6',true)
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch')
+    const apply = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select for move clip-0' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select for move clip-1' }))
+    const body = await screen.findByLabelText('Timeline clip clip-0')
+    fireEvent.pointerDown(body,{pointerId:1,clientX:100})
+    fireEvent.pointerMove(body,{pointerId:1,clientX:180})
+    expect(screen.getByText('Moving 2 selected clips by 1/1s.')).toBeTruthy()
+    fireEvent.keyDown(body,{key:'Escape'})
+    fireEvent.pointerUp(body,{pointerId:1,clientX:180})
+    expect(screen.queryByText(/Moving 2 selected clips/)).toBeNull()
+    expect(preview).not.toHaveBeenCalled()
+    expect(apply).not.toHaveBeenCalled()
+  })
+
   it('previews a canonical signed offset and retains the exact confirmed batch across lost response', async () => {
     renderBranchWorkspace('main', '6', true)
     const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })

@@ -248,10 +248,11 @@ describe('ClipEditor move and delete interaction', () => {
     expect(preview.absolute).toBe(true)
     expect(preview.clipId).toBe('clip-c')
     expect(preview.delta).toBe('2/1')
-    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
-    const applied = api.applyOperation.mock.calls[0][2]
+    await waitFor(() => expect(api.applyConfirmedClip).toHaveBeenCalledTimes(1))
+    const applied = api.applyConfirmedClip.mock.calls[0][2]
     expect(applied.type).toBe('MOVE_CLIP')
     expect(applied.commandId).toBe(preview.commandId)
+    expect(api.applyConfirmedClip.mock.calls[0][3]).toBe('a'.repeat(64))
     await waitFor(() => expect(onRevisionChanged).toHaveBeenCalledTimes(1))
     expect(await screen.findByText(/Clip moved to/)).toBeTruthy()
   })
@@ -263,7 +264,7 @@ describe('ClipEditor move and delete interaction', () => {
     fireEvent.pointerMove(body, { clientX: 102, pointerId: 1 })
     fireEvent.pointerUp(body, { clientX: 102, pointerId: 1 })
     await new Promise(resolve => setTimeout(resolve, 20))
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
     expect(api.previewOperation).not.toHaveBeenCalled()
   })
 
@@ -272,8 +273,8 @@ describe('ClipEditor move and delete interaction', () => {
     const section = screen.getByRole('region', { name: 'Edit existing clip' })
     fireEvent.click(screen.getByLabelText('Timeline clip clip-b'))
     fireEvent.keyDown(section, { key: 'Delete' })
-    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
-    const applied = api.applyOperation.mock.calls[0][2]
+    await waitFor(() => expect(api.applyConfirmedClip).toHaveBeenCalledTimes(1))
+    const applied = api.applyConfirmedClip.mock.calls[0][2]
     expect(applied.type).toBe('DELETE_CLIP')
     expect(applied.clipId).toBe('clip-b')
     expect(applied.delta).toBeUndefined()
@@ -287,15 +288,15 @@ describe('ClipEditor move and delete interaction', () => {
     fireEvent.change(select, { target: { value: 'clip-a' } })
     fireEvent.keyDown(select, { key: 'Delete' })
     await new Promise(resolve => setTimeout(resolve, 20))
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
   })
 
   it('deletes through the explicit button as well', async () => {
     await renderMulti()
     fireEvent.click(screen.getByLabelText('Timeline clip clip-a'))
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected clip' }))
-    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(1))
-    expect(api.applyOperation.mock.calls[0][2].type).toBe('DELETE_CLIP')
+    await waitFor(() => expect(api.applyConfirmedClip).toHaveBeenCalledTimes(1))
+    expect(api.applyConfirmedClip.mock.calls[0][2].type).toBe('DELETE_CLIP')
   })
 
   it('shows the failure and refreshes from the server when the move is rejected', async () => {
@@ -308,7 +309,7 @@ describe('ClipEditor move and delete interaction', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
     expect(screen.getByRole('alert').textContent).toMatch(/move rejected/)
     expect(onRevisionChanged).toHaveBeenCalled()
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
   })
 })
 
@@ -327,7 +328,7 @@ describe('ClipEditor overlap rejection', () => {
     fireEvent.pointerUp(body, { clientX: 100 - 240, pointerId: 1 })
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
     expect(screen.getByRole('alert').textContent).toMatch(/overlap/i)
-    expect(api.applyOperation).not.toHaveBeenCalled()
+    expect(api.applyConfirmedClip).not.toHaveBeenCalled()
     expect(onRevisionChanged).toHaveBeenCalled()
   })
 })
@@ -371,20 +372,24 @@ describe('ClipEditor conflict and retry', () => {
   it('retries a transient apply failure with the same command id', async () => {
     const { onRevisionChanged } = renderEditor()
     await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
-    api.applyOperation.mockRejectedValueOnce(new Error('network down'))
+    api.applyConfirmedClip.mockRejectedValueOnce(new Error('network down'))
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected clip' }))
     await waitFor(() => expect(screen.getByRole('button', { name: /Retry delete/i })).toBeTruthy())
-    const first = api.applyOperation.mock.calls[0][2]
+    const first = api.applyConfirmedClip.mock.calls[0]
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Delete selected clip' }).disabled).toBe(true)
+    fireEvent.keyDown(screen.getByRole('region', { name: 'Edit existing clip' }), { key: 'Delete' })
+    expect(api.applyConfirmedClip).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: /Retry delete/i }))
-    await waitFor(() => expect(api.applyOperation).toHaveBeenCalledTimes(2))
-    expect(api.applyOperation.mock.calls[1][2].commandId).toBe(first.commandId)
+    await waitFor(() => expect(api.applyConfirmedClip).toHaveBeenCalledTimes(2))
+    expect(api.applyConfirmedClip.mock.calls[1]).toEqual(first)
+    expect(api.previewOperation).toHaveBeenCalledOnce()
     await waitFor(() => expect(onRevisionChanged).toHaveBeenCalled())
   })
 
   it('treats a 409 apply result as a conflict and reloads without retrying', async () => {
     const { onRevisionChanged } = renderEditor()
     await waitFor(() => expect(screen.getByLabelText('Timeline clip clip-0')).toBeTruthy())
-    api.applyOperation.mockRejectedValueOnce(Object.assign(new Error('stale'), { response: { status: 409 } }))
+    api.applyConfirmedClip.mockRejectedValueOnce(Object.assign(new Error('stale'), { response: { status: 409 } }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected clip' }))
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
     expect(screen.getByRole('alert').textContent).toMatch(/HEAD has changed/)

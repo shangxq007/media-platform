@@ -940,8 +940,287 @@ try {
     reversed: negativeReceipt5.newRevisionId, competitor: other5.newRevisionId, mediaSamples, moveWire,
     collision: { preview: collision5.payload.errorCode, apply: 422 }, negativeStart: negativeRejection.payload.errorCode,
     authorization: { reader: denied5.errorCode, foreign: isolated5.errorCode }, zero: zeroResponse.status(), stale: staleResponse.status() }
-  result.status = 'PASS'
   save('N05 atomic common offset, overlap rollback, exact replay, reopen, signed rational gap, zero and stale conflict')
+
+  const evidence6 = { moves: [], deletions: [], offsets: [], invalid: [] }
+  const snap = page.getByRole('button', { name: 'Snap', exact: true })
+  const clipEditor6 = page.getByRole('region', { name: 'Edit existing clip' })
+  const feedback6 = clipEditor6.locator('[data-snap-feedback]')
+  const c6 = name => checkpoint('n06-' + name)
+  const clip6 = name => page.getByLabel('Timeline clip ' + name, { exact: true })
+  async function setSnap6(enabled) {
+    if ((await snap.getAttribute('aria-pressed')) !== String(enabled)) await snap.press('Space')
+    await page.waitForFunction(on => document.querySelector('button[aria-pressed=' + on + ']') &&
+      [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Snap' && b.getAttribute('aria-pressed') === on),
+    String(enabled))
+  }
+  async function revise6(label, operations, expected = 201) {
+    const current = await branch()
+    const body = { batchId: 'n06-' + label, baseRevisionId: current.headRevisionId,
+      baseContentHash: current.contentHash, operations }
+    return apply(body, (await preview(body)).batchDigest, expected)
+  }
+  async function restore6(label, source = n05Base.newRevisionId) {
+    return revise6(label, [{ definitionId: 'timeline.revision.restore', parameters: { sourceRevisionId: source } }])
+  }
+  async function view6(revision) {
+    await page.reload()
+    await waitView('main', revision)
+  }
+  async function drag6(locator, px, inspect = async () => {}) {
+    await locator.scrollIntoViewIfNeeded()
+    const box = await locator.boundingBox()
+    assert.ok(box, 'drag source visible')
+    const x = box.x + box.width / 2, y = box.y + box.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + px, y, { steps: 8 })
+    await inspect()
+    await page.mouse.up()
+  }
+  const trace6 = async res => ({ target: res.url(), body: res.request().postDataJSON(),
+    raw: res.request().postData(), ifMatch: res.request().headers()['if-match'], status: res.status(), payload: await res.json() })
+  function confirmed6(planned, applied) {
+    assert.equal(planned.status, 200)
+    assert.equal(applied.status, 201)
+    assert.equal(applied.raw, planned.raw)
+    assert.equal(applied.ifMatch, '"' + planned.payload.batchDigest + '"')
+    assert.equal(applied.payload.parentRevisionId, applied.body.baseRevisionId)
+  }
+  const localRequests6 = []
+  page.on('request', req => {
+    if (req.method() === 'POST' && req.url().includes(batch + '/')) localRequests6.push(req.url())
+  })
+
+  // A stationary clip ends at 61/30. Run the same drag from the same authored state twice.
+  await restore6('single-seed')
+  const stationary6 = await revise6('single-track', [
+    { definitionId: 'timeline.delete', target: { clipId: 'clip-gray' } },
+    makeMove({ clipId: 'clip-red' }, '4', true),
+    makeMove({ clipId: 'clip-blue' }, '31/30', true),
+  ])
+  for (const [label, enabled, expected] of [['free', false, '21/10'], ['edge', true, '61/30']]) {
+    const current = enabled ? await restore6('single-restore', stationary6.newRevisionId) : stationary6
+    await view6(current.newRevisionId)
+    await setSnap6(enabled)
+    const before = await c6(label + '-before')
+    if (enabled) {
+      const calls = localRequests6.length
+      await drag6(clip6('clip-red'), -152, async () => {
+        assert.match(await feedback6.innerText(), /clip-red start to clip-blue end at 61\/30s/)
+        assert.equal(localRequests6.length, calls)
+        await page.keyboard.press('Escape')
+        assert.equal(await feedback6.count(), 0)
+      })
+      assert.equal(localRequests6.length, calls)
+      assert.deepEqual(await c6('cancel'), before)
+    }
+    const planned = wire5('/preview')
+    const written = wire5('/apply')
+    let guide = null
+    await drag6(clip6('clip-red'), -152, async () => {
+      await clipEditor6.getByText(/Moving clip-red to/).waitFor()
+      if (enabled) {
+        guide = await feedback6.innerText()
+        assert.match(guide, /clip-red start to clip-blue end at 61\/30s/)
+        await page.screenshot({ path: join(out, 'n06-edge-guide.png') })
+      } else assert.equal(await feedback6.count(), 0)
+    })
+    const p = await trace6(await planned), a = await trace6(await written)
+    confirmed6(p, a)
+    assert.equal(p.body.operations[0].parameters.delta, expected)
+    await view6(a.payload.newRevisionId)
+    assert.equal((await c6(label + '-after')).rows, before.rows + 1)
+    evidence6.moves.push({ label, expected, guide, preview: p, apply: a, revision: a.payload.newRevisionId })
+  }
+
+  // The playhead at the exact canonical endpoint wins an equal-distance tie with the blue clip end.
+  await restore6('endpoint-seed', stationary6.newRevisionId)
+  const endpoint6 = await revise6('endpoint-track', [makeMove({ clipId: 'clip-red' }, '0', true)])
+  await view6(endpoint6.newRevisionId)
+  await setSnap6(true)
+  await page.getByLabel('Timeline preview seek').press('End')
+  const playBefore = await c6('playhead-before')
+  const playPreview = wire5('/preview'), playWrite = wire5('/apply')
+  let playGuide
+  await drag6(clip6('clip-red'), 166, async () => {
+    playGuide = await feedback6.innerText()
+    assert.match(playGuide, /clip-red start to playhead at 61\/30s/)
+  })
+  const pp = await trace6(await playPreview), pa = await trace6(await playWrite)
+  confirmed6(pp, pa)
+  assert.equal(pp.body.operations[0].parameters.delta, '61/30')
+  await view6(pa.payload.newRevisionId)
+  assert.equal((await c6('playhead-after')).rows, playBefore.rows + 1)
+  evidence6.moves.push({ label: 'playhead', expected: '61/30', guide: playGuide, preview: pp, apply: pa, revision: pa.payload.newRevisionId })
+
+  const trimBase6 = await restore6('trim-seed', endpoint6.newRevisionId)
+  await view6(trimBase6.newRevisionId)
+  await setSnap6(true)
+  await seek('0.5')
+  const trimBefore6 = await c6('trim-before')
+  const trimPreview6 = wire5('/preview')
+  let trimGuide6
+  await drag6(page.getByLabel('Trim end edge clip-red', { exact: true }), -37, async () => {
+    trimGuide6 = await feedback6.innerText()
+    assert.match(trimGuide6, /clip-red end to playhead at 1\/2s/)
+  })
+  const tp = await trace6(await trimPreview6)
+  assert.equal(tp.status, 200)
+  assert.deepEqual(tp.body.operations[0].parameters, { edge: 'END', delta: '1/2' })
+  assert.deepEqual(await c6('trim-preview'), trimBefore6)
+  const trimCommit6 = wire5('/apply')
+  await page.getByRole('button', { name: 'Apply trim', exact: true }).click()
+  const ta = await trace6(await trimCommit6)
+  confirmed6(tp, ta)
+  await view6(ta.payload.newRevisionId)
+  assert.equal((await c6('trim-after')).rows, trimBefore6.rows + 1)
+  evidence6.moves.push({ label: 'trim', expected: '1/2', guide: trimGuide6, preview: tp, apply: ta, revision: ta.payload.newRevisionId })
+
+  await restore6('pair-seed')
+  const pairBase6 = await revise6('pair-track', [
+    makeMove({ clipId: 'clip-blue' }, '2', true), makeMove({ clipId: 'clip-red' }, '1/2', true),
+  ])
+  await view6(pairBase6.newRevisionId)
+  await setSnap6(true)
+  await pair5()
+  const pairBefore6 = await c6('pair-before')
+  for (const [form, expected] of [['+2/60','1/30'], ['-2/60','-1/30'], ['0','0/1']]) {
+    const prepared = await plan5(form)
+    assert.equal(prepared.body.operations[0].parameters.delta, expected)
+    evidence6.offsets.push({ form, expected, observed: prepared.body.operations[0].parameters.delta })
+  }
+  for (const form of ['+-2/60', '-+2/60', '++1', '--1']) {
+    const noRequests = localRequests6.length
+    await moveTools.getByLabel('Move offset (seconds)').fill(form)
+    await moveTools.getByRole('alert').filter({ hasText: 'at most one sign' }).waitFor()
+    assert.equal(await moveConfirm.count(), 0)
+    await movePreview.click()
+    assert.equal(localRequests6.length, noRequests)
+    evidence6.invalid.push({ form, requests: localRequests6.length - noRequests })
+  }
+  assert.deepEqual(await c6('invalid-offsets'), pairBefore6)
+
+  const illegalPreview6 = wire5('/preview')
+  await drag6(clip6('clip-red'), 283, async () => {
+    assert.match(await feedback6.innerText(), /clip-red start to clip-gray start at 4\/1s/)
+  })
+  const illegal6 = await trace6(await illegalPreview6)
+  assert.equal(illegal6.status, 422)
+  assert.match(illegal6.payload.detail, /overlap/)
+  await moveTools.getByRole('alert').filter({ hasText: 'rejected' }).waitFor()
+  assert.equal(await moveConfirm.count(), 0)
+  const illegalApply6 = await apply(illegal6.body, '0'.repeat(64), 422)
+  assert.match(illegalApply6.detail, /overlap/)
+  assert.deepEqual(await c6('illegal'), pairBefore6)
+  evidence6.illegal = { preview: illegal6, applyStatus: 422, applyError: illegalApply6.errorCode }
+
+  const legalPreview6 = wire5('/preview')
+  let pairGuide6
+  await drag6(clip6('clip-red'), 77, async () => {
+    pairGuide6 = await feedback6.innerText()
+    assert.match(pairGuide6, /clip-blue end to clip-gray start at 4\/1s/)
+    await page.screenshot({ path: join(out, 'n06-pair-guide.png') })
+  })
+  const gp = await trace6(await legalPreview6)
+  assert.equal(gp.body.operations[0].parameters.delta, '1/1')
+  await moveConfirm.waitFor()
+  assert.equal(await moveTools.getByText('clip-red · 3/2 to 5/2', { exact: true }).count(), 1)
+  assert.equal(await moveTools.getByText('clip-blue · 3/1 to 4/1', { exact: true }).count(), 1)
+  assert.deepEqual(await c6('pair-preview'), pairBefore6)
+  const pairWire6 = []
+  await page.route('**' + batch + '/apply', async route => {
+    const res = await route.fetch()
+    const req = route.request()
+    pairWire6.push({ target: req.url(), body: req.postDataJSON(), raw: req.postData(),
+      ifMatch: req.headers()['if-match'], status: res.status(), payload: await res.json() })
+    if (pairWire6.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  await moveConfirm.click()
+  await moveRetry.waitFor()
+  const pairAfter6 = await c6('pair-committed')
+  assert.equal(pairAfter6.rows, pairBefore6.rows + 1)
+  assert.equal(await snap.isDisabled(), true)
+  assert.equal(await deleteClip.isDisabled(), true)
+  const lockedRequests6 = localRequests6.length
+  await clipEditor6.press('Delete')
+  // A disabled native toggle is inert even if a click is dispatched to it.
+  await snap.dispatchEvent('click')
+  assert.equal(await snap.getAttribute('aria-pressed'), 'true')
+  assert.equal(localRequests6.length, lockedRequests6)
+  assert.deepEqual(await c6('pair-locked'), pairAfter6)
+  await moveRetry.click()
+  await moveTools.getByText('Move accepted at revision ' + pairWire6[0].payload.newRevisionId + '.', {exact:true}).waitFor()
+  await page.unroute('**' + batch + '/apply')
+  confirmed6(gp, pairWire6[0])
+  assert.deepEqual(pairWire6.map(r => r.status), [201, 200])
+  for (const field of ['target', 'raw', 'ifMatch']) assert.equal(pairWire6[0][field],pairWire6[1][field])
+  assert.equal(pairWire6[1].payload.newRevisionId,pairWire6[0].payload.newRevisionId)
+  assert.equal(pairWire6[1].payload.replayed,true)
+  assert.equal(await snap.isDisabled(), false)
+  await view6(pairWire6[0].payload.newRevisionId)
+  assert.deepEqual(await c6('pair-replay'), pairAfter6)
+  evidence6.moves.push({ label: 'pair', expected: '1/1', guide: pairGuide6, preview: gp,
+    apply: pairWire6[0], replay: pairWire6[1], revision: pairWire6[0].payload.newRevisionId })
+
+  await restore6('delete-seed')
+  const redPin6 = originalsN05.find(c => c.clipId === 'clip-red')
+  const bluePin6 = originalsN05.find(c => c.clipId === 'clip-blue')
+  const add6 = (id, media, start, end, sourceEnd, rateDenominator = 1) => {
+    const op = addN05(id, media, start, end)
+    return { ...op, parameters: { ...op.parameters, sourceEnd, rateDenominator } }
+  }
+  const deleteBase6 = await revise6('delete-track', [
+    ...['clip-red', 'clip-blue', 'clip-gray'].map(id => ({ definitionId: 'timeline.delete', target: { clipId: id } })),
+    add6('clip-red', redPin6, '0', '2', '2'), add6('clip-blue', bluePin6, '2', '5', '1', 3),
+    add6('clip-gray', redPin6, '5', '7', '2'),
+    { definitionId: 'timeline.clip.effect.set', version: '2.0', target: { clipId: 'clip-gray' },
+      parameters: { brightness: 0, contrast: 1, saturation: 1, grayscale: true, fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true } },
+  ])
+  async function samples6(prefix, points) {
+    const canvas = page.getByLabel('Timeline preview canvas', { exact: true })
+    const samples = {}
+    for (const [at, colour] of points) {
+      await seek(at)
+      await page.waitForFunction(colour => {
+        const c = document.querySelector('canvas[aria-label="Timeline preview canvas"]')
+        const [r,g,b] = c.getContext('2d').getImageData(c.width/2,c.height/2,1,1).data
+        if (colour === 'red') return r > 80 && r > 2 * Math.max(g,b)
+        if (colour === 'blue') return b > 80 && b > 2 * Math.max(r,g)
+        if (colour === 'black') return Math.max(r,g,b) < 10
+        return Math.min(r,g,b) > 30 && Math.max(r,g,b) - Math.min(r,g,b) < 6
+      }, colour)
+      samples[at] = await canvas.evaluate(c => Array.from(c.getContext('2d').getImageData(c.width/2,c.height/2,1,1).data).slice(0,3))
+      await canvas.screenshot({ path: join(out, prefix + '-' + colour + '.png') })
+    }
+    return samples
+  }
+
+  for (const entry of ['button','keyboard']) {
+    const initial = entry === 'button' ? deleteBase6 : await restore6('delete-equivalent', deleteBase6.newRevisionId)
+    await view6(initial.newRevisionId)
+    const before = await c6(entry + '-before')
+    const picturesBefore = await samples6('n06-delete-' + entry + '-before', [['3','blue']])
+    await clip6('clip-blue').click()
+    const dpWire = wire5('/preview'), daWire = wire5('/apply')
+    if (entry === 'button') await deleteClip.click()
+    else await clip6('clip-blue').press('Delete')
+    const dp = await trace6(await dpWire), da = await trace6(await daWire)
+    confirmed6(dp, da)
+    assert.deepEqual(dp.body.operations[0], { definitionId: 'timeline.delete', target: { clipId: 'clip-blue' } })
+    await view6(da.payload.newRevisionId)
+    assert.equal(await clip6('clip-blue').count(), 0)
+    const picturesAfter = await samples6('n06-delete-' + entry + '-after', [['1','red'],['3','black'],['5.5','gray']])
+    const after = await c6(entry + '-after')
+    assert.equal(after.rows, before.rows + 1)
+    assert.equal(after.commands, before.commands + 1)
+    evidence6.deletions.push({ entry, before: initial.newRevisionId, revision: da.payload.newRevisionId,
+      picturesBefore, picturesAfter, preview: dp, apply: da })
+  }
+  result.http.n06 = evidence6
+  result.status = 'PASS'
+  save('N06 exact clip and playhead snaps, trim, atomic pair, input validation, retry and ordinary delete by both entry points')
 } finally {
   await browser.close()
 }
