@@ -171,6 +171,9 @@ public record OperationDefinition(
         public static final OperationDefinition PASTE_CLIPS = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.paste"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.PasteClipsParameters.class);
+        public static final OperationDefinition RIPPLE_DELETE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.ripple-delete"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.NoParameters.class);
         /** SPLIT: one clip -> two adjacent clips, no ripple/gap/overlap. */
         public static final OperationDefinition SPLIT_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.split"), OperationDefinitionVersion.of(1, 0),
@@ -179,7 +182,7 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE, RESTORE_REVISION,
-                                SPLIT_CLIP, PASTE_CLIPS, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_VIDEO_TRANSFORM,
+                                SPLIT_CLIP, PASTE_CLIPS, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_VIDEO_TRANSFORM,
                                 SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
                                 UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE)).toList();
         private V3() {}

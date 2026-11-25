@@ -143,6 +143,19 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         if (instance.parameters() instanceof OperationParameters.PasteClipsParameters paste) {
             validatePaste(batch, paste, currentCandidate);
         }
+        if (rippleDelete(operation)) {
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                        "Ripple Delete is only available on the default editing branch");
+            }
+            if (batch.operations().size() != 1
+                    || !(operation.target() instanceof com.example.platform.operation.operation.OperationTargetRequest.ClipSelectionTargetRequest request)
+                    || !(request.selectionSpec() instanceof com.example.platform.timeline.semantics.selection.SelectionSpec.ExplicitObjectSelection selection)
+                    || selection.clipIds().size() != 1) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
+                        "Ripple Delete requires one explicitly selected clip and must be the only operation in its batch");
+            }
+        }
         if (instance.parameters() instanceof OperationParameters.MoveParameters
                 && instance.target() instanceof OperationTarget.ResolvedClipScopeTarget clips
                 && clips.resolvedScope().resolvedClipIds().size() > 1) {
@@ -209,11 +222,16 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 && selection.clipIds().size() > 1;
     }
 
+    private static boolean rippleDelete(OperationRequest operation) {
+        return operation.definitionId().equals(
+                com.example.platform.operation.operation.OperationDefinition.V3.RIPPLE_DELETE.definitionId());
+    }
+
     private static boolean preservesParentEffects(OperationBatchRequest batch) {
         return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
                 instanceof OperationParameters.TrimParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
-                || multiMove(batch.operations().getFirst()));
+                || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));
     }
 
     private void validatePaste(OperationBatchRequest batch, OperationParameters.PasteClipsParameters paste,

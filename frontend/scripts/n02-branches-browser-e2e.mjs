@@ -1184,7 +1184,7 @@ try {
   const deleteBase6 = await revise6('delete-track', [
     ...['clip-red', 'clip-blue', 'clip-gray'].map(id => ({ definitionId: 'timeline.delete', target: { clipId: id } })),
     add6('clip-red', redPin6, '0', '2', '2'), add6('clip-blue', bluePin6, '2', '5', '1', 3),
-    add6('clip-gray', redPin6, '5', '7', '2'),
+    add6('clip-gray', redPin6, '5', '7', '2'), add6('clip-later', bluePin6, '8', '9', '1'),
     { definitionId: 'timeline.clip.effect.set', version: '2.0', target: { clipId: 'clip-gray' },
       parameters: { brightness: 0, contrast: 1, saturation: 1, grayscale: true, fadeInSeconds: 0, fadeOutSeconds: 0, enabled: true } },
   ])
@@ -1240,8 +1240,177 @@ try {
       picturesBefore, picturesAfter, playingGap, preview: dp, apply: da })
   }
   result.http.n06 = evidence6
-  result.status = 'PASS'
   save('N06 exact clip and playhead snaps, trim, atomic pair, input validation, retry and ordinary delete by both entry points')
+
+  const c7 = name => checkpoint('n07-' + name)
+  const ripplePreview = clipEditor6.getByRole('button', { name: 'Preview ripple delete', exact: true })
+  const rippleConfirm = clipEditor6.getByRole('button', { name: 'Confirm ripple delete', exact: true })
+  const rippleCancel = clipEditor6.getByRole('button', { name: 'Cancel ripple delete', exact: true })
+  const rippleRetry = clipEditor6.getByRole('button', { name: 'Retry Ripple Delete with the same command ID', exact: true })
+  const rippleStage = async () => {
+    await clip6('clip-blue').click()
+    const pending = wire6('/preview')
+    await ripplePreview.click()
+    return trace6(await pending)
+  }
+  const base7 = (await restore6('ripple-equivalent', deleteBase6.newRevisionId)).newRevisionId
+  await view6(base7)
+  const before7 = await c7('before')
+  const cancelled7 = await rippleStage()
+  assert.equal(cancelled7.status, 200)
+  await clipEditor6.getByText('Remove clip-blue. Shift clip-gray, clip-later left by 3/1s on this track.', { exact: true }).waitFor()
+  await rippleCancel.click()
+  assert.equal(await rippleConfirm.count(), 0)
+  assert.deepEqual(await c7('cancel'), before7)
+  const planned7 = await rippleStage()
+  await rippleConfirm.waitFor()
+  assert.deepEqual(planned7.body.operations, [
+    { definitionId: 'timeline.clip.ripple-delete', version: '1.0', target: { clipId: 'clip-blue' } },
+  ])
+  const denied7 = await apply(planned7.body, (await preview(planned7.body, 200, reader)).batchDigest, 403, reader)
+  assert.deepEqual(await c7('reader'), before7)
+  const exact7 = []
+  await page.route('**' + batch + '/apply', async route => {
+    const req = route.request(), res = await route.fetch()
+    exact7.push({ target: req.url(), body: req.postDataJSON(), raw: req.postData(), ifMatch: req.headers()['if-match'],
+      status: res.status(), payload: await res.json() })
+    if (exact7.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  try {
+    await rippleConfirm.click()
+    await rippleRetry.waitFor()
+    const locked = await c7('committed')
+    assert.equal(locked.rows, before7.rows + 1)
+    assert.equal(locked.commands, before7.commands + 1)
+    assert.equal(locked.refs.main, exact7[0].payload.newRevisionId)
+    assert.equal(await deleteClip.isDisabled(), true)
+    assert.equal(await ripplePreview.isDisabled(), true)
+    assert.equal(await page.getByRole('combobox', { name: 'Editing branch' }).isDisabled(), true)
+    await clipEditor6.press('Delete')
+    assert.equal(exact7.length, 1)
+    await rippleRetry.click()
+    await clipEditor6.getByText('Clip clip-blue ripple deleted at revision ' + locked.refs.main + '.', { exact: true }).waitFor()
+    assert.deepEqual(await c7('replay'), locked)
+  } finally { await page.unroute('**' + batch + '/apply') }
+  confirmed6(planned7, exact7[0])
+  assert.deepEqual(exact7.map(x => x.status), [201, 200])
+  for (const field of ['target', 'raw', 'ifMatch']) assert.equal(exact7[0][field], exact7[1][field])
+  const ripple7 = exact7[0].payload.newRevisionId
+  assert.equal(exact7[1].payload.newRevisionId, ripple7)
+  await page.getByRole('button', { name: 'Undo ripple delete', exact: true }).waitFor()
+  const u7 = wire6('/apply')
+  await page.getByRole('button', { name: 'Undo ripple delete', exact: true }).click()
+  const undo7 = await trace6(await u7)
+  const undoId7 = undo7.payload.newRevisionId
+  await waitView('main', undoId7)
+  await page.getByRole('button', { name: 'Redo ripple delete', exact: true }).waitFor()
+  await c7('undo')
+  const r7 = wire6('/apply')
+  await page.getByRole('button', { name: 'Redo ripple delete', exact: true }).click()
+  const redo7 = await trace6(await r7)
+  const redoId7 = redo7.payload.newRevisionId
+  await waitView('main', redoId7)
+  await c7('redo')
+  await view6(redoId7)
+  assert.equal(await clip6('clip-blue').count(), 0)
+  const pictures7 = await samples6('n07-ripple-reopened', [['1','red'],['2.5','gray'],['4.5','black'],['5.5','blue']])
+  await seek('1.75')
+  await page.getByRole('button', { name: 'Play Timeline', exact: true }).click()
+  await page.waitForFunction(() => {
+    const preview = document.querySelector('section[aria-label="Timeline media preview"]')
+    const canvas = preview.querySelector('canvas')
+    const [r,g,b] = canvas.getContext('2d').getImageData(canvas.width/2,canvas.height/2,1,1).data
+    return preview.dataset.previewStatus === 'PLAYING' && +preview.dataset.previewTime >= 2
+      && +preview.dataset.previewTime < 3 && Math.min(r,g,b) > 30 && Math.max(r,g,b) - Math.min(r,g,b) < 6
+  })
+  const playing7 = await page.getByRole('region', { name: 'Timeline media preview' }).getAttribute('data-preview-time')
+  await page.getByRole('button', { name: 'Pause Timeline', exact: true }).click()
+  assert.deepEqual(await c7('reopen'), await c7('redo'))
+  save('N07 ripple cancel, comparison with ordinary Delete, reader rejection, exact replay, Undo/Redo, reopened playback')
+
+  const staleBase7 = (await restore6('ripple-stale', base7)).newRevisionId
+  await view6(staleBase7)
+  const stalePlan7 = await rippleStage()
+  const competing7 = await revise6('ripple-concurrent', [makeMove({ clipId: 'clip-later' }, '9', true)])
+  const competitorState7 = await c7('stale-before')
+  const staleApply7 = wire6('/apply')
+  await rippleConfirm.click()
+  const stale7 = await trace6(await staleApply7)
+  assert.deepEqual(stale7.body, stalePlan7.body)
+  assert.equal(stale7.status, 409)
+  assert.equal(stale7.payload.errorCode, 'STALE_BASE_REVISION')
+  await waitView('main', competing7.newRevisionId)
+  assert.deepEqual(await c7('stale-after'), competitorState7)
+
+  const linked7 = await revise6('ripple-relationship', [{ definitionId: 'timeline.sync.create',
+    parameters: { endpointA: 'clip-red', localAnchorA: '1', endpointB: 'clip-later', localAnchorB: '1/2' } }])
+  await view6(linked7.newRevisionId)
+  const linkedBefore7 = await c7('linked-before')
+  const linkedPlan7 = await rippleStage()
+  assert.equal(linkedPlan7.status, 422)
+  assert.match(linkedPlan7.payload.detail, /cannot preserve relationship.*clip-later/)
+  await clipEditor6.getByRole('alert').filter({ hasText: /clip-later/ }).waitFor()
+  assert.equal(await rippleConfirm.count(), 0)
+  const linkedApply7 = await apply(linkedPlan7.body, '0'.repeat(64), 422)
+  assert.match(linkedApply7.detail, /cannot preserve relationship.*clip-later/)
+  assert.deepEqual(await c7('linked-after'), linkedBefore7)
+
+  await restore6('ripple-fraction-seed', base7)
+  const fractionalClip7 = add6('clip-blue', bluePin6, '2', '121/30', '1', 61)
+  fractionalClip7.parameters.rateNumerator = 30
+  const fractional7 = await revise6('ripple-fractional', [
+    ...['clip-blue','clip-gray','clip-later'].map(clipId => ({ definitionId: 'timeline.delete', target: { clipId } })),
+    fractionalClip7, add6('clip-gray', redPin6, '121/30', '181/30', '2'),
+    add6('clip-later', bluePin6, '211/30', '241/30', '1'),
+  ])
+  await view6(fractional7.newRevisionId)
+  const fractionalBefore7 = await c7('fraction-before')
+  const fractionalPlan7 = await rippleStage()
+  assert.equal(fractionalPlan7.status, 200)
+  await clipEditor6.getByText('Remove clip-blue. Shift clip-gray, clip-later left by 61/30s on this track.', { exact: true }).waitFor()
+  const readRoute7 = '**' + branchPath + '/main'
+  const recoveryCounts7 = { headReads: 0, writes: 0 }
+  await page.route(readRoute7, async route => {
+    recoveryCounts7.headReads++
+    if (recoveryCounts7.headReads === 1) await route.abort('failed')
+    else await route.continue()
+  })
+  const count7 = req => {
+    if (req.method() === 'POST' && req.url().endsWith(batch + '/apply')) recoveryCounts7.writes++
+  }
+  page.on('request', count7)
+  let fractionalApply7
+  try {
+    const pending = wire6('/apply')
+    await rippleConfirm.click()
+    fractionalApply7 = await trace6(await pending)
+    confirmed6(fractionalPlan7, fractionalApply7)
+    const accepted = fractionalApply7.payload.newRevisionId
+    await clipEditor6.getByText('Ripple Delete accepted at revision ' + accepted + '. Reload HEAD to refresh the editor.', { exact: true }).waitFor()
+    assert.equal(await rippleRetry.count(), 0)
+    assert.equal(await ripplePreview.isDisabled(), true)
+    const recovery = clipEditor6.getByRole('button', { name: 'Reload HEAD after accepted edit', exact: true })
+    await recovery.click()
+    await waitView('main', accepted)
+    await clipEditor6.getByText('Clip clip-blue ripple deleted at revision ' + accepted + '.', { exact: true }).waitFor()
+    assert.deepEqual(recoveryCounts7, { headReads: 2, writes: 1 })
+  } finally {
+    await page.unroute(readRoute7)
+    page.off('request', count7)
+  }
+  const fractionalAfter7 = await c7('fraction-after')
+  assert.equal(fractionalAfter7.rows, fractionalBefore7.rows + 1)
+  assert.equal(fractionalAfter7.commands, fractionalBefore7.commands + 1)
+  await view6(fractionalApply7.payload.newRevisionId)
+  assert.deepEqual(await c7('fraction-reopen'), fractionalAfter7)
+  result.http.n07 = { base: base7, ripple: ripple7, undo: undo7, redo: redo7, plan: planned7, wire: exact7,
+    denied: { status: 403, code: denied7.errorCode }, pictures: pictures7, playing: playing7,
+    stale: { status: stale7.status, code: stale7.payload.errorCode, head: competing7.newRevisionId },
+    relationship: { preview: linkedPlan7, apply: linkedApply7, status: 422 },
+    fractional: { before: fractional7.newRevisionId, plan: fractionalPlan7, apply: fractionalApply7, recoveryCounts: recoveryCounts7 } }
+  result.status = 'PASS'
+  save('N07 atomic single-track ripple, fractional duration, stale and affected relationship rejection, read-only recovery')
 } finally {
   await browser.close()
 }

@@ -78,6 +78,7 @@ public final class OperationPlanner {
             case "timeline.transition.cross-dissolve.update" -> planTransitionUpdate(instance, base, changes);
             case "timeline.transition.cross-dissolve.delete" -> planTransitionDelete(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
+            case "timeline.clip.ripple-delete" -> planRippleDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
             case "timeline.clip.split" -> planSplit(instance, base, changes);
             case "timeline.temporal.set-rate" -> planSetRate(instance, base, changes);
@@ -682,6 +683,86 @@ public final class OperationPlanner {
             changes.add(new PlannedChange.AudioMixReplaced("audio-route-moved@" + id.value()));
         }
         return rebuild(base, tracks, mix, base.getSemanticRelationships());
+    }
+
+    private TimelineDocument planRippleDelete(OperationInstance instance, TimelineDocument base,
+            List<PlannedChange> changes) {
+        var selected = scopeOf(instance);
+        if (selected.size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Delete requires exactly one clip");
+        }
+        var id = selected.getFirst();
+        var removed = clipOf(base, id);
+        var track = base.getTracks().stream().filter(t -> t.clips().contains(removed)).findFirst().orElseThrow();
+        rejectRippleBinding(base, removed);
+        changes.add(new PlannedChange.ClipRemoved(id));
+        try {
+            var duration = removed.getEndTime().subtract(removed.getStartTime());
+            var layout = new ArrayList<TimelineClip>();
+            for (var clip : track.clips()) {
+                if (clip == removed) continue;
+                if (!clip.getStartTime().isLessThan(removed.getEndTime())) {
+                    rejectRippleBinding(base, clip);
+                    var moved = withPlacement(clip, clip.getStartTime().subtract(duration), clip.getEndTime().subtract(duration));
+                    layout.add(moved);
+                    changes.add(new PlannedChange.ClipReplaced(clip.getClipId(), moved));
+                } else if (clip.getEndTime().isGreaterThan(removed.getStartTime())) {
+                    throw rippleOverlap(id, clip.getClipId());
+                } else {
+                    layout.add(clip);
+                }
+            }
+            // Confirm against the complete resulting track, using half-open intervals.
+            var sorted = layout.stream().sorted(Comparator.comparing(TimelineClip::getStartTime)).toList();
+            for (int i = 1; i < sorted.size(); i++) {
+                var left = sorted.get(i - 1);
+                var right = sorted.get(i);
+                if (left.getEndTime().isGreaterThan(right.getStartTime())) {
+                    throw rippleOverlap(left.getClipId(), right.getClipId());
+                }
+            }
+            var tracks = base.getTracks().stream()
+                    .map(t -> t == track ? new TimelineTrack(t.trackId(), t.name(), t.type(), layout) : t).toList();
+            var mix = base.getAudioMix();
+            var routes = mix.routes().stream().filter(route -> !route.input().clipId().equals(id.value())).toList();
+            if (routes.size() != mix.routes().size()) {
+                mix = mix.withRoutes(routes);
+                changes.add(new PlannedChange.AudioMixReplaced("audio-route-removed"));
+            }
+            return rebuild(base, tracks, mix, base.getSemanticRelationships());
+        } catch (ArithmeticException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Delete exceeds the exact Timeline placement range");
+        }
+    }
+
+    private static PlanException rippleOverlap(TimelineClipId first, TimelineClipId second) {
+        return new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Ripple Delete cannot resolve overlapping clips "
+                + first.value() + " and " + second.value() + ". Remove the overlap before rippling.");
+    }
+
+    private static void rejectRippleBinding(TimelineDocument base, TimelineClip clip) {
+        var id = clip.getClipId();
+        for (var relation : base.getSemanticRelationships()) {
+            if ((relation instanceof GroupRelationship group && group.members().contains(id))
+                    || (relation instanceof SyncRelationship sync && (sync.endpointA().equals(id) || sync.endpointB().equals(id)))
+                    || (relation instanceof AlignmentRelationship alignment
+                        && (alignment.sourceUnits().stream().anyMatch(unit -> unit.value().equals(id.value()))
+                            || alignment.derivedUnits().stream().anyMatch(unit -> unit.value().equals(id.value()))))) {
+                String key = switch (relation) {
+                    case GroupRelationship group -> "group " + group.groupId().value();
+                    case SyncRelationship sync -> sync.identityKey();
+                    case AlignmentRelationship alignment -> alignment.identityKey();
+                };
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Delete cannot preserve relationship "
+                        + key + " on clip " + id.value() + ". Resolve the relationship before rippling.");
+            }
+        }
+        rejectTransitionMutation(base, id, "Ripple Delete");
+        if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
+                || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Delete cannot move or remove automation for clip "
+                    + id.value() + ". Resolve the automation before rippling.");
+        }
     }
 
     private TimelineDocument planDelete(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {

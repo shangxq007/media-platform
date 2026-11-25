@@ -624,9 +624,9 @@ export function NleWorkspace({
           {defaultBranch && !historyRevision && <section aria-label="Confirmed trim history">
             {(['Undo', 'Redo'] as const).map(direction => <Button key={direction}
               disabled={loading || revisionSelectionLocked || selectionPending || trimHistory.busy || !trimHistory.can(direction)}
-              onClick={() => void trimHistory.execute(direction)}>{direction} trim</Button>)}
+              onClick={() => void trimHistory.execute(direction)}>{direction} {trimHistory.kindFor(direction)}</Button>)}
             {trimHistory.retry && <Button disabled={trimHistory.busy}
-              onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} trim</Button>}
+              onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
           {defaultBranch && <ClipClipboard key={JSON.stringify([project.tenantId, project.projectId, editingBranch])}
@@ -650,7 +650,8 @@ export function NleWorkspace({
               selectedTrackId={state.presentation.selectedTrackId}
               onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
               onRevisionChanged={async () => { await loadHead('CLIP_READBACK') }}
-              onTrimAccepted={defaultBranch ? trimHistory.recordTrim : undefined}
+              onTrimAccepted={defaultBranch ? (base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'trim') : undefined}
+              onRippleAccepted={defaultBranch ? (base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'ripple delete') : undefined}
               onTrimReadback={() => loadHead('CLIP_READBACK')} />}
           </MultiClipMove>
         </Panel>

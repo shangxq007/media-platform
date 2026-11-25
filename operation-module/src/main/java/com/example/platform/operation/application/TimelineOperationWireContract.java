@@ -78,7 +78,7 @@ public final class TimelineOperationWireContract {
                 fields(fields, "string-array", "sourceUnits", "derivedUnits");
                 fields.put("attributes", new Field("alignment-attribute-array", false));
             }
-            case "timeline.delete", "timeline.clip.effect.remove", "timeline.sync.remove", "timeline.group.remove" -> {}
+            case "timeline.delete", "timeline.clip.ripple-delete", "timeline.clip.effect.remove", "timeline.sync.remove", "timeline.group.remove" -> {}
             default -> {
                 if (definition.targetKind() != OperationDefinition.TargetKind.TEXT) {
                     throw new IllegalArgumentException("Unknown Timeline transport contract");

@@ -878,6 +878,126 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 source.revisionId(), List.of(op), null);
     }
 
+    @Test
+    void rippleDeletePreservesMovedSidecarEffectsAndRestoresFullSemantics() {
+        var first = clip("clip-b", 0, 4);
+        var later = clip("clip-a", 6, 10);
+        var sourceDocument = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("video-main", "Video", TrackType.VIDEO, List.of(first, later))),
+                twoClipDocument().getMetadata());
+        var source = saveWithEffects(sourceDocument, null, List.of(blur("z-first", "4"), blur("a-second", "13")));
+        var request = rippleRequest("ripple-with-effects", source, "clip-b");
+        var actor = mutation().actor();
+        var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
+        var context = OperationBatchContext.apply(request.batchId(), actor, null, "test", plan.batchDigest());
+        var applied = batch.commit(request, context);
+        var moved = saveService.findById(TENANT, applied.newRevisionId());
+        assertEquals(source.revisionId(), moved.parentRevisionId());
+        assertEquals(source.semanticContext().effectReference(), moved.semanticContext().effectReference());
+        var snapshot = new JdbcEffectSemanticSnapshotStore(dsl).findById(PROJECT, TENANT,
+                moved.semanticContext().effectReference().snapshotId()).orElseThrow();
+        assertEquals(List.of("z-first", "a-second"), snapshot.entries().stream().map(e -> e.effectInstanceId()).toList());
+        assertEquals(List.of("4", "13"), snapshot.entries().stream().map(e -> e.parameters().getFirst().value()).toList());
+        var placed = saveService.findPayloadDocument(TENANT, moved.revisionId()).orElseThrow()
+                .getTracks().getFirst().clips();
+        assertEquals(1, placed.size());
+        assertEquals("clip-a", placed.getFirst().getClipId().value());
+        assertEquals(time("2/1"), placed.getFirst().getStartTime());
+        assertEquals(time("6/1"), placed.getFirst().getEndTime());
+        assertEquals(applied.newRevisionId(), batch.commit(request, context).newRevisionId());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+        var undo = restoreRequest("undo-ripple-effects", moved, source);
+        var restored = saveService.findById(TENANT, applyPrepared(undo).newRevisionId());
+        assertEquals(moved.revisionId(), restored.parentRevisionId());
+        assertEquals(source.semanticContext(), restored.semanticContext());
+        var redo = restoreRequest("redo-ripple-effects", restored, moved);
+        var restoredMove = saveService.findById(TENANT, applyPrepared(redo).newRevisionId());
+        assertEquals(restored.revisionId(), restoredMove.parentRevisionId());
+        assertEquals(moved.semanticContext(), restoredMove.semanticContext());
+        assertEquals(4, count("timeline.timeline_revision"));
+        System.out.printf("N07_EFFECTS source=%s ripple=%s undo=%s redo=%s effectDigest=%s rows=4%n",
+                source.revisionId(), moved.revisionId(), restored.revisionId(), restoredMove.revisionId(),
+                snapshot.contentDigest());
+    }
+
+    @Test
+    void rippleDeleteRejectsRelationshipOnLaterClipAndSeparationOfDeletedEffect() {
+        var original = twoClipDocument();
+        var foreign = new TimelineTrack("other-video", "Other video", TrackType.VIDEO, List.of(clip("clip-c", 6, 10)));
+        var sync = SyncRelationship.of(TimelineClipId.of("clip-b"), time("1/1"),
+                TimelineClipId.of("clip-c"), time("1/1"));
+        var synced = new TimelineDocument(original.getSchemaVersion(), List.of(original.getTracks().getFirst(), foreign),
+                original.getMetadata(), original.getAudioMix(), List.of(sync), List.of(), List.of(), List.of());
+        var source = saveRevision(synced);
+        assertRippleRejected(rippleRequest("ripple-cross-track-sync", source, "clip-a"), "on clip clip-b");
+        var effectSource = revisionWithEffect(source.revisionId(), "4");
+        assertRippleRejected(rippleRequest("ripple-deleted-effect", effectSource, "clip-a"), "video-main/clip-a");
+    }
+
+    @Test
+    void rippleDeleteRollsBackChildHeadCommandAndOutboxAfterInsertFailure() {
+        var source = saveRevision(twoClipDocument());
+        var request = rippleRequest("ripple-fail-after-insert", source, "clip-a");
+        var actor = mutation().actor();
+        var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        long snapshots = count("timeline.timeline_snapshot");
+        int events = eventCount("timeline.revision.created");
+        org.mockito.Mockito.doAnswer(call -> {
+            assertNotNull(call.callRealMethod());
+            DSLContext transaction = call.getArgument(1);
+            assertEquals(events + 1, transaction.fetchOne("select count(*) from infrastructure.outbox_events where "
+                    + "event_type='timeline.revision.created'").get(0, Integer.class));
+            assertEquals(2, transaction.fetchOne("select count(*) from timeline.timeline_revision where project_id=?",
+                    PROJECT).get(0, Integer.class));
+            throw new IllegalStateException("injected failure after ripple revision event");
+        }).when(outbox).appendInTransaction(org.mockito.ArgumentMatchers.argThat(
+                item -> item.type() == TimelineOutboxEvents.REVISION_CREATED), org.mockito.ArgumentMatchers.any());
+        var failure = assertThrows(IllegalStateException.class, () -> batch.commit(request,
+                OperationBatchContext.apply(request.batchId(), actor, null, "test", plan.batchDigest())));
+        assertEquals("injected failure after ripple revision event", failure.getMessage());
+        assertEquals(source.revisionId(), head());
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(snapshots, count("timeline.timeline_snapshot"));
+        assertEquals(0, count("timeline.apply_command"));
+        assertEquals(events, eventCount("timeline.revision.created"));
+        System.out.printf("N07_ROLLBACK head=%s rows=1 snapshots=%d commands=0 events=%d%n",
+                source.revisionId(), snapshots, events);
+    }
+
+    private void assertRippleRejected(OperationBatchRequest request, String diagnostic) {
+        var actor = mutation().actor();
+        long rows = count("timeline.timeline_revision");
+        long commands = count("timeline.apply_command");
+        var planned = assertThrows(BatchException.class,
+                () -> batch.preview(request, OperationBatchContext.preview(actor, "test")));
+        assertTrue(planned.getMessage().contains(diagnostic), planned.getMessage());
+        var applied = assertThrows(BatchException.class, () -> batch.commit(request,
+                OperationBatchContext.apply(request.batchId(), actor, null, "test", "0".repeat(64))));
+        assertTrue(applied.getMessage().contains(diagnostic), applied.getMessage());
+        assertEquals(request.baseRevisionId(), head());
+        assertEquals(rows, count("timeline.timeline_revision"));
+        assertEquals(commands, count("timeline.apply_command"));
+    }
+
+    private BatchCommitResult applyPrepared(OperationBatchRequest request) {
+        var actor = mutation().actor();
+        var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        return batch.commit(request, OperationBatchContext.apply(request.batchId(), actor, null, "test", plan.batchDigest()));
+    }
+
+    private static OperationBatchRequest rippleRequest(String id, TimelineRevision source, String clip) {
+        var definition = OperationDefinition.V3.RIPPLE_DELETE;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of(clip))), SelectionSpec.ExpansionPolicy.EXACT);
+        var operation = new OperationRequest(definition.definitionId(), definition.version(), target,
+                new OperationParameters.NoParameters(), source.revisionId(), hash(source), null);
+        return new OperationBatchRequest(id, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                source.revisionId(), List.of(operation), null);
+    }
+
     private TimelineRevision revisionWithEffect(String parent, String radius) {
         return revisionWithEffects(parent, List.of(blur("blur", radius)));
     }
@@ -890,12 +1010,16 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     private TimelineRevision revisionWithEffects(String parent, List<EffectInstance> effects) {
+        return saveWithEffects(twoClipDocument(), parent, effects);
+    }
+
+    private TimelineRevision saveWithEffects(TimelineDocument document, String parent, List<EffectInstance> effects) {
         var definition = new EffectInstance.EffectDefinition("definition-blur", "1", EffectInstance.EffectCategory.GAUSSIAN_BLUR,
                 List.of(EffectInstance.EffectMediaType.VIDEO),
                 Map.of("radiusPixels", new EffectInstance.ParameterSchema("radiusPixels", "string", null, null, "4", List.of())),
                 EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION, List.of("radiusPixels"),
                 List.of("video.effect.gaussian-blur"), List.of());
-        return saveService.saveRevisionWithEffects(mutation(), parent, twoClipDocument(), effects, List.of(definition));
+        return saveService.saveRevisionWithEffects(mutation(), parent, document, effects, List.of(definition));
     }
 
     @Test

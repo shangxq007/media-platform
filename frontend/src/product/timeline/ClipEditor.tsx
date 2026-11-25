@@ -25,6 +25,7 @@ interface Props {
   onWriteLock?: (locked: boolean) => void
   onRevisionChanged: () => Promise<void>
   onTrimAccepted?: (base: string, hash: string, accepted: { revisionId: string; contentHash: string }) => void
+  onRippleAccepted?: Props['onTrimAccepted']
   onTrimReadback?: () => Promise<CanonicalHeadReference | undefined>
   focusClipId?: string | null
   playhead?: number
@@ -47,6 +48,11 @@ interface ConfirmedPlacement extends ClipAttempt {
   projectId: string
   success: (revision: string) => string
 }
+interface RipplePreview {
+  attempt: ConfirmedPlacement
+  shift: string
+  moved: readonly string[]
+}
 type RetryClip = ClipAttempt | ConfirmedPlacement
 interface AcceptedClip {
   attempt: ConfirmedPlacement
@@ -66,7 +72,7 @@ function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
   }))
 }
 
-export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTrimReadback, onTrimAccepted, focusClipId = null, playhead = 0,
+export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTrimReadback, onTrimAccepted, onRippleAccepted, focusClipId = null, playhead = 0,
   selectedTrackId, onSelectTrack, snap = false, snapPlayhead = null, multiMove, editingBranch = 'main', onDraft, onWriteLock, trimAccess }: Props) {
   const project = useProjectContext()
   const trimOnly = editingBranch !== "main"
@@ -107,7 +113,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const [transitionId, setTransitionId] = useState('')
   const [incomingClipId, setIncomingClipId] = useState('')
   const [transitionDuration, setTransitionDuration] = useState('1/1')
-  const [type, setType] = useState<ClipEdit['type']>('MOVE_CLIP')
+  const [type, setType] = useState<Exclude<ClipEdit['type'], 'RIPPLE_DELETE_CLIP'>>('MOVE_CLIP')
   const [delta, setDelta] = useState('1/4')
   const [absolute, setAbsolute] = useState(false)
   const [edge, setEdge] = useState<TrimEdge>('END')
@@ -123,6 +129,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const [message, setMessage] = useState('')
   const [actionFailed, setActionFailed] = useState(false)
   const [acceptedReadback, setAcceptedReadback] = useState<AcceptedClip | null>(null)
+  const [ripplePreview, setRipplePreview] = useState<RipplePreview | null>(null)
   const [retryCommand, setRetryCommandState] = useState<RetryClip | null>(null)
   const retryCommandRef = useRef<RetryClip | null>(null)
   function setRetryCommand(value: RetryClip | null) {
@@ -141,6 +148,13 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   const editsDisabled = writeBlocked || retryCommand !== null || acceptedReadback !== null
   const canRetry = () => !busyRef.current && confirmedTrimRef.current === null && trimAccess?.canStart() !== false
   const canEdit = () => canRetry() && retryCommandRef.current === null && acceptedReadback === null
+  const visibleRipple = !trimOnly && ripplePreview && ripplePreview.attempt.command.clipId === selected
+    && ripplePreview.attempt.command.baseRevisionId === head?.revisionId
+    && ripplePreview.attempt.command.baseContentHash === head?.contentHash
+    && ripplePreview.attempt.projectId === project.projectId && ripplePreview.attempt.tenantId === project.tenantId
+    ? ripplePreview : null
+  useEffect(() => { setRipplePreview(null) }, [head?.revisionId, head?.contentHash, selected, editingBranch,
+    project.projectId, project.tenantId])
   useEffect(() => {
     onWriteLock?.(busy || confirmedTrim !== null || retryCommand !== null)
     return () => onWriteLock?.(false)
@@ -160,9 +174,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     setPending(null); setPreviewed(null); setMoving(null)
   }, [head?.revisionId, head?.contentHash, trimBlocked])
   useEffect(() => {
-    onDraft?.(formChanged || pending !== null || previewed !== null || moving !== null || !!multiFeedback)
+    onDraft?.(formChanged || pending !== null || previewed !== null || moving !== null || !!multiFeedback || !!visibleRipple)
     return () => onDraft?.(false)
-  }, [onDraft, formChanged, pending, previewed, moving, multiFeedback])
+  }, [onDraft, formChanged, pending, previewed, moving, multiFeedback, visibleRipple])
 
   async function refresh() {
     if (!viewedRevisionId) { setAspectRatio(null); setTracks([]); setAudioRoutes([]); setTransforms({}); setEffects({}); setTransitions([]); setClips([]); setSelected(''); return }
@@ -738,6 +752,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     }
     // Acknowledgement ends write retry, even when a subsequent read is unavailable or observes a newer HEAD.
     setRetryCommand(null)
+    if (attempt.command.type === 'RIPPLE_DELETE_CLIP') {
+      onRippleAccepted?.(attempt.command.baseRevisionId, attempt.command.baseContentHash, receipt)
+    }
     await readAcceptedClip({ attempt, receipt })
   }
 
@@ -784,6 +801,49 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       type: 'DELETE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
       clipId, commandId: commandIdFor(clipId, 'DELETE_CLIP', ZERO),
     }, 'Delete', revision => `Clip ${clipId} deleted at revision ${revision}. The source media is retained.`)
+  }
+
+  async function previewRippleDelete() {
+    if (!active || !head || !project.tenantId || trimOnly || !canEdit()) return
+    const command: ClipEdit = {
+      type: 'RIPPLE_DELETE_CLIP', baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+      clipId: active.clipId, commandId: commandIdFor(active.clipId, 'RIPPLE_DELETE_CLIP', ZERO),
+    }
+    setBusy(true); setMessage(''); setActionFailed(false); setRipplePreview(null)
+    setPending(null); setPreviewed(null)
+    try {
+      const plan = await FormalRenderAPI.previewOperation(project.tenantId, project.projectId, command)
+      // The planned changes identify moved clips. The editor never submits an affected set.
+      const moved = plan.steps.flatMap(step => step.changes).flatMap(change => change.identity.startsWith('replace(')
+        ? [change.identity.slice('replace('.length, change.identity.lastIndexOf(','))] : [])
+      setRipplePreview({
+        attempt: { command, digest: plan.batchDigest, tenantId: project.tenantId, projectId: project.projectId,
+          label: 'Ripple Delete', success: revision => `Clip ${command.clipId} ripple deleted at revision ${revision}.` },
+        shift: formatRational(subtract(active.end, active.start)), moved,
+      })
+    } catch (error) {
+      handleFailure(error, 'Ripple Delete preview', null, false, false)
+      const detail = (error as { response?: { data?: { detail?: unknown; message?: unknown } } })?.response?.data
+      const reason = detail?.detail ?? detail?.message
+      if (typeof reason === 'string' && ![409, 412].includes(httpStatus(error) ?? 0)) {
+        setMessage('Ripple Delete preview rejected: ' + reason)
+      }
+      if ([409, 412].includes(httpStatus(error) ?? 0)) {
+        try { await onRevisionChanged() } catch { /* Keep the preview conflict visible. */ }
+      }
+    } finally { setBusy(false) }
+  }
+
+  async function confirmRippleDelete() {
+    if (!visibleRipple || !canEdit() || trimAccess?.claim() === false) return
+    const { attempt } = visibleRipple
+    setBusy(true); setMessage(''); setActionFailed(false); setRipplePreview(null)
+    setRetryCommand(attempt)
+    try { await submitConfirmedPlacement(attempt) }
+    finally {
+      if (!retryCommandRef.current) trimAccess?.release()
+      setBusy(false)
+    }
   }
 
   function headMismatch(): Error {
@@ -1036,6 +1096,15 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
       ? <p role="status">Moving {moving.clipId} to {projection.valid ? describeMove(projection) : projection.reason}</p> : null })()}
     {!trimOnly && <><Button type="button" aria-label="Delete selected clip" disabled={!head || !selected || !project.tenantId || editsDisabled}
             onClick={() => void deleteSelected()}>Delete selected clip</Button>
+    <Button type="button" disabled={!head || !active || !project.tenantId || editsDisabled}
+      onClick={() => void previewRippleDelete()}>Preview ripple delete</Button>
+    {visibleRipple && <div aria-label="Ripple Delete preview">
+      <p role="status">Remove {visibleRipple.attempt.command.clipId}. {visibleRipple.moved.length
+        ? `Shift ${visibleRipple.moved.join(', ')} left by ${visibleRipple.shift}s on this track.`
+        : 'No later clips on this track will move.'}</p>
+      <Button type="button" disabled={editsDisabled} onClick={() => void confirmRippleDelete()}>Confirm ripple delete</Button>
+      <Button type="button" disabled={editsDisabled} onClick={() => setRipplePreview(null)}>Cancel ripple delete</Button>
+    </div>}
     <fieldset disabled={!head || !project.tenantId || !aspectRatio || editsDisabled}>
       <legend>Composition aspect</legend>
       <label>Composition aspect ratio
@@ -1139,7 +1208,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     <Button type="button" disabled={editsDisabled || !pending || !previewValid} onClick={() => void applyTrim()}>Apply trim</Button>
 
     {!trimOnly && <div className="ff-nle-clip-controls">
-    <label>Operation <select className="ff-input" aria-label="Clip operation" value={type} disabled={editsDisabled} onChange={event => { if (!canEdit()) return; setType(event.target.value as ClipEdit['type']); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
+    <label>Operation <select className="ff-input" aria-label="Clip operation" value={type} disabled={editsDisabled} onChange={event => { if (!canEdit()) return; setType(event.target.value as typeof type); setPending(null); setPreviewed(null); setRetryCommand(null) }}>
       <option value="MOVE_CLIP">Move</option><option value="TRIM_CLIP">Trim</option><option value="DELETE_CLIP">Delete</option><option value="SPLIT_CLIP">Split</option>
     </select></label>
     {type !== 'DELETE_CLIP' && type !== 'SPLIT_CLIP' && <label>Exact time <Input aria-label="Exact time" disabled={editsDisabled} value={delta} onChange={event => setDelta(event.target.value)} /></label>}

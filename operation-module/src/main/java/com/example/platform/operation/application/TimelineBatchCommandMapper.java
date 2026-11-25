@@ -210,7 +210,7 @@ public final class TimelineBatchCommandMapper {
             case "timeline.clip.split" -> new OperationParameters.SplitParameters(
                     TimelineClipId.of(requiredText(parameters, "rightClipId")),
                     time(parameters, "splitTimelineTime"));
-            case "timeline.delete", "timeline.group.remove", "timeline.sync.remove" ->
+            case "timeline.delete", "timeline.clip.ripple-delete", "timeline.group.remove", "timeline.sync.remove" ->
                     new OperationParameters.NoParameters();
             case "timeline.temporal.set-rate" -> new OperationParameters.SetTemporalRateParameters(
                     new MediaClip.Rational(requiredLong(parameters, "numerator"),

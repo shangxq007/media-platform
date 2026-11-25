@@ -9,7 +9,7 @@ const id = z.string().min(1)
 const part = (value: string) => encodeURIComponent(id.parse(value))
 export interface RenderIntent { revisionId: string; extent: { startMillis: number; endMillis: number; frameRateNumerator: number; frameRateDenominator: number; width?: number; height?: number }; outputFormat: 'MP4'; profile: string }
 export interface IncrementalIntent extends Omit<RenderIntent, 'revisionId'> { targetRevisionId: string; referenceRevisionId: string; referenceRenderJobId: string }
-export interface ClipEdit { refId?: string; type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
+export interface ClipEdit { refId?: string; type: 'TRIM_CLIP' | 'MOVE_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP' | 'RIPPLE_DELETE_CLIP'; baseRevisionId: string; baseContentHash: string; clipId: string; delta?: string; absolute?: boolean; edge?: 'START' | 'END'; splitTime?: string; rightClipId?: string; destinationTrackId?: string; commandId: string }
 export interface VideoTransformCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
   parameters: Extract<SemanticStep, { definitionId: 'timeline.clip.transform.set' }>['parameters']; commandId: string }
 export interface VideoEffectCommand { baseRevisionId: string; baseContentHash: string; clipId: string;
@@ -53,6 +53,7 @@ function clipBatch(command: ClipEdit): SemanticBatch {
       break
     }
     case 'DELETE_CLIP': step = { definitionId: 'timeline.delete', target }; break
+    case 'RIPPLE_DELETE_CLIP': step = { definitionId: 'timeline.clip.ripple-delete', version: '1.0', target }; break
   }
   return { batchId: command.commandId, baseRevisionId: command.baseRevisionId,
     baseContentHash: command.baseContentHash, refId: command.refId, operations: [step] }

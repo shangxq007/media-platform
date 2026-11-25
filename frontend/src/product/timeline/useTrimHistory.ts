@@ -4,12 +4,14 @@ import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
 
 type Direction = 'Undo' | 'Redo'
+type EditKind = 'trim' | 'ripple delete'
 interface History {
   scope: string
   head: string
   hash: string
   verified: boolean
   revisions: readonly string[]
+  edits: readonly EditKind[]
   cursor: number
 }
 interface Attempt {
@@ -33,13 +35,14 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
     && history.hash === head.contentHash
     ? history : null
 
-  function recordTrim(base: string, baseHash: string, accepted: { revisionId: string; contentHash: string }) {
+  function recordEdit(base: string, baseHash: string, accepted: { revisionId: string; contentHash: string }, kind: EditKind) {
     if (base === accepted.revisionId) return
     setHistory(previous => {
-      const revisions = previous?.scope === scope && previous.head === base && previous.hash === baseHash
-        ? previous.revisions.slice(0, previous.cursor + 1) : [base]
+      const prior = previous?.scope === scope && previous.head === base && previous.hash === baseHash ? previous : null
+      const revisions = prior ? prior.revisions.slice(0, prior.cursor + 1) : [base]
+      const edits = prior ? prior.edits.slice(0, prior.cursor) : []
       return { scope, head: accepted.revisionId, hash: accepted.contentHash,
-        verified: false, revisions: [...revisions, accepted.revisionId], cursor: revisions.length }
+        verified: false, revisions: [...revisions, accepted.revisionId], edits: [...edits, kind], cursor: revisions.length }
     })
     setMessage('')
   }
@@ -55,6 +58,11 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
 
   function can(direction: Direction) {
     return !!active && (direction === 'Undo' ? active.cursor > 0 : active.cursor < active.revisions.length - 1)
+  }
+
+  function kindFor(direction: Direction, attempt?: Attempt): EditKind {
+    const stack = attempt?.history ?? active
+    return (stack && stack.edits[stack.cursor - (direction === 'Undo' ? 1 : 0)]) || 'trim'
   }
 
   async function execute(direction: Direction, attempt?: Attempt) {
@@ -118,5 +126,5 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
       setBusy(false)
     }
   }
-  return { recordTrim, observeHead, retry, busy, message, failed, execute, can }
+  return { recordEdit, observeHead, retry, busy, message, failed, execute, can, kindFor }
 }

@@ -74,6 +74,9 @@ if branches:
         'cancel', 'playhead-before', 'playhead-after', 'trim-before', 'trim-preview', 'trim-after',
         'pair-before', 'invalid-offsets', 'illegal', 'pair-preview', 'pair-committed', 'pair-locked', 'pair-replay',
         'button-before', 'button-after', 'keyboard-before', 'keyboard-after'))
+    checkpoints += tuple('n07-' + stage for stage in ('before', 'cancel', 'reader', 'committed', 'replay',
+        'undo', 'redo', 'reopen', 'stale-before', 'stale-after', 'linked-before', 'linked-after',
+        'fraction-before', 'fraction-after', 'fraction-reopen'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -325,9 +328,9 @@ if branches:
     for case in snap['deletions']:
         label = case['entry']
         start,saved = assert_commit6(case,label+'-before',label+'-after')
-        assert set(start) == {'clip-red','clip-blue','clip-gray'}
-        assert set(saved) == {'clip-red','clip-gray'}
-        for clip_id, placement in zip(('clip-red','clip-blue','clip-gray'),((0,2),(2,5),(5,7))):
+        assert set(start) == {'clip-red','clip-blue','clip-gray','clip-later'}
+        assert set(saved) == {'clip-red','clip-gray','clip-later'}
+        for clip_id, placement in zip(('clip-red','clip-blue','clip-gray','clip-later'),((0,2),(2,5),(5,7),(8,9))):
             assert tuple(Fraction(start[clip_id][k]) for k in ('startTime','endTime')) == placement
         assert all(clip == start[clip_id] for clip_id,clip in saved.items())
         assert case['picturesAfter']['3'] == [0,0,0] and 3 <= Fraction(case['playingGap']) < 4
@@ -335,6 +338,62 @@ if branches:
         after_documents.append(saved)
     assert before_documents[0] == before_documents[1] and after_documents[0] == after_documents[1]
     (out / 'n06-postgres.json').write_text(json.dumps(dict(snap=snap, persisted=snap_rows, checkpoints=counts6), indent=2))
+    ripple = browser_result['http']['n07']
+    counts7 = {k.removeprefix('n07-'):v for k,v in facts.items() if k.startswith('n07-')}
+    assert counts7['cancel'] == counts7['reader'] == counts7['before']
+    assert counts7['committed'] == counts7['replay']
+    assert counts7['redo'] == counts7['reopen']
+    assert counts7['stale-before'] == counts7['stale-after']
+    assert counts7['linked-before'] == counts7['linked-after']
+    assert counts7['fraction-after'] == counts7['fraction-reopen']
+    for first, second in (('before','committed'),('committed','undo'),('undo','redo'),
+                          ('fraction-before','fraction-after')):
+        assert counts7[second]['rows'] == counts7[first]['rows'] + 1
+        assert counts7[second]['commands'] == counts7[first]['commands'] + 1
+    ripple_ids = {state['refs']['main'] for state in counts7.values()}
+    assert all(re.fullmatch(r'[0-9a-f-]{36}', key) for key in ripple_ids)
+    id_sql = ','.join("'" + key + "'" for key in sorted(ripple_ids))
+    ripple_rows = psql(f"""select json_object_agg(id, row_to_json(r)) from (
+        select rev.id, rev.parent_revision_id, rev.content_hash, s.payload_json::json as snapshot,
+               meta.payload_json::json as semantics
+        from timeline.timeline_revision rev join timeline.timeline_snapshot s
+          on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+        join timeline.timeline_snapshot meta on meta.id='revctx_' || rev.id
+          and meta.project_id=rev.project_id and meta.tenant_id=rev.tenant_id
+        where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
+          and rev.id in ({id_sql})) r;""")
+    assert set(ripple_rows) == ripple_ids
+    def row7(checkpoint_name):
+        return ripple_rows[counts7[checkpoint_name]['refs']['main']]
+    def clip_rows(row):
+        return {clip['clipId']: clip for clip in track(row)}
+    source7, moved7, undo7, redo7 = map(row7, ('before', 'committed', 'undo', 'redo'))
+    assert source7['id'] == ripple['base'] and moved7['id'] == ripple['ripple']
+    assert (moved7['parent_revision_id'], undo7['parent_revision_id'], redo7['parent_revision_id']) == (
+        source7['id'], moved7['id'], undo7['id'])
+    assert undo7['id'] == ripple['undo']['payload']['newRevisionId'] and redo7['id'] == ripple['redo']['payload']['newRevisionId']
+    assert source7['semantics'] == undo7['semantics'] and moved7['semantics'] == redo7['semantics']
+    assert source7['snapshot'] == undo7['snapshot'] and moved7['snapshot'] == redo7['snapshot']
+    assert clip_rows(source7) == before_documents[0]
+    assert ripple['pictures']['4.5'] == [0, 0, 0] and 2 <= Fraction(ripple['playing']) < 3
+    def assert_ripple(base, accepted, delta):
+        starts, ends = clip_rows(base), clip_rows(accepted)
+        assert set(ends) == set(starts) - {'clip-blue'}
+        assert ends['clip-red'] == starts['clip-red']
+        assert accepted['parent_revision_id'] == base['id']
+        assert Fraction(starts['clip-blue']['endTime']) - Fraction(starts['clip-blue']['startTime']) == delta
+        for key in ('clip-gray', 'clip-later'):
+            assert placement(ends[key]) == tuple(value - delta for value in placement(starts[key]))
+            assert {k:v for k,v in ends[key].items() if k not in ('startTime','endTime')} == {
+                k:v for k,v in starts[key].items() if k not in ('startTime','endTime')}
+        assert placement(ends['clip-gray']) == (2, 4)
+        assert placement(ends['clip-later']) == (5, 6)
+    assert_ripple(source7, moved7, Fraction(3))
+    assert_ripple(row7('fraction-before'), row7('fraction-after'), Fraction(61,30))
+    assert row7('fraction-after')['id'] == ripple['fractional']['apply']['payload']['newRevisionId']
+    assert ripple['fractional']['recoveryCounts'] == {'headReads': 2, 'writes': 1}
+    (out / 'n07-postgres.json').write_text(json.dumps(dict(ripple=ripple, persisted=ripple_rows,
+        checkpoints=counts7), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)
