@@ -319,6 +319,7 @@ export function NleWorkspace({
       const [head, history] = await readAuthority(requestedProject)
       if (!ownsRequest('head', generation)) return
       if (!head.ok) { dispatch({ type: 'UNAVAILABLE', reason: `${head.code}: ${head.message}` }); return }
+      trimHistory.observeHead(head.value)
       if (!history.ok) { dispatch({ type: 'UNAVAILABLE', reason: `${history.code}: ${history.message}` }); return }
       dispatch({ type: 'HEAD_LOADED', head: head.value, revisions: history.value })
       setConfirmed(false)
@@ -433,6 +434,7 @@ export function NleWorkspace({
         ) })
         return
       }
+      trimHistory.observeHead(headReadback.value)
       if (!historyReadback.ok) {
         dispatch({ type: 'APPLY_READBACK_FAILED', failure: readbackFailure(
           'UNAVAILABLE', `Accepted result preserved, but revision-history refresh failed (${historyReadback.code}: ${historyReadback.message}).`,

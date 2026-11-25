@@ -315,6 +315,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     try {
       const accepted = await FormalRenderAPI.applyConfirmedClip(attempt.tenantId, attempt.projectId, attempt.command, attempt.digest)
       setPending(null); setPreviewed(null)
+      if (!trimOnly) onTrimAccepted?.(attempt.command.baseRevisionId, attempt.command.baseContentHash, accepted)
       try {
         const current = onTrimReadback ? await onTrimReadback() : await readCommandHead(attempt.command)
         if (!onTrimReadback) await onRevisionChanged()
@@ -325,9 +326,6 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
           setActionFailed(true)
           setMessage(`Trim accepted at revision ${accepted.revisionId}. The current content hash could not be verified.`)
         } else {
-          if (onTrimReadback && !trimOnly) {
-            onTrimAccepted?.(attempt.command.baseRevisionId, attempt.command.baseContentHash, current)
-          }
           setMessage(`Trim applied at revision ${accepted.revisionId}.`)
         }
       } catch {

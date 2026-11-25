@@ -180,6 +180,102 @@ async function verifyDefaultNavigationResumed(queries: ScriptedTimelineQueryGate
   await screen.findByText('Viewing editing head · main')
 }
 
+describe('confirmed trim history readback recovery', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  const control = (name: 'Undo' | 'Redo') => screen.getByRole<HTMLButtonElement>('button', { name: name + ' trim' })
+
+  function fixture() {
+    const { readRef } = renderBranchWorkspace('main')
+    previewTrim()
+    const trim = vi.spyOn(FormalRenderAPI, 'applyConfirmedClip').mockResolvedValue(appliedHead)
+    const restore = previewRestore()
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    const publish = (next: CanonicalHeadReference) => readRef.mockResolvedValue({
+      ok: true, value: { head: next, history: [appliedRevision, revision, olderRevision] },
+    })
+    const failNextRead = () => readRef.mockResolvedValueOnce(mockFailure('UNAVAILABLE'))
+
+    async function reload(next: CanonicalHeadReference) {
+      const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Reload HEAD' })
+      await waitFor(() => expect(button.disabled).toBe(false))
+      const before = readRef.mock.calls.length
+      publish(next)
+      fireEvent.click(button)
+      await waitFor(() => expect(readRef.mock.calls).toHaveLength(before + 1))
+      await waitFor(() => expect(button.disabled).toBe(false))
+    }
+    return { trim, write, restore, publish, failNextRead, reload }
+  }
+
+  it('restores Undo after an accepted trim and a failed HEAD read', async () => {
+    const f = fixture()
+    const applyTrim = await prepareNamedTrim()
+    f.failNextRead()
+    fireEvent.click(applyTrim)
+    await screen.findByText(/Trim accepted at revision revision-R1/)
+    expect(control('Undo').disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: /Retry Trim/ })).toBeNull()
+    await f.reload(appliedHead)
+    expect(control('Undo').disabled).toBe(false)
+    expect(control('Redo').disabled).toBe(true)
+    expect(f.trim).toHaveBeenCalledOnce()
+    expect(f.write).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['Undo', 'Redo', 1],
+    ['Redo', 'Undo', 2],
+  ] as const)('recovers history after an accepted %s and unavailable HEAD', async (action, nextAction, writes) => {
+    const f = fixture()
+    const applyTrim = await prepareNamedTrim()
+    f.publish(appliedHead)
+    fireEvent.click(applyTrim)
+    await waitFor(() => expect(control('Undo').disabled).toBe(false))
+    const undone = { ...head, revisionId: revisionId('revision-R2') }
+    const redone = { ...appliedHead, revisionId: revisionId('revision-R3') }
+    if (action === 'Redo') {
+      f.publish(undone)
+      f.write.mockResolvedValueOnce(undone)
+      fireEvent.click(control('Undo'))
+      await waitFor(() => expect(control('Redo').disabled).toBe(false))
+    }
+    const accepted = action === 'Undo' ? undone : redone
+    f.write.mockResolvedValueOnce(accepted)
+    f.failNextRead()
+    fireEvent.click(control(action))
+    await screen.findByText(new RegExp(action + ' accepted at revision ' + accepted.revisionId))
+    expect(control(nextAction).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: /Retry (undo|redo) trim/ })).toBeNull()
+    await f.reload(accepted)
+    expect(control(nextAction).disabled).toBe(false)
+    expect(control(action).disabled).toBe(true)
+    expect(f.trim).toHaveBeenCalledOnce()
+    expect(f.restore).toHaveBeenCalledTimes(writes)
+    expect(f.write).toHaveBeenCalledTimes(writes)
+  })
+
+  it.each([
+    ['different revision at immediate readback', { ...appliedHead, revisionId: revisionId('revision-R2') }, false],
+    ['same revision with a wrong hash after reload', { ...appliedHead, contentHash: head.contentHash }, true],
+  ] as const)('does not reattach trim history after observing a %s', async (_label, other, unavailable) => {
+    const f = fixture()
+    const applyTrim = await prepareNamedTrim()
+    f.publish(other)
+    if (unavailable) f.failNextRead()
+    fireEvent.click(applyTrim)
+    await screen.findByText(/Trim (applied|accepted) at revision revision-R1/)
+    if (unavailable) await f.reload(other)
+    expect(control('Undo').disabled).toBe(true)
+    // A later read of the receipt must not revive a history already contradicted by an authoritative HEAD.
+    await f.reload(appliedHead)
+    expect(control('Undo').disabled).toBe(true)
+    expect(control('Redo').disabled).toBe(true)
+    expect(f.trim).toHaveBeenCalledOnce()
+    expect(f.write).not.toHaveBeenCalled()
+  })
+})
+
 describe('branch editor command ownership', () => {
   afterEach(() => vi.restoreAllMocks())
 

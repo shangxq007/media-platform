@@ -8,6 +8,7 @@ interface History {
   scope: string
   head: string
   hash: string
+  verified: boolean
   revisions: readonly string[]
   cursor: number
 }
@@ -28,7 +29,8 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
   const [failed, setFailed] = useState(false)
   const inFlight = useRef<AbortController | null>(null)
   useEffect(() => () => inFlight.current?.abort(), [])
-  const active = history?.scope === scope && history.head === head?.revisionId && history.hash === head?.contentHash
+  const active = history?.verified && history.scope === scope && history.head === head?.revisionId
+    && history.hash === head.contentHash
     ? history : null
 
   function recordTrim(base: string, baseHash: string, accepted: { revisionId: string; contentHash: string }) {
@@ -37,9 +39,18 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
       const revisions = previous?.scope === scope && previous.head === base && previous.hash === baseHash
         ? previous.revisions.slice(0, previous.cursor + 1) : [base]
       return { scope, head: accepted.revisionId, hash: accepted.contentHash,
-        revisions: [...revisions, accepted.revisionId], cursor: revisions.length }
+        verified: false, revisions: [...revisions, accepted.revisionId], cursor: revisions.length }
     })
     setMessage('')
+  }
+
+  function observeHead(current: CanonicalHeadReference) {
+    // Only call on a successful authoritative read, never on a cached or failed projection.
+    setHistory(previous => {
+      if (!previous || previous.scope !== scope) return previous
+      if (previous.head !== current.revisionId || previous.hash !== current.contentHash) return null
+      return previous.verified ? previous : { ...previous, verified: true }
+    })
   }
 
   function can(direction: Direction) {
@@ -75,13 +86,14 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
         attempt.body.baseRevisionId, attempt.digest, request.signal)
       if (request.signal.aborted) return
       setRetry(null)
-      const current = await readback()
-      if (current?.revisionId === accepted.revisionId && current.contentHash === accepted.contentHash
-          && accepted.revisionId !== attempt.body.baseRevisionId) {
-        setHistory({ ...attempt.history, head: current.revisionId, hash: current.contentHash, cursor: attempt.cursor })
+      const changed = accepted.revisionId !== attempt.body.baseRevisionId
+      setHistory(changed ? { ...attempt.history, head: accepted.revisionId, hash: accepted.contentHash,
+        verified: false, cursor: attempt.cursor } : null)
+      // A failed read cannot turn an accepted receipt into an uncertain write.
+      const current = await readback().catch(() => undefined)
+      if (changed && current?.revisionId === accepted.revisionId && current.contentHash === accepted.contentHash) {
         setMessage(direction + ' applied at revision ' + accepted.revisionId + '.')
       } else {
-        setHistory(null)
         setMessage(direction + ' accepted at revision ' + accepted.revisionId + '. '
           + (current ? 'The current HEAD is ' + current.revisionId + '.' : 'Reload HEAD to refresh the editor.'))
       }
@@ -106,5 +118,5 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
       setBusy(false)
     }
   }
-  return { recordTrim, retry, busy, message, failed, execute, can }
+  return { recordTrim, observeHead, retry, busy, message, failed, execute, can }
 }
