@@ -95,7 +95,8 @@ psql(seed)
 psql("""
 insert into identity.workspace(id,tenant_id,name,created_at,updated_at) values ('workspace-private','tenant-fr-e2e','Other',now(),now());
 insert into identity.project(id,tenant_id,workspace_id,name,created_at) values
- ('project-private','tenant-fr-e2e','workspace-private','Private',now()),('project-peer','tenant-fr-e2e','workspace-fr-e2e','Peer',now());
+ ('project-private','tenant-fr-e2e','workspace-private','Private',now()),('project-peer','tenant-fr-e2e','workspace-fr-e2e','Peer',now()),
+ ('project-confirmation','tenant-fr-e2e','workspace-fr-e2e','Cross-process text confirmation',now());
 insert into identity.account(id,issuer,subject,status,created_at) values ('reader-account','http://127.0.0.1:18081','reader-subject','ACTIVE',now());
 insert into identity."user"(id,tenant_id,account_id,username,email,role,status,created_at) values
  ('reader-user','tenant-fr-e2e','reader-account','reader','reader@example.invalid','MEMBER','ACTIVE',now());

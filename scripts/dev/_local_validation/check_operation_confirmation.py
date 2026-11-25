@@ -54,8 +54,8 @@ def client(app):
         return value
 
     a, b = 18080, 18082
-    # The batch fixture creates this same-workspace project without a Timeline.
-    project = 'project-peer'
+    # Isolated from the peer project's authorization and source-lookup cases.
+    project = 'project-confirmation'
     scope = '/api/tenants/tenant-fr-e2e/projects/' + project
     batch = scope + '/timeline-operations/batch/v2'
     init = expect(201, call(a, scope + '/timeline-operations/initialize', {'commandId': 'init-title', 'trackId': 'track-1'}))
