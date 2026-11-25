@@ -271,7 +271,10 @@ export function NleWorkspace({
   const [applyOwnershipRelease, setApplyOwnershipRelease] = useState(0)
   const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>(DEFAULT_COMPOSITION_ASPECT)
   const [projectionError, setProjectionError] = useState<string | null>(null)
-  const [projectionRevision, setProjectionRevision] = useState<string | null>(null)
+  const requestedProjection = state.server.head && state.server.head.projectId === project.projectId
+    ? JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch,
+        state.server.head.revisionId, state.server.head.contentHash]) : null
+  const [loadedProjection, setLoadedProjection] = useState<string | null>(null)
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [previewTime, setPreviewTime] = useState(0)
   const [snapEnabled, setSnapEnabled] = useState(false)
@@ -354,8 +357,8 @@ export function NleWorkspace({
 
   useEffect(() => {
     let active = true
-    setProjectionRevision(null)
-    if (!state.server.head) { setTracks([]); setAppendStart('0/1'); setProjectionError(null); return }
+    setLoadedProjection(null)
+    if (!requestedProjection || !state.server.head) { setTracks([]); setAppendStart('0/1'); setProjectionError(null); return }
     void (async () => {
       try {
         const snapshot = await FormalRenderAPI.snapshot(project.projectId, state.server.head!.revisionId)
@@ -364,7 +367,7 @@ export function NleWorkspace({
         setAspectRatio(projection.compositionAspectRatio)
         setProjectionError(null)
         setTracks(projection.tracks)
-        setProjectionRevision(snapshot.revisionId)
+        setLoadedProjection(requestedProjection)
         setAppendStart(formatRational(timelineEnd(projection)))
       } catch (error) {
         if (active) {
@@ -375,7 +378,7 @@ export function NleWorkspace({
       }
     })()
     return () => { active = false }
-  }, [state.server.head?.revisionId, project.projectId])
+  }, [requestedProjection])
 
   const selectRevision = async (selectedId: string) => {
     const selectionLocked = clipWriteLocked || issuedCommand.current !== null || applyInFlight.current
@@ -629,18 +632,19 @@ export function NleWorkspace({
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
-          {defaultBranch && <ClipClipboard key={JSON.stringify([project.tenantId, project.projectId, editingBranch])}
-            head={editingHead} tenant={project.tenantId} tracks={projectionRevision === editingHead?.revisionId ? tracks : []}
+          {defaultBranch && <ClipClipboard key={JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
             playhead={previewTime} exactEnd={parseRational(appendStart)} visible={!historyRevision}
-            disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
+            disabled={loading || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            onRippleAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'ripple insert')}
             access={commandAccess('paste')} readback={() => loadHead('PASTE_READBACK')} />}
           {defaultBranch && !historyRevision && <Button type="button" variant={snapEnabled ? "primary" : "secondary"} aria-pressed={snapEnabled}
             disabled={loading || revisionSelectionLocked || selectionPending} onClick={() => setSnapEnabled(value => !value)}>
             Snap
           </Button>}
           <MultiClipMove key={JSON.stringify(['multi-move', project.projectId, editingBranch])}
-            head={editingHead} tenant={project.tenantId} tracks={projectionRevision === editingHead?.revisionId ? tracks : []}
-            visible={defaultBranch && !historyRevision} disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
+            head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
+            visible={defaultBranch && !historyRevision} disabled={loading || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             snap={snapEnabled} playhead={snapPlayhead}
             access={commandAccess('multi-move')} readback={() => loadHead('MULTI_MOVE_READBACK')}>
             {gesture => <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}

@@ -2091,6 +2091,54 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.ripple-insert" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "newClipIds" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "maxItems" : 1,
+                  "minItems" : 1,
+                  "type" : "array",
+                  "uniqueItems" : true
+                },
+                "sourceClipIds" : {
+                  "items" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "maxItems" : 1,
+                  "minItems" : 1,
+                  "type" : "array",
+                  "uniqueItems" : true
+                },
+                "timelineStart" : {
+                  "type" : "string"
+                },
+                "trackId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                }
+              },
+              "required" : [ "newClipIds", "sourceClipIds", "timelineStart", "trackId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.ripple-delete" ],
               "type" : "string"
             },

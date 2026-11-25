@@ -29,6 +29,7 @@ export type SemanticStep =
   | { definitionId: "timeline.revision.restore"; parameters: { sourceRevisionId: string }; version?: "1.0" }
   | { definitionId: "timeline.clip.split"; parameters: { rightClipId: string; splitTimelineTime: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.clip.paste"; parameters: { newClipIds: Array<string>; sourceClipIds: Array<string>; timelineStart: string; trackId: string }; version?: "1.0" }
+  | { definitionId: "timeline.clip.ripple-insert"; parameters: { newClipIds: Array<string>; sourceClipIds: Array<string>; timelineStart: string; trackId: string }; version?: "1.0" }
   | { definitionId: "timeline.clip.ripple-delete"; parameters?: {  }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.clip.relocate"; parameters: { absolute: boolean; delta: string; destinationTrackId: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.composition.aspect.set"; input?: { artifactId: string; contentDigest: string; streamId: string }; parameters: { aspectRatio: { denominator: number; format: "composition-aspect-rational-v1"; numerator: number } }; version?: "2.0" }

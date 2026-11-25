@@ -347,6 +347,36 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N08 ripple insertion', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('discards a delayed preview after the insertion time changes and returns to its original value', async () => {
+    renderBranchWorkspace('main', '61/30', true)
+    const result = { batchDigest: HASH_C, steps: [{ changes: [{ identity: 'replace(clip-1,301/30)', primary: true }] }] }
+    const held = deferred<typeof result>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
+    const apply = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Copy clip clip-0' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy selected clips' }))
+    const time = screen.getByLabelText('Ripple insertion time (seconds)')
+    const prepare = screen.getByRole('button', { name: 'Preview ripple insert' })
+    fireEvent.change(time, { target: { value: '61/30' } })
+    fireEvent.click(prepare)
+    expect(preview).toHaveBeenCalledOnce()
+    fireEvent.change(time, { target: { value: '7' } })
+    fireEvent.change(time, { target: { value: '61/30' } })
+    await act(async () => held.resolve(result))
+    expect(screen.queryByRole('button', { name: 'Confirm ripple insert' })).toBeNull()
+    fireEvent.click(prepare)
+    await screen.findByText(/Shift right by 61\/30s. Shifted clips: clip-1/)
+    expect(preview.mock.lastCall?.[2].operations[0]).toMatchObject({ definitionId: 'timeline.clip.ripple-insert',
+      parameters: { sourceClipIds: ['clip-0'], trackId: 'track-1', timelineStart: '61/30' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel ripple insert' }))
+    expect(screen.queryByRole('button', { name: 'Confirm ripple insert' })).toBeNull()
+    expect(apply).not.toHaveBeenCalled()
+  })
+})
+
 describe('clipboard playhead precision at the editor entry point', () => {
   afterEach(() => {
     vi.restoreAllMocks()

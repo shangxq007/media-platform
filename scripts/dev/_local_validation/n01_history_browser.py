@@ -77,6 +77,8 @@ if branches:
     checkpoints += tuple('n07-' + stage for stage in ('before', 'cancel', 'reader', 'committed', 'replay',
         'undo', 'redo', 'reopen', 'stale-before', 'stale-after', 'linked-before', 'linked-after',
         'fraction-before', 'fraction-after', 'fraction-reopen'))
+    checkpoints += tuple('n08-' + stage for stage in ('before', 'readonly', 'committed', 'recovered', 'undo',
+        'redo', 'reopened', 'gap', 'end', 'competitor', 'stale', 'bound', 'rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -351,17 +353,19 @@ if branches:
         assert counts7[second]['rows'] == counts7[first]['rows'] + 1
         assert counts7[second]['commands'] == counts7[first]['commands'] + 1
     ripple_ids = {state['refs']['main'] for state in counts7.values()}
-    assert all(re.fullmatch(r'[0-9a-f-]{36}', key) for key in ripple_ids)
-    id_sql = ','.join("'" + key + "'" for key in sorted(ripple_ids))
-    ripple_rows = psql(f"""select json_object_agg(id, row_to_json(r)) from (
-        select rev.id, rev.parent_revision_id, rev.content_hash, s.payload_json::json as snapshot,
-               meta.payload_json::json as semantics
-        from timeline.timeline_revision rev join timeline.timeline_snapshot s
-          on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
-        join timeline.timeline_snapshot meta on meta.id='revctx_' || rev.id
-          and meta.project_id=rev.project_id and meta.tenant_id=rev.tenant_id
-        where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
-          and rev.id in ({id_sql})) r;""")
+    def persisted_revisions(ids):
+        assert all(re.fullmatch(r'[0-9a-f-]{36}', key) for key in ids)
+        id_sql = ','.join("'" + key + "'" for key in sorted(ids))
+        return psql(f"""select json_object_agg(id, row_to_json(r)) from (
+            select rev.id, rev.parent_revision_id, rev.content_hash, s.payload_json::json as snapshot,
+                   meta.payload_json::json as semantics
+            from timeline.timeline_revision rev join timeline.timeline_snapshot s
+              on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+            join timeline.timeline_snapshot meta on meta.id='revctx_' || rev.id
+              and meta.project_id=rev.project_id and meta.tenant_id=rev.tenant_id
+            where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
+              and rev.id in ({id_sql})) r;""")
+    ripple_rows = persisted_revisions(ripple_ids)
     assert set(ripple_rows) == ripple_ids
     def row7(checkpoint_name):
         return ripple_rows[counts7[checkpoint_name]['refs']['main']]
@@ -394,6 +398,43 @@ if branches:
     assert ripple['fractional']['recoveryCounts'] == {'headReads': 2, 'writes': 1}
     (out / 'n07-postgres.json').write_text(json.dumps(dict(ripple=ripple, persisted=ripple_rows,
         checkpoints=counts7), indent=2))
+    insert = browser_result['http']['n08']
+    counts8 = {k.removeprefix('n08-'): v for k, v in facts.items() if k.startswith('n08-')}
+    ids8 = {state['refs']['main'] for state in counts8.values()} | {case['base'] for case in insert['edgeCases']}
+    rows8 = persisted_revisions(ids8)
+    def row8(stage):
+        return rows8[counts8[stage]['refs']['main']]
+    original, inserted, undone, redone = map(row8, ('before', 'committed', 'undo', 'redo'))
+    assert counts8['readonly'] == counts8['before'] and counts8['recovered'] == counts8['committed']
+    assert counts8['reopened'] == counts8['redo'] and counts8['stale'] == counts8['competitor']
+    assert counts8['bound'] == counts8['rejected']
+    for first, second in zip(('before', 'committed', 'undo'), ('committed', 'undo', 'redo')):
+        assert row8(second)['parent_revision_id'] == row8(first)['id']
+        for count in ('rows', 'commands'):
+            assert counts8[second][count] == counts8[first][count] + 1
+    assert original['id'] == insert['base'] and inserted['id'] == insert['accepted']
+    for field in ('snapshot', 'semantics'):
+        assert original[field] == undone[field] and inserted[field] == redone[field]
+    def check_insert(before, after, new_id, at):
+        src, dst = clip_rows(before), clip_rows(after)
+        assert after['parent_revision_id'] == before['id'] and set(dst) == set(src) | {new_id} and new_id not in src
+        assert placement(dst[new_id]) == (at, at + 2)
+        assert {k:v for k,v in authored(dst[new_id]).items() if k != 'clipId'} == {
+            k:v for k,v in authored(src['clip-red']).items() if k != 'clipId'}
+        for key in src:
+            start, end = placement(src[key])
+            offset = 2 if start >= at else 0
+            assert placement(dst[key]) == (start + offset, end + offset) and authored(dst[key]) == authored(src[key])
+    check_insert(original, inserted, insert['newId'], Fraction(5))
+    for case in insert['edgeCases']:
+        check_insert(rows8[case['base']], row8(case['label']), case['plan']['body']['operations'][0]['parameters']['newClipIds'][0],
+                     Fraction(case['position']))
+    pins8 = psql(f"""select json_agg(json_build_object('artifact',artifact_id,'digest',content_digest))
+        from artifacts.artifact_pin where {scoped} and revision_id='{inserted['id']}';""")
+    copied = clip_rows(inserted)[insert['newId']]
+    assert {'artifact':copied['artifactId'], 'digest':copied['contentDigest']} in pins8
+    (out / 'n08-postgres.json').write_text(json.dumps(dict(insert=insert, persisted=rows8, pins=pins8,
+        checkpoints=counts8), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

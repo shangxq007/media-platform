@@ -1410,8 +1410,120 @@ try {
     stale: { status: stale7.status, code: stale7.payload.errorCode, head: competing7.newRevisionId },
     relationship: { preview: linkedPlan7, apply: linkedApply7, status: 422 },
     fractional: { before: fractional7.newRevisionId, plan: fractionalPlan7, apply: fractionalApply7, recoveryCounts: recoveryCounts7 } }
-  result.status = 'PASS'
   save('N07 atomic single-track ripple, fractional duration, stale and affected relationship rejection, read-only recovery')
+
+  const c8 = stage => checkpoint('n08-' + stage)
+  const insertTime = clipboard.getByLabel('Ripple insertion time (seconds)')
+  const previewInsert = clipboard.getByRole('button', { name: 'Preview ripple insert', exact: true })
+  const confirmInsert = clipboard.getByRole('button', { name: 'Confirm ripple insert', exact: true })
+  const retryInsert = clipboard.getByRole('button', { name: 'Retry confirmed ripple insert', exact: true })
+  async function copyForInsert(id) {
+    await clipboard.getByRole('checkbox', { name: 'Copy clip ' + id, exact: true }).check()
+    await clipboard.getByRole('button', { name: 'Copy selected clips' }).click()
+  }
+  async function prepareInsert(position) {
+    await insertTime.fill(position)
+    const response = wire6('/preview')
+    await previewInsert.click()
+    return trace6(await response)
+  }
+  const start8 = (await restore6('insert-seed', base7)).newRevisionId
+  await view6(start8)
+  await copyForInsert('clip-red')
+  const before8 = await c8('before')
+  const invalid8 = await prepareInsert('3')
+  assert.equal(invalid8.status, 422)
+  assert.match(invalid8.payload.detail, /inside clip clip-blue/)
+  await apply(invalid8.body, '0'.repeat(64), 422)
+  assert.equal(await confirmInsert.count(), 0)
+  await prepareInsert('5')
+  await clipboard.getByText(/Shift right by 2\/1s. Shifted clips: clip-gray, clip-later/).waitFor()
+  await clipboard.getByRole('button', { name: 'Cancel ripple insert' }).click()
+  const planned8 = await prepareInsert('5')
+  const denied8 = await apply(planned8.body, planned8.payload.batchDigest, 403, reader)
+  assert.deepEqual(await c8('readonly'), before8)
+  const applied8 = []
+  const applyRoute8 = '**' + batch + '/apply'
+  await page.route(applyRoute8, async route => {
+    const req = route.request(), res = await route.fetch()
+    applied8.push({ target: req.url(), raw: req.postData(), body: req.postDataJSON(),
+      ifMatch: req.headers()['if-match'], status: res.status(), payload: await res.json() })
+    if (applied8.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  let accepted8
+  try {
+    await confirmInsert.click()
+    await retryInsert.waitFor()
+    const written = await c8('committed')
+    accepted8 = written.refs.main
+    assert.equal(written.rows, before8.rows + 1)
+    assert.equal(written.commands, before8.commands + 1)
+    assert.equal(await deleteClip.isDisabled(), true)
+    await page.route(readRoute7, route => route.abort('failed'), { times: 1 })
+    await retryInsert.click()
+    await clipboard.getByText('Ripple Insert accepted at revision ' + accepted8 + '. Reload HEAD to refresh the editor.').waitFor()
+    assert.equal(await retryInsert.count(), 0)
+    await page.getByRole('button', { name: 'Reload HEAD', exact: true }).click()
+    await waitView('main', accepted8)
+    assert.deepEqual(await c8('recovered'), written)
+  } finally { await page.unroute(applyRoute8) }
+  confirmed6(planned8, applied8[0])
+  assert.deepEqual(applied8.map(w => [w.status, w.payload.newRevisionId]), [[201, accepted8], [200, accepted8]])
+  for (const key of ['target', 'raw', 'ifMatch']) assert.equal(applied8[1][key], applied8[0][key])
+  for (const direction of ['Undo', 'Redo']) {
+    const pending = wire6('/apply')
+    await page.getByRole('button', { name: direction + ' ripple insert', exact: true }).click()
+    const revision = (await trace6(await pending)).payload.newRevisionId
+    await waitView('main', revision)
+    await c8(direction.toLowerCase())
+  }
+  await view6((await branch()).headRevisionId)
+  const pictures8 = await samples6('n08-reopened', [['5.5','red'], ['7.5','gray'], ['9.5','black'], ['10.5','blue']])
+  await c8('reopened')
+
+  const edgeCases8 = []
+  for (const [label, position, shifted] of [['gap', '221/30', 'clip-later'], ['end', '9', 'none']]) {
+    const base = (await restore6('insert-' + label, base7)).newRevisionId
+    await view6(base)
+    await copyForInsert('clip-red')
+    const planned = await prepareInsert(position)
+    await clipboard.getByText(new RegExp('Shifted clips: ' + shifted)).waitFor()
+    const response = wire6('/apply')
+    await confirmInsert.click()
+    const accepted = await trace6(await response)
+    confirmed6(planned, accepted)
+    await waitView('main', accepted.payload.newRevisionId)
+    edgeCases8.push({ label, base, position, plan: planned, accepted })
+    await c8(label)
+  }
+  const staleBase8 = (await restore6('insert-stale', base7)).newRevisionId
+  await view6(staleBase8)
+  await copyForInsert('clip-red')
+  const stalePlan8 = await prepareInsert('5')
+  await revise6('insert-competitor', [makeMove({ clipId: 'clip-later' }, '9', true)])
+  const competitor8 = await c8('competitor')
+  const staleResponse8 = wire6('/apply')
+  await confirmInsert.click()
+  const stale8 = await trace6(await staleResponse8)
+  assert.deepEqual(stale8.body, stalePlan8.body)
+  assert.equal(stale8.status, 409)
+  assert.equal(stale8.payload.errorCode, 'STALE_BASE_REVISION')
+  assert.deepEqual(await c8('stale'), competitor8)
+  const relationBase8 = (await restore6('insert-relationship', linked7.newRevisionId)).newRevisionId
+  await view6(relationBase8)
+  await copyForInsert('clip-gray')
+  const relationBefore8 = await c8('bound')
+  const relation8 = await prepareInsert('5')
+  assert.equal(relation8.status, 422)
+  assert.match(relation8.payload.detail, /relationship.*clip-later/)
+  await apply(relation8.body, '0'.repeat(64), 422)
+  assert.deepEqual(await c8('rejected'), relationBefore8)
+  result.http.n08 = { base: start8, accepted: accepted8, newId: planned8.body.operations[0].parameters.newClipIds[0],
+    plan: planned8, attempts: applied8, pictures: pictures8, edgeCases: edgeCases8,
+    inside: invalid8.payload.detail, relationship: relation8.payload.detail, reader: denied8.errorCode, stale: stale8.payload.errorCode }
+  result.status = 'PASS'
+  save('N08 single-track ripple insert, read-only recovery, exact replay, whole edit Undo/Redo and reopened playback')
 } finally {
   await browser.close()
 }

@@ -941,6 +941,35 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     void rippleDeleteRollsBackChildHeadCommandAndOutboxAfterInsertFailure() {
         var source = saveRevision(twoClipDocument());
         var request = rippleRequest("ripple-fail-after-insert", source, "clip-a");
+        assertRippleRollsBack(source, request);
+    }
+
+    @Test
+    void rippleInsertRollsBackCopyShiftPinsHeadLedgerAndOutbox() {
+        String pin = "a".repeat(64);
+        jdbc.update("""
+                insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
+                    media_type,artifact_kind,state,schema_version,created_at)
+                values ('insert-source',?,?,?,1024,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())
+                """, TENANT, PROJECT, pin);
+        var original = new TimelineClip("copy-me", "insert-source", "video-stream", "insert-source", pin,
+                time("0/1"), time("2/1"), time("0/1"), time("2/1"), "MEDIA_STREAM",
+                ConstantRateTemporalMapping.identity());
+        var track = new TimelineTrack("video-main", "Video", TrackType.VIDEO, List.of(original, clip("later", 2, 5)));
+        var source = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(track), TimelineMetadata.empty()));
+        var def = OperationDefinition.V3.RIPPLE_INSERT;
+        var op = new OperationRequest(def.definitionId(), def.version(), new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                new OperationParameters.PasteClipsParameters(track.trackId(), List.of(original.getClipId()),
+                        List.of(TimelineClipId.of("copy")), time("2/1")), source.revisionId(), hash(source), null);
+        var request = new OperationBatchRequest("failed-ripple-insert", new VersionedAggregateRef("TIMELINE",
+                TENANT, PROJECT, PROJECT, "main"), source.revisionId(), List.of(op), null);
+        long pins = count("artifacts.artifact_pin");
+        assertRippleRollsBack(source, request);
+        assertEquals(pins, count("artifacts.artifact_pin"));
+    }
+
+    private void assertRippleRollsBack(TimelineRevision source, OperationBatchRequest request) {
         var actor = mutation().actor();
         var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));
         long snapshots = count("timeline.timeline_snapshot");
@@ -963,8 +992,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(snapshots, count("timeline.timeline_snapshot"));
         assertEquals(0, count("timeline.apply_command"));
         assertEquals(events, eventCount("timeline.revision.created"));
-        System.out.printf("N07_ROLLBACK head=%s rows=1 snapshots=%d commands=0 events=%d%n",
-                source.revisionId(), snapshots, events);
+        System.out.printf("RIPPLE_ROLLBACK command=%s head=%s rows=1 snapshots=%d commands=0 events=%d%n",
+                request.batchId(), source.revisionId(), snapshots, events);
     }
 
     private void assertRippleRejected(OperationBatchRequest request, String diagnostic) {

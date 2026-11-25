@@ -23,10 +23,10 @@ public final class TimelineOperationWireContract {
         var fields = new LinkedHashMap<String, Field>();
         boolean batch = true;
         switch (id) {
-            case "timeline.clip.paste" -> {
+            case "timeline.clip.paste", "timeline.clip.ripple-insert" -> {
                 fields(fields, "revision-id", "trackId");
                 fields(fields, "string", "timelineStart");
-                fields(fields, "paste-clip-id-array", "sourceClipIds", "newClipIds");
+                fields(fields, id.equals("timeline.clip.ripple-insert") ? "single-clip-id-array" : "paste-clip-id-array", "sourceClipIds", "newClipIds");
             }
             case "timeline.revision.restore" -> fields(fields, "revision-id", "sourceRevisionId");
             case "timeline.initialize", "timeline.import", "timeline.track.add" -> batch = false;

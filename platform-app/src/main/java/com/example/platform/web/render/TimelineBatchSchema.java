@@ -91,6 +91,7 @@ public final class TimelineBatchSchema {
             case "composition-aspect-rational-v1" -> ASPECT;
             case "revision-id" -> Map.of("type", "string", "pattern", "^"
                     + com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters.SOURCE_REVISION_ID_PATTERN + "$");
+            case "single-clip-id-array" -> Map.of("type", "array", "items", ID, "minItems", 1, "maxItems", 1, "uniqueItems", true);
             case "paste-clip-id-array" -> Map.of("type", "array", "items", ID,
                     "minItems", 1, "maxItems", com.example.platform.operation.operation.OperationParameters.PasteClipsParameters.MAX_CLIPS, "uniqueItems", true);
             case "string-array" -> Map.of("type", "array", "items", ID);

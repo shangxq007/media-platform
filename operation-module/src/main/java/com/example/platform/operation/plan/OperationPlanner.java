@@ -66,7 +66,8 @@ public final class OperationPlanner {
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
             case "timeline.track.add" -> planAddTrack(instance, base, changes);
-            case "timeline.clip.paste" -> planPasteClips(instance, base, changes);
+            case "timeline.clip.paste" -> planPasteClips(instance, base, changes, false);
+            case "timeline.clip.ripple-insert" -> planPasteClips(instance, base, changes, true);
             case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
@@ -336,11 +337,14 @@ public final class OperationPlanner {
     }
 
     private TimelineDocument planPasteClips(
-            OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+            OperationInstance instance, TimelineDocument base, List<PlannedChange> changes, boolean ripple) {
         var parameters = (OperationParameters.PasteClipsParameters) instance.parameters();
         TimelineTrack track = base.getTracks().stream().filter(t -> t.trackId().equals(parameters.trackId()))
                 .findFirst().orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING, "Paste track not found"));
         var indexed = track.clips().stream().collect(Collectors.toMap(TimelineClip::getClipId, clip -> clip));
+        if (ripple && parameters.sourceClipIds().size() != 1) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Insert requires one copied clip on the target track");
+        }
         var sources = new ArrayList<TimelineClip>();
         for (TimelineClipId id : parameters.sourceClipIds()) {
             TimelineClip clip = indexed.get(id);
@@ -365,7 +369,8 @@ public final class OperationPlanner {
         }
         var identities = base.getTracks().stream().flatMap(t -> t.clips().stream())
                 .map(TimelineClip::getClipId).collect(Collectors.toSet());
-        var clips = new ArrayList<>(track.clips());
+        var clips = ripple ? makeInsertionSpace(base, track, sources.getFirst(), parameters.timelineStart(), changes)
+                : new ArrayList<>(track.clips());
         AudioMix mix = base.getAudioMix();
         var routes = new ArrayList<>(mix.routes());
         for (int i = 0; i < sources.size(); i++) {
@@ -401,6 +406,38 @@ public final class OperationPlanner {
         List<TimelineTrack> tracks = base.getTracks().stream().map(t -> t.trackId().equals(track.trackId())
                 ? new TimelineTrack(t.trackId(), t.name(), t.type(), clips) : t).toList();
         return rebuild(base, tracks, mix.withRoutes(routes), base.getSemanticRelationships());
+    }
+
+    private static List<TimelineClip> makeInsertionSpace(TimelineDocument base, TimelineTrack track, TimelineClip source,
+            MediaTime position, List<PlannedChange> changes) {
+        rejectRippleBinding(base, source, "Ripple Insert");
+        var layout = new ArrayList<TimelineClip>();
+        var sorted = track.clips().stream().sorted(Comparator.comparing(TimelineClip::getStartTime)).toList();
+        TimelineClip previous = null;
+        try {
+            MediaTime shift = source.getEndTime().subtract(source.getStartTime());
+            for (var clip : sorted) {
+                if (previous != null && previous.getEndTime().isGreaterThan(clip.getStartTime())) {
+                    throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Resolve the overlap between "
+                            + previous.getClipId().value() + " and " + clip.getClipId().value() + " before ripple insertion");
+                }
+                previous = clip;
+                if (!clip.getStartTime().isLessThan(position)) {
+                    rejectRippleBinding(base, clip, "Ripple Insert");
+                    var moved = withPlacement(clip, clip.getStartTime().add(shift), clip.getEndTime().add(shift));
+                    layout.add(moved);
+                    changes.add(new PlannedChange.ClipReplaced(clip.getClipId(), moved));
+                } else if (clip.getEndTime().isGreaterThan(position)) {
+                    throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Insertion time is inside clip "
+                            + clip.getClipId().value() + ". Choose a clip boundary or gap.");
+                } else {
+                    layout.add(clip);
+                }
+            }
+        } catch (ArithmeticException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Insert exceeds the exact Timeline placement range");
+        }
+        return layout;
     }
 
     private static List<TimelineClipEffect> pastedEffects(TimelineClip source, TimelineClipId newId) {
@@ -694,7 +731,7 @@ public final class OperationPlanner {
         var id = selected.getFirst();
         var removed = clipOf(base, id);
         var track = base.getTracks().stream().filter(t -> t.clips().contains(removed)).findFirst().orElseThrow();
-        rejectRippleBinding(base, removed);
+        rejectRippleBinding(base, removed, "Ripple Delete");
         changes.add(new PlannedChange.ClipRemoved(id));
         try {
             var duration = removed.getEndTime().subtract(removed.getStartTime());
@@ -702,7 +739,7 @@ public final class OperationPlanner {
             for (var clip : track.clips()) {
                 if (clip == removed) continue;
                 if (!clip.getStartTime().isLessThan(removed.getEndTime())) {
-                    rejectRippleBinding(base, clip);
+                    rejectRippleBinding(base, clip, "Ripple Delete");
                     var moved = withPlacement(clip, clip.getStartTime().subtract(duration), clip.getEndTime().subtract(duration));
                     layout.add(moved);
                     changes.add(new PlannedChange.ClipReplaced(clip.getClipId(), moved));
@@ -740,7 +777,7 @@ public final class OperationPlanner {
                 + first.value() + " and " + second.value() + ". Remove the overlap before rippling.");
     }
 
-    private static void rejectRippleBinding(TimelineDocument base, TimelineClip clip) {
+    private static void rejectRippleBinding(TimelineDocument base, TimelineClip clip, String operation) {
         var id = clip.getClipId();
         for (var relation : base.getSemanticRelationships()) {
             if ((relation instanceof GroupRelationship group && group.members().contains(id))
@@ -753,14 +790,14 @@ public final class OperationPlanner {
                     case SyncRelationship sync -> sync.identityKey();
                     case AlignmentRelationship alignment -> alignment.identityKey();
                 };
-                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Delete cannot preserve relationship "
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, operation + " cannot preserve relationship "
                         + key + " on clip " + id.value() + ". Resolve the relationship before rippling.");
             }
         }
-        rejectTransitionMutation(base, id, "Ripple Delete");
+        rejectTransitionMutation(base, id, operation);
         if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
                 || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Ripple Delete cannot move or remove automation for clip "
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, operation + " cannot move or remove automation for clip "
                     + id.value() + ". Resolve the automation before rippling.");
         }
     }
