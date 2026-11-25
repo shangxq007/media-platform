@@ -99,6 +99,10 @@ String findEditingRefHead(RevisionRef ref);
 /** Validates effects inherited from the exact scoped parent before confirming a branch edit. */
 void validateEditingBranchCandidate(RevisionRef ref, String parentRevisionId, TimelineDocument document);
 
+/** Rejects paste of separate effect bindings that cannot be cloned by this operation. */
+void validatePasteSources(RevisionRef ref, String revisionId,
+                          java.util.List<com.example.platform.timeline.canonical.TimelineClipId> clipIds);
+
 record CreatedEditingRef(String refId, String sourceRevisionId, boolean replayed) {}
 
 Optional<CreatedEditingRef> createEditingRef(TimelineMutationContext context, String refId,

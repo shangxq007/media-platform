@@ -550,6 +550,22 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         branchEffects(dsl, ref, parentRevisionId, document);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public void validatePasteSources(RevisionRef ref, String revisionId,
+                                     java.util.List<com.example.platform.timeline.canonical.TimelineClipId> clipIds) {
+        var source = verifiedRestoreSource(ref.projectId(), ref.tenantId(), revisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Paste source revision is unavailable in the target Timeline"));
+        var selected = clipIds.stream().map(com.example.platform.timeline.canonical.TimelineClipId::value)
+                .collect(java.util.stream.Collectors.toSet());
+        for (var entry : source.effectSnapshot().entries()) {
+            if (entry.target() instanceof com.example.platform.timeline.semantics.effect.ClipEffectTarget target
+                    && selected.contains(target.clipId())) {
+                throw new IllegalArgumentException("Paste cannot reproduce the separate effect binding on clip " + target.clipId());
+            }
+        }
+    }
+
     private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference branchEffects(
             DSLContext readDsl, RevisionRef ref, String parentRevisionId, TimelineDocument document) {
         var parent = verifiedRestoreSource(readDsl, ref.projectId(), ref.tenantId(), parentRevisionId)

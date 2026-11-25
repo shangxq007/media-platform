@@ -63,6 +63,8 @@ if branches:
     checkpoints += tuple('n03-' + name for name in ('a','b','c','undo1-lost','undo1','undo2','redo1-lost',
         'redo1','redo2','reopened','new-base','new-undo','new-trim','browse','stale-undo-before','stale-undo-after',
         'pre-redo-conflict','prep-redo','stale-redo-before','stale-redo-after','branch-return'))
+    checkpoints += tuple('n04-' + name for name in ('before','copied','preview','invalid','reader','committed',
+        'replay','reopened','stale-before','stale-after','branch-return'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -157,6 +159,33 @@ if branches:
     assert facts['n03-branch-return'] == facts['n03-stale-redo-after']
     (out / 'n03-postgres.json').write_text(json.dumps(dict(revisions=revisions,
         checkpoints={k:v for k,v in facts.items() if k.startswith('n03-')}), indent=2))
+    paste = browser_result['http']['n04']
+    source, pasted, competitor = (paste[key] for key in ('base','pasteRevision','competitor'))
+    assert all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in (source, pasted, competitor))
+    paste_proof = psql(f"""select json_object_agg(id,row_to_json(r)) from (
+      select rev.id,rev.parent_revision_id,rev.content_hash,s.payload_json::json as snapshot
+      from timeline.timeline_revision rev join timeline.timeline_snapshot s
+        on s.id=rev.snapshot_id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+      where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e'
+        and rev.id in ('{source}','{pasted}','{competitor}')) r;""")
+    assert paste_proof[pasted]['parent_revision_id'] == source and paste_proof[competitor]['parent_revision_id'] == pasted
+    before, committed = facts['n04-before'], facts['n04-committed']
+    assert before['refs']['main'] == source and committed['refs']['main'] == pasted
+    assert all(before == facts['n04-' + label] for label in ('copied','preview','invalid','reader'))
+    assert committed['rows'] == before['rows'] + 1 and committed['commands'] == before['commands'] + 1
+    assert facts['n04-replay'] == facts['n04-reopened'] == committed
+    stale = facts['n04-stale-before']
+    assert stale['rows'] == committed['rows'] + 1 and stale['refs']['main'] == competitor
+    assert facts['n04-stale-after'] == facts['n04-branch-return'] == stale
+    assert all(stage['refs']['alternate'] == before['refs']['alternate'] for key, stage in facts.items() if key.startswith('n04-'))
+    source_track = next(t for t in paste_proof[source]['snapshot']['tracks'] if t['trackId']=='track-1')
+    target_track = next(t for t in paste_proof[pasted]['snapshot']['tracks'] if t['trackId']=='track-1')
+    by_id = {x['clipId']:x for x in target_track['clips']}
+    assert len(by_id) == len(source_track['clips']) + 2
+    assert all(by_id[x['clipId']] == x for x in source_track['clips'])
+    assert all(by_id[x['clipId']] == x for x in paste['copies'])
+    (out / 'n04-postgres.json').write_text(json.dumps(dict(revisions=paste_proof, clips=paste['copies'],
+        checkpoints={k:v for k,v in facts.items() if k.startswith('n04-')}), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

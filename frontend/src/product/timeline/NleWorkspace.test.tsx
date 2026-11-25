@@ -180,6 +180,45 @@ async function verifyDefaultNavigationResumed(queries: ScriptedTimelineQueryGate
   await screen.findByText('Viewing editing head · main')
 }
 
+describe('default branch clipboard', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('keeps copy and preview read-only and retries exactly the issued paste while navigation is locked', async () => {
+    const { readRef } = renderBranchWorkspace('main')
+    const previewBatch = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const commit = vi.spyOn(FormalRenderAPI, 'commitBatch')
+      .mockRejectedValueOnce(new Error('copy transport lost'))
+      .mockResolvedValueOnce(appliedHead)
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Copy clip clip-0' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy selected clips' }))
+    expect(previewBatch).not.toHaveBeenCalled()
+    expect(commit).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview paste at playhead' }))
+    const confirm = await screen.findByRole('button', { name: 'Confirm paste' })
+    expect(commit).not.toHaveBeenCalled()
+    expect(previewBatch.mock.calls[0][2]).toMatchObject({
+      baseRevisionId: head.revisionId, baseContentHash: HASH_A,
+      operations: [{ definitionId: 'timeline.clip.paste', parameters: {
+        trackId: 'track-1', sourceClipIds: ['clip-0'], newClipIds: [expect.any(String)], timelineStart: '0/1',
+      } }],
+    })
+    fireEvent.click(confirm)
+    const retry = await screen.findByRole('button', { name: 'Retry confirmed paste' })
+    expect(branchPicker().disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Delete selected clip' }).disabled).toBe(true)
+    readRef.mockResolvedValue({ ok: true, value: { head: appliedHead, history: [appliedRevision, revision] } })
+    fireEvent.click(retry)
+    await screen.findByText('Paste accepted at revision revision-R1.')
+    expect(commit).toHaveBeenCalledTimes(2)
+    expect(commit.mock.calls[1].slice(0, 5)).toEqual(commit.mock.calls[0].slice(0, 5))
+    expect(commit.mock.calls[1][2]).toBe(previewBatch.mock.calls[0][2])
+    await waitFor(() => expect(branchPicker().disabled).toBe(false))
+    fireEvent.change(branchPicker(), { target: { value: 'alt' } })
+    await screen.findByText('Viewing editing head · alt')
+    expect(screen.queryByRole('region', { name: 'Clip clipboard' })).toBeNull()
+  })
+})
+
 describe('confirmed trim history readback recovery', () => {
   afterEach(() => vi.restoreAllMocks())
 

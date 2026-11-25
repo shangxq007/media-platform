@@ -32,6 +32,7 @@ public sealed interface OperationParameters permits
         OperationParameters.RelocateClipParameters,
         OperationParameters.TrimParameters,
         OperationParameters.SplitParameters,
+        OperationParameters.PasteClipsParameters,
         OperationParameters.SetTemporalRateParameters,
         OperationParameters.SetTemporalDirectionParameters,
         OperationParameters.FreezeParameters,
@@ -58,6 +59,29 @@ public sealed interface OperationParameters permits
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters,
         OperationParameters.CreateAlignmentParameters {
+
+    /** Identities are paired in authored chronological source order. The planner computes all offsets. */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record PasteClipsParameters(String trackId, List<TimelineClipId> sourceClipIds,
+                                List<TimelineClipId> newClipIds, MediaTime timelineStart) implements OperationParameters {
+        public static final int MAX_CLIPS = 64;
+
+        public PasteClipsParameters {
+            sourceClipIds = List.copyOf(sourceClipIds);
+            newClipIds = List.copyOf(newClipIds);
+            if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}") || timelineStart == null
+                    || timelineStart.isLessThan(MediaTime.ZERO) || sourceClipIds.isEmpty()
+                    || sourceClipIds.size() > MAX_CLIPS || sourceClipIds.size() != newClipIds.size()
+                    || !validDistinctIds(sourceClipIds) || !validDistinctIds(newClipIds)) {
+                throw new IllegalArgumentException("Paste requires one track, a nonnegative start, and 1–64 paired distinct clip identities");
+            }
+        }
+
+        private static boolean validDistinctIds(List<TimelineClipId> ids) {
+            return Set.copyOf(ids).size() == ids.size()
+                    && ids.stream().allMatch(id -> id.value().matches("[A-Za-z0-9._:-]{1,64}"));
+        }
+    }
 
     /** Creates the first empty, versioned Timeline with one stable video track. */
     @org.springframework.modulith.NamedInterface("invocation")

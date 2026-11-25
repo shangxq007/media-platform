@@ -19,6 +19,7 @@ import type {
 } from './gateways'
 import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
+import { ClipClipboard } from './ClipClipboard'
 import { ClipEditor } from './ClipEditor'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timeline-projection'
@@ -229,7 +230,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -268,6 +269,7 @@ export function NleWorkspace({
   const [applyOwnershipRelease, setApplyOwnershipRelease] = useState(0)
   const [aspectRatio, setAspectRatio] = useState<CompositionAspectRatio>(DEFAULT_COMPOSITION_ASPECT)
   const [projectionError, setProjectionError] = useState<string | null>(null)
+  const [projectionRevision, setProjectionRevision] = useState<string | null>(null)
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [previewTime, setPreviewTime] = useState(0)
   const [initializing, setInitializing] = useState(false)
@@ -296,10 +298,11 @@ export function NleWorkspace({
     mounted.current && requestGeneration.current[kind] === generation
   )
 
-  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' = 'ORDINARY') => {
+  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' | 'PASTE_READBACK' = 'ORDINARY') => {
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
+      || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
@@ -346,6 +349,7 @@ export function NleWorkspace({
 
   useEffect(() => {
     let active = true
+    setProjectionRevision(null)
     if (!state.server.head) { setTracks([]); setAppendStart('0/1'); setProjectionError(null); return }
     void (async () => {
       try {
@@ -355,6 +359,7 @@ export function NleWorkspace({
         setAspectRatio(projection.compositionAspectRatio)
         setProjectionError(null)
         setTracks(projection.tracks)
+        setProjectionRevision(snapshot.revisionId)
         setAppendStart(formatRational(timelineEnd(projection)))
       } catch (error) {
         if (active) {
@@ -619,6 +624,11 @@ export function NleWorkspace({
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} trim</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
+          {defaultBranch && <ClipClipboard key={JSON.stringify([project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} tracks={projectionRevision === editingHead?.revisionId ? tracks : []}
+            playhead={previewTime} visible={!historyRevision}
+            disabled={loading || clipWriteLocked || projectionRevision !== editingHead?.revisionId}
+            access={commandAccess('paste')} readback={() => loadHead('PASTE_READBACK')} />}
           <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
             head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
             editingBranch={editingBranch} trimAccess={commandAccess('trim')} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}

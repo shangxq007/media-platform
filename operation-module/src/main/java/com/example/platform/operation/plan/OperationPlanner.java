@@ -32,6 +32,7 @@ import com.example.platform.timeline.semantics.temporal.TemporalMapping;
 import com.example.platform.shared.time.MediaTime;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -63,6 +64,7 @@ public final class OperationPlanner {
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
             case "timeline.track.add" -> planAddTrack(instance, base, changes);
+            case "timeline.clip.paste" -> planPasteClips(instance, base, changes);
             case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
@@ -330,6 +332,73 @@ public final class OperationPlanner {
                 base.getTransitions(), base.getAutomations());
     }
 
+    private TimelineDocument planPasteClips(
+            OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var parameters = (OperationParameters.PasteClipsParameters) instance.parameters();
+        TimelineTrack track = base.getTracks().stream().filter(t -> t.trackId().equals(parameters.trackId()))
+                .findFirst().orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING, "Paste track not found"));
+        var indexed = track.clips().stream().collect(Collectors.toMap(TimelineClip::getClipId, clip -> clip));
+        var sources = new ArrayList<TimelineClip>();
+        for (TimelineClipId id : parameters.sourceClipIds()) {
+            TimelineClip clip = indexed.get(id);
+            if (clip == null) {
+                throw new PlanException(PlanErrorCode.TARGET_MISSING, "Paste source is not on the copied track: " + id.value());
+            }
+            if (!"MEDIA_STREAM".equals(clip.getSourceKind())
+                    || !(clip.getTemporalMapping() instanceof ConstantRateTemporalMapping)) {
+                throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
+                        "Paste requires a pinned media-stream clip with constant playback rate: " + id.value());
+            }
+            if (referencesRelationship(base, id)) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                        "Paste cannot reproduce group, sync, transition or automation bindings: " + id.value());
+            }
+            sources.add(clip);
+        }
+        sources.sort(Comparator.comparing(TimelineClip::getStartTime).thenComparing(c -> c.getClipId().value()));
+        if (!sources.stream().map(TimelineClip::getClipId).toList().equals(parameters.sourceClipIds())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Paste sources must be in chronological track order");
+        }
+        var identities = base.getTracks().stream().flatMap(t -> t.clips().stream())
+                .map(TimelineClip::getClipId).collect(Collectors.toSet());
+        var clips = new ArrayList<>(track.clips());
+        AudioMix mix = base.getAudioMix();
+        var routes = new ArrayList<>(mix.routes());
+        for (int i = 0; i < sources.size(); i++) {
+            TimelineClip source = sources.get(i);
+            TimelineClipId newId = parameters.newClipIds().get(i);
+            if (!identities.add(newId)) {
+                throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Paste clip identity already exists: " + newId.value());
+            }
+            MediaTime start;
+            MediaTime end;
+            try {
+                start = parameters.timelineStart().add(source.getStartTime().subtract(sources.getFirst().getStartTime()));
+                end = start.add(source.getEndTime().subtract(source.getStartTime()));
+            } catch (ArithmeticException invalid) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Paste placement exceeds the exact Timeline range");
+            }
+            if (clips.stream().anyMatch(clip -> start.isLessThan(clip.getEndTime()) && end.isGreaterThan(clip.getStartTime()))) {
+                throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT,
+                        "Pasting clip " + source.getClipId().value() + " would overlap another clip on the track");
+            }
+            TimelineClip added = new TimelineClip(newId.value(), source.getMediaAssetId(), source.getMediaStreamId(),
+                    source.getArtifactId(), source.getContentDigest(), start, end, source.getTrimStart(), source.getTrimEnd(),
+                    source.getSourceKind(), source.getTemporalMapping(), source.getEffects(), source.getTransform());
+            clips.add(added);
+            changes.add(new PlannedChange.ClipAdded(track.trackId(), added));
+            var oldInput = AudioMixInput.of(track.trackId(), source.getClipId().value());
+            mix.routes().stream().filter(route -> route.input().equals(oldInput)).findFirst().ifPresent(route -> {
+                routes.add(new AudioRoute(AudioMixInput.of(track.trackId(), newId.value()),
+                        route.gain(), route.mute(), route.balance(), route.dspChain()));
+                changes.add(new PlannedChange.AudioMixReplaced("audio-route-pasted@" + newId.value()));
+            });
+        }
+        List<TimelineTrack> tracks = base.getTracks().stream().map(t -> t.trackId().equals(track.trackId())
+                ? new TimelineTrack(t.trackId(), t.name(), t.type(), clips) : t).toList();
+        return rebuild(base, tracks, mix.withRoutes(routes), base.getSemanticRelationships());
+    }
+
     // ---- 17 non-text operations (split added) ----
     private TimelineDocument planSplit(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
         var params = (OperationParameters.SplitParameters) inst.parameters();
@@ -424,7 +493,11 @@ public final class OperationPlanner {
 
     /** Split is fail-closed when another authored entity still references the clip identity. */
     private static boolean referencesClip(TimelineDocument base, TimelineClipId clipId) {
-        String id = clipId.value();
+        return referencesRelationship(base, clipId)
+                || base.getAudioMix().routes().stream().anyMatch(route -> clipId.value().equals(route.input().clipId()));
+    }
+
+    private static boolean referencesRelationship(TimelineDocument base, TimelineClipId clipId) {
         for (SemanticRelationship relationship : base.getSemanticRelationships()) {
             if (relationship instanceof GroupRelationship group
                     && group.members().stream().anyMatch(member -> member.equals(clipId))) {
@@ -435,15 +508,7 @@ public final class OperationPlanner {
                 return true;
             }
         }
-        if (base.referencesClip(clipId)) {
-            return true;
-        }
-        for (AudioRoute route : base.getAudioMix().routes()) {
-            if (id.equals(route.input().clipId())) {
-                return true;
-            }
-        }
-        return false;
+        return base.referencesClip(clipId);
     }
 
     // ---- 16 non-text operations ----

@@ -779,6 +779,26 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(4, eventCount("timeline.restored"));
     }
 
+    @Test
+    void pasteRejectsSeparateEffectBindingWithoutWriting() {
+        TimelineRevision source = revisionWithEffect(null, "4");
+        var def = OperationDefinition.V3.PASTE_CLIPS;
+        var step = new OperationRequest(def.definitionId(), def.version(),
+                new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                new OperationParameters.PasteClipsParameters("video-main", List.of(TimelineClipId.of("clip-a")),
+                        List.of(TimelineClipId.of("clip-new")), time("12/1")), source.revisionId(), hash(source), null);
+        var request = new OperationBatchRequest("unsupported-paste", new VersionedAggregateRef("TIMELINE",
+                TENANT, PROJECT, PROJECT, "main"), source.revisionId(), List.of(step), null);
+        long rows = count("timeline.timeline_revision");
+        var rejected = assertThrows(BatchException.class,
+                () -> batch.preview(request, OperationBatchContext.preview(mutation().actor(), "test")));
+        assertEquals(BatchErrorCode.STEP_RESOLUTION_FAILED, rejected.code());
+        assertTrue(rejected.getMessage().contains("separate effect binding on clip clip-a"));
+        assertEquals(source.revisionId(), head());
+        assertEquals(rows, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
+    }
+
     private TimelineRevision revisionWithEffect(String parent, String radius) {
         return revisionWithEffects(parent, List.of(blur("blur", radius)));
     }

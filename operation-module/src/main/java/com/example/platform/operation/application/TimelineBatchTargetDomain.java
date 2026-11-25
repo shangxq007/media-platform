@@ -140,6 +140,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, null,
                     invalid.getMessage(), invalid);
         }
+        if (instance.parameters() instanceof OperationParameters.PasteClipsParameters paste) {
+            validatePaste(batch, paste, currentCandidate);
+        }
         validateSource(instance, batch, currentCandidate, projectId);
         final OperationPlan plan;
         try {
@@ -186,9 +189,48 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         }
     }
 
-    private static boolean preservesTrimEffects(OperationBatchRequest batch) {
-        return batch.operations().size() == 1
-                && batch.operations().getFirst().parameters() instanceof OperationParameters.TrimParameters;
+    private static boolean preservesParentEffects(OperationBatchRequest batch) {
+        return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
+                instanceof OperationParameters.TrimParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters);
+    }
+
+    private void validatePaste(OperationBatchRequest batch, OperationParameters.PasteClipsParameters paste,
+                               TimelineDocument candidate) {
+        var target = batch.target();
+        if (!RevisionRef.MAIN_REF.equals(target.refId())) {
+            throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, "Paste is only available on the default editing branch");
+        }
+        if (batch.operations().size() != 1) {
+            throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Paste must be the only operation in its batch");
+        }
+        try {
+            revisions.validatePasteSources(new RevisionRef(target.tenantId(), target.projectId(), target.refId()),
+                    batch.baseRevisionId(), paste.sourceClipIds());
+            var track = candidate.getTracks().stream().filter(t -> t.trackId().equals(paste.trackId())).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Paste track not found"));
+            var clips = track.clips().stream().collect(java.util.stream.Collectors.toMap(
+                    com.example.platform.timeline.canonical.TimelineClip::getClipId, clip -> clip));
+            for (TimelineClipId id : paste.sourceClipIds()) {
+                var clip = clips.get(id);
+                if (clip == null) throw new IllegalArgumentException("Paste source is not on the copied track: " + id.value());
+                if (!"MEDIA_STREAM".equals(clip.getSourceKind())) {
+                    throw new IllegalArgumentException("Paste requires a media-stream source: " + id.value());
+                }
+                var binding = new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
+                        com.example.platform.media.domain.identity.MediaAssetId.of(clip.getMediaAssetId()),
+                        com.example.platform.media.domain.stream.MediaStreamId.of(clip.getMediaStreamId()),
+                        new com.example.platform.shared.identity.ArtifactId(clip.getArtifactId()),
+                        com.example.platform.shared.digest.ContentDigest.sha256(clip.getContentDigest()),
+                        new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(clip.getTrimStart(), clip.getTrimEnd()));
+                var validation = sourceValidator.validate(binding, target.tenantId(), target.projectId(), track.type());
+                if (!validation.valid()) {
+                    throw new IllegalArgumentException("Paste source " + id.value() + " is invalid: " + validation.violations());
+                }
+            }
+        } catch (IllegalArgumentException invalid) {
+            throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, null, invalid.getMessage(), invalid);
+        }
     }
 
     @Override
@@ -199,7 +241,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.FINAL_VALIDATION_FAILED, null,
                     "final candidate rejected: " + diagnostics(result));
         }
-        if (!RevisionRef.MAIN_REF.equals(batch.target().refId()) || preservesTrimEffects(batch)) {
+        if (!RevisionRef.MAIN_REF.equals(batch.target().refId()) || preservesParentEffects(batch)) {
             try {
                 revisions.validateEditingBranchCandidate(new RevisionRef(batch.target().tenantId(),
                         batch.target().projectId(), batch.target().refId()), batch.baseRevisionId(), candidate);
@@ -235,7 +277,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         TimelineRevisionCommands.RevisionWriteCommand command = new TimelineRevisionCommands.RevisionWriteCommand(
                 context.applyCommandId(), plan.batchDigest(),
                 OperationBatchDigest.fingerprint(plan, context),
-                BATCH_COMMAND_DOMAIN, tenantId, preservesTrimEffects(batch));
+                BATCH_COMMAND_DOMAIN, tenantId, preservesParentEffects(batch));
         TimelineMutationContext mutationContext =
                 new TimelineMutationContext(tenantId, projectId, context.actor());
         RevisionRef targetRef = new RevisionRef(tenantId, projectId, batch.target().refId());

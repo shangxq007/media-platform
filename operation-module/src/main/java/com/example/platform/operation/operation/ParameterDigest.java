@@ -1,6 +1,7 @@
 package com.example.platform.operation.operation;
 
 import com.example.platform.timeline.canonical.TimedTextCanonicalSemantics;
+import com.example.platform.timeline.canonical.TimelineClipId;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -74,6 +75,11 @@ public final class ParameterDigest {
                             .TimelineSourceBindingCanonicalSemantics.encode(binding)
                     + ",placement=" + a.placement().start() + ".." + a.placement().end()
                     + ",mapping=" + temporalMapping(a.temporalMapping()) + ")";
+        }
+        if (p instanceof OperationParameters.PasteClipsParameters paste) {
+            return framed("paste-clips-v1", paste.trackId(), paste.timelineStart().toString(),
+                    paste.sourceClipIds().stream().map(TimelineClipId::value).collect(java.util.stream.Collectors.joining(",")),
+                    paste.newClipIds().stream().map(TimelineClipId::value).collect(java.util.stream.Collectors.joining(",")));
         }
         if (p instanceof OperationParameters.RestoreRevisionParameters restore) {
             return framed("restore-revision-v1", restore.sourceRevisionId());

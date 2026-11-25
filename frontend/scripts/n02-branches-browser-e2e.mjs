@@ -540,8 +540,157 @@ try {
   assert.equal(await undo.isDisabled(), true)
   await checkpoint('n03-branch-return')
   result.http.n03 = { ...n03, initial: nA, reopenedRevision: redone }
-  result.status = 'PASS'
   save('N03 default-branch undo, redo, replay, conflicts and isolated navigation')
+
+  // Recreate the playable two-source fixture, placing blue one second after red.
+  const prePaste = await branch()
+  const restoreForPaste = { ...reset, batchId: 'n04-seed', baseRevisionId: prePaste.headRevisionId, baseContentHash: prePaste.contentHash }
+  const restoredForPaste = await apply(restoreForPaste, (await preview(restoreForPaste)).batchDigest)
+  const gapEdit = { batchId: 'n04-fixture-gap', baseRevisionId: restoredForPaste.newRevisionId,
+    baseContentHash: restoredForPaste.newContentHash, operations: [{ definitionId: 'timeline.move',
+      target: { clipId: 'clip-blue' }, parameters: { absolute: true, delta: '3/1' } }] }
+  const gapHead = await apply(gapEdit, (await preview(gapEdit)).batchDigest)
+  await page.reload()
+  await waitView('main', gapHead.newRevisionId)
+
+  const clipboard = page.getByRole('region', { name: 'Clip clipboard' })
+  const pastePreview = clipboard.getByRole('button', { name: 'Preview paste at playhead', exact: true })
+  const pasteConfirm = clipboard.getByRole('button', { name: 'Confirm paste', exact: true })
+  const pasteRetry = clipboard.getByRole('button', { name: 'Retry confirmed paste', exact: true })
+  const snapshot = async id => JSON.parse((await api(`/api/render/projects/${project}/timeline/revisions/${id}/snapshot`, 200)).canonicalTimelineJson)
+  const n04 = { base: gapHead.newRevisionId }
+  async function seek(at) {
+    await page.getByLabel('Timeline preview seek').evaluate((input, seconds) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, seconds)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    }, at)
+  }
+  async function copyPair() {
+    // Reverse the checkbox click order to prove authored chronology wins.
+    await clipboard.getByRole('checkbox', { name: 'Copy clip clip-blue', exact: true }).check()
+    await clipboard.getByRole('checkbox', { name: 'Copy clip clip-red', exact: true }).check()
+    await clipboard.getByRole('button', { name: 'Copy selected clips' }).click()
+    await clipboard.getByText('2 clips copied.', { exact: true }).waitFor()
+  }
+  async function previewPasteAt(at) {
+    await seek(at)
+    const planned = page.waitForResponse(res => res.url().endsWith(batch + '/preview') && res.request().method() === 'POST')
+    await pastePreview.click()
+    const response = await planned
+    assert.equal(response.status(), 200)
+    await pasteConfirm.waitFor()
+    return { body: response.request().postDataJSON(), digest: (await response.json()).batchDigest }
+  }
+
+  const beforePaste = await checkpoint('n04-before')
+  const sourceSnapshot = await snapshot(n04.base)
+  const track = sourceSnapshot.tracks.find(t => t.trackId === 'track-1')
+  const sources = [track.clips.find(c => c.clipId === 'clip-red'), track.clips.find(c => c.clipId === 'clip-blue')]
+  const t = stamp => { const [ticks, scale = '1'] = stamp.split('/'); return Number(ticks) / Number(scale) }
+  assert.deepEqual(sources.map(c => [t(c.startTime), t(c.endTime)]), [[0, 2], [3, 3.5]])
+  await copyPair()
+  assert.deepEqual(await checkpoint('n04-copied'), beforePaste)
+  const planned = await previewPasteAt(3.5)
+  const params = planned.body.operations[0].parameters
+  assert.equal(planned.body.operations[0].definitionId, 'timeline.clip.paste')
+  assert.deepEqual(params.sourceClipIds, ['clip-red', 'clip-blue'])
+  assert.equal(t(params.timelineStart), 3.5)
+  assert.equal(new Set(params.newClipIds).size, 2)
+  assert.deepEqual(await checkpoint('n04-preview'), beforePaste)
+  const invalid = structuredClone(planned.body)
+  invalid.batchId = 'n04-invalid-second'
+  invalid.operations[0].parameters.newClipIds[1] = 'clip-blue'
+  const invalidPreview = await preview(invalid, 422)
+  const invalidApply = await apply(invalid, planned.digest, 422)
+  assert.match(invalidApply.detail, /clip identity already exists: clip-blue/)
+  assert.deepEqual(await checkpoint('n04-invalid'), beforePaste)
+  const denied = await apply(planned.body, planned.digest, 403, reader)
+  assert.deepEqual(await checkpoint('n04-reader'), beforePaste)
+  const pasteWire = []
+  await page.route('**' + batch + '/apply', async route => {
+    const req = route.request(), response = await route.fetch()
+    pasteWire.push({ body: req.postData(), ifMatch: req.headers()['if-match'], status: response.status(), receipt: await response.json() })
+    if (pasteWire.length === 1) await route.abort('failed')
+    else await route.fulfill({ response })
+  })
+  await pasteConfirm.click()
+  await pasteRetry.waitFor()
+  const committedPaste = await checkpoint('n04-committed')
+  const pasteRevision = pasteWire[0].receipt.newRevisionId
+  assert.equal(committedPaste.refs.main, pasteRevision)
+  assert.equal(committedPaste.rows, beforePaste.rows + 1)
+  assert.equal(await page.getByRole('combobox', { name: 'Editing branch' }).isDisabled(), true)
+  assert.equal(await deleteClip.isDisabled(), true)
+  await pasteRetry.click()
+  await clipboard.getByText('Paste accepted at revision ' + pasteRevision + '.', { exact: true }).waitFor()
+  await page.unroute('**' + batch + '/apply')
+  assert.deepEqual(pasteWire.map(entry => entry.status), [201, 200])
+  assert.equal(pasteWire[0].body, pasteWire[1].body)
+  assert.equal(pasteWire[0].ifMatch, '"' + planned.digest + '"')
+  assert.equal(pasteWire[0].ifMatch, pasteWire[1].ifMatch)
+  assert.equal(pasteWire[1].receipt.newRevisionId, pasteRevision)
+  assert.equal(pasteWire[1].receipt.replayed, true)
+  assert.deepEqual(await checkpoint('n04-replay'), committedPaste)
+
+  await page.reload()
+  await waitView('main', pasteRevision)
+  const saved = (await snapshot(pasteRevision)).tracks.find(t => t.trackId === 'track-1')
+  assert.equal(saved.clips.length, track.clips.length + 2)
+  for (const original of track.clips) assert.deepEqual(saved.clips.find(c => c.clipId === original.clipId), original)
+  const copies = params.newClipIds.map(id => saved.clips.find(c => c.clipId === id))
+  assert.deepEqual(copies.map(c => [t(c.startTime), t(c.endTime)]), [[3.5, 5.5], [6.5, 7]])
+  for (let ix = 0; ix < copies.length; ix++) {
+    const { clipId: _i, startTime: _s, endTime: _e, ...semantic } = copies[ix]
+    const { clipId: _oi, startTime: _os, endTime: _oe, ...sourceSemantic } = sources[ix]
+    assert.deepEqual(semantic, sourceSemantic)
+  }
+  assert.deepEqual(await checkpoint('n04-reopened'), committedPaste)
+  const canvas = page.getByLabel('Timeline preview canvas', { exact: true })
+  n04.frames = {}
+  for (const [at, channel] of [[3.75, 0], [6, -1], [6.7, 2]]) {
+    await seek(at)
+    await page.waitForFunction(wanted => {
+      const elt = document.querySelector('canvas[aria-label="Timeline preview canvas"]')
+      const rgb = Array.from(elt.getContext('2d').getImageData(elt.width / 2, elt.height / 2, 1, 1).data).slice(0, 3)
+      return wanted < 0 ? Math.max(...rgb) < 25 : rgb[wanted] > 80 && rgb[wanted] > 2 * Math.max(...rgb.filter((_, i) => i !== wanted))
+    }, channel)
+    n04.frames[at] = await canvas.evaluate(elt =>
+      Array.from(elt.getContext('2d').getImageData(elt.width / 2, elt.height / 2, 1, 1).data).slice(0, 3))
+    await canvas.screenshot({ path: join(out, `N04-${at}-picture.png`) })
+  }
+  await page.getByRole('group', { name: 'Timeline trim' }).screenshot({ path: join(out, 'N04-reopened-timeline.png') })
+
+  await copyPair()
+  const stalePlan = await previewPasteAt(7)
+  const competingPasteEdit = trim('n04-competing-trim', 'main', pasteRevision, pasteWire[0].receipt.newContentHash, '1/8')
+  const competingPastePlan = await api(batch + '/preview', 200, { body: competingPasteEdit, client: second.request })
+  const competingPasteReceipt = await api(batch + '/apply', 201, { body: competingPasteEdit,
+    digest: competingPastePlan.batchDigest, client: second.request })
+  const beforeStalePaste = await checkpoint('n04-stale-before')
+  const stalePasteResponse = page.waitForResponse(res => res.url().endsWith(batch + '/apply') && res.request().method() === 'POST')
+  await pasteConfirm.click()
+  const refusal = await stalePasteResponse
+  assert.equal(refusal.status(), 409)
+  assert.deepEqual(refusal.request().postDataJSON(), stalePlan.body)
+  const stalePasteError = await refusal.json()
+  assert.equal(stalePasteError.errorCode, 'STALE_BASE_REVISION')
+  await clipboard.getByText(/Paste conflict/).waitFor()
+  assert.deepEqual(await checkpoint('n04-stale-after'), beforeStalePaste)
+  await reloadHead.click()
+  await waitView('main', competingPasteReceipt.newRevisionId)
+  await select('alternate')
+  await waitView('alternate', independent.refs.alternate)
+  assert.equal(await clipboard.count(), 0)
+  await select('main')
+  await waitView('main', competingPasteReceipt.newRevisionId)
+  assert.equal(await pastePreview.isDisabled(), true)
+  assert.deepEqual(await checkpoint('n04-branch-return'), beforeStalePaste)
+  result.http.n04 = { ...n04, pasteRevision, sources, copies, pasteWire,
+    invalidPreview: invalidPreview.errorCode, invalidApply: invalidApply.errorCode,
+    denied: denied.errorCode, stale: stalePasteError.errorCode, competitor: competingPasteReceipt.newRevisionId }
+  result.status = 'PASS'
+  save('N04 atomic clipboard, reopening, exact retry, invalid second source, authorization and stale confirmation')
 } finally {
   await browser.close()
 }
