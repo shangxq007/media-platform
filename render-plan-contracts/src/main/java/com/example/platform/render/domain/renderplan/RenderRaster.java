@@ -4,9 +4,9 @@ import com.example.platform.timeline.canonical.CompositionAspectRatio;
 
 /** Requested output raster. Even dimensions support the bounded R1 4:2:0 output. */
 public record RenderRaster(int width, int height) {
-    private static final int MIN_DIMENSION = 16;
-    private static final int MAX_DIMENSION = 1920;
-    private static final int MAX_PIXELS = 2_073_600;
+    public static final int MIN_DIMENSION = 16;
+    public static final int MAX_DIMENSION = 1920;
+    public static final int MAX_PIXELS = 2_073_600;
 
     public static final RenderRaster DEFAULT = new RenderRaster(320, 240);
 

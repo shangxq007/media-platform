@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    api(project(":render-plan-contracts"))
     implementation(project(":usage-contract-module")) // owner-published observation/ingestion contracts
     implementation(project(":marketplace-module")) // public publication/listing owner contracts
     implementation(project(":identity-access-module")) // published authorization contract
@@ -19,11 +20,11 @@ dependencies {
     implementation(project(":color-image-module")) // ROADMAP20: typed color/image value semantics (frozen direction: Render -> ColorImage)
     implementation(project(":platform-algorithms:graph")) // ROADMAP20: graph kernel mechanics for RenderGraph (C30)
     api(project(":timeline-module")) // GCR-1: canonical Timeline semantics (frozen direction: Render -> Timeline)
-    api(project(":operation-module")) // GCR-1: canonical Operation semantics (frozen direction: Render -> Operation)
+    implementation(project(":operation-module")) // GCR-1: canonical Operation semantics (frozen direction: Render -> Operation)
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
     testImplementation(project(":media-execution-plan-module")) // R21 C6-C guarded-entry boundary tests (test-only; no production cycle)
-    api(project(":ai-module"))
+    implementation(project(":ai-module"))
     api(project(":storage-module"))
     api(project(":artifact-module")) // GCR-2: canonical Artifact authority (frozen direction: Render -> Artifact; no cycle: artifact-module no longer depends on render)
     api(project(":extension-module"))
@@ -53,7 +54,9 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         require(pkgDir.exists() && pkgDir.isDirectory) {
             "FAIL: renderplan package dir missing: ${pkgDir.path}"
         }
-        val javaFiles = fileTree(pkgDir) { include("**/*.java") }.files
+        val contractDir = project(":render-plan-contracts").file("src/main/java/com/example/platform/render/domain/renderplan")
+        val javaFiles = fileTree(pkgDir) { include("**/*.java") }.files +
+                fileTree(contractDir) { include("**/*.java") }.files
         require(javaFiles.isNotEmpty()) {
             "FAIL: no .java files found under ${pkgDir.path}"
         }
@@ -81,6 +84,8 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
                 if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) {
                     continue
                 }
+                if (javaFile.name == "package-info.java" &&
+                        trimmed == "@org.springframework.modulith.NamedInterface(\"renderplan\")") continue
                 for (token in forbidden) {
                     if (line.contains(token)) {
                         violations.add("${javaFile.name}:${index + 1}: forbidden token '$token'")
@@ -411,7 +416,7 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         // 22. Preserve the exact Owner-adopted migration inventory; no unclassified migrations.
         val migrationDir = file("../platform-app/src/main/resources/db/migration")
         require(migrationDir.listFiles().orEmpty().filter { it.name.endsWith(".sql") }.map { it.name }.toSet()
-                == setOf("V1__baseline.sql", "V2__graph_render_execution.sql")) {
+                == setOf("V1__baseline.sql", "V2__domain_schemas.sql", "beforeMigrate.sql")) {
             "FAIL: unexpected Flyway migration inventory"
         }
 

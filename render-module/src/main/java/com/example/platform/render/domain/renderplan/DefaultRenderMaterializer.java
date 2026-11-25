@@ -309,7 +309,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
 
         // Audio gain/mute/balance is carried inline on TimedTrackInput for the
-        // BMF multitrack composite. No parallel AUDIO_PROCESS/AUDIO_MIX execution
+        // typed multitrack composite. No parallel AUDIO_PROCESS/AUDIO_MIX execution
         // authority is materialized for a timed multitrack plan.
 
         // ── TIMED_TEXT nodes (F2: typed materialization, connected to COMPOSITE) ──
@@ -480,7 +480,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
         // The multitrack composite owns both the video and audio mix; OUTPUT
         // consumes the composite artifact. No separate AUDIO_MIX execution node
-        // may bypass the accepted BMF composite path.
+        // may bypass the timed composition requirement.
 
         return new RenderMaterializationResult(nodes, edges, diagnostics);
     }

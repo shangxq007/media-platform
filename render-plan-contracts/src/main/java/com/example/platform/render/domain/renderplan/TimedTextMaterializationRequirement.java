@@ -72,4 +72,14 @@ public record TimedTextMaterializationRequirement(
     public String variantKey() {
         return "TIMED_TEXT";
     }
+
+    /** Exact coverage and a concrete style are required to rasterize a text stream. */
+    public boolean hasStyledContentWithin(RenderExtent extent) {
+        var first = ExactTextTimelineTimeProjection.project(start);
+        var last = ExactTextTimelineTimeProjection.projectEnd(start, duration);
+        return first instanceof ExactTextTimelineTimeProjection.Projected begin
+                && last instanceof ExactTextTimelineTimeProjection.Projected end
+                && !begin.mediaTime().isLessThan(extent.start()) && !end.mediaTime().isGreaterThan(extent.end())
+                && !styledText.content().value().isEmpty() && !styledText.styleRuns().isEmpty();
+    }
 }

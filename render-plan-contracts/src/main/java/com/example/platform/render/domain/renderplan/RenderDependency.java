@@ -106,6 +106,9 @@ public sealed interface RenderDependency permits
      * so the physical provider receives the authored mix values without a second
      * audio authority. Video inputs use neutral defaults.
      */
+    record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
+            double left, double right, double top, double bottom, double opacity) {}
+
     record TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
                            com.example.platform.audio.domain.mix.AudioGain gain,
@@ -146,6 +149,15 @@ public sealed interface RenderDependency permits
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
                     com.example.platform.audio.domain.mix.StereoBalance.neutral(),
                     transform, effect, authoredStart, authoredEnd, dissolve);
+        }
+
+        public VideoPlacement placement() {
+            double unit = com.example.platform.timeline.semantics.effect.VideoTransform.UNIT;
+            return new VideoPlacement(transform.positionXMicros() / unit, transform.positionYMicros() / unit,
+                    transform.scaleXMicros() / unit, transform.scaleYMicros() / unit,
+                    transform.rotationMicroDegrees() / unit, transform.cropLeftMicros() / unit,
+                    transform.cropRightMicros() / unit, transform.cropTopMicros() / unit,
+                    transform.cropBottomMicros() / unit, transform.opacityMicros() / unit);
         }
 
         /** Compatibility constructor: neutral mix values and identity transform. */

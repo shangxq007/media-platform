@@ -9,6 +9,7 @@ include(
     "shared-kernel",
     "media-capability-contracts",
     "render-module",
+    "render-plan-contracts",
     "marketplace-module",
     "notification-module",
     "ai-module",

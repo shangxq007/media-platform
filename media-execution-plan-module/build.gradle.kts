@@ -23,11 +23,8 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
-    // Media Execution Plan Domain depends only on the Artifact Domain and StorageProvider SPI,
-    // both of which live in render-module and artifact-module. No dependency on OpenDAL adapter,
-    // cloud SDKs, bucket names, object keys, signed URLs, Kubernetes, or FFmpeg.
-    implementation(project(":artifact-module"))
-    implementation(project(":render-module"))
+    api(project(":artifact-module")) // Public ArtifactCapabilityRequest carries the owning typed Artifact pin.
+    api(project(":render-plan-contracts"))
     implementation(project(":extension-module"))
     implementation(project(":audio-module"))
     implementation(project(":color-image-module"))

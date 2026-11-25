@@ -37,6 +37,7 @@ PROJECT	TEST_TASK	SOURCE_SET	DISCOVERED_TEST_COUNT	USES_SPRING_CONTEXT	USES_SPRI
 :prompt-module	test	test	32	NO	NO	NO	NO	YES	NO	NO	NO	NO	NO	NO	NO	NO	PERSISTENCE_FIXTURE_REVIEW_PENDING	1	2g	REVIEW_REQUIRED	Persistence-oriented tests require isolated review
 :provider-plugin-runtime-module	test	test	4	NO	NO	NO	NO	NO	NO	NO	NO	YES	YES	YES	YES	NO	PLUGIN_HOST_AND_SYSTEM_PROPERTIES	1	2g	REVIEW_REQUIRED	Plugin host lifecycle mutates process-wide properties and environment
 :remote-render-worker	test	test	15	YES	YES	NO	NO	NO	NO	NO	NO	NO	NO	YES	NO	YES	SPRING_WORKER_CONTEXT	1	2g	SPRING_HEAVY_BOUNDED	Spring worker context is bounded to one fork without an exclusive host resource
+:render-plan-contracts	test	test	0	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	Compiled render value contracts; exercised by Render and Execution Plan suites.
 :render-module	test	test	2817	NO	NO	NO	NO	NO	NO	YES	YES	YES	YES	YES	YES	NO	RENDER_NATIVE_BINARY_AND_FIXED_PORTS	1	2g	SERIAL_ONLY	Render tests use native binaries, fixed ports, filesystem and mutable static state
 :sandbox-isolation-module	test	test	37	NO	NO	NO	NO	NO	NO	YES	NO	YES	YES	YES	YES	NO	BUBBLEWRAP_CONTAINER_SANDBOX	1	2g	SERIAL_ONLY	Sandbox integration tests invoke container and host isolation resources
 :sandbox-isolation-module	phase17SandboxConformanceTest	test	2	NO	NO	NO	NO	NO	NO	YES	NO	YES	YES	YES	YES	NO	BUBBLEWRAP_CONTAINER_SANDBOX	1	2g	SERIAL_ONLY	Authoritative sandbox conformance invokes container and host isolation resources
