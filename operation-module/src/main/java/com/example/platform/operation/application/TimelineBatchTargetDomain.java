@@ -186,6 +186,11 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         }
     }
 
+    private static boolean preservesTrimEffects(OperationBatchRequest batch) {
+        return batch.operations().size() == 1
+                && batch.operations().getFirst().parameters() instanceof OperationParameters.TrimParameters;
+    }
+
     @Override
     public void validateFinal(TimelineDocument candidate, OperationBatchRequest batch) {
         TimelineValidationResult result = timelineValidator.validateDocument(
@@ -194,7 +199,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.FINAL_VALIDATION_FAILED, null,
                     "final candidate rejected: " + diagnostics(result));
         }
-        if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+        if (!RevisionRef.MAIN_REF.equals(batch.target().refId()) || preservesTrimEffects(batch)) {
             try {
                 revisions.validateEditingBranchCandidate(new RevisionRef(batch.target().tenantId(),
                         batch.target().projectId(), batch.target().refId()), batch.baseRevisionId(), candidate);
@@ -230,7 +235,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         TimelineRevisionCommands.RevisionWriteCommand command = new TimelineRevisionCommands.RevisionWriteCommand(
                 context.applyCommandId(), plan.batchDigest(),
                 OperationBatchDigest.fingerprint(plan, context),
-                BATCH_COMMAND_DOMAIN, tenantId);
+                BATCH_COMMAND_DOMAIN, tenantId, preservesTrimEffects(batch));
         TimelineMutationContext mutationContext =
                 new TimelineMutationContext(tenantId, projectId, context.actor());
         RevisionRef targetRef = new RevisionRef(tenantId, projectId, batch.target().refId());

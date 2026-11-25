@@ -55,7 +55,13 @@ public record RevisionWriteCommand(
             String planDigest,
             String fingerprint,
             String commandDomain,
-            String tenantId) {
+            String tenantId,
+            boolean preserveParentEffects) {
+        public RevisionWriteCommand(String commandId, String planDigest, String fingerprint,
+                                    String commandDomain, String tenantId) {
+            this(commandId, planDigest, fingerprint, commandDomain, tenantId, false);
+        }
+
         public RevisionWriteCommand {
             if (commandId == null || commandId.isBlank()
                     || planDigest == null || planDigest.isBlank()

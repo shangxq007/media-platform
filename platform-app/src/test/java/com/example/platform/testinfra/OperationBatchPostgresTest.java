@@ -737,6 +737,48 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 count("timeline.timeline_revision"), inherited.id().value(), inherited.contentDigest());
     }
 
+    @Test
+    void confirmedTrimsAndHistoryReplayPreserveCompleteOrderedSemantics() {
+        TimelineRevision a = revisionWithEffects(null, List.of(blur("z-first", "4"), blur("a-second", "13")));
+        TimelineRevision b = saveService.findById(TENANT,
+                commit("hist-trim-1", a, trim(a, "clip-b", "1/1"), null).newRevisionId());
+        TimelineRevision c = saveService.findById(TENANT,
+                commit("hist-trim-2", b, trim(b, "clip-b", "1/1"), null).newRevisionId());
+        var reference = a.semanticContext().effectReference();
+        assertEquals(reference, b.semanticContext().effectReference());
+        assertEquals(reference, c.semanticContext().effectReference());
+        var entries = new JdbcEffectSemanticSnapshotStore(dsl)
+                .findById(PROJECT, TENANT, reference.snapshotId()).orElseThrow().entries();
+        assertEquals(List.of("z-first", "a-second"), entries.stream().map(e -> e.effectInstanceId()).toList());
+        assertEquals(List.of("4", "13"), entries.stream().map(e -> e.parameters().getFirst().value()).toList());
+        assertTrue(entries.stream().allMatch(e -> e.target().equals(new ClipEffectTarget("video-main", "clip-a"))));
+        var actor = mutation().actor();
+        TimelineRevision cursor = c;
+        long countBefore = count("timeline.timeline_revision");
+        int index = 0;
+        for (TimelineRevision source : List.of(b, a, b, c)) {
+            var request = restoreRequest("hist-step-" + ++index, cursor, source);
+            var plan = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+            var command = OperationBatchContext.apply(request.batchId(), actor, null, "test", plan.batchDigest());
+            var result = batch.commit(request, command);
+            assertEquals(BatchCommitResult.APPLIED, result.status());
+            var next = saveService.findById(TENANT, result.newRevisionId());
+            assertEquals(cursor.revisionId(), next.parentRevisionId());
+            assertEquals(source.semanticContext(), next.semanticContext());
+            assertEquals(next.revisionId(), head());
+            assertEquals(countBefore + index, count("timeline.timeline_revision"));
+            var reply = batch.commit(request, command);
+            assertTrue(reply.replayed());
+            assertEquals(next.revisionId(), reply.newRevisionId());
+            assertEquals(countBefore + index, count("timeline.timeline_revision"));
+            System.out.printf("N03_SEMANTICS step=%d source=%s revision=%s parent=%s digest=%s effects=%s rows=%d%n",
+                    index, source.revisionId(), next.revisionId(), cursor.revisionId(),
+                    next.semanticContext().revisionSemanticDigest(), reference.contentDigest(), countBefore + index);
+            cursor = next;
+        }
+        assertEquals(4, eventCount("timeline.restored"));
+    }
+
     private TimelineRevision revisionWithEffect(String parent, String radius) {
         return revisionWithEffects(parent, List.of(blur("blur", radius)));
     }

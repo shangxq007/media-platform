@@ -60,6 +60,9 @@ if branches:
                    'f5-replay-committed','f5-replay-blocked','f5-replay-resolved','f5-replay-navigation',
                    'f5-discard-committed','f5-discard-blocked','f5-discard-resolved','f5-discard-navigation',
                    'f5-deletion')
+    checkpoints += tuple('n03-' + name for name in ('a','b','c','undo1-lost','undo1','undo2','redo1-lost',
+        'redo1','redo2','reopened','new-base','new-undo','new-trim','browse','stale-undo-before','stale-undo-after',
+        'pre-redo-conflict','prep-redo','stale-redo-before','stale-redo-after','branch-return'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -122,6 +125,34 @@ if branches:
         previous = navigated
     assert facts['f5-deletion']['rows'] == previous['rows'] + 1
     assert facts['f5-deletion']['refs']['main'] != previous['refs']['main']
+    n03 = browser_result['http']['n03']
+    assert [step['source'] for step in n03['steps'][:4]] == [n03[k] for k in ('B','A','B','C')]
+    ids = [n03[k] for k in 'ABC'] + [step['accepted'] for step in n03['steps']]
+    assert len(ids) == len(set(ids)) and all(re.fullmatch('[A-Za-z0-9_-]+', value) for value in ids)
+    sql_ids = ','.join("'" + value + "'" for value in ids)
+    revisions = psql(f"""select json_object_agg(id,row_to_json(r)) from (
+        select rev.id,rev.parent_revision_id,rev.content_hash,s.payload_json::json as commitment
+        from timeline.timeline_revision rev join timeline.timeline_snapshot s
+          on s.semantic_revision_id=rev.id and s.tenant_id=rev.tenant_id and s.project_id=rev.project_id
+          and s.id like 'revctx_%'
+        where rev.tenant_id='tenant-fr-e2e' and rev.project_id='project-fr-e2e' and rev.id in ({sql_ids})
+        ) r;""")
+    for step in n03['steps']:
+        row = revisions[step['accepted']]
+        assert row['parent_revision_id'] == json.loads(step['trace'][0]['body'])['baseRevisionId']
+        assert row['content_hash'] == revisions[step['source']]['content_hash']
+        assert row['commitment'] == revisions[step['source']]['commitment']
+    sequence = ('a','b','c','undo1','undo2','redo1','redo2')
+    assert [facts['n03-' + label]['rows'] for label in sequence] == list(range(facts['n03-a']['rows'], facts['n03-a']['rows'] + 7))
+    assert facts['n03-undo1-lost'] == facts['n03-undo1']
+    assert facts['n03-redo1-lost'] == facts['n03-redo1']
+    assert facts['n03-reopened'] == facts['n03-redo2']
+    assert facts['n03-browse'] == facts['n03-new-trim']
+    for label in ('stale-undo','stale-redo'):
+        assert facts['n03-' + label + '-before'] == facts['n03-' + label + '-after']
+    assert facts['n03-branch-return'] == facts['n03-stale-redo-after']
+    (out / 'n03-postgres.json').write_text(json.dumps(dict(revisions=revisions,
+        checkpoints={k:v for k,v in facts.items() if k.startswith('n03-')}), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

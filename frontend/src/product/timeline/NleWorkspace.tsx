@@ -26,6 +26,7 @@ import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
 import { RestoreRevisionControl } from './RestoreRevisionControl'
+import { useTrimHistory } from './useTrimHistory'
 import { CreateEditingBranch } from './CreateEditingBranch'
 import { useTranslation } from '../../localization'
 import {
@@ -228,7 +229,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -295,9 +296,10 @@ export function NleWorkspace({
     mounted.current && requestGeneration.current[kind] === generation
   )
 
-  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' = 'ORDINARY') => {
+  const loadHead = async (reason: 'NAVIGATION' | 'ORDINARY' | 'RESTORE_READBACK' | 'CLIP_READBACK' | 'TRIM_HISTORY_READBACK' = 'ORDINARY') => {
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
+      || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
       || state.phase.kind === 'PendingApply'
       || (state.phase.kind === 'AppliedRevision' && state.phase.readback !== 'VERIFIED')
@@ -552,6 +554,10 @@ export function NleWorkspace({
   const selectedRevision = editingHead ? state.server.selected?.revision.id : undefined
   const historyRevision = selectedRevision && selectedRevision !== editingHead?.revisionId ? selectedRevision : undefined
   const viewedRevision = historyRevision ?? editingHead?.revisionId
+  const trimHistoryAccess = commandAccess('trim-history')
+  const trimHistory = useTrimHistory(JSON.stringify([project.tenantId, project.projectId, editingBranch]), editingHead,
+    project.tenantId, trimHistoryAccess, loading || !!historyRevision || clipWriteLocked || trimHistoryAccess.blocked,
+    () => loadHead('TRIM_HISTORY_READBACK'))
   return (
     <>
       <PageHeading eyebrow="Creative · NLE" title="Timeline editor" description="One canonical Timeline core with explicit server HEAD, read-only revision queries, and preview-before-apply operations." />
@@ -603,12 +609,21 @@ export function NleWorkspace({
           <TimelineMediaPreview key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
+          {defaultBranch && !historyRevision && <section aria-label="Confirmed trim history">
+            {(['Undo', 'Redo'] as const).map(direction => <Button key={direction}
+              disabled={loading || revisionSelectionLocked || selectionPending || trimHistory.busy || !trimHistory.can(direction)}
+              onClick={() => void trimHistory.execute(direction)}>{direction} trim</Button>)}
+            {trimHistory.retry && <Button disabled={trimHistory.busy}
+              onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} trim</Button>}
+            {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
+          </section>}
           <ClipEditor key={JSON.stringify([project.projectId, historyRevision])}
             head={historyRevision ? null : editingHead} historicalRevisionId={historyRevision}
             editingBranch={editingBranch} trimAccess={commandAccess('trim')} onDraft={setClipDraft} onWriteLock={setClipWriteLocked} focusClipId={focusClipId} playhead={previewTime}
             selectedTrackId={state.presentation.selectedTrackId}
             onSelectTrack={trackId => dispatch({ type: 'TRACK_SELECTED', trackId })}
             onRevisionChanged={async () => { await loadHead('CLIP_READBACK') }}
+            onTrimAccepted={defaultBranch ? trimHistory.recordTrim : undefined}
             onTrimReadback={() => loadHead('CLIP_READBACK')} />
         </Panel>
         {!defaultBranch && !historyRevision && <p>Source insertion and render controls are available on main.</p>}

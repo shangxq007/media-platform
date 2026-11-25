@@ -409,8 +409,139 @@ try {
   assert.equal(deletion.rows, before.rows + 1)
   assert.equal(deletion.refs.main, deleteReceipt.newRevisionId)
   result.http.defaultTrimOwnership = { ...f5, deletion: { before, after: deletion, status: 201, revision: deleteReceipt.newRevisionId } }
-  result.status = 'PASS'
   save('Default-branch trim retry and discard block deletion, release navigation, and permit a later delete')
+
+  // Seed a fresh editor with the original two-colour fixture through the canonical operation.
+  const removedHead = await branch()
+  const reset = { batchId: 'n03-seed', baseRevisionId: removedHead.headRevisionId,
+    baseContentHash: removedHead.contentHash, operations: [{ definitionId: 'timeline.revision.restore', version: '1.0',
+      parameters: { sourceRevisionId: a } }] }
+  const seed = await apply(reset, (await preview(reset)).batchDigest)
+  await page.reload()
+  await waitView('main', seed.newRevisionId)
+  const n03 = { A: seed.newRevisionId, steps: [], conflicts: [] }
+  const controls = page.getByRole('region', { name: 'Confirmed trim history' })
+  const undo = controls.getByRole('button', { name: 'Undo trim', exact: true })
+  const redo = controls.getByRole('button', { name: 'Redo trim', exact: true })
+  const reloadHead = page.getByRole('button', { name: 'Reload HEAD', exact: true })
+  async function uiTrim(label, pixels = 20) {
+    const response = page.waitForResponse(r => r.url().endsWith(batch + '/apply') && r.request().method() === 'POST')
+    await drawTrim(pixels)
+    await page.getByRole('button', { name: 'Apply trim', exact: true }).click()
+    const accepted = await response
+    assert.equal(accepted.status(), 201)
+    const id = (await accepted.json()).newRevisionId
+    await waitView('main', id)
+    await page.getByText(`Trim applied at revision ${id}.`, { exact: true }).waitFor()
+    return { id, state: await checkpoint('n03-' + label) }
+  }
+  async function navigateHistory(direction, label, source, lost = false) {
+    const trace = []
+    await page.route('**' + batch + '/apply', async route => {
+      const req = route.request()
+      const res = await route.fetch()
+      trace.push({ body: req.postData(), ifMatch: req.headers()['if-match'], status: res.status(), receipt: await res.json() })
+      if (lost && trace.length === 1) await route.abort('failed')
+      else await route.fulfill({ response: res })
+    })
+    try {
+      await (direction === 'Undo' ? undo : redo).click()
+      if (lost) {
+        const retry = controls.getByRole('button', { name: 'Retry ' + direction.toLowerCase() + ' trim' })
+        await retry.waitFor()
+        assert.equal(await deleteClip.isDisabled(), true)
+        assert.equal(await page.getByRole('combobox', { name: 'Editing branch' }).isDisabled(), true)
+        await deleteClip.evaluate(button => button.click())
+        const committed = await checkpoint('n03-' + label + '-lost')
+        assert.equal(trace.length, 1)
+        assert.equal(committed.refs.main, trace[0].receipt.newRevisionId)
+        await retry.click()
+      }
+      await controls.getByText(new RegExp('^' + direction + ' applied at revision ')).waitFor()
+      const accepted = trace[0].receipt.newRevisionId
+      await waitView('main', accepted)
+      assert.deepEqual(trace.map(x => x.status), lost ? [201, 200] : [201])
+      assert.match(trace[0].ifMatch, /^"[0-9a-f]{64}"$/)
+      assert.equal(JSON.parse(trace[0].body).operations[0].parameters.sourceRevisionId, source)
+      if (lost) {
+        assert.equal(trace[0].body, trace[1].body)
+        assert.equal(trace[0].ifMatch, trace[1].ifMatch)
+        assert.equal(trace[1].receipt.newRevisionId, accepted)
+        assert.equal(trace[1].receipt.replayed, true)
+        assert.equal(await deleteClip.isEnabled(), true)
+        assert.equal(await page.getByRole('combobox', { name: 'Editing branch' }).isEnabled(), true)
+      }
+      const state = await checkpoint('n03-' + label)
+      n03.steps.push({ label, accepted, source, trace, state })
+      return accepted
+    } finally {
+      await page.unroute('**' + batch + '/apply')
+    }
+  }
+  const nA = await checkpoint('n03-a')
+  await picture('N03-A', 0, { '0.15': 'red', '0.4': 'red' })
+  n03.B = (await uiTrim('b')).id
+  await picture('N03-B', 20, { '0.15': 'black', '0.4': 'red' })
+  n03.C = (await uiTrim('c')).id
+  await picture('N03-C', 40, { '0.15': 'black', '0.4': 'black', '0.6': 'red' })
+  await navigateHistory('Undo', 'undo1', n03.B, true)
+  await picture('N03-Undo1', 20, { '0.4': 'red' })
+  await navigateHistory('Undo', 'undo2', n03.A)
+  await picture('N03-Undo2', 0, { '0.15': 'red' })
+  await navigateHistory('Redo', 'redo1', n03.B, true)
+  await picture('N03-Redo1', 20, { '0.15': 'black', '0.4': 'red' })
+  const redone = await navigateHistory('Redo', 'redo2', n03.C)
+  await page.reload()
+  await waitView('main', redone)
+  await picture('N03-Reopened', 40, { '0.4': 'black', '0.6': 'red' })
+  await checkpoint('n03-reopened')
+  const first = await uiTrim('new-base', 10)
+  await navigateHistory('Undo', 'new-undo', redone)
+  assert.equal(await redo.isEnabled(), true)
+  await uiTrim('new-trim', 20)
+  assert.equal(await redo.isDisabled(), true)
+  await page.locator('.ff-revision-list button').filter({ hasText: first.id }).click()
+  await waitView('main', first.id)
+  assert.equal(await controls.count(), 0)
+  const browsed = await checkpoint('n03-browse')
+  await page.getByRole('button', { name: 'Return to editing head' }).click()
+  await waitView('main', browsed.refs.main)
+
+  async function staleHistory(direction, label) {
+    const current = await branch()
+    const competitor = trim('n03-competitor-' + label, 'main', current.headRevisionId, current.contentHash, '1/8')
+    const plan = await api(batch + '/preview', 200, { body: competitor, client: second.request })
+    const accepted = await api(batch + '/apply', 201, { body: competitor, digest: plan.batchDigest, client: second.request })
+    const state = await checkpoint('n03-' + label + '-before')
+    const refused = page.waitForResponse(response => response.url().includes(batch + '/') && response.status() === 409)
+    await (direction === 'Undo' ? undo : redo).click()
+    const failure = await refused
+    const body = failure.request().postDataJSON()
+    const payload = await failure.json()
+    assert.equal(body.baseRevisionId, current.headRevisionId)
+    await controls.getByText(new RegExp('^' + direction + ' conflict')).waitFor()
+    assert.equal(await controls.getByRole('button', { name: /Retry/ }).count(), 0)
+    const after = await checkpoint('n03-' + label + '-after')
+    assert.deepEqual(after, state)
+    await reloadHead.click()
+    await waitView('main', accepted.newRevisionId)
+    n03.conflicts.push({ direction, status: 409, code: payload.errorCode, body, state, after })
+    return accepted.newRevisionId
+  }
+
+  const headAfterConflict = await staleHistory('Undo', 'stale-undo')
+  await uiTrim('pre-redo-conflict', 10)
+  await navigateHistory('Undo', 'prep-redo', headAfterConflict)
+  await staleHistory('Redo', 'stale-redo')
+  await select('alternate')
+  await waitView('alternate', independent.refs.alternate)
+  assert.equal(await controls.count(), 0)
+  await select('main')
+  assert.equal(await undo.isDisabled(), true)
+  await checkpoint('n03-branch-return')
+  result.http.n03 = { ...n03, initial: nA, reopenedRevision: redone }
+  result.status = 'PASS'
+  save('N03 default-branch undo, redo, replay, conflicts and isolated navigation')
 } finally {
   await browser.close()
 }

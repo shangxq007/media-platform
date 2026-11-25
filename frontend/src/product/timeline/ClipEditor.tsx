@@ -22,6 +22,7 @@ interface Props {
   onDraft?: (hasDraft: boolean) => void
   onWriteLock?: (locked: boolean) => void
   onRevisionChanged: () => Promise<void>
+  onTrimAccepted?: (base: string, hash: string, accepted: { revisionId: string; contentHash: string }) => void
   onTrimReadback?: () => Promise<CanonicalHeadReference | undefined>
   focusClipId?: string | null
   playhead?: number
@@ -49,7 +50,7 @@ function geometryOf(clips: readonly ProjectedClip[]): EditorClip[] {
   }))
 }
 
-export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTrimReadback, focusClipId = null, playhead = 0,
+export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTrimReadback, onTrimAccepted, focusClipId = null, playhead = 0,
   selectedTrackId, onSelectTrack, editingBranch = 'main', onDraft, onWriteLock, trimAccess }: Props) {
   const project = useProjectContext()
   const trimOnly = editingBranch !== "main"
@@ -324,6 +325,9 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
           setActionFailed(true)
           setMessage(`Trim accepted at revision ${accepted.revisionId}. The current content hash could not be verified.`)
         } else {
+          if (onTrimReadback && !trimOnly) {
+            onTrimAccepted?.(attempt.command.baseRevisionId, attempt.command.baseContentHash, current)
+          }
           setMessage(`Trim applied at revision ${accepted.revisionId}.`)
         }
       } catch {

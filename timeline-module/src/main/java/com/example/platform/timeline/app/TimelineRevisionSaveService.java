@@ -399,9 +399,10 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                     return replay;
                 }
             }
-            // Named branch edits carry the immutable sidecar of the exact CAS parent.
+            // Named branch edits and confirmed trims carry the immutable sidecar of the exact CAS parent.
             // Validate before writing a child. Replays return from the durable claim above.
-            var inheritedEffects = commandTargetRef != null && !RevisionRef.MAIN_REF.equals(commandTargetRef.refId())
+            var inheritedEffects = commandTargetRef != null
+                    && (!RevisionRef.MAIN_REF.equals(commandTargetRef.refId()) || command.preserveParentEffects())
                     ? branchEffects(tx.dsl(), commandTargetRef, parentRevisionId, document) : null;
             int nextRevisionNumber = Math.toIntExact(
                     revisionNumberAllocator.allocate(tx.dsl(), productId));
