@@ -330,8 +330,8 @@ if branches:
         start,saved = assert_commit6(case,label+'-before',label+'-after')
         assert set(start) == {'clip-red','clip-blue','clip-gray','clip-later'}
         assert set(saved) == {'clip-red','clip-gray','clip-later'}
-        for clip_id, placement in zip(('clip-red','clip-blue','clip-gray','clip-later'),((0,2),(2,5),(5,7),(8,9))):
-            assert tuple(Fraction(start[clip_id][k]) for k in ('startTime','endTime')) == placement
+        for clip_id, expected in zip(('clip-red','clip-blue','clip-gray','clip-later'),((0,2),(2,5),(5,7),(8,9))):
+            assert tuple(Fraction(start[clip_id][k]) for k in ('startTime','endTime')) == expected
         assert all(clip == start[clip_id] for clip_id,clip in saved.items())
         assert case['picturesAfter']['3'] == [0,0,0] and 3 <= Fraction(case['playingGap']) < 4
         before_documents.append(start)
