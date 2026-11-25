@@ -635,6 +635,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         var actor = mutation().actor();
         var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
         int created = eventCount("timeline.revision.created");
+        long snapshots = count("timeline.timeline_snapshot");
         org.mockito.Mockito.doAnswer(call -> {
             assertNotNull(call.callRealMethod());
             DSLContext transaction = call.getArgument(1);
@@ -644,11 +645,12 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         }).when(outbox).appendInTransaction(org.mockito.ArgumentMatchers.argThat(
                 item -> item.type() == TimelineOutboxEvents.RESTORED), org.mockito.ArgumentMatchers.any());
 
-        assertThrows(IllegalStateException.class, () -> batch.commit(request, OperationBatchContext.apply(
+        var failure = assertThrows(IllegalStateException.class, () -> batch.commit(request, OperationBatchContext.apply(
                 request.batchId(), actor, null, "test", preview.batchDigest())));
+        assertEquals("injected failure after restore outbox insert", failure.getMessage());
         assertEquals(b.revisionId(), head());
         assertEquals(2, count("timeline.timeline_revision"));
-        assertEquals(2, count("timeline.timeline_snapshot"));
+        assertEquals(snapshots, count("timeline.timeline_snapshot"));
         assertEquals(0, count("timeline.apply_command"));
         assertEquals(0, eventCount("timeline.restored"));
         assertEquals(created, eventCount("timeline.revision.created"));
