@@ -82,6 +82,14 @@ insert into entitlement.entitlement_grant(id,tenant_id,subject_type,subject_id,b
 insert into identity.role_permission(id,role_id,permission_id,created_at) select 'f8-'||id,'role-fr-e2e',id,now() from identity.permission where permission_key in ('READ','WRITE','render.submit','artifact.read','delivery.read','delivery.manage');
 insert into identity.user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values ('assignment-fr-e2e','tenant-fr-e2e','workspace-fr-e2e','actor-fr-e2e','role-fr-e2e',now());
 commit;'''
+# Built-in permission initialization may finish after the API starts listening.
+permissions = ('READ', 'WRITE', 'render.submit', 'artifact.read', 'delivery.read', 'delivery.manage')
+permission_keys = ','.join("'" + key + "'" for key in permissions)
+deadline = time.monotonic() + 90
+while int(psql('select count(*) from identity.permission where permission_key in (' + permission_keys + ');')) != len(permissions):
+    if time.monotonic() >= deadline:
+        raise RuntimeError('Built-in workspace permissions did not finish initialization')
+    time.sleep(.2)
 (app / 'batch-seed.sql').write_text(seed)
 psql(seed)
 psql("""
