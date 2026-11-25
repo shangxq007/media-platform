@@ -254,26 +254,26 @@ public final class MediaTaskActivity {
     }
 
     public MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared,String tenantId,
-            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution) {
-        return executeTask(prepared, tenantId, beforeFinalExecution, (id, execution, action) -> action.commit(), null);
+            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> bindFinalPublication) {
+        return executeTask(prepared, tenantId, bindFinalPublication, (id, execution, action) -> action.commit(), null);
     }
 
     public MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared, String tenantId,
-            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution,
+            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> bindFinalPublication,
             com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
             com.example.platform.sandbox.SandboxCancellation cancellation) {
-        return executeTask(prepared,tenantId,beforeFinalExecution,publication,cancellation,null);
+        return executeTask(prepared,tenantId,bindFinalPublication,publication,cancellation,null);
     }
     public MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared, String tenantId,
-            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution,
+            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> bindFinalPublication,
             com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
             com.example.platform.sandbox.SandboxCancellation cancellation,
             RuntimeClosedLoopOrchestrator.IncrementalInputs incremental) {
-        return executeTask(prepared, tenantId, beforeFinalExecution, publication, cancellation, incremental, Map.of());
+        return executeTask(prepared, tenantId, bindFinalPublication, publication, cancellation, incremental, Map.of());
     }
 
     MediaTaskWorkflowResult executeTask(PreparedTaskRef prepared, String tenantId,
-            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> beforeFinalExecution,
+            java.util.function.Consumer<com.example.platform.render.api.GraphRenderLifecycle.Output> bindFinalPublication,
             com.example.platform.workerfabric.reuse.RuntimePublicationTransaction publication,
             com.example.platform.sandbox.SandboxCancellation cancellation,
             RuntimeClosedLoopOrchestrator.IncrementalInputs incremental,
@@ -352,8 +352,8 @@ public final class MediaTaskActivity {
                         grant.attempt().id().value(),
                         grant.attempt().ownershipGeneration().value(),
                         publicationPlan.artifactCommitMetadata().artifactId().value());
-                beforeFinalExecution.accept(finalClaim);
             }
+            var outputClaim = finalTask != null && executableTask.id().equals(finalTask.id()) ? finalClaim : null;
             RuntimeClosedLoopResult executed;
             try {
                 executed = executePreparedGraph(
@@ -363,7 +363,11 @@ public final class MediaTaskActivity {
                         Map.of(executableTask.id(), publicationPlan.artifactCommitMetadata()),
                         orchestrator, (id, execution, action) -> {
                             physicallyFinished.set(true); // provider returned staged bytes; its process has finished
-                            return publication.commit(id, execution, action);
+                            return publication.commit(id, execution, () -> {
+                                var result = action.commit();
+                                if (outputClaim != null) bindFinalPublication.accept(outputClaim);
+                                return result;
+                            });
                         }, cancellation);
             } catch (IOException failure) {
                 throw new IllegalStateException("media task execution failed", failure);

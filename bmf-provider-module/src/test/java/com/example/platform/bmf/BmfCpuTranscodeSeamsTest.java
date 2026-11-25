@@ -158,6 +158,17 @@ class BmfCpuTranscodeSeamsTest {
             assertThat(resolver.resolve(command, List.of())).isInstanceOfSatisfying(SandboxResolution.Rejected.class,
                     rejection -> assertThat(rejection.failure().message()).contains("output raster"));
         }
+        for (String rate : List.of("12/1", "12/0", "12/1:flags=neighbor")) {
+            var invocation = ProcessInvocationSpec.of(python.toString(),
+                    List.of("-s", "-c", BmfCpuRuntimeAdapter.GRAPH_PROGRAM,
+                            BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID),
+                            "platform-provider-output.bin", "encode", "0", "0", "320x240", rate, "2"));
+            var command = new ExecutionCommand(TASK_ID, context.providerBindingPin(),
+                    context.platformExecutionAttemptId(), context.platformOwnershipGeneration(), 0, invocation);
+            assertThat(resolver.resolve(command, List.of())).isInstanceOfSatisfying(SandboxResolution.Rejected.class,
+                    rejection -> assertThat(rejection.failure().message()).contains(
+                            rate.equals("12/1") ? "input count" : "output timing"));
+        }
         var landscape = new RenderRaster(1440, 1080);
         assertThat(BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(landscape, 10, 0.25, 0)).isTrue();
         assertThat(BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(landscape, 10, 0.25, 45)).isFalse();

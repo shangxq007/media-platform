@@ -76,6 +76,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         String start;
         String duration;
         String rate = null;
+        String outputDuration = null;
         RenderRaster raster;
         if (multiInput) {
             int count;
@@ -108,7 +109,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 }
             }
         } else if (BmfCpuRuntimeAdapter.GRAPH_PROGRAM.equals(program)) {
-            if (arguments.size() != 9
+            if ((arguments.size() != 9 && arguments.size() != 11)
                     || !arguments.get(4).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
                     || !isKnownOperation(arguments.get(5))
                     || !isNonNegativeSeconds(arguments.get(6))
@@ -119,6 +120,16 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             operation = arguments.get(5);
             start = arguments.get(6);
             duration = arguments.get(7);
+            if (arguments.size() == 11) {
+                rate = arguments.get(9);
+                outputDuration = arguments.get(10);
+                if (!(operation.equals("encode") || operation.equals("encode-multitrack"))
+                        || !rate.matches("[1-9][0-9]*/[1-9][0-9]*")
+                        || !isNonNegativeSeconds(outputDuration)
+                        || new java.math.BigDecimal(outputDuration).signum() <= 0) {
+                    return rejected("BMF output timing requires a final encode, positive rate and duration");
+                }
+            }
             raster = parseRaster(arguments.get(8));
             if (raster == null) return rejected("BMF output raster is outside the bounded invocation contract");
         } else {
@@ -178,6 +189,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.add(start);
                 args.add(duration);
                 args.add(raster.width() + "x" + raster.height());
+                if (outputDuration != null) {
+                    args.add(rate);
+                    args.add(outputDuration);
+                }
             }
             var requirement = new SandboxExecutionRequirement(
                     ProcessRequirement.of(Set.of(python.toString()), python.toString(), args, timeout),
