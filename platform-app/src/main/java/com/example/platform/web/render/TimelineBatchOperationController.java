@@ -81,7 +81,7 @@ public class TimelineBatchOperationController {
         CanonicalActor actor = requireActor(tenantId, projectId);
         OperationBatchRequest batch = mapper.toBatchRequest(tenantId, projectId, decode(body));
         BatchCommitResult result = invocations.commit(batch,
-                new OperationBatchContext(batch.batchId(), actor, null, "timeline-batch-http", planDigest(confirmation)));
+                OperationBatchContext.apply(batch.batchId(), actor, null, "timeline-batch-http", planDigest(confirmation)));
         HttpStatus status = BatchCommitResult.APPLIED.equals(result.status()) && !result.replayed()
                 ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(result);

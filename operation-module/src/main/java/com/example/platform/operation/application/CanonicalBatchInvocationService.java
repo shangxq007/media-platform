@@ -67,7 +67,7 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
         requireProjectAccess(request, context.actor(), TIMELINE_READ);
         OperationBatchPlan<TimelineDocument> plan = planner.plan(request, domain);
 
-        if (context.expectedBatchDigest() != null && !plan.batchDigest().equals(context.expectedBatchDigest())) {
+        if (!plan.batchDigest().equals(context.expectedBatchDigest())) {
             throw new BatchException(BatchErrorCode.PLAN_CHANGED, null, "Confirmed plan differs from submitted batch");
         }
         var securityDecision = authorizationPort.decide(new AuthorizationRequest(
@@ -92,7 +92,7 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
                     "project batch write access denied");
         }
         OperationBatchContext authorized = OperationBatchContext.apply(
-                context.applyCommandId(), context.actor(), bound, context.correlationId());
+                context.applyCommandId(), context.actor(), bound, context.correlationId(), context.expectedBatchDigest());
         return domain.commit(request, plan, authorized);
     }
 

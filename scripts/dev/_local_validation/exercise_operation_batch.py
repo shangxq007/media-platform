@@ -20,7 +20,7 @@ sys.path.insert(0, str(W / 'scripts/testinfra'))
 from local_runtime import sandbox_prefix
 
 SCENARIO = 'operation-batch'
-WIDTH, HEIGHT, FRAME_RATE = 320, 240, 24
+WIDTH, HEIGHT, FRAME_RATE = 320, 180, 24
 EXPECTED_END_MILLIS = 2500
 app = Path((R / '07-runtime/current-apps.txt').read_text().strip())
 prefix = sandbox_prefix(app / 'binding.json')
@@ -162,7 +162,7 @@ operations=[add('clip-red',red,red_stream,'2','0','2'),
              'parameters':{'delta':'2/1','absolute':True}},
             {'definitionId':'timeline.trim','target':{'clipId':'clip-blue'},
              'parameters':{'delta':'1/2','edge':'END'}}]
-aspect={'format':'composition-aspect-rational-v1','numerator':4,'denominator':3}
+aspect={'format':'composition-aspect-rational-v1','numerator':16,'denominator':9}
 source={'artifactId':red['artifactId'],'contentDigest':red['contentDigest'],'streamId':red_stream}
 operations.append({'definitionId':'timeline.composition.aspect.set','version':'2.0',
                    'parameters':{'aspectRatio':aspect},'input':source})
@@ -219,7 +219,7 @@ assert [clip['clipId'] for clip in clips]==['clip-red','clip-blue'],clips
 by={clip['clipId']:clip for clip in clips}
 assert by['clip-red']['startTime'] in ('0','0/1') and by['clip-red']['endTime'] in ('2','2/1'),by['clip-red']
 assert by['clip-blue']['startTime'] in ('2','2/1') and by['clip-blue']['endTime'] in ('5/2','2.5'),by['clip-blue']
-extent={'startMillis':0,'endMillis':2500,'frameRateNumerator':24,'frameRateDenominator':1,'width':320,'height':240}
+extent={'startMillis':0,'endMillis':2500,'frameRateNumerator':24,'frameRateDenominator':1,'width':320,'height':180}
 def barrier(stage):
     (root/(stage+'.ready')).touch()
     deadline=time.monotonic()+90

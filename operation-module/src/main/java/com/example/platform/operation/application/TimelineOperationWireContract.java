@@ -12,10 +12,11 @@ public final class TimelineOperationWireContract {
 
     public record Description(String id, String version, String lifecycle, String target,
             int minCardinality, int maxCardinality, String applicability, List<String> invocationModes,
-            Map<String, Field> parameters, List<String> inputKinds, String atomicity, String result, String purpose, Map<String, String> permissions,
+            Map<String, Field> parameters, List<String> inputKinds, String atomicity, ResultContract result, String purpose, Map<String, String> permissions,
             String versionPolicy, List<String> validation) {}
 
     public record Field(String type, boolean required) {}
+    public record ResultContract(List<String> outcomes, String revisionIdentity, String contentIdentity) {}
 
     public static Description describe(OperationDefinition definition) {
         String id = definition.definitionId().value();
@@ -90,7 +91,8 @@ public final class TimelineOperationWireContract {
         return new Description(id, definition.version().toString(), definition.lifecycle().name(), target,
                 definition.minCardinality(), definition.maxCardinality(), batch ? "BATCH" : "DEDICATED_ENTRY",
                 batch ? List.of("PREVIEW", "APPLY") : List.of(), Map.copyOf(fields),
-                aspect ? List.of("source-display-aspect-v1") : List.of(), "ONE_TIMELINE_REVISION", batch ? "BatchCommitResult" : "OperationInvocationResult",
+                aspect ? List.of("source-display-aspect-v1") : List.of(), "ONE_TIMELINE_REVISION", batch ? new ResultContract(List.of("APPLIED", "NO_OP"), "newRevisionId", "newContentHash")
+                        : new ResultContract(List.of("APPLIED", "NO_OP"), "newRevisionId", "resultContentHash|unchangedContentHash"),
                 id.replace('.', ' ').replace('-', ' '), Map.of("inspect", "PROJECT.READ", "apply", "PROJECT.WRITE"),
                 "An omitted version selects the definition version pinned by batch protocol v2.",
                 List.of("exact scoped revision and content hash", "typed selector and parameter validation",
@@ -103,6 +105,10 @@ public final class TimelineOperationWireContract {
 
     static void validate(OperationDefinition definition, TimelineOperationStep step, Map<String, Object> values) {
         Description wire = describe(definition);
+        if (definition.equals(OperationDefinition.V3.SET_VIDEO_TRANSFORM)
+                && !com.example.platform.timeline.semantics.effect.VideoTransform.FORMAT.equals(values.get("format"))) {
+            throw new IllegalArgumentException("Unsupported composition transform format");
+        }
         if (!wire.parameters().keySet().containsAll(values.keySet())) {
             throw new IllegalArgumentException("Unknown semantic parameter");
         }

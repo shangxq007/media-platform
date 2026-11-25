@@ -228,7 +228,8 @@ def production_sources(root: Path, snapshot: Snapshot | None = None) -> dict[str
                 or "/generated/" in qualified):
             continue
         relevant_render_source = (
-            relative.startswith("render-module/src/main/java/com/example/platform/render/app/")
+            relative.startswith(("render-module/src/main/java/com/example/platform/render/app/",
+                             "operation-module/src/main/java/com/example/platform/operation/application/"))
             and re.search(
                 r"\b(?:OperationPlan|TimelineMediaClipOperation|RevisionWriteCommand|"
                 r"saveRevisionForCommand|recordNoOpCommand)\b", source))
@@ -267,7 +268,8 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
 
     render_h7 = {
         path: source for path, source in handwritten.items()
-        if path.startswith("render-module/src/main/java/com/example/platform/render/app/")
+        if path.startswith(("render-module/src/main/java/com/example/platform/render/app/",
+                             "operation-module/src/main/java/com/example/platform/operation/application/"))
         and re.search(
             r"\b(?:OperationPlan|TimelineMediaClipOperation|RevisionWriteCommand|"
             r"saveRevisionForCommand|recordNoOpCommand)\b", source)

@@ -606,8 +606,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         OperationBatchRequest request = new OperationBatchRequest(
                 batchId, target, base.revisionId(), operations, message);
         CanonicalActor actor = CanonicalActor.user(ACTOR, TENANT, Set.of("EDITOR"), "test");
-        return batch.commit(request,
-                OperationBatchContext.apply(batchId, actor, null, "test"));
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        return batch.commit(request, OperationBatchContext.apply(batchId, actor, null, "test", preview.batchDigest()));
     }
 
     private TimelineRevision saveRevision(TimelineDocument document) {

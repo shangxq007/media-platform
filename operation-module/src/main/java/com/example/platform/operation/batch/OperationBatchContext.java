@@ -17,12 +17,6 @@ public record OperationBatchContext(
         AuthorizationDecision authorization,
         String correlationId,
         String expectedBatchDigest) {
-    public OperationBatchContext(String applyCommandId, CanonicalActor actor,
-            AuthorizationDecision authorization, String correlationId) {
-        this(applyCommandId, actor, authorization, correlationId, null);
-    }
-
-
     public OperationBatchContext {
         if (actor == null) {
             throw new IllegalArgumentException("actor required");
@@ -33,13 +27,13 @@ public record OperationBatchContext(
     }
 
     public static OperationBatchContext preview(CanonicalActor actor, String correlationId) {
-        return new OperationBatchContext(null, actor, null, correlationId);
+        return new OperationBatchContext(null, actor, null, correlationId, null);
     }
 
     public static OperationBatchContext apply(String applyCommandId, CanonicalActor actor,
                                               AuthorizationDecision authorization,
-                                              String correlationId) {
-        return new OperationBatchContext(applyCommandId, actor, authorization, correlationId);
+                                              String correlationId, String expectedBatchDigest) {
+        return new OperationBatchContext(applyCommandId, actor, authorization, correlationId, expectedBatchDigest);
     }
 
     public String principalRef() {
