@@ -635,7 +635,7 @@ export function NleWorkspace({
           {defaultBranch && <ClipClipboard key={JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
             playhead={previewTime} exactEnd={parseRational(appendStart)} visible={!historyRevision}
-            disabled={loading || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             onRippleAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'ripple insert')}
             access={commandAccess('paste')} readback={() => loadHead('PASTE_READBACK')} />}
           {defaultBranch && !historyRevision && <Button type="button" variant={snapEnabled ? "primary" : "secondary"} aria-pressed={snapEnabled}

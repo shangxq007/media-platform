@@ -120,6 +120,9 @@ public final class TimelineOperationWireContract {
         }
         wire.parameters().forEach((name, field) -> {
             if (field.required() && !values.containsKey(name)) throw new IllegalArgumentException(name + " required");
+            if ("single-clip-id-array".equals(field.type()) && (!(values.get(name) instanceof List<?> ids) || ids.size() != 1)) {
+                throw new IllegalArgumentException("Ripple Insert requires exactly one clip in " + name);
+            }
             if (values.containsKey(name) && values.get(name) == null) throw new IllegalArgumentException(name + " cannot be null");
         });
         var t = step.target();

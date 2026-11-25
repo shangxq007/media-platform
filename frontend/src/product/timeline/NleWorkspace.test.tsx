@@ -350,6 +350,38 @@ describe('default branch clipboard', () => {
 describe('N08 ripple insertion', () => {
   afterEach(() => vi.restoreAllMocks())
 
+  it('requires a copy from verified HEAD geometry after a refresh', async () => {
+    const { readRef } = renderBranchWorkspace('main', '3/1', true)
+    const snapshot = vi.mocked(FormalRenderAPI.snapshot)
+    const get = snapshot.getMockImplementation()!
+    const next = { ...head, revisionId: revisionId('new-geometry'), contentHash: contentHash(TIMELINE_C) }
+    const held = deferred<Awaited<ReturnType<typeof get>>>()
+    snapshot.mockImplementation((project, revision) => revision === next.revisionId ? held.promise : get(project, revision))
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Copy clip clip-0' }))
+    const copy = screen.getByRole('button', { name: 'Copy selected clips' })
+    fireEvent.click(copy)
+    readRef.mockResolvedValue({ ok: true, value: { head: next, history: [olderRevision] } })
+    fireEvent.click(screen.getByRole('button', { name: /^Reload HEAD$/ }))
+    await waitFor(() => expect(snapshot.mock.calls.some(([, id]) => id === next.revisionId)).toBe(true))
+    const prepare = screen.getByRole<HTMLButtonElement>('button', { name: 'Preview ripple insert' })
+    expect(prepare.disabled).toBe(true)
+    fireEvent.click(copy)
+    fireEvent.click(prepare)
+    expect(preview).not.toHaveBeenCalled()
+    const data = await get('project-1', next.revisionId)
+    const document = JSON.parse(data.canonicalTimelineJson)
+    document.tracks[0].clips[0].endTime = document.tracks[0].clips[0].trimEnd = '2/1'
+    await act(async () => held.resolve({ ...data, canonicalTimelineJson: JSON.stringify(document) }))
+    expect(prepare.disabled).toBe(true)
+    fireEvent.click(copy)
+    fireEvent.click(prepare)
+    await screen.findByText(/Shift right by 2\/1s/)
+    expect(preview.mock.lastCall?.[2].baseRevisionId).toBe(next.revisionId)
+    expect(write).not.toHaveBeenCalled()
+  })
+
   it('discards a delayed preview after the insertion time changes and returns to its original value', async () => {
     renderBranchWorkspace('main', '61/30', true)
     const result = { batchDigest: HASH_C, steps: [{ changes: [{ identity: 'replace(clip-1,301/30)', primary: true }] }] }

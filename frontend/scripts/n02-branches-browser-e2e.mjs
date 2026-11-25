@@ -1441,6 +1441,23 @@ try {
   await clipboard.getByRole('button', { name: 'Cancel ripple insert' }).click()
   const planned8 = await prepareInsert('5')
   const denied8 = await apply(planned8.body, planned8.payload.batchDigest, 403, reader)
+  const alternate8 = await branch('alternate')
+  const unsupportedRef8 = { ...planned8.body, batchId: 'insert-alternate', refId: 'alternate',
+    baseRevisionId: alternate8.headRevisionId, baseContentHash: alternate8.contentHash }
+  assert.equal((await preview(unsupportedRef8, 409)).errorCode, 'REF_NOT_SUPPORTED')
+  await apply(unsupportedRef8, planned8.payload.batchDigest, 409)
+  const invalidRequests8 = []
+  for (const [label, overrides, status] of [
+    ['cross-track', { trackId: 'other-track' }, 422],
+    ['multiple', { sourceClipIds: ['clip-red', 'clip-gray'], newClipIds: ['copy-red', 'copy-gray'] }, 400],
+  ]) {
+    const step = planned8.body.operations[0]
+    const body = { ...planned8.body, batchId: 'insert-' + label,
+      operations: [{ ...step, parameters: { ...step.parameters, ...overrides } }] }
+    const rejected = await preview(body, status)
+    await apply(body, planned8.payload.batchDigest, status)
+    invalidRequests8.push({ label, status, detail: rejected.detail })
+  }
   assert.deepEqual(await c8('readonly'), before8)
   const applied8 = []
   const applyRoute8 = '**' + batch + '/apply'
@@ -1464,6 +1481,7 @@ try {
     await retryInsert.click()
     await clipboard.getByText('Ripple Insert accepted at revision ' + accepted8 + '. Reload HEAD to refresh the editor.').waitFor()
     assert.equal(await retryInsert.count(), 0)
+    assert.equal(await previewInsert.isDisabled(), true)
     await page.getByRole('button', { name: 'Reload HEAD', exact: true }).click()
     await waitView('main', accepted8)
     assert.deepEqual(await c8('recovered'), written)
@@ -1521,7 +1539,7 @@ try {
   assert.deepEqual(await c8('rejected'), relationBefore8)
   result.http.n08 = { base: start8, accepted: accepted8, newId: planned8.body.operations[0].parameters.newClipIds[0],
     plan: planned8, attempts: applied8, pictures: pictures8, edgeCases: edgeCases8,
-    inside: invalid8.payload.detail, relationship: relation8.payload.detail, reader: denied8.errorCode, stale: stale8.payload.errorCode }
+    unsupported: invalidRequests8, alternate: 'REF_NOT_SUPPORTED', inside: invalid8.payload.detail, relationship: relation8.payload.detail, reader: denied8.errorCode, stale: stale8.payload.errorCode }
   result.status = 'PASS'
   save('N08 single-track ripple insert, read-only recovery, exact replay, whole edit Undo/Redo and reopened playback')
 } finally {
