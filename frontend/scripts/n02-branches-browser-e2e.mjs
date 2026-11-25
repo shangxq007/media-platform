@@ -1344,6 +1344,7 @@ try {
   assert.deepEqual(await c7('stale-after'), competitorState7)
 
   const linked7 = await revise6('ripple-relationship', [{ definitionId: 'timeline.sync.create',
+    target: { syncIdentityKey: 'SYNC(clip-later,clip-red)' },
     parameters: { endpointA: 'clip-red', localAnchorA: '1', endpointB: 'clip-later', localAnchorB: '1/2' } }])
   await view6(linked7.newRevisionId)
   const linkedBefore7 = await c7('linked-before')
