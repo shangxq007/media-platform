@@ -154,8 +154,13 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             }
         }
         if (rippleDelete(operation) || instance.parameters() instanceof OperationParameters.OpacityParameters
+                || instance.parameters() instanceof OperationParameters.PositionParameters
                 || instance.parameters() instanceof OperationParameters.SlipParameters) {
-            String edit = rippleDelete(operation) ? "Ripple Delete" : instance.parameters() instanceof OperationParameters.OpacityParameters ? "Opacity" : "Slip";
+            String edit = switch (instance.parameters()) {
+                case OperationParameters.PositionParameters ignored -> "Position";
+                case OperationParameters.OpacityParameters ignored -> "Opacity";
+                default -> rippleDelete(operation) ? "Ripple Delete" : "Slip";
+            };
             if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
                 throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
                         edit + " is only available on the default editing branch");

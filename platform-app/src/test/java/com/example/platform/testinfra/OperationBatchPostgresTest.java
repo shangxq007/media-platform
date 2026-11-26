@@ -1048,6 +1048,24 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
     }
 
+    @Test
+    void pairedPositionKeysRollBackAtomicallyAfterOutboxFailure() {
+        var base = rangeFixture(false);
+        var def = OperationDefinition.V3.SET_POSITION_KEYS;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))), SelectionSpec.ExpansionPolicy.EXACT);
+        var keys = com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples("6/1;100000;-80000|7/1;250000;50000");
+        var op = new OperationRequest(def.definitionId(), def.version(), target, new OperationParameters.PositionParameters(keys),
+                base.revisionId(), hash(base), null);
+        var batch = new OperationBatchRequest("position-one", new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(op), null);
+        var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
+        var pins = jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id");
+        assertRippleRollsBack(base, batch);
+        assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
+        assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
+    }
+
     private OperationBatchRequest opacityRequest(TimelineRevision base) {
         var def = OperationDefinition.V3.SET_OPACITY_KEYS;
         var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,

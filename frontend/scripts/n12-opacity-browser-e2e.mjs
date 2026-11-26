@@ -8,6 +8,7 @@ import { chromium } from 'playwright'
 
 const [appRoot, outputRoot, mode] = process.argv.slice(2)
 const dissolve = mode === '--dissolve'
+const position = mode === '--position'
 assert(appRoot && outputRoot)
 const base = 'http://127.0.0.1:18080'
 const tenant = 'tenant-fr-e2e'
@@ -31,7 +32,7 @@ await context.addInitScript(({ access, profile }) => {
 
 async function run() {
   const created = await page.request.post(`${base}/api/identity/tenants/${tenant}/projects`, {
-    headers, data: { name: dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
+    headers, data: { name: position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
   })
   assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
@@ -70,14 +71,14 @@ async function run() {
     return response.json()
   }
   const sources = {}
-  const addClip = async (file, trackId, start, end, sourceEnd = null) => {
+  const addClip = async (file, trackId, start, end, sourceEnd = null, sourceStart = '0') => {
     const source = sources[file]
     const stream = source.streams.find(item => item.kind === (file.endsWith('.wav') ? 'AUDIO' : 'VIDEO'))
     const clipId = file.split('.')[0]
     const command = { baseRevisionId: current.revisionId, baseContentHash: current.contentHash,
       trackId, clipId, mediaAssetId: source.mediaAssetId, mediaStreamId: stream.streamId,
       artifactId: source.artifactId, contentDigest: source.contentDigest,
-      sourceStart: '0', sourceEnd: sourceEnd ?? stream.duration, timelineStart: start, timelineEnd: end,
+      sourceStart, sourceEnd: sourceEnd ?? stream.duration, timelineStart: start, timelineEnd: end,
       rateNumerator: 1, rateDenominator: 1, direction: 'FORWARD' }
     const previewResponse = await page.request.post(base + scope + '/timeline-operations/add-media-clip/preview', { headers, data: command })
     assert.equal(previewResponse.status(), 200, await previewResponse.text())
@@ -108,11 +109,12 @@ async function run() {
   const endpoint = base + scope + '/timeline-operations/batch/v2'
   const post = async (method, body, digest) => page.request.post(endpoint+'/'+method,{
     headers: digest ? { ...headers, 'If-Match': '"'+digest+'"' } : headers, data: body })
-  if (dissolve) {
-    const { runDissolve } = await import('./n13-cross-dissolve-browser.mjs')
+  if (dissolve || position) {
+    const runEdit = position ? (await import('./n14-position-browser.mjs')).runPosition
+      : (await import('./n13-cross-dissolve-browser.mjs')).runDissolve
     const context = { page, base, scope, project, headers, outputRoot, url, endpoint, post, cp, waitRevision, addTrack, addClip,
       head: () => current, upload: async file => { sources[file] = await upload(file) } }
-    await runDissolve(context)
+    await runEdit(context)
     return
   }
   await addTrack('VIDEO','top','n12-top')

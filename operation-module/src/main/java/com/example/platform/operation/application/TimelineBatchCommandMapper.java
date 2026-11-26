@@ -201,6 +201,7 @@ public final class TimelineBatchCommandMapper {
                     time(parameters, "delta"));
             case "timeline.composition.aspect.set" -> new OperationParameters.CompositionAspectParameters(
                     CompositionAspectRatio.fromParameters(parameters));
+            case "timeline.clip.position.keyframes.set" -> positionKeys(parameters);
             case "timeline.clip.opacity.keyframes.set" -> new OperationParameters.OpacityParameters(
                     new com.example.platform.timeline.semantics.effect.OpacityKeys(time(parameters, "firstTime"),
                             opacity(parameters, "firstValue"), time(parameters, "lastTime"), opacity(parameters, "lastValue")));
@@ -449,6 +450,29 @@ public final class TimelineBatchCommandMapper {
         if (value instanceof Integer integer) return integer.longValue();
         if (value instanceof Long integer) return integer;
         throw new IllegalArgumentException(field + " must be an exact signed 64-bit integer");
+    }
+
+    private static OperationParameters.PositionParameters positionKeys(Map<String, Object> parameters) {
+        if (!(parameters.get("keys") instanceof List<?> raw)
+                || raw.size() > com.example.platform.timeline.semantics.effect.PositionKeys.MAX_KEYS) {
+            throw new IllegalArgumentException("Position keys must be a bounded array");
+        }
+        var keys = new java.util.ArrayList<com.example.platform.timeline.semantics.effect.PositionKeys.Key>();
+        for (Object item : raw) {
+            if (!(item instanceof Map<?, ?> key) || !key.keySet().equals(java.util.Set.of("time", "xMicros", "yMicros"))) {
+                throw new IllegalArgumentException("Each position key requires time, xMicros and yMicros");
+            }
+            if (!(key.get("time") instanceof String time) || !time.matches("[0-9]+/[1-9][0-9]*")) {
+                throw new IllegalArgumentException("Position key time must be an exact nonnegative rational");
+            }
+            long x = requiredLong(key, "xMicros"), y = requiredLong(key, "yMicros");
+            int limit = com.example.platform.timeline.semantics.effect.PositionKeys.LIMIT;
+            if (x < -limit || x > limit || y < -limit || y > limit) {
+                throw new IllegalArgumentException("Position key offsets must be within 16 composition dimensions");
+            }
+            keys.add(new com.example.platform.timeline.semantics.effect.PositionKeys.Key(MediaTime.parse(time), (int) x, (int) y));
+        }
+        return new OperationParameters.PositionParameters(new com.example.platform.timeline.semantics.effect.PositionKeys(keys));
     }
 
     private static double opacity(Map<?, ?> parameters, String field) {

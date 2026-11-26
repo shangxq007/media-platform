@@ -1968,6 +1968,12 @@ try {
       parameters: { transitionId: 'n13-reader-cut', incomingClipId: 'clip-middle', duration: '1/24' } }] }
   const cutDigest = (await preview(cutBody, 200, reader)).batchDigest
   const deniedCut = await apply(cutBody, cutDigest, 403, reader)
+  const positionBody = { ...opacityBody, batchId: 'n14-reader', operations: [
+    { definitionId: 'timeline.clip.position.keyframes.set', target: { clipId: 'clip-middle' },
+      parameters: { keys: [{time:'5/1',xMicros:0,yMicros:0}, {time:'7/1',xMicros:100000,yMicros:-100000}] } }] }
+  const positionDigest = (await preview(positionBody, 200, reader)).batchDigest
+  const deniedPosition = await apply(positionBody, positionDigest, 403, reader)
+  result.http.n14Reader = { status: 403, errorCode: deniedPosition.errorCode, revision: readerHead.headRevisionId }
   assert.equal((await branch()).headRevisionId, readerHead.headRevisionId)
   result.http.n13Reader = { status: 403, errorCode: deniedCut.errorCode, revision: readerHead.headRevisionId }
   result.http.n12Reader = { status: 403, errorCode: deniedOpacity.errorCode, revision: readerHead.headRevisionId }

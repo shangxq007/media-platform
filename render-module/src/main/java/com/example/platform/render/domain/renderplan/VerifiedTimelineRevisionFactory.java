@@ -111,7 +111,19 @@ public final class VerifiedTimelineRevisionFactory {
         var tracks = document.getTracks().stream()
                 .map(track -> new VerifiedTimelineRevision.Track(track.trackId(), track.type())).toList();
         var opacity = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.OpacityKeys>();
+        var position = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.PositionKeys>();
         for (var curve : document.getAutomations()) {
+            if (com.example.platform.timeline.semantics.effect.PositionKeys.isPosition(curve)) {
+                if (position.containsKey(curve.targetEntityId())) continue;
+                var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
+                        .flatMap(t -> t.clips().stream()).filter(c -> c.getClipId().value().equals(curve.targetEntityId()))
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException("Unsupported position target"));
+                var keys = com.example.platform.timeline.semantics.effect.PositionKeys.forClip(document.getAutomations(),
+                        curve.targetEntityId()).orElseThrow();
+                keys.requireInside(owner.getStartTime(), owner.getEndTime());
+                position.put(curve.targetEntityId(), keys);
+                continue;
+            }
             if (!curve.parameterPath().equals("opacity")) throw new IllegalArgumentException("Unsupported render automation: " + curve.parameterPath());
             var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
                     .flatMap(t -> t.clips().stream()).filter(c -> c.getEffects().stream().anyMatch(e ->
@@ -122,7 +134,7 @@ public final class VerifiedTimelineRevisionFactory {
             if (opacity.put(owner.getClipId().value(), envelope) != null) throw new IllegalArgumentException("Ambiguous opacity curve");
         }
         return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
-                document.getTransitions(), opacity, document.getMetadata().effectiveCompositionAspectRatio());
+                document.getTransitions(), opacity, position, document.getMetadata().effectiveCompositionAspectRatio());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

@@ -53,6 +53,24 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void positionKeysCarryPairedExactCoordinatesAndSupportExplicitClear() {
+        var target = new TimelineBatchCommand.Target("clip-a", null, null, null, null);
+        var first = Map.of("time", "91/30", "xMicros", -16000000, "yMicros", 0);
+        var second = Map.of("time", "7/2", "xMicros", 16000000, "yMicros", 250000);
+        var id = "timeline.clip.position.keyframes.set";
+        var mapped = map(new TimelineOperationStep(id, target, Map.of("keys", List.of(first, second))));
+        var paired = assertInstanceOf(OperationParameters.PositionParameters.class, mapped.parameters()).keys();
+        assertEquals("91/30;-16000000;0|7/2;16000000;250000", paired.canonicalSamples());
+        var cleared = map(new TimelineOperationStep(id, target, Map.of("keys", List.of())));
+        assertEquals(List.of(), assertInstanceOf(OperationParameters.PositionParameters.class, cleared.parameters()).keys().keys());
+        for (var bad : List.of(List.of(first), List.of(first, first), List.of(second, first),
+                List.of(first, Map.of("time", "7/2", "xMicros", 16000001, "yMicros", 0)),
+                List.of(first, Map.of("time", "7/2", "xMicros", 0, "yMicros", new java.math.BigDecimal("1.0000000000000000001"))))) {
+            assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, target, Map.of("keys", bad))));
+        }
+    }
+
+    @Test
     void groupCreateMapsItsMembersAsTheClipScope() {
         OperationRequest request = map(new TimelineOperationStep(
                 "timeline.group.create", null,

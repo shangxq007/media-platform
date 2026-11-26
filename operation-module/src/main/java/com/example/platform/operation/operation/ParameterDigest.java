@@ -146,6 +146,9 @@ public final class ParameterDigest {
             }
             return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
+        if (p instanceof OperationParameters.PositionParameters position) {
+            return framed("position-keys-v1", position.keys().canonicalSamples());
+        }
         if (p instanceof OperationParameters.OpacityParameters opacity) {
             var keys = opacity.keys();
             return "opacity(" + keys.firstTime() + "," + keys.firstValue() + "," + keys.lastTime() + "," + keys.lastValue() + ")";

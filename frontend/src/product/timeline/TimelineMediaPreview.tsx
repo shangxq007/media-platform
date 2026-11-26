@@ -86,12 +86,13 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
   dissolvePlan?: import('../../contracts/semantic-batch.generated').SemanticBatch | null
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
+  positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
   onTime?: (time: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -101,7 +102,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   dissolve.current = dissolvePlan
   const transient = useRef(opacityPreview)
   transient.current = opacityPreview
-  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan])
+  const positionDraft = useRef(positionPreview)
+  positionDraft.current = positionPreview
+  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview])
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
@@ -230,8 +233,19 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         opacity = keys.firstValue + progress * (keys.lastValue - keys.firstValue)
       }
       context.globalAlpha = opacity * fadeIn * fadeOut * transitionAlpha
-      context.translate(t.positionX * target.width + rotatedWidth / 2,
-        t.positionY * target.height + rotatedHeight / 2)
+      const preview = positionDraft.current
+      const positions = preview && preview.revisionId === revisionId && preview.clipId === clip.clipId ? preview.keys : clip.positionKeys
+      let { positionX, positionY } = t
+      if (positions?.length) {
+        const index = positions.findIndex(key => compare(time, key.time) <= 0)
+        const right = index < 0 ? positions[positions.length - 1] : positions[index]
+        const left = index <= 0 ? right : positions[index - 1]
+        const fraction = left === right ? 0 : toSeconds(subtract(time, left.time)) / toSeconds(subtract(right.time, left.time))
+        positionX = (left.xMicros + fraction * (right.xMicros - left.xMicros)) / 1000000
+        positionY = (left.yMicros + fraction * (right.yMicros - left.yMicros)) / 1000000
+      }
+      context.translate(positionX * target.width + rotatedWidth / 2,
+        positionY * target.height + rotatedHeight / 2)
       context.rotate(radians)
       context.drawImage(sample, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh)
       context.restore()

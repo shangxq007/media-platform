@@ -3,6 +3,7 @@ package com.example.platform.operation.plan;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
+import com.example.platform.timeline.semantics.effect.PositionKeys;
 import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
@@ -75,6 +76,7 @@ public final class OperationPlanner {
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.composition.aspect.set" -> planCompositionAspect(instance, base, changes);
+            case "timeline.clip.position.keyframes.set" -> planPosition(instance, base, changes);
             case "timeline.clip.opacity.keyframes.set" -> planOpacity(instance, base, changes);
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
             case "timeline.clip.effect.set" -> planVideoEffectSet(instance, base, changes);
@@ -104,12 +106,15 @@ public final class OperationPlanner {
             var targets = base.getAutomations().stream().filter(a -> a.parameterPath().equals("opacity"))
                     .map(a -> a.targetEntityId()).collect(java.util.stream.Collectors.toSet());
             for (var track : base.getTracks()) for (var clip : track.clips()) {
-                if (clip.getEffects().stream().noneMatch(e -> targets.contains(e.id()))) continue;
+                boolean position = base.getAutomations().stream().anyMatch(c -> PositionKeys.isPosition(c)
+                        && clip.getClipId().value().equals(c.targetEntityId()));
+                if (!position && clip.getEffects().stream().noneMatch(e -> targets.contains(e.id()))) continue;
                 var samePlacement = candidate.getTracks().stream().filter(t -> t.trackId().equals(track.trackId()))
                         .flatMap(t -> t.clips().stream()).anyMatch(c -> c.getClipId().equals(clip.getClipId())
                                 && c.getStartTime().equals(clip.getStartTime()) && c.getEndTime().equals(clip.getEndTime()));
                 if (!samePlacement) throw new PlanException(PlanErrorCode.INVALID_PLAN,
-                        "This edit would move or remove a clip with absolute opacity keys: " + clip.getClipId().value());
+                        "This edit would move or remove a clip with absolute " + (position ? "position" : "opacity")
+                                + " keys: " + clip.getClipId().value());
             }
         }
         return finish(instance, candidate, changes, List.of(), null);
@@ -1160,6 +1165,40 @@ public final class OperationPlanner {
                         metadata.title(), metadata.description(), metadata.properties(), params.aspectRatio()),
                 base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
                 base.getTransitions(), base.getAutomations());
+    }
+
+    private TimelineDocument planPosition(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var id = scopeOf(instance).getFirst();
+        var clip = clipOf(base, id);
+        if (!"MEDIA_STREAM".equals(clip.getSourceKind()) || base.getTracks().stream().noneMatch(t ->
+                t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO && t.clips().contains(clip))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Position keys require a video media clip");
+        }
+        var keys = ((OperationParameters.PositionParameters) instance.parameters()).keys();
+        var curves = new ArrayList<>(base.getAutomations());
+        try {
+            keys.requireInside(clip.getStartTime(), clip.getEndTime());
+            var previous = PositionKeys.forClip(curves, id.value());
+            if (previous.map(keys::equals).orElseGet(() -> keys.keys().isEmpty())) return base;
+            var prior = curves.stream().filter(c -> PositionKeys.isPosition(c) && id.value().equals(c.targetEntityId())).toList();
+            curves.removeAll(prior);
+            if (!keys.keys().isEmpty()) {
+                for (boolean x : List.of(true, false)) {
+                    var old = prior.stream().filter(c -> c.parameterPath().equals(x ? PositionKeys.X : PositionKeys.Y))
+                            .findFirst().orElse(null);
+                    var curve = keys.curve(id.value(), x, old);
+                    if (curves.stream().anyMatch(c -> c.automationId().equals(curve.automationId()))) {
+                        throw new IllegalArgumentException("Position channel identity already in use");
+                    }
+                    curves.add(curve);
+                }
+            }
+        } catch (IllegalArgumentException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
+        changes.add(new PlannedChange.PositionKeysSet(id));
+        return new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(), base.getAudioMix(),
+                base.getSemanticRelationships(), base.getTextElements(), base.getTransitions(), curves);
     }
 
     private TimelineDocument planOpacity(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {

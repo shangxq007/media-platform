@@ -178,6 +178,17 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                                          + ':d=' + str(dissolve_duration) + ':alpha=1')
                 return video, px, py
 
+            def position_expression(samples, axis, pixels, start, elapsed):
+                # Overlay uses the output clock, while motion is relative to the authored clip.
+                points = [sample.split(';') for sample in samples.split('|')]
+                local = '(t-(' + start + ')+(' + elapsed + '))'
+                expression = points[0][axis]
+                for left, right in zip(points, points[1:]):
+                    delta = str(int(right[axis]) - int(left[axis]))
+                    span = str(Fraction(right[0]) - Fraction(left[0]))
+                    expression += '+(' + delta + ')*clip((' + local + '-(' + left[0] + '))/(' + span + '),0,1)'
+                return 'floor((' + expression + ')*' + str(pixels) + '/1000000+0.5)'
+
             video_inputs = [(path, placement) for path, placement in zip(paths, placements)
                             if placement[0] == 'V']
             if video_inputs:
@@ -200,6 +211,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 clip, px, py = transformed(clip, placement, fx)
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
                 visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
+                if len(placement) > 17:
+                    px = position_expression(placement[17], 1, canvas_width, start, fx[7])
+                    py = position_expression(placement[17], 2, canvas_height, start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
             audio_inputs = []
@@ -311,7 +325,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         + t.x() + "," + t.y() + "," + t.scaleX() + ","
                         + t.scaleY() + "," + t.degrees() + "," + t.left() + ","
                         + t.right() + "," + t.top() + "," + t.bottom() + ","
-                        + t.opacity() + "," + fxToken(input));
+                        + t.opacity() + "," + fxToken(input)
+                        + input.positionKeys().map(p -> "," + p.canonicalSamples()).orElse(""));
             }
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));

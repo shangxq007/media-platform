@@ -351,6 +351,43 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N14 position keys', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('freezes paired exact samples and drops a delayed preview after a key changes away and back', async () => {
+    renderBranchWorkspace('main')
+    const result = { batchDigest: HASH_C, steps: [] }
+    const held = deferred<typeof result>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    await screen.findByRole('option', { name: 'clip-0 on Video' })
+    const section = within(screen.getByRole('region', { name: 'Position edit' }))
+    fireEvent.change(section.getByLabelText('Position clip'), { target: { value: 'clip-0' } })
+    const fill = (name: string, value: string) => fireEvent.change(section.getByLabelText(name), { target: { value } })
+    fill('Key 1 time (clip seconds)', '1/30')
+    fill('Key 1 X (%)', '-12.3456')
+    fill('Key 1 Y (%)', '5')
+    fill('Key 2 time (clip seconds)', '1/2')
+    fill('Key 2 X (%)', '20')
+    fill('Key 2 Y (%)', '2.75')
+    const prepare = section.getByRole('button', { name: 'Preview position' })
+    fireEvent.click(prepare)
+    fill('Key 2 X (%)', '20.00001')
+    fill('Key 2 X (%)', '20')
+    await act(async () => held.resolve(result))
+    expect(section.queryByRole('button', { name: 'Confirm position' })).toBeNull()
+    fireEvent.click(prepare)
+    await section.findByRole('button', { name: 'Confirm position' })
+    expect(preview.mock.lastCall?.[2].operations).toEqual([{
+      definitionId: 'timeline.clip.position.keyframes.set', target: { clipId: 'clip-0' },
+      parameters: { keys: [{ time: '1/30', xMicros: -123456, yMicros: 50000 },
+        { time: '1/2', xMicros: 200000, yMicros: 27500 }] },
+    }])
+    fireEvent.click(section.getByRole('button', { name: 'Cancel position' }))
+    expect(write).not.toHaveBeenCalled()
+  })
+})
+
 describe('N13 shared-cut dissolve', () => {
   afterEach(() => vi.restoreAllMocks())
   it.each(['duration', 'cut'])('withdraws the old plan when the %s changes away and back', async field => {

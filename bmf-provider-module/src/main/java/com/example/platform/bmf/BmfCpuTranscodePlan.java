@@ -1,6 +1,7 @@
 package com.example.platform.bmf;
 
 import com.example.platform.render.domain.renderplan.RenderRaster;
+import com.example.platform.timeline.semantics.effect.PositionKeys;
 import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.ExecutionOutputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
@@ -41,13 +42,14 @@ public record BmfCpuTranscodePlan(
                              VideoPlacement transform,
                              com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
-                             java.util.Optional<com.example.platform.render.domain.renderplan.RenderDependency.OpacityRamp> opacityKeys) {
+                             java.util.Optional<com.example.platform.render.domain.renderplan.RenderDependency.OpacityRamp> opacityKeys,
+                             Optional<PositionKeys> positionKeys) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
                              VideoPlacement transform,
                              com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration) {
-            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration, dissolveDuration, Optional.empty());
+            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration, dissolveDuration, Optional.empty(), Optional.empty());
         }
 
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {

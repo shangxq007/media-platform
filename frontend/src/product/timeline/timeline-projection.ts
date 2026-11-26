@@ -137,6 +137,12 @@ function projectEffect(value: unknown): ProjectedVideoEffect {
     fadeInSeconds: number('fadeInSeconds', 0), fadeOutSeconds: number('fadeOutSeconds', 0), enabled: p.enabled }
 }
 
+export interface PositionKey {
+  readonly time: Rational
+  readonly xMicros: number
+  readonly yMicros: number
+}
+
 export interface OpacityKeys {
   firstTime: Rational
   firstValue: number
@@ -146,6 +152,7 @@ export interface OpacityKeys {
 
 export interface ProjectedClip {
   readonly opacityKeys?: OpacityKeys
+  readonly positionKeys?: readonly PositionKey[]
   readonly clipId: string
   readonly trackId: string
   readonly artifactId: string
@@ -237,9 +244,37 @@ export function projectTimeline(document: unknown): TimelineProjection {
     const trackId = text(track.trackId, 'track identity')
     return { trackId, name: typeof track.name === 'string' ? track.name : trackId, type: track.type === 'video' ? 'VIDEO' : 'AUDIO',
       clips: entries(track.clips, 'track clips').map(rawClip => {
-        const clip = projectClip(rawClip, trackId)
+        let clip = projectClip(rawClip, trackId)
+        const channels = curves.filter(c => c.targetEntityId === clip.clipId &&
+          (c.parameterPath === 'transform.positionXMicros' || c.parameterPath === 'transform.positionYMicros'))
+        if (channels.length) {
+          const x = channels.find(c => c.parameterPath === 'transform.positionXMicros')
+          const y = channels.find(c => c.parameterPath === 'transform.positionYMicros')
+          if (track.type !== 'video' || channels.length !== 2 || !x || !y ||
+            channels.some(c => c.valueType !== 'float' || c.extrapolation !== 'HOLD'))
+            throw new Error('Invalid paired position channels')
+          const xKeys = entries(x.keyframes, 'X position keys'), yKeys = entries(y.keyframes, 'Y position keys')
+          if (xKeys.length < 2 || xKeys.length > 16 || xKeys.length !== yKeys.length)
+            throw new Error('Position channels require matching keys')
+          const positionKeys = xKeys.map((raw, i) => {
+            const a = object(raw, 'X position key'), b = object(yKeys[i], 'Y position key')
+            const time = exactTime(a.time, 'position time')
+            const xMicros = projectedNumber(a.value, 'X position', -16000000, 16000000)
+            const yMicros = projectedNumber(b.value, 'Y position', -16000000, 16000000)
+            if (a.interpolation !== 'LINEAR' || b.interpolation !== 'LINEAR'
+              || compare(time, exactTime(b.time, 'position time')) !== 0
+              || compare(time, clip.start) < 0 || compare(time, clip.end) >= 0
+              || !Number.isInteger(xMicros) || !Number.isInteger(yMicros))
+              throw new Error('Invalid position key')
+            return { time, xMicros, yMicros }
+          })
+          if (positionKeys.some((key, i) => i > 0 && compare(positionKeys[i - 1].time, key.time) >= 0))
+            throw new Error('Position key times must strictly increase')
+          channels.forEach(c => consumed.add(c))
+          clip = { ...clip, positionKeys }
+        }
         const effects = entries(object(rawClip, 'clip').effects ?? [], 'effects').map(e => object(e, 'effect'))
-        const bound = curves.filter(c => effects.some(e => e.id != null && e.id === c.targetEntityId))
+        const bound = curves.filter(c => !consumed.has(c) && effects.some(e => e.id != null && e.id === c.targetEntityId))
         if (!bound.length) return clip
         const curve = bound[0]
         const keys = entries(curve.keyframes, 'opacity keys').map(k => object(k, 'opacity key'))

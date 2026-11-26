@@ -379,9 +379,27 @@ public final class TimelineCanonicalValidator {
                 }
             }
         }
+
+        var videoIds = new java.util.HashSet<String>();
+        candidate.tracks().stream().filter(t -> t.type() == TimelineCandidate.TrackType.VIDEO)
+                .flatMap(t -> t.clips().stream()).forEach(c -> videoIds.add(c.clipId()));
+        var position = candidate.automations().stream().filter(
+                com.example.platform.timeline.semantics.effect.PositionKeys::isPosition).toList();
+        for (String id : position.stream().map(CanonicalAutomationCurve::targetEntityId).distinct().toList()) {
+            var clip = clipsById.get(id);
+            try {
+                if (clip == null || !videoIds.contains(id)) throw new IllegalArgumentException("Position keys require a video clip target");
+                com.example.platform.timeline.semantics.effect.PositionKeys.forClip(position, id).orElseThrow()
+                        .requireInside(clip.timelineStart(), clip.timelineStart().add(clip.duration()));
+            } catch (IllegalArgumentException invalid) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
+                        TimelineModelPath.root().field("automations"), id, invalid.getMessage()));
+            }
+        }
         for (int i = 0; i < candidate.automations().size(); i++) {
             CanonicalAutomationCurve a = candidate.automations().get(i);
             String target = a.targetEntityId();
+            if (com.example.platform.timeline.semantics.effect.PositionKeys.isPosition(a)) continue;
             if (target == null || target.isBlank() || !effectIds.contains(target)) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
                         TimelineModelPath.root().field("automations").index(i).field("targetEntityId"),

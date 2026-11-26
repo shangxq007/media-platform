@@ -43,6 +43,7 @@ public sealed interface OperationParameters permits
         OperationParameters.AudioMuteParameters,
         OperationParameters.StereoBalanceParameters,
         OperationParameters.OpacityParameters,
+        OperationParameters.PositionParameters,
         OperationParameters.VideoTransformParameters,
         OperationParameters.CompositionAspectParameters,
         OperationParameters.VideoEffectParameters,
@@ -65,6 +66,10 @@ public sealed interface OperationParameters permits
         OperationParameters.CreateAlignmentParameters {
 
     @org.springframework.modulith.NamedInterface("invocation")
+    record PositionParameters(com.example.platform.timeline.semantics.effect.PositionKeys keys) implements OperationParameters {
+        public PositionParameters { java.util.Objects.requireNonNull(keys); }
+    }
+
     record OpacityParameters(com.example.platform.timeline.semantics.effect.OpacityKeys keys) implements OperationParameters {
         public OpacityParameters { java.util.Objects.requireNonNull(keys); }
     }

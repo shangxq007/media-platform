@@ -106,6 +106,29 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
                 .isInstanceOf(UnsupportedPersistedConstructException.class);
     }
 
+    @Test
+    void positionAndOpacityRoundTripWithNonzeroPlacementAndTransition() {
+        var position = com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples(
+                "3/1;200000;100000|7/2;250000;-50000|4/1;400000;250000");
+        var dependency = com.example.platform.render.domain.renderplan.RenderDependency.TimedTrackInput.video(
+                MediaTime.ofMillis(2500), MediaTime.ofMillis(4250), 1,
+                com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY,
+                com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY, TWO, MediaTime.ofMillis(4500),
+                java.util.Optional.of(new com.example.platform.render.domain.renderplan.RenderDependency.Dissolve(
+                        "transition", "outgoing", "incoming", TWO)),
+                java.util.Optional.of(new com.example.platform.render.domain.renderplan.RenderDependency.OpacityRamp(
+                        TWO, 0.2, MediaTime.ofMillis(4000), 0.9)), java.util.Optional.of(position));
+        var input = new InputBinding(new ExecutionInputId("input-clip"), "composite",
+                new ExecutionStepId("composite"), new RenderNodeId("render-composite"),
+                "clip", new ExecutionStepId("clip"), new RenderNodeId("render-clip"), dependency, null, null);
+        var plan = plan(List.of(unit("multitrack-composite", "composite", null, null, null, List.of(input),
+                List.of(outputDeclaration("composite")))), null);
+        byte[] data = PhysicalExecutionPlanCanonicalCodec.encode(plan);
+        var restored = PhysicalExecutionPlanCanonicalCodec.decode(data);
+        assertThat(restored).isEqualTo(plan);
+        assertThat(PhysicalExecutionPlanCanonicalCodec.encode(restored)).isEqualTo(data);
+    }
+
     /** A plan whose unit and plan-level optionals are all absent must encode as "absent" without NPE. */
     @Test
     void allAbsentOptionalsEncodeAsAbsentAndRoundTrip() {

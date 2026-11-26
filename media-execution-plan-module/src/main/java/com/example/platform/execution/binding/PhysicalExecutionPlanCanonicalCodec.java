@@ -549,7 +549,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
         }
         if (dependency instanceof RenderDependency.TimedTrackInput timed) {
-            writer.field("variant", timed.opacityKeys().isPresent() ? "TIMED_TRACK_OPACITY_V1" : "TIMED_TRACK_INPUT")
+            writer.field("variant", timed.positionKeys().isPresent() ? "TIMED_TRACK_POSITION_V1"
+                    : timed.opacityKeys().isPresent() ? "TIMED_TRACK_OPACITY_V1" : "TIMED_TRACK_INPUT")
                     .field("start", timed.start().toString()).field("end", timed.end().toString())
                     .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio()))
                     .field("gain", Double.toString(timed.gainLinear())).field("mute", Boolean.toString(timed.muted()))
@@ -579,6 +580,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                                     .field("outgoingClipId", dissolve.outgoingClipId())
                                     .field("incomingClipId", dissolve.incomingClipId())
                                     .field("duration", dissolve.duration().toString()).build()).orElse(null));
+            timed.positionKeys().ifPresent(p -> writer.field("positions", p.canonicalSamples())
+                    .field("hasOpacity", Boolean.toString(timed.opacityKeys().isPresent())));
             timed.opacityKeys().ifPresent(k -> writer.field("firstTime", k.firstTime().toString()).field("firstValue", Double.toString(k.firstValue()))
                     .field("lastTime", k.lastTime().toString()).field("lastValue", Double.toString(k.lastValue())));
             return writer.build();
@@ -599,30 +602,51 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
             case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
-            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1" -> new RenderDependency.TimedTrackInput(
-                    MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")),
-                    Integer.parseInt(reader.field("layer")), reader.fieldBoolean("audio"),
-                    com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain"))),
-                    com.example.platform.audio.domain.mix.AudioMute.of(reader.fieldBoolean("mute")),
-                    com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance"))),
-                    new com.example.platform.timeline.semantics.effect.VideoTransform(
-                            Integer.parseInt(reader.field("tx")), Integer.parseInt(reader.field("ty")),
-                            Integer.parseInt(reader.field("sx")), Integer.parseInt(reader.field("sy")),
-                            Integer.parseInt(reader.field("rot")), Integer.parseInt(reader.field("cl")),
-                            Integer.parseInt(reader.field("cr")), Integer.parseInt(reader.field("ct")),
-                            Integer.parseInt(reader.field("cb")), Integer.parseInt(reader.field("opacity"))),
-                    new com.example.platform.render.domain.renderplan.VideoEffectSpec(
-                            Double.parseDouble(reader.field("brightness")), Double.parseDouble(reader.field("contrast")),
-                            Double.parseDouble(reader.field("saturation")), reader.fieldBoolean("grayscale"),
-                            Double.parseDouble(reader.field("fadeIn")), Double.parseDouble(reader.field("fadeOut")),
-                            reader.fieldBoolean("effectEnabled")),
-                    MediaTime.parse(reader.field("authoredStart")), MediaTime.parse(reader.field("authoredEnd")),
-                    dissolve(reader.optionalNested()), variant.equals("TIMED_TRACK_OPACITY_V1") ? Optional.of(new RenderDependency.OpacityRamp(
-                            MediaTime.parse(reader.field("firstTime")), Double.parseDouble(reader.field("firstValue")),
-                            MediaTime.parse(reader.field("lastTime")), Double.parseDouble(reader.field("lastValue")))) : Optional.empty());
+            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1" -> readTimedTrack(reader, variant);
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }
+
+    private static RenderDependency.TimedTrackInput readTimedTrack(FrameReader reader, String variant) {
+        var start = MediaTime.parse(reader.field("start"));
+        var end = MediaTime.parse(reader.field("end"));
+        int layer = Integer.parseInt(reader.field("layer"));
+        boolean audio = reader.fieldBoolean("audio");
+        var gain = com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain")));
+        var mute = com.example.platform.audio.domain.mix.AudioMute.of(reader.fieldBoolean("mute"));
+        var balance = com.example.platform.audio.domain.mix.StereoBalance.of(Double.parseDouble(reader.field("balance")));
+        var transform = new com.example.platform.timeline.semantics.effect.VideoTransform(
+                Integer.parseInt(reader.field("tx")), Integer.parseInt(reader.field("ty")),
+                Integer.parseInt(reader.field("sx")), Integer.parseInt(reader.field("sy")),
+                Integer.parseInt(reader.field("rot")), Integer.parseInt(reader.field("cl")),
+                Integer.parseInt(reader.field("cr")), Integer.parseInt(reader.field("ct")),
+                Integer.parseInt(reader.field("cb")), Integer.parseInt(reader.field("opacity")));
+        var effect = new com.example.platform.render.domain.renderplan.VideoEffectSpec(
+                Double.parseDouble(reader.field("brightness")), Double.parseDouble(reader.field("contrast")),
+                Double.parseDouble(reader.field("saturation")), reader.fieldBoolean("grayscale"),
+                Double.parseDouble(reader.field("fadeIn")), Double.parseDouble(reader.field("fadeOut")),
+                reader.fieldBoolean("effectEnabled"));
+        var authoredStart = MediaTime.parse(reader.field("authoredStart"));
+        var authoredEnd = MediaTime.parse(reader.field("authoredEnd"));
+        var dissolve = dissolve(reader.optionalNested());
+        var animation = timedAutomation(reader, variant);
+        return new RenderDependency.TimedTrackInput(start, end, layer, audio, gain, mute, balance, transform,
+                effect, authoredStart, authoredEnd, dissolve, animation.opacity(), animation.positions());
+    }
+
+    private static TimedAutomation timedAutomation(FrameReader reader, String variant) {
+        boolean positioned = variant.equals("TIMED_TRACK_POSITION_V1");
+        var positions = positioned ? Optional.of(com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples(reader.field("positions")))
+                : Optional.<com.example.platform.timeline.semantics.effect.PositionKeys>empty();
+        boolean opaque = variant.equals("TIMED_TRACK_OPACITY_V1") || (positioned && reader.fieldBoolean("hasOpacity"));
+        var opacity = opaque ? Optional.of(new RenderDependency.OpacityRamp(
+                MediaTime.parse(reader.field("firstTime")), Double.parseDouble(reader.field("firstValue")),
+                MediaTime.parse(reader.field("lastTime")), Double.parseDouble(reader.field("lastValue")))) : Optional.<RenderDependency.OpacityRamp>empty();
+        return new TimedAutomation(opacity, positions);
+    }
+
+    private record TimedAutomation(Optional<RenderDependency.OpacityRamp> opacity,
+            Optional<com.example.platform.timeline.semantics.effect.PositionKeys> positions) {}
 
     private static Optional<RenderDependency.Dissolve> dissolve(FrameReader reader) {
         if (reader == null) return Optional.empty();

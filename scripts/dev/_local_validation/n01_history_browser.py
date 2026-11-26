@@ -25,13 +25,14 @@ from local_runtime import sandbox_prefix
 branches = sys.argv[1:] == ['--branches']
 opacity = sys.argv[1:] == ['--opacity']
 dissolve = sys.argv[1:] == ['--dissolve']
-assert dissolve or opacity or branches or not sys.argv[1:]
-out = root / '04-tests' / ('n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
+position = sys.argv[1:] == ['--position']
+assert position or dissolve or opacity or branches or not sys.argv[1:]
+out = root / '04-tests' / ('n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
 assert deps.is_dir() and not deps.is_symlink() and not target.is_symlink()
-target.mkdir(exist_ok=branches or dissolve)
+target.mkdir(exist_ok=branches or dissolve or position)
 assert not any(target.iterdir())
 prefix = sandbox_prefix(app / 'binding.json')
 prefix[-1:-1] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
@@ -88,9 +89,13 @@ if branches:
     checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
-if dissolve or opacity:
+if dissolve or opacity or position:
     browser_script = 'n12-opacity-browser-e2e.mjs'
     checkpoints = ('base','draft','accepted','recovery','edited','undo','redo','stale','noop')
+
+if position:
+    checkpoints = ('base','draft','invalid','accepted','recovery','changed','undo','redo','stale',
+                   'cleared','recreated','combo')
 
 if dissolve:
     checkpoints = ('base','draft','invalid','accepted','recovery','bound','edited','undo','redo','stale','noop',
@@ -98,7 +103,7 @@ if dissolve:
 
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
-                                str(app), str(out), *(['--dissolve'] if dissolve else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
+                                str(app), str(out), *([sys.argv[1]] if position or dissolve else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
     deadline = time.monotonic() + 600
     facts = {}
     try:
@@ -107,7 +112,7 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
                 raise RuntimeError('N01 browser deadline reached')
             for name in checkpoints:
                 if name not in facts and (out / ('checkpoint-' + name)).is_file():
-                    if opacity or dissolve:
+                    if opacity or dissolve or position:
                         project = (out / 'project-id').read_text()
                         assert re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', project)
                         scope = f"tenant_id='tenant-fr-e2e' and project_id='{project}'"
@@ -127,12 +132,42 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
-if opacity or dissolve:
+if opacity or dissolve or position:
     rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (select rev.id,rev.parent_revision_id,rev.content_hash,
         doc.payload_json::json as snapshot,ctx.payload_json::json as semantics
         from timeline.timeline_revision rev join timeline.timeline_snapshot doc on doc.id=rev.snapshot_id and doc.project_id=rev.project_id and doc.tenant_id=rev.tenant_id
         join timeline.timeline_snapshot ctx on ctx.id='revctx_'||rev.id and ctx.tenant_id=rev.tenant_id and ctx.project_id=rev.project_id
         where rev.tenant_id='tenant-fr-e2e' and rev.project_id='{project}') r;""")
+    if position:
+        result = json.loads((out/'position-result.json').read_text())
+        assert result['status']=='PASS'
+        def revision(stage):
+            return rows[facts[stage]['head']]
+        def keys(stage):
+            return {c['parameterPath']: [(k['time'],k['value']) for k in c['keyframes']]
+                    for c in revision(stage)['snapshot'].get('automations', [])
+                    if c['parameterPath'].startswith('transform.position')}
+        assert facts['base']==facts['draft']==facts['invalid']
+        assert facts['accepted']==facts['recovery'] and facts['redo']==facts['stale']
+        chain = ('base','accepted','changed','undo','redo','cleared','recreated','combo')
+        for a,b in zip(chain,chain[1:]):
+            assert facts[b]['rows']==facts[a]['rows']+1 and facts[b]['commands']==facts[a]['commands']+1
+            assert revision(b)['parent_revision_id']==facts[a]['head']
+        for a,b in [('accepted','undo'),('changed','redo'),('base','cleared'),('accepted','recreated')]:
+            assert revision(a)['semantics']==revision(b)['semantics'] and revision(a)['snapshot']==revision(b)['snapshot']
+        assert keys('accepted')=={'transform.positionXMicros':[('7/2',200000),('11/2',400000)],
+                                  'transform.positionYMicros':[('7/2',100000),('11/2',250000)]}
+        assert keys('changed')['transform.positionXMicros'][-1]==('11/2',450000)
+        assert not keys('cleared') and keys('combo')==keys('accepted')
+        for stage in chain[:-1]:
+            assert revision(stage)['snapshot']['tracks']==revision('base')['snapshot']['tracks']
+        assert all(revision(stage)['snapshot']['audioMix']==revision('base')['snapshot']['audioMix'] for stage in chain)
+        assert len(revision('combo')['snapshot']['transitions'])==1 and len(revision('combo')['snapshot']['automations'])==3
+        for stage,artifact in [('accepted','n14-position'),('cleared','n14-cleared'),('combo','n14-composition')]:
+            assert result[artifact]['revisionId']==facts[stage]['head']
+        (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
+        print('N14_POSITION_CHROME_EXPORT_POSTGRES=PASS')
+        sys.exit(0)
     if dissolve:
         run_result = json.loads((out/'dissolve-result.json').read_text())
         assert run_result['status']=='PASS'

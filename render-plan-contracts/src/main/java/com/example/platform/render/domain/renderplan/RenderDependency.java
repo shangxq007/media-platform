@@ -1,6 +1,8 @@
 package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.audio.domain.mix.AudioMixInput;
+import com.example.platform.timeline.semantics.effect.PositionKeys;
+import java.util.Optional;
 
 /**
  * Typed render dependency variants (C5). Sealed — no universal untyped bag.
@@ -130,7 +132,8 @@ public sealed interface RenderDependency permits
                            VideoEffectSpec effect,
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
-                           java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys)
+                           java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys,
+                           Optional<PositionKeys> positionKeys)
             implements RenderDependency {
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
@@ -143,6 +146,17 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime authoredEnd,
                            java.util.Optional<Dissolve> dissolve) {
             this(start, end, layer, audio, gain, mute, balance, transform, effect, authoredStart, authoredEnd, dissolve, java.util.Optional.empty());
+        }
+
+        public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
+                com.example.platform.audio.domain.mix.AudioGain gain, com.example.platform.audio.domain.mix.AudioMute mute,
+                com.example.platform.audio.domain.mix.StereoBalance balance,
+                com.example.platform.timeline.semantics.effect.VideoTransform transform, VideoEffectSpec effect,
+                com.example.platform.shared.time.MediaTime authoredStart, com.example.platform.shared.time.MediaTime authoredEnd,
+                Optional<Dissolve> dissolve, Optional<OpacityRamp> opacityKeys) {
+            this(start, end, layer, audio, gain, mute, balance, transform, effect, authoredStart, authoredEnd,
+                    dissolve, opacityKeys, Optional.empty());
         }
 
         public TimedTrackInput {
@@ -158,6 +172,10 @@ public sealed interface RenderDependency permits
             java.util.Objects.requireNonNull(dissolve, "dissolve");
             if (opacityKeys.isPresent() && (opacityKeys.get().firstTime().isLessThan(authoredStart)
                     || !opacityKeys.get().lastTime().isLessThan(authoredEnd))) throw new IllegalArgumentException("Opacity ramp outside clip");
+            positionKeys.ifPresent(p -> {
+                if (audio || p.keys().isEmpty()) throw new IllegalArgumentException("Position keys require a video placement");
+                p.requireInside(authoredStart, authoredEnd);
+            });
             if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
                     || layer < 0 || (audio && dissolve.isPresent())) {
@@ -179,11 +197,19 @@ public sealed interface RenderDependency permits
                 com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
                 VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
                 com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys) {
+            return video(start, end, layer, transform, effect, authoredStart, authoredEnd, dissolve, opacityKeys, Optional.empty());
+        }
+
+        public static TimedTrackInput video(com.example.platform.shared.time.MediaTime start,
+                com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
+                VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
+                com.example.platform.shared.time.MediaTime authoredEnd, Optional<Dissolve> dissolve,
+                Optional<OpacityRamp> opacityKeys, Optional<PositionKeys> positionKeys) {
             return new TimedTrackInput(start, end, layer, false,
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
                     com.example.platform.audio.domain.mix.StereoBalance.neutral(),
-                    transform, effect, authoredStart, authoredEnd, dissolve, opacityKeys);
+                    transform, effect, authoredStart, authoredEnd, dissolve, opacityKeys, positionKeys);
         }
 
         public VideoPlacement placement() {
@@ -244,7 +270,8 @@ public sealed interface RenderDependency permits
                             + ":" + d.outgoingClipId().length() + ":" + d.outgoingClipId()
                             + ":" + d.incomingClipId().length() + ":" + d.incomingClipId()
                             + ":" + d.duration()).orElse("")
-                    + opacityKeys.map(k -> ":opacity:" + k.firstTime() + ":" + k.firstValue() + ":" + k.lastTime() + ":" + k.lastValue()).orElse("");
+                    + opacityKeys.map(k -> ":opacity:" + k.firstTime() + ":" + k.firstValue() + ":" + k.lastTime() + ":" + k.lastValue()).orElse("")
+                    + positionKeys.map(p -> ":position:" + p.canonicalSamples()).orElse("");
         }
     }
 }

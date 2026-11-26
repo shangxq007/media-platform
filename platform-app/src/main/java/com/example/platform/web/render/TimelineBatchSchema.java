@@ -91,6 +91,15 @@ public final class TimelineBatchSchema {
             case "composition-aspect-rational-v1" -> ASPECT;
             case "revision-id" -> Map.of("type", "string", "pattern", "^"
                     + com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters.SOURCE_REVISION_ID_PATTERN + "$");
+            case "position-key-array" -> {
+                int limit = com.example.platform.timeline.semantics.effect.PositionKeys.LIMIT;
+                int count = com.example.platform.timeline.semantics.effect.PositionKeys.MAX_KEYS;
+                var axis = Map.of("type", (Object) "integer", "minimum", -limit, "maximum", limit);
+                var frame = object(Map.of("time", Map.of("type", "string", "pattern", "^[0-9]+/[1-9][0-9]*$"),
+                        "xMicros", axis, "yMicros", axis), List.of("time", "xMicros", "yMicros"));
+                yield Map.of("type", "array", "items", frame, "maxItems", count,
+                        "not", Map.of("minItems", 1, "maxItems", 1));
+            }
             case "single-clip-id-array" -> Map.of("type", "array", "items", ID, "minItems", 1, "maxItems", 1, "uniqueItems", true);
             case "paste-clip-id-array" -> Map.of("type", "array", "items", ID,
                     "minItems", 1, "maxItems", com.example.platform.operation.operation.OperationParameters.PasteClipsParameters.MAX_CLIPS, "uniqueItems", true);
