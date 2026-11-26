@@ -636,8 +636,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
 
     private static TimedAutomation timedAutomation(FrameReader reader, String variant) {
         boolean positioned = variant.equals("TIMED_TRACK_POSITION_V1");
-        var positions = positioned ? Optional.of(com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples(reader.field("positions")))
-                : Optional.<com.example.platform.timeline.semantics.effect.PositionKeys>empty();
+        var positions = positioned ? Optional.of(RenderDependency.PositionRamp.parseSamples(reader.field("positions")))
+                : Optional.<RenderDependency.PositionRamp>empty();
         boolean opaque = variant.equals("TIMED_TRACK_OPACITY_V1") || (positioned && reader.fieldBoolean("hasOpacity"));
         var opacity = opaque ? Optional.of(new RenderDependency.OpacityRamp(
                 MediaTime.parse(reader.field("firstTime")), Double.parseDouble(reader.field("firstValue")),
@@ -646,7 +646,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
     }
 
     private record TimedAutomation(Optional<RenderDependency.OpacityRamp> opacity,
-            Optional<com.example.platform.timeline.semantics.effect.PositionKeys> positions) {}
+            Optional<RenderDependency.PositionRamp> positions) {}
 
     private static Optional<RenderDependency.Dissolve> dissolve(FrameReader reader) {
         if (reader == null) return Optional.empty();

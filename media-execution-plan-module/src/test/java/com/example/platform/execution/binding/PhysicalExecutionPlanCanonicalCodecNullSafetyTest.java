@@ -108,7 +108,7 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
 
     @Test
     void positionAndOpacityRoundTripWithNonzeroPlacementAndTransition() {
-        var position = com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples(
+        var position = com.example.platform.render.domain.renderplan.RenderDependency.PositionRamp.parseSamples(
                 "3/1;200000;100000|7/2;250000;-50000|4/1;400000;250000");
         var dependency = com.example.platform.render.domain.renderplan.RenderDependency.TimedTrackInput.video(
                 MediaTime.ofMillis(2500), MediaTime.ofMillis(4250), 1,

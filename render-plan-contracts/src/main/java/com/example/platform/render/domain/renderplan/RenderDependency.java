@@ -120,6 +120,27 @@ public sealed interface RenderDependency permits
         }
     }
 
+    /** Typed execution projection of a verified position animation. */
+    record PositionRamp(PositionKeys keys) {
+        public PositionRamp {
+            if (keys.keys().isEmpty()) throw new IllegalArgumentException("Position ramp must have samples");
+        }
+
+        public PositionRamp relativeTo(com.example.platform.shared.time.MediaTime origin) {
+            var samples = keys.keys().stream().map(k -> new PositionKeys.Key(
+                    k.time().subtract(origin), k.xMicros(), k.yMicros())).toList();
+            return new PositionRamp(new PositionKeys(samples));
+        }
+
+        public String canonicalSamples() {
+            return keys.canonicalSamples();
+        }
+
+        public static PositionRamp parseSamples(String samples) {
+            return new PositionRamp(PositionKeys.parseSamples(samples));
+        }
+    }
+
     record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
             double left, double right, double top, double bottom, double opacity) {}
 
@@ -133,7 +154,7 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
                            java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys,
-                           Optional<PositionKeys> positionKeys)
+                           Optional<PositionRamp> positionKeys)
             implements RenderDependency {
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
@@ -173,8 +194,8 @@ public sealed interface RenderDependency permits
             if (opacityKeys.isPresent() && (opacityKeys.get().firstTime().isLessThan(authoredStart)
                     || !opacityKeys.get().lastTime().isLessThan(authoredEnd))) throw new IllegalArgumentException("Opacity ramp outside clip");
             positionKeys.ifPresent(p -> {
-                if (audio || p.keys().isEmpty()) throw new IllegalArgumentException("Position keys require a video placement");
-                p.requireInside(authoredStart, authoredEnd);
+                if (audio) throw new IllegalArgumentException("Position keys require a video placement");
+                p.keys().requireInside(authoredStart, authoredEnd);
             });
             if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
@@ -204,7 +225,7 @@ public sealed interface RenderDependency permits
                 com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
                 VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
                 com.example.platform.shared.time.MediaTime authoredEnd, Optional<Dissolve> dissolve,
-                Optional<OpacityRamp> opacityKeys, Optional<PositionKeys> positionKeys) {
+                Optional<OpacityRamp> opacityKeys, Optional<PositionRamp> positionKeys) {
             return new TimedTrackInput(start, end, layer, false,
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
