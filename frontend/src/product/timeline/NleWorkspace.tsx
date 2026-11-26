@@ -21,6 +21,8 @@ import { SemanticDiff } from './SemanticDiff'
 import { SourceBrowser } from './SourceBrowser'
 import { MultiClipMove } from './MultiClipMove'
 import { playheadTime } from './snapping'
+import { OpacityEdit } from './OpacityEdit'
+import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { SourceRangeEdit } from './SourceRangeEdit'
 import { ClipClipboard } from './ClipClipboard'
 import { ClipEditor } from './ClipEditor'
@@ -233,7 +235,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'slip' | 'slide' | 'multi-move'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'slip' | 'slide' | 'opacity' | 'multi-move'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -276,6 +278,11 @@ export function NleWorkspace({
     ? JSON.stringify([project.workspaceId, project.tenantId, project.projectId, editingBranch,
         state.server.head.revisionId, state.server.head.contentHash]) : null
   const [loadedProjection, setLoadedProjection] = useState<string | null>(null)
+  const [opacityPlan, setOpacityPlan] = useState<SemanticBatch | null>(null)
+  const opacityStep = opacityPlan?.operations[0]
+  const opacityPreview = opacityPlan && opacityStep?.definitionId === 'timeline.clip.opacity.keyframes.set' && 'clipId' in opacityStep.target
+    ? { revisionId: opacityPlan.baseRevisionId, clipId: opacityStep.target.clipId, keys: { ...opacityStep.parameters,
+        firstTime: parseRational(opacityStep.parameters.firstTime)!, lastTime: parseRational(opacityStep.parameters.lastTime)! } } : null
   const [tracks, setTracks] = useState<readonly ProjectedTrack[]>([])
   const [previewTime, setPreviewTime] = useState(0)
   const [snapEnabled, setSnapEnabled] = useState(false)
@@ -310,7 +317,7 @@ export function NleWorkspace({
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
-      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide') && reason === 'RANGE_READBACK')
+      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide' || issuedCommand.current === 'opacity') && reason === 'RANGE_READBACK')
       || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
       || (issuedCommand.current === 'multi-move' && reason === 'MULTI_MOVE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
@@ -623,7 +630,7 @@ export function NleWorkspace({
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
         </Panel>
         <Panel title="Timeline media preview" className="ff-operation-panel">
-          <TimelineMediaPreview key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
+          <TimelineMediaPreview opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           {defaultBranch && !historyRevision && <section aria-label="Confirmed trim history">
@@ -634,6 +641,11 @@ export function NleWorkspace({
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
+          {defaultBranch && !historyRevision && <OpacityEdit key={JSON.stringify(['opacity', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
+            disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            access={commandAccess('opacity')} readback={() => loadHead('RANGE_READBACK')} onPreview={setOpacityPlan}
+            onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'opacity')} />}
           {defaultBranch && !historyRevision && (['roll', 'slip', 'slide'] as const).map(edit => <SourceRangeEdit edit={edit} key={JSON.stringify([edit, project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection === requestedProjection && loadedProjection ? tracks : []}
             disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}

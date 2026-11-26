@@ -86,15 +86,19 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
+  opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   onTime?: (time: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const host = useRef<HTMLElement>(null)
   const current = useRef<PreviewSession | null>(null)
+  const transient = useRef(opacityPreview)
+  transient.current = opacityPreview
+  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview])
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
@@ -198,7 +202,15 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime }
         sample = surface
       }
       context.save()
-      context.globalAlpha = t.opacity * fadeIn * fadeOut * transitionAlpha
+      const override = transient.current
+      const keys = override && override.revisionId === revisionId && override.clipId === clip.clipId ? override.keys : clip.opacityKeys
+      let opacity = t.opacity
+      if (keys) {
+        const first = toSeconds(keys.firstTime), last = toSeconds(keys.lastTime)
+        const progress = Math.max(0, Math.min(1, (now - first) / (last - first)))
+        opacity = keys.firstValue + progress * (keys.lastValue - keys.firstValue)
+      }
+      context.globalAlpha = opacity * fadeIn * fadeOut * transitionAlpha
       context.translate(t.positionX * target.width + rotatedWidth / 2,
         t.positionY * target.height + rotatedHeight / 2)
       context.rotate(radians)

@@ -351,6 +351,38 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N12 opacity keys', () => {
+  afterEach(() => vi.restoreAllMocks())
+  it.each(['clip', 'key'])('withdraws a delayed preview when the %s changes away and back', async field => {
+    renderBranchWorkspace('main', '7', true, head, true)
+    await waitFor(() => expect(within(screen.getByRole('region', { name: 'Opacity edit' })).getByRole('option', { name: 'clip-1' })).toBeTruthy())
+    const region = within(screen.getByRole('region', { name: 'Opacity edit' }))
+    const change = (label: string, value: string) => fireEvent.change(region.getByLabelText(label), { target: { value } })
+    const prepare = () => {
+      change('Opacity clip','clip-1')
+      change('First key time (clip seconds)','0')
+      change('Second key time (clip seconds)','1/2')
+    }
+    prepare()
+    const held = deferred<{ batchDigest: string; steps: never[] }>()
+    const read = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue({ batchDigest: HASH_C, steps: [] })
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    fireEvent.click(region.getByRole('button', { name: 'Preview opacity' }))
+    if (field === 'clip') { change('Opacity clip','clip-0'); prepare() }
+    else { change('Second opacity (%)','50'); change('Second opacity (%)','100') }
+    await act(async () => held.resolve({batchDigest: HASH_C, steps: []}))
+    expect(region.queryByRole('button', { name: 'Confirm opacity' })).toBeNull()
+    expect(write).not.toHaveBeenCalled()
+    fireEvent.click(region.getByRole('button', { name: 'Preview opacity' }))
+    await region.findByRole('button', { name: 'Confirm opacity' })
+    expect(read.mock.lastCall?.[2].operations[0]).toEqual({definitionId:'timeline.clip.opacity.keyframes.set',target:{clipId:'clip-1'},
+      parameters:{firstTime:'7/1',lastTime:'15/2',firstValue:0,lastValue:1}})
+    change('Second key time (clip seconds)','0')
+    expect((region.getByRole('button', { name: 'Preview opacity' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(region.queryByRole('button', { name: 'Confirm opacity' })).toBeNull()
+  })
+})
+
 describe('N11 slide edit', () => {
   afterEach(() => vi.restoreAllMocks())
 

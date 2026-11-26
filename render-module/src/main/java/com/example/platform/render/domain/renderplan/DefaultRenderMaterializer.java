@@ -106,13 +106,14 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         boolean hasBasicEffects = clips.stream().anyMatch(clip -> clip.effect().enabled() && !clip.effect().identity());
         boolean hasTransform = clips.stream().anyMatch(clip -> !clip.transform().equals(
                 com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
-        boolean timedTracks = hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
+        boolean animated = clips.stream().anyMatch(clip -> revision.opacity(clip.clipId()).isPresent());
+        boolean timedTracks = animated || hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
                 || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
         boolean partialCoverage = clips.size() == 1 && request.extent() != null
                 && (clips.getFirst().timelineRange().start().isGreaterThan(request.extent().start())
                         || clips.getFirst().timelineRange().end().isLessThan(request.extent().end()));
         boolean multiClip = clips.size() > 1 || timedTracks || partialCoverage;
-        if ((hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty())
+        if ((animated || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty())
                 && !hasExactEditorialFrameGrid(clips, request.extent())) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
                     RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED, RenderDiagnosticSeverity.ERROR,
@@ -414,7 +415,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                                 clip.transform(),
                                                 VideoEffectSpec.from(clip.effect()),
                                                 clip.timelineRange().start(), clip.timelineRange().end(),
-                                                Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())))));
+                                                Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())), revision.opacity(clip.clipId()))));
                                 RenderNodeId embedded = getEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId());
                                 if (embedded != null) {
                                     edges.add(new RenderDependencyEdge(embedded, compositeId,

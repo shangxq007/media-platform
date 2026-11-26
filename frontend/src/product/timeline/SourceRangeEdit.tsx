@@ -1,19 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { FormalRenderAPI } from '../../api/formal-render'
-import { Button } from '../../components/design-system'
-import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
-import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
+import { useMemo, useState } from 'react'
+import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
+import type { SemanticStep } from '../../contracts/semantic-batch.generated'
 import type { ProjectedTrack } from './timeline-projection'
 import { add, compare, formatRational as f, parseRational, subtract, type Rational } from './trim'
-
-interface RangePlan {
-  tenant: string
-  project: string
-  context: string
-  body: SemanticBatch
-  digest: string
-  ranges: string[]
-}
 
 interface Choice {
   key: string
@@ -89,116 +78,24 @@ const rangeEdits = {
   slide: { label: 'Slide', selectLabel: 'Middle clip', placeholder: 'Choose a middle clip', timeLabel: 'Timeline offset (seconds)', choices: slideChoices },
 }
 
-export function SourceRangeEdit({ edit, head, tenant, tracks, disabled, access, readback, onAccepted }: {
+export function SourceRangeEdit({ edit, tracks, ...props }: ConfirmedEditProps & {
   edit: keyof typeof rangeEdits
-  head: CanonicalHeadReference | null
-  tenant: string | null
   tracks: readonly ProjectedTrack[]
-  disabled: boolean
-  access: EditorCommandAccess
-  readback: () => Promise<CanonicalHeadReference | undefined>
-  onAccepted: (base: string, hash: string, receipt: { revisionId: string; contentHash: string }) => void
 }) {
-  const { label, selectLabel, placeholder, timeLabel } = rangeEdits[edit]
+  const { selectLabel, placeholder, timeLabel } = rangeEdits[edit]
   const signed = edit !== 'roll'
   const choices = useMemo(() => rangeEdits[edit].choices(tracks), [edit, tracks])
   const [selected, select] = useState('')
   const [input, setInput] = useState('')
-  const [plan, setPlan] = useState<RangePlan | null>(null)
-  const [retry, setRetry] = useState<RangePlan | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const [failed, setFailed] = useState(false)
-  const reading = useRef<AbortController | null>(null)
-  const writing = useRef<AbortController | null>(null)
   const choice = choices.find(p => p.key === selected)
   const value = parseRational(input)
-  const locked = disabled || access.blocked
-  const context = !locked && tenant && head && choice && value && (signed || value.numerator >= 0n)
-    ? JSON.stringify([tenant, head.projectId, head.revisionId, head.contentHash, selected, input]) : null
-  useLayoutEffect(() => {
-    setPlan(null)
-    return () => reading.current?.abort()
-  }, [context])
-  useEffect(() => () => writing.current?.abort(), [])
-  const visible = plan && plan.context === context ? plan : null
-
-  async function preview() {
-    if (!context || !tenant || !head || !choice || !value || reading.current || writing.current || retry || !access.canStart()) return
-    const request = new AbortController()
-    reading.current = request
-    const { step, ranges } = choice.draft(value)
-    const body: SemanticBatch = { batchId: crypto.randomUUID(), baseRevisionId: head.revisionId,
-      baseContentHash: head.contentHash, operations: [step] }
-    setBusy(true); setPlan(null); setMessage(''); setFailed(false)
-    try {
-      const result = await FormalRenderAPI.previewBatch(tenant, head.projectId, body, request.signal)
-      if (request.signal.aborted) return
-      setPlan({ tenant, project: head.projectId, context, body, digest: result.batchDigest, ranges })
-    } catch (error) {
-      if (!request.signal.aborted) {
-        setFailed(true)
-        setMessage((error as {response?: {data?: {detail?: string}}}).response?.data?.detail ?? label + ' preview unavailable.')
-      }
-    } finally {
-      reading.current = null
-      setBusy(false)
-    }
-  }
-
-  async function confirm() {
-    const attempt = retry ?? visible
-    if (!attempt || writing.current || reading.current || (!retry && locked) || !access.claim()) return
-    const request = new AbortController()
-    writing.current = request
-    setBusy(true); setMessage(''); setFailed(false)
-    let retain = false
-    try {
-      const receipt = await FormalRenderAPI.commitBatch(attempt.tenant, attempt.project, attempt.body,
-        attempt.body.baseRevisionId, attempt.digest, request.signal)
-      if (request.signal.aborted) return
-      setPlan(null); setRetry(null)
-      onAccepted(attempt.body.baseRevisionId, attempt.body.baseContentHash, receipt)
-      const current = await readback().catch(() => undefined)
-      setMessage((receipt.revisionId === attempt.body.baseRevisionId ? label + ' created no revision at ' : label + ' accepted at revision ')
-        + receipt.revisionId + '.' + (current ? (current.revisionId === receipt.revisionId && current.contentHash === receipt.contentHash
-          ? '' : ' Current HEAD is ' + current.revisionId + '.') : ' Reload HEAD to refresh the editor.'))
-    } catch (error) {
-      if (request.signal.aborted) return
-      const response = (error as {response?: {status: number; data?: {detail?: string}}}).response
-      setFailed(true); setPlan(null)
-      if (!response || response.status >= 500 || response.status === 429) {
-        retain = true
-        setRetry(attempt)
-        setMessage(label + ' outcome unknown. Retry sends the original confirmed request.')
-      } else {
-        setRetry(null)
-        setMessage(response.status === 409 || response.status === 412 ? label + ' conflict. Reload HEAD and preview again.'
-          : response.data?.detail ?? label + ' rejected.')
-      }
-    } finally {
-      writing.current = null
-      if (!retain) access.release()
-      setBusy(false)
-    }
-  }
-
-  return <section aria-label={label + ' edit'}>
-    <fieldset disabled={locked || !!retry || !!writing.current}>
-      <legend>{label} edit</legend>
+  return <ConfirmedClipEdit {...props} edit={edit} inputIdentity={JSON.stringify([selected, input])}
+    draft={choice && value && (signed || value.numerator >= 0n) ? () => choice.draft(value) : null}>
       <label>{selectLabel} <select value={choice?.key ?? ''} onChange={e => { select(e.target.value); setInput('') }}>
         <option value="">{placeholder}</option>
         {choices.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
       </select></label>
       <label>{timeLabel} <input value={input} onChange={e => setInput(e.target.value)} /></label>
       {input && (!value || (!signed && value.numerator < 0n)) && <p role="alert">{signed ? 'Enter a signed integer or fraction.' : 'Enter a nonnegative integer or fraction.'}</p>}
-      <Button disabled={busy || !context} onClick={() => void preview()}>Preview {edit}</Button>
-      {visible && <div aria-label={label + ' preview'}>{visible.ranges.map(line => <p key={line}>{line}</p>)}
-        <Button disabled={busy} onClick={() => void confirm()}>Confirm {edit}</Button>
-        <Button disabled={busy} onClick={() => setPlan(null)}>Cancel {edit}</Button>
-      </div>}
-    </fieldset>
-    {retry && <Button disabled={busy || access.blocked} onClick={() => void confirm()}>Retry confirmed {edit}</Button>}
-    {message && <p role={failed ? 'alert' : 'status'}>{message}</p>}
-  </section>
+  </ConfirmedClipEdit>
 }

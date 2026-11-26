@@ -110,8 +110,19 @@ public final class VerifiedTimelineRevisionFactory {
                 ContentDigest.sha256(base64ToHex(recordedTimelineDigest)));
         var tracks = document.getTracks().stream()
                 .map(track -> new VerifiedTimelineRevision.Track(track.trackId(), track.type())).toList();
+        var opacity = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.OpacityKeys>();
+        for (var curve : document.getAutomations()) {
+            if (!curve.parameterPath().equals("opacity")) throw new IllegalArgumentException("Unsupported render automation: " + curve.parameterPath());
+            var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
+                    .flatMap(t -> t.clips().stream()).filter(c -> c.getEffects().stream().anyMatch(e ->
+                            BasicVideoEffect.EFFECT_KEY.equals(e.effectKey()) && curve.targetEntityId().equals(e.id())))
+                    .findFirst().orElseThrow(() -> new IllegalArgumentException("Unsupported opacity target"));
+            var envelope = com.example.platform.timeline.semantics.effect.OpacityKeys.from(curve);
+            envelope.requireInside(owner.getStartTime(), owner.getEndTime());
+            if (opacity.put(owner.getClipId().value(), envelope) != null) throw new IllegalArgumentException("Ambiguous opacity curve");
+        }
         return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
-                document.getTransitions(), document.getMetadata().effectiveCompositionAspectRatio());
+                document.getTransitions(), opacity, document.getMetadata().effectiveCompositionAspectRatio());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

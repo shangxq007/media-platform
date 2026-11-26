@@ -116,7 +116,10 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                     timed.gainLinear(), timed.muted(), timed.balanceValue(), placement,
                     timed.effect(), timed.start().subtract(timed.authoredStart()),
                     timed.authoredEnd().subtract(timed.authoredStart()),
-                    timed.dissolve().map(RenderDependency.Dissolve::duration).orElse(MediaTime.ZERO)));
+                    timed.dissolve().map(RenderDependency.Dissolve::duration).orElse(MediaTime.ZERO),
+                    timed.opacityKeys().map(k -> new com.example.platform.timeline.semantics.effect.OpacityKeys(
+                            k.firstTime().subtract(timed.authoredStart()), k.firstValue(),
+                            k.lastTime().subtract(timed.authoredStart()), k.lastValue()))));
         }
         inputs.sort(java.util.Comparator.comparingInt(BmfCpuTranscodePlan.TimedInput::layer)
                 .thenComparing(BmfCpuTranscodePlan.TimedInput::start));

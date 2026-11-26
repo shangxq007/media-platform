@@ -1957,6 +1957,13 @@ try {
   assert.deepEqual(await c11('rejected'), bound11)
   result.http.n11 = { base: seed11.newRevisionId, plan: planned11, attempts: attempts11, frames: frames11,
     edges: edges11, rejected: rejected11, readOnly: 403, alternate: 409, stale: stale11.payload, sync: relation11.payload.detail }
+  const readerHead = await branch()
+  const opacityBody = { batchId: 'n12-reader', baseRevisionId: readerHead.headRevisionId, baseContentHash: readerHead.contentHash,
+    operations: [{ definitionId: 'timeline.clip.opacity.keyframes.set', target: { clipId: 'clip-middle' },
+      parameters: { firstTime: '5', firstValue: 0, lastTime: '7', lastValue: 1 } }] }
+  const opacityDigest = (await preview(opacityBody, 200, reader)).batchDigest
+  const deniedOpacity = await apply(opacityBody, opacityDigest, 403, reader)
+  result.http.n12Reader = { status: 403, errorCode: deniedOpacity.errorCode, revision: readerHead.headRevisionId }
   result.status = 'PASS'
   save('N11 single-track slide, two shifted cuts, clip-relative picture and fixed control, exact handles, recovery and undo/redo')
 } finally {

@@ -549,7 +549,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
         }
         if (dependency instanceof RenderDependency.TimedTrackInput timed) {
-            return writer.field("variant", "TIMED_TRACK_INPUT")
+            writer.field("variant", timed.opacityKeys().isPresent() ? "TIMED_TRACK_OPACITY_V1" : "TIMED_TRACK_INPUT")
                     .field("start", timed.start().toString()).field("end", timed.end().toString())
                     .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio()))
                     .field("gain", Double.toString(timed.gainLinear())).field("mute", Boolean.toString(timed.muted()))
@@ -578,7 +578,10 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                                     .field("transitionId", dissolve.transitionId())
                                     .field("outgoingClipId", dissolve.outgoingClipId())
                                     .field("incomingClipId", dissolve.incomingClipId())
-                                    .field("duration", dissolve.duration().toString()).build()).orElse(null)).build();
+                                    .field("duration", dissolve.duration().toString()).build()).orElse(null));
+            timed.opacityKeys().ifPresent(k -> writer.field("firstTime", k.firstTime().toString()).field("firstValue", Double.toString(k.firstValue()))
+                    .field("lastTime", k.lastTime().toString()).field("lastValue", Double.toString(k.lastValue())));
+            return writer.build();
         }
         throw new UnsupportedPersistedConstructException(
                 "RenderDependency " + dependency.getClass().getName());
@@ -596,7 +599,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
             case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
-            case "TIMED_TRACK_INPUT" -> new RenderDependency.TimedTrackInput(
+            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1" -> new RenderDependency.TimedTrackInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")),
                     Integer.parseInt(reader.field("layer")), reader.fieldBoolean("audio"),
                     com.example.platform.audio.domain.mix.AudioGain.of(Double.parseDouble(reader.field("gain"))),
@@ -614,7 +617,9 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                             Double.parseDouble(reader.field("fadeIn")), Double.parseDouble(reader.field("fadeOut")),
                             reader.fieldBoolean("effectEnabled")),
                     MediaTime.parse(reader.field("authoredStart")), MediaTime.parse(reader.field("authoredEnd")),
-                    dissolve(reader.optionalNested()));
+                    dissolve(reader.optionalNested()), variant.equals("TIMED_TRACK_OPACITY_V1") ? Optional.of(new com.example.platform.timeline.semantics.effect.OpacityKeys(
+                            MediaTime.parse(reader.field("firstTime")), Double.parseDouble(reader.field("firstValue")),
+                            MediaTime.parse(reader.field("lastTime")), Double.parseDouble(reader.field("lastValue")))) : Optional.empty());
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }

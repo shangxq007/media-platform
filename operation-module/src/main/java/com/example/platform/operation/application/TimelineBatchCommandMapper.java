@@ -201,6 +201,9 @@ public final class TimelineBatchCommandMapper {
                     time(parameters, "delta"));
             case "timeline.composition.aspect.set" -> new OperationParameters.CompositionAspectParameters(
                     CompositionAspectRatio.fromParameters(parameters));
+            case "timeline.clip.opacity.keyframes.set" -> new OperationParameters.OpacityParameters(
+                    new com.example.platform.timeline.semantics.effect.OpacityKeys(time(parameters, "firstTime"),
+                            requiredDouble(parameters, "firstValue"), time(parameters, "lastTime"), requiredDouble(parameters, "lastValue")));
             case "timeline.clip.transform.set" -> new OperationParameters.VideoTransformParameters(
                     VideoTransform.fromParameters(parameters));
             case "timeline.clip.effect.set" -> new OperationParameters.VideoEffectParameters(

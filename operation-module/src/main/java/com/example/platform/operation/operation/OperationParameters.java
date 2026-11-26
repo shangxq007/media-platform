@@ -42,6 +42,7 @@ public sealed interface OperationParameters permits
         OperationParameters.AudioGainParameters,
         OperationParameters.AudioMuteParameters,
         OperationParameters.StereoBalanceParameters,
+        OperationParameters.OpacityParameters,
         OperationParameters.VideoTransformParameters,
         OperationParameters.CompositionAspectParameters,
         OperationParameters.VideoEffectParameters,
@@ -62,6 +63,11 @@ public sealed interface OperationParameters permits
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters,
         OperationParameters.CreateAlignmentParameters {
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record OpacityParameters(com.example.platform.timeline.semantics.effect.OpacityKeys keys) implements OperationParameters {
+        public OpacityParameters { java.util.Objects.requireNonNull(keys); }
+    }
 
     @org.springframework.modulith.NamedInterface("invocation")
     record SignedTimeOffset(MediaTime magnitude, boolean backward) {

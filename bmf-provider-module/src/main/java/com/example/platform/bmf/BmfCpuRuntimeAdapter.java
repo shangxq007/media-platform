@@ -160,7 +160,12 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     video = ff.ff_filter(video, 'rotate', 'angle=' + angle
                                          + ':ow=rotw(' + angle + '):oh=roth(' + angle
                                          + '):fillcolor=none')
-                if opacity < 1:
+                if len(fx) == 14:
+                    t0, a0, t1, a1 = map(float, fx[10:])
+                    ramp = str(a0) + '+(' + str(a1-a0) + ')*clip((T-' + str(t0) + ')/' + str(t1-t0) + ',0,1)'
+                    video = ff.ff_filter(video, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
+                                         a='alpha(X,Y)*(' + ramp + ')', interpolation='nearest')
+                elif opacity < 1:
                     video = ff.ff_filter(video, 'colorchannelmixer', 'aa=' + str(opacity))
                 if effect_enabled and fade_in > 0:
                     video = ff.ff_filter(video, 'fade', 't=in:st=0'
@@ -236,7 +241,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 + (e.grayscale() ? "1" : "0") + ";" + e.fadeInSeconds() + ";"
                 + e.fadeOutSeconds() + ";" + (e.enabled() ? "1" : "0") + ";"
                 + seconds(input.elapsed()) + ";" + seconds(input.authoredDuration()) + ";"
-                + seconds(input.dissolveDuration());
+                + seconds(input.dissolveDuration()) + input.opacityKeys().map(k -> ";" + seconds(k.firstTime())
+                        + ";" + k.firstValue() + ";" + seconds(k.lastTime()) + ";" + k.lastValue()).orElse("");
     }
 
     private final Path python;

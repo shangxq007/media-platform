@@ -136,7 +136,15 @@ function projectEffect(value: unknown): ProjectedVideoEffect {
     fadeInSeconds: number('fadeInSeconds', 0), fadeOutSeconds: number('fadeOutSeconds', 0), enabled: p.enabled }
 }
 
+export interface OpacityKeys {
+  firstTime: Rational
+  firstValue: number
+  lastTime: Rational
+  lastValue: number
+}
+
 export interface ProjectedClip {
+  readonly opacityKeys?: OpacityKeys
   readonly clipId: string
   readonly trackId: string
   readonly artifactId: string
@@ -212,7 +220,7 @@ function projectClip(value: unknown, trackId: string): ProjectedClip {
 export function projectTimeline(document: unknown): TimelineProjection {
   const root = object(document, 'Timeline snapshot')
   if (root.schemaVersion !== 'timeline-1.0') throw new Error('Unsupported Timeline schema version')
-  for (const field of ['automations', 'textElements']) {
+  for (const field of ['textElements']) {
     if (root[field] !== undefined && entries(root[field], field).length) {
       throw new Error('Unsupported Timeline preview semantics: ' + field)
     }
@@ -220,13 +228,32 @@ export function projectTimeline(document: unknown): TimelineProjection {
   const metadata = root.metadata == null ? {} : object(root.metadata, 'Timeline metadata')
   const aspect = metadata.compositionAspectRatio === undefined ? DEFAULT_COMPOSITION_ASPECT
     : decodeCompositionAspect(metadata.compositionAspectRatio)
+  const curves = entries(root.automations ?? [], 'automations').map(c => object(c, 'automation'))
+  const consumed = new Set()
   const tracks: ProjectedTrack[] = entries(root.tracks, 'Timeline tracks').map(raw => {
     const track = object(raw, 'Timeline track')
     if (track.type !== 'video' && track.type !== 'audio') throw new Error('Unsupported Timeline track type')
     const trackId = text(track.trackId, 'track identity')
     return { trackId, name: typeof track.name === 'string' ? track.name : trackId, type: track.type === 'video' ? 'VIDEO' : 'AUDIO',
-      clips: entries(track.clips, 'track clips').map(clip => projectClip(clip, trackId)) }
+      clips: entries(track.clips, 'track clips').map(rawClip => {
+        const clip = projectClip(rawClip, trackId)
+        const effects = entries(object(rawClip, 'clip').effects ?? [], 'effects').map(e => object(e, 'effect'))
+        const bound = curves.filter(c => effects.some(e => e.id != null && e.id === c.targetEntityId))
+        if (!bound.length) return clip
+        const curve = bound[0]
+        const keys = entries(curve.keyframes, 'opacity keys').map(k => object(k, 'opacity key'))
+        if (bound.length !== 1 || curve.parameterPath !== 'opacity' || track.type !== 'video'
+          || curve.valueType !== 'float' || curve.extrapolation !== 'HOLD' || keys.length !== 2
+          || keys.some(k => k.interpolation !== 'LINEAR')) throw new Error('Unsupported Timeline preview semantics: automation curve. Its saved keys are preserved.')
+        const firstTime = exactTime(keys[0].time, 'first opacity time'), lastTime = exactTime(keys[1].time, 'last opacity time')
+        if (compare(firstTime, clip.start) < 0 || compare(firstTime, lastTime) >= 0 || compare(lastTime, clip.end) >= 0)
+          throw new Error('Opacity keys lie outside the visible clip interval')
+        consumed.add(curve)
+        return { ...clip, opacityKeys: { firstTime, lastTime, firstValue: projectedNumber(keys[0].value, 'opacity', 0, 1),
+          lastValue: projectedNumber(keys[1].value, 'opacity', 0, 1) } }
+      }) }
   })
+  if (consumed.size !== curves.length) throw new Error('Unsupported Timeline preview semantics: automations')
   const clips = tracks.flatMap(track => track.clips)
   if (new Set(tracks.map(track => track.trackId)).size !== tracks.length ||
       new Set(clips.map(clip => clip.clipId)).size !== clips.length) throw new Error('Duplicate Timeline identity')

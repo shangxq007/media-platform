@@ -118,8 +118,21 @@ public sealed interface RenderDependency permits
                            VideoEffectSpec effect,
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
-                           java.util.Optional<Dissolve> dissolve)
+                           java.util.Optional<Dissolve> dissolve, java.util.Optional<com.example.platform.timeline.semantics.effect.OpacityKeys> opacityKeys)
             implements RenderDependency {
+        public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                           com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
+                           com.example.platform.audio.domain.mix.AudioGain gain,
+                           com.example.platform.audio.domain.mix.AudioMute mute,
+                           com.example.platform.audio.domain.mix.StereoBalance balance,
+                           com.example.platform.timeline.semantics.effect.VideoTransform transform,
+                           VideoEffectSpec effect,
+                           com.example.platform.shared.time.MediaTime authoredStart,
+                           com.example.platform.shared.time.MediaTime authoredEnd,
+                           java.util.Optional<Dissolve> dissolve) {
+            this(start, end, layer, audio, gain, mute, balance, transform, effect, authoredStart, authoredEnd, dissolve, java.util.Optional.empty());
+        }
+
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
             java.util.Objects.requireNonNull(end, "end");
@@ -131,6 +144,8 @@ public sealed interface RenderDependency permits
             java.util.Objects.requireNonNull(authoredStart, "authoredStart");
             java.util.Objects.requireNonNull(authoredEnd, "authoredEnd");
             java.util.Objects.requireNonNull(dissolve, "dissolve");
+            opacityKeys.ifPresent(k -> k.requireInside(authoredStart, authoredEnd));
+            if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
                     || layer < 0 || (audio && dissolve.isPresent())) {
                 throw new IllegalArgumentException("Invalid track placement or dissolve");
@@ -144,11 +159,18 @@ public sealed interface RenderDependency permits
                 com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
                 VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
                 com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve) {
+            return video(start, end, layer, transform, effect, authoredStart, authoredEnd, dissolve, java.util.Optional.empty());
+        }
+
+        public static TimedTrackInput video(com.example.platform.shared.time.MediaTime start,
+                com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
+                VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
+                com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve, java.util.Optional<com.example.platform.timeline.semantics.effect.OpacityKeys> opacityKeys) {
             return new TimedTrackInput(start, end, layer, false,
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
                     com.example.platform.audio.domain.mix.StereoBalance.neutral(),
-                    transform, effect, authoredStart, authoredEnd, dissolve);
+                    transform, effect, authoredStart, authoredEnd, dissolve, opacityKeys);
         }
 
         public VideoPlacement placement() {

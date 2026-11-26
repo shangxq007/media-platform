@@ -153,8 +153,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, edit + " must be the only operation in the batch");
             }
         }
-        if (rippleDelete(operation) || instance.parameters() instanceof OperationParameters.SlipParameters) {
-            String edit = rippleDelete(operation) ? "Ripple Delete" : "Slip";
+        if (rippleDelete(operation) || instance.parameters() instanceof OperationParameters.OpacityParameters
+                || instance.parameters() instanceof OperationParameters.SlipParameters) {
+            String edit = rippleDelete(operation) ? "Ripple Delete" : instance.parameters() instanceof OperationParameters.OpacityParameters ? "Opacity" : "Slip";
             if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
                 throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
                         edit + " is only available on the default editing branch");
@@ -258,6 +259,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 instanceof OperationParameters.TrimParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlideParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.OpacityParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));

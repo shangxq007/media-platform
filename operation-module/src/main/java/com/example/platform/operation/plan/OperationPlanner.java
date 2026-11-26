@@ -75,6 +75,7 @@ public final class OperationPlanner {
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.composition.aspect.set" -> planCompositionAspect(instance, base, changes);
+            case "timeline.clip.opacity.keyframes.set" -> planOpacity(instance, base, changes);
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
             case "timeline.clip.effect.set" -> planVideoEffectSet(instance, base, changes);
             case "timeline.clip.effect.remove" -> planVideoEffectRemove(instance, base, changes);
@@ -99,6 +100,18 @@ public final class OperationPlanner {
             default -> throw new PlanException(PlanErrorCode.INVALID_PLAN,
                     "unsupported operation " + instance.definitionId());
         };
+        if (!base.getAutomations().isEmpty()) {
+            var targets = base.getAutomations().stream().filter(a -> a.parameterPath().equals("opacity"))
+                    .map(a -> a.targetEntityId()).collect(java.util.stream.Collectors.toSet());
+            for (var track : base.getTracks()) for (var clip : track.clips()) {
+                if (clip.getEffects().stream().noneMatch(e -> targets.contains(e.id()))) continue;
+                var samePlacement = candidate.getTracks().stream().filter(t -> t.trackId().equals(track.trackId()))
+                        .flatMap(t -> t.clips().stream()).anyMatch(c -> c.getClipId().equals(clip.getClipId())
+                                && c.getStartTime().equals(clip.getStartTime()) && c.getEndTime().equals(clip.getEndTime()));
+                if (!samePlacement) throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                        "This edit would move or remove a clip with absolute opacity keys: " + clip.getClipId().value());
+            }
+        }
         return finish(instance, candidate, changes, List.of(), null);
     }
 
@@ -1147,6 +1160,50 @@ public final class OperationPlanner {
                         metadata.title(), metadata.description(), metadata.properties(), params.aspectRatio()),
                 base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
                 base.getTransitions(), base.getAutomations());
+    }
+
+    private TimelineDocument planOpacity(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var id = scopeOf(instance).getFirst();
+        var clip = clipOf(base, id);
+        if (base.getTracks().stream().noneMatch(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO
+                && t.clips().contains(clip)) || !"MEDIA_STREAM".equals(clip.getSourceKind())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Opacity requires a video media clip");
+        }
+        var keys = ((OperationParameters.OpacityParameters) instance.parameters()).keys();
+        var basic = clip.getEffects().stream().filter(e -> BasicVideoEffect.EFFECT_KEY.equals(e.effectKey())).findFirst();
+        String target = basic.map(TimelineClipEffect::id).orElse("video-basic-" + id.value());
+        var existing = base.getAutomations().stream().filter(a -> a.parameterPath().equals("opacity")
+                && clip.getEffects().stream().anyMatch(e -> a.targetEntityId().equals(e.id()))).toList();
+        try {
+            keys.requireInside(clip.getStartTime(), clip.getEndTime());
+            if (existing.size() > 1 || !existing.isEmpty() && !target.equals(existing.getFirst().targetEntityId())
+                    || basic.isPresent() && basic.get().id() == null) {
+                throw new IllegalArgumentException("The existing effect or opacity channel cannot be edited here");
+            }
+            if (!existing.isEmpty()) com.example.platform.timeline.semantics.effect.OpacityKeys.from(existing.getFirst());
+        } catch (IllegalArgumentException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
+        var previous = existing.isEmpty() ? null : existing.getFirst();
+        String curveId = previous == null ? "opacity-" + id.value() : previous.automationId();
+        if (previous == null && base.getAutomations().stream().anyMatch(a -> a.automationId().equals(curveId))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Opacity channel identity already in use");
+        }
+        var curve = keys.curve(curveId, target, previous == null ? curveId + "-1" : previous.keyframes().getFirst().keyframeId(),
+                previous == null ? curveId + "-2" : previous.keyframes().getLast().keyframeId());
+        if (curve.equals(previous)) return base;
+        var effects = new ArrayList<>(clip.getEffects());
+        if (basic.isEmpty()) effects.add(new TimelineClipEffect(target, BasicVideoEffect.EFFECT_KEY, BasicVideoEffect.IDENTITY.toParameters()));
+        var updated = new TimelineClip(id.value(), clip.getMediaAssetId(), clip.getMediaStreamId(), clip.getArtifactId(),
+                clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
+                clip.getSourceKind(), clip.getTemporalMapping(), effects, clip.getTransform());
+        var doc = replaceClip(base, id, updated);
+        var curves = new ArrayList<>(doc.getAutomations());
+        curves.remove(previous);
+        curves.add(curve);
+        changes.add(new PlannedChange.ClipReplaced(id, updated));
+        return new TimelineDocument(doc.getSchemaVersion(), doc.getTracks(), doc.getMetadata(), doc.getAudioMix(),
+                doc.getSemanticRelationships(), doc.getTextElements(), doc.getTransitions(), curves);
     }
 
     private TimelineDocument planVideoTransform(OperationInstance inst, TimelineDocument base,

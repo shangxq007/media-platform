@@ -23,8 +23,9 @@ sys.path.insert(0, str(source / 'scripts/testinfra'))
 from local_runtime import sandbox_prefix
 
 branches = sys.argv[1:] == ['--branches']
-assert branches or not sys.argv[1:]
-out = root / '04-tests' / ('n02-branches' if branches else 'n01-history')
+opacity = sys.argv[1:] == ['--opacity']
+assert opacity or branches or not sys.argv[1:]
+out = root / '04-tests' / ('n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
@@ -86,6 +87,10 @@ if branches:
     checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
+if opacity:
+    browser_script = 'n12-opacity-browser-e2e.mjs'
+    checkpoints = ('base','draft','accepted','recovery','edited','undo','redo','stale','noop')
+
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
                                 str(app), str(out)], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
@@ -97,7 +102,15 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
                 raise RuntimeError('N01 browser deadline reached')
             for name in checkpoints:
                 if name not in facts and (out / ('checkpoint-' + name)).is_file():
-                    fact = psql(counts)
+                    if opacity:
+                        project = (out / 'project-id').read_text()
+                        assert re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', project)
+                        scope = f"tenant_id='tenant-fr-e2e' and project_id='{project}'"
+                        fact = psql(f"""select json_build_object('head',(select head_revision_id from timeline.timeline_revision_ref where {scope} and ref_id='main'),
+                            'rows',(select count(*) from timeline.timeline_revision where {scope}),
+                            'commands',(select count(*) from timeline.apply_command where {scope}));""")
+                    else:
+                        fact = psql(counts)
                     scratch = out / ('writing-' + name)
                     scratch.write_text(json.dumps(fact))
                     scratch.rename(out / ('database-' + name + '.json'))
@@ -109,6 +122,31 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
+if opacity:
+    rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (select rev.id,rev.parent_revision_id,rev.content_hash,
+        doc.payload_json::json as snapshot,ctx.payload_json::json as semantics
+        from timeline.timeline_revision rev join timeline.timeline_snapshot doc on doc.id=rev.snapshot_id and doc.project_id=rev.project_id and doc.tenant_id=rev.tenant_id
+        join timeline.timeline_snapshot ctx on ctx.id='revctx_'||rev.id and ctx.tenant_id=rev.tenant_id and ctx.project_id=rev.project_id
+        where rev.tenant_id='tenant-fr-e2e' and rev.project_id='{project}') r;""")
+    assert facts['base']==facts['draft'] and facts['accepted']==facts['recovery'] and facts['redo']==facts['stale']
+    for a,b in [('base','accepted'),('accepted','edited'),('edited','undo'),('undo','redo')]:
+        assert facts[b]['rows']==facts[a]['rows']+1 and facts[b]['commands']==facts[a]['commands']+1
+        assert rows[facts[b]['head']]['parent_revision_id']==facts[a]['head']
+    assert facts['noop']['head']==facts['redo']['head'] and facts['noop']['rows']==facts['redo']['rows']
+    for a,b in [('accepted','undo'),('edited','redo')]:
+        for field in ['snapshot','semantics']:
+            assert rows[facts[a]['head']][field]==rows[facts[b]['head']][field]
+    result=json.loads((out/'opacity-result.json').read_text())
+    assert result['export']['revisionId']==facts['accepted']['head'] and result['status']=='PASS'
+    a=rows[facts['accepted']['head']]['snapshot']
+    base=rows[facts['base']['head']]['snapshot']
+    curve=a['automations'][0]
+    assert [(k['time'],k['value']) for k in curve['keyframes']]==[('3/1',0),('5/1',1)]
+    assert base['tracks']==a['tracks'] and base.get('audioMix')==a.get('audioMix')
+    assert any(e['id']==curve['targetEntityId'] for t in a['tracks'] for c in t['clips'] if c['clipId']==result['foreground'] for e in c['effects'])
+    (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
+    print('N12_OPACITY_CHROME_EXPORT_POSTGRES=PASS')
+    raise SystemExit(0)
 if branches:
     browser_result = json.loads((out / 'branches-result.json').read_text())
     assert browser_result['status'] == 'PASS'

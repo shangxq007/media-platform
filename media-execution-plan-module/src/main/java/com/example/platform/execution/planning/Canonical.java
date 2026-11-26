@@ -266,7 +266,9 @@ public final class Canonical {
                     + "|" + framed(timed.authoredEnd().toString())
                     + timed.dissolve().map(dissolve -> "|" + framed(dissolve.transitionId())
                             + "|" + framed(dissolve.outgoingClipId()) + "|" + framed(dissolve.incomingClipId())
-                            + "|" + framed(dissolve.duration().toString())).orElse("");
+                            + "|" + framed(dissolve.duration().toString())).orElse("")
+                    + timed.opacityKeys().map(k -> "|opacity|" + framed(k.firstTime().toString()) + "|" + k.firstValue()
+                            + "|" + framed(k.lastTime().toString()) + "|" + k.lastValue()).orElse("");
         }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
     }

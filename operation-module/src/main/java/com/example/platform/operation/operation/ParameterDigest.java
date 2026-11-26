@@ -146,6 +146,10 @@ public final class ParameterDigest {
             }
             return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
+        if (p instanceof OperationParameters.OpacityParameters opacity) {
+            var keys = opacity.keys();
+            return "opacity(" + keys.firstTime() + "," + keys.firstValue() + "," + keys.lastTime() + "," + keys.lastValue() + ")";
+        }
         if (p instanceof OperationParameters.VideoTransformParameters vt) {
             var t = vt.transform();
             return "video-transform(" + t.positionXMicros() + "," + t.positionYMicros() + ","

@@ -53,6 +53,10 @@ public final class TimelineOperationWireContract {
             case "timeline.trim" -> fields(fields, "string", "edge", "delta");
             case "timeline.clip.split" -> fields(fields, "string", "rightClipId", "splitTimelineTime");
             case "timeline.composition.aspect.set" -> fields(fields, "composition-aspect-rational-v1", "aspectRatio");
+            case "timeline.clip.opacity.keyframes.set" -> {
+                fields(fields, "string", "firstTime", "lastTime");
+                fields(fields, "number", "firstValue", "lastValue");
+            }
             case "timeline.clip.transform.set" -> {
                 fields(fields, "string", "format");
                 fields(fields, "integer", "positionXMicros", "positionYMicros", "scaleXMicros", "scaleYMicros",

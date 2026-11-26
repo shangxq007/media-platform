@@ -2438,6 +2438,68 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.opacity.keyframes.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "firstTime" : {
+                  "type" : "string"
+                },
+                "firstValue" : {
+                  "type" : "number"
+                },
+                "lastTime" : {
+                  "type" : "string"
+                },
+                "lastValue" : {
+                  "type" : "number"
+                }
+              },
+              "required" : [ "firstTime", "firstValue", "lastTime", "lastValue" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.transform.set" ],
               "type" : "string"
             },

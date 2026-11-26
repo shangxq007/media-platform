@@ -149,6 +149,9 @@ public record OperationDefinition(
         public static final OperationDefinition SET_COMPOSITION_ASPECT = new OperationDefinition(
                 OperationDefinitionId.of("timeline.composition.aspect.set"), OperationDefinitionVersion.of(2, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.CompositionAspectParameters.class);
+        public static final OperationDefinition SET_OPACITY_KEYS = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.opacity.keyframes.set"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.OpacityParameters.class);
         public static final OperationDefinition SET_VIDEO_TRANSFORM = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.transform.set"), OperationDefinitionVersion.of(2, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.VideoTransformParameters.class);
@@ -194,7 +197,7 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE, RESTORE_REVISION,
-                                SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_VIDEO_TRANSFORM,
+                                SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_OPACITY_KEYS, SET_VIDEO_TRANSFORM,
                                 SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
                                 UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE)).toList();
         private V3() {}

@@ -1030,6 +1030,41 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
     }
 
+    private OperationBatchRequest opacityRequest(TimelineRevision base) {
+        var def = OperationDefinition.V3.SET_OPACITY_KEYS;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))), SelectionSpec.ExpansionPolicy.EXACT);
+        var keys = new com.example.platform.timeline.semantics.effect.OpacityKeys(time("6/1"), 0, time("7/1"), 1);
+        var op = new OperationRequest(def.definitionId(), def.version(), target, new OperationParameters.OpacityParameters(keys),
+                base.revisionId(), hash(base), null);
+        return new OperationBatchRequest("opacity-one", new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(op), null);
+    }
+
+    @Test
+    void opacityKeysRollbackSnapshotsPinsAndLedgerAtomically() {
+        var base = rangeFixture(false);
+        var request = opacityRequest(base);
+        var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
+        var pins = jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id");
+        assertRippleRollsBack(base, request);
+        assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
+        assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
+    }
+
+    @Test
+    void opacityKeysRetainSeparatelyStoredEffectBindingsAndRevisionSemantics() {
+        var base = rangeFixture(false);
+        var accepted = saveService.findById(TENANT, applyPrepared(opacityRequest(base)).newRevisionId());
+        assertEquals(base.semanticContext().effectReference(), accepted.semanticContext().effectReference());
+        assertEquals(base.revisionId(), accepted.parentRevisionId());
+        var curve = accepted.canonicalTimeline().getAutomations().getFirst();
+        assertEquals("opacity", curve.parameterPath());
+        assertEquals("video-basic-clip-a", curve.targetEntityId());
+        assertEquals(List.of(time("6/1"),time("7/1")), curve.keyframes().stream().map(k -> k.time()).toList());
+        assertNotEquals(base.contentDigest(), accepted.contentDigest());
+    }
+
     private OperationBatchRequest slideRequest(TimelineRevision base) {
         var def = OperationDefinition.V3.SLIDE_CLIP;
         var params = new OperationParameters.SlideParameters("video-main", TimelineClipId.of("left"),
