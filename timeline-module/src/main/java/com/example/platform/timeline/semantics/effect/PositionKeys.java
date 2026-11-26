@@ -43,7 +43,14 @@ public record PositionKeys(List<Key> keys) {
             if (!keys.isEmpty() && (keys.getFirst().time().isLessThan(start) || !keys.getLast().time().isLessThan(end))) {
                 throw new IllegalArgumentException("Position keys must fall inside the clip's half-open timeline interval");
             }
-            for (var key : keys) key.time().subtract(start);
+            MediaTime previous = null;
+            for (var key : keys) {
+                var local = key.time().subtract(start);
+                if (previous != null && !previous.isLessThan(local)) {
+                    throw new IllegalArgumentException("Clip-local position key times must strictly increase");
+                }
+                previous = local;
+            }
         } catch (ArithmeticException overflow) {
             throw new IllegalArgumentException("Position key times exceed the exact time arithmetic range", overflow);
         }

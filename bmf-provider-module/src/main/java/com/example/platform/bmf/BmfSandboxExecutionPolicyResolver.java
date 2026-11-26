@@ -1,5 +1,6 @@
 package com.example.platform.bmf;
 
+import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.sandbox.DeviceExposurePolicy;
 import com.example.platform.sandbox.EnvironmentPolicy;
@@ -247,7 +248,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     private static boolean validPlacement(String placement, String duration, RenderRaster raster) {
         String[] parts = placement.split(",", -1);
-        if (parts.length != 17 || !List.of("V", "A").contains(parts[0])
+        if ((parts.length != 17 && parts.length != 18) || !List.of("V", "A").contains(parts[0])
                 || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
             return false;
         }
@@ -281,6 +282,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || !isNonNegativeSeconds(fx[8]) || !isNonNegativeSeconds(fx[9])
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
             if (fx.length == 14 && (!parts[0].equals("V") || !validOpacityRamp(fx))) return false;
+            if (parts.length == 18 && (!parts[0].equals("V") || !validPositionRamp(parts[17], fx[8]))) return false;
             var brightness = new java.math.BigDecimal(fx[0]);
             var contrast = new java.math.BigDecimal(fx[1]);
             var saturation = new java.math.BigDecimal(fx[2]);
@@ -314,6 +316,19 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     && (parts[0].equals("A") || BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(
                             raster, scaleX.doubleValue(), scaleY.doubleValue(), degrees.doubleValue()));
         } catch (NumberFormatException invalid) {
+            return false;
+        }
+    }
+
+    private static boolean validPositionRamp(String token, String authoredDuration) {
+        // Only exact nonnegative times and signed fixed-point integers may enter the graph compiler.
+        String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        String pair = time + ";-?[0-9]{1,8};-?[0-9]{1,8}";
+        if (token.length() > 1024 || !token.matches(pair + "(?:\\|" + pair + "){1,15}")) return false;
+        try {
+            var ramp = RenderDependency.PositionRamp.parseSamples(token);
+            return ramp.endsWithin(new BigDecimal(authoredDuration));
+        } catch (IllegalArgumentException invalid) {
             return false;
         }
     }

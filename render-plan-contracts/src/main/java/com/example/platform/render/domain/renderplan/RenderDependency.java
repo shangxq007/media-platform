@@ -136,6 +136,13 @@ public sealed interface RenderDependency permits
             return keys.canonicalSamples();
         }
 
+        public boolean endsWithin(java.math.BigDecimal durationSeconds) {
+            var end = keys.keys().getLast().time();
+            var seconds = java.math.BigDecimal.valueOf(end.ticks()).divide(java.math.BigDecimal.valueOf(end.timeScale()),
+                    9, java.math.RoundingMode.HALF_UP);
+            return seconds.compareTo(durationSeconds) <= 0;
+        }
+
         public static PositionRamp parseSamples(String samples) {
             return new PositionRamp(PositionKeys.parseSamples(samples));
         }

@@ -175,6 +175,31 @@ class BmfCpuTranscodeSeamsTest {
     }
 
     @Test
+    void sandbox_admits_only_bounded_paired_position_samples_for_video() {
+        var python = Path.of("/usr/bin/python3.9");
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, Path.of("/runtime"),
+                BmfSandboxWorkspace.under(Path.of("/workspace")), Duration.ofSeconds(1), 1024,
+                SandboxRuntimeCapabilities.unavailable("test"));
+        var context = runtimeContext(TASK_ID);
+        String placement = ",0,2,1,0,0,0,0,1,1,0,0,1,0,1,1,0;1;1;0;0;0;0;0;2;0,";
+        for (String token : List.of("0;-100000;0|3/2;200000;250000", "0;0;0|1/2;16000001;0", "1/2;0;0|1/2;0;0",
+                "1/2;-1;0|3/1;0;0", "1/2;floor(0);0|1/1;0;0")) {
+            for (String kind : List.of("V", "A")) {
+                var invocation = ProcessInvocationSpec.of(python.toString(),
+                        List.of("-s", "-c", BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM, "1",
+                                BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID), "platform-provider-output.bin",
+                                "2", "24/1", "320x240", kind + placement + token));
+                var command = new ExecutionCommand(TASK_ID, context.providerBindingPin(), context.platformExecutionAttemptId(),
+                        context.platformOwnershipGeneration(), 0, invocation);
+                boolean validVideo = kind.equals("V") && token.equals("0;-100000;0|3/2;200000;250000");
+                assertThat(resolver.resolve(command, List.of())).isInstanceOfSatisfying(SandboxResolution.Rejected.class,
+                        rejection -> assertThat(rejection.failure().message()).contains(
+                                validVideo ? "input count does not match the materialized inputs" : "placement is invalid"));
+            }
+        }
+    }
+
+    @Test
     void contiguous_multi_input_composite_lowers_to_a_concatenated_plan() {
         var task = compositeTask(new int[][]{{0, 2000}, {2000, 3000}}, 0, 3000);
         var plan = new BmfCpuTranscodeLowerer().lower(task,

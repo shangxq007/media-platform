@@ -193,9 +193,10 @@ export async function runPosition(ctx) {
   await page.reload();await waitRevision(cleared.head);await sample('cleared-reopened',fixed)
   await deliver('n14-cleared',cleared.head,fixed)
   await select();await fill(1,['1/2','20','10']);await fill(2,['5/2','40','25']);await preview();await confirm('recreated')
-  const mix=await write('n14-composition',[
-    {definitionId:'timeline.transition.cross-dissolve.create',target:{clipId:'red'},
-      parameters:{transitionId:'n14-cut',incomingClipId:clipId,duration:'2/1'}},
+  await write('n14-dissolve',[{definitionId:'timeline.transition.cross-dissolve.create',target:{clipId:'red'},
+    parameters:{transitionId:'n14-cut',incomingClipId:clipId,duration:'2/1'}}])
+  await cp('dissolve')
+  const mix=await write('n14-opacity',[
     step('timeline.clip.opacity.keyframes.set',{firstTime:'3',lastTime:'5',firstValue:0.75,lastValue:0.75}),
   ])
   await cp('combo');await page.reload();await waitRevision(mix.newRevisionId)

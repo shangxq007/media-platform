@@ -95,7 +95,7 @@ if dissolve or opacity or position:
 
 if position:
     checkpoints = ('base','draft','invalid','accepted','recovery','changed','undo','redo','stale',
-                   'cleared','recreated','combo')
+                   'cleared','recreated','dissolve','combo')
 
 if dissolve:
     checkpoints = ('base','draft','invalid','accepted','recovery','bound','edited','undo','redo','stale','noop',
@@ -149,7 +149,7 @@ if opacity or dissolve or position:
                     if c['parameterPath'].startswith('transform.position')}
         assert facts['base']==facts['draft']==facts['invalid']
         assert facts['accepted']==facts['recovery'] and facts['redo']==facts['stale']
-        chain = ('base','accepted','changed','undo','redo','cleared','recreated','combo')
+        chain = ('base','accepted','changed','undo','redo','cleared','recreated','dissolve','combo')
         for a,b in zip(chain,chain[1:]):
             assert facts[b]['rows']==facts[a]['rows']+1 and facts[b]['commands']==facts[a]['commands']+1
             assert revision(b)['parent_revision_id']==facts[a]['head']
