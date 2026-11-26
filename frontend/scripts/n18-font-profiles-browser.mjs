@@ -44,8 +44,9 @@ export async function runFontProfiles(ctx) {
       await requestLayout('serif-' + target, text, width, fontSize, serif, target),
     ]
     assert.notEqual(blocks[target][0].sha256, blocks[target][1].sha256)
-    assert.equal(blocks[target][0].height, blocks[target][1].height)
-    assert(blocks[target][0].height > (fontSize * 1.45 + 4) * target / 320, 'Width-driven wrapping must produce more than one line')
+    const lineHeight = Math.ceil(fontSize * 1.45)
+    // Narrow enough to expose a real metric-driven wrap difference with the same text.
+    assert.deepEqual(blocks[target].map(block => (block.height * 320 / target - 4) / lineHeight), [2, 3])
   }
   for (const [label, fallback] of [['han-fallback', '㐀'], ['color-emoji', '🌻']]) {
     const a = await requestLayout(label + '-sans', fallback, width, fontSize, sans, 1600)
@@ -85,7 +86,7 @@ export async function runFontProfiles(ctx) {
   page.on('request', r => { if (r.url() === endpoint + '/apply') writeRequests++ })
 
   function imageScores(rgb, target, intended) {
-    const originX = target / 10, originY = (target * 3 / 4) * 0.55
+    const originX = target / 10, originY = target * 33 / 80
     const control = [...rgb.subarray(0, 3)]
     assert(control.every((c, i) => Math.abs(c - bg[i]) <= 12), JSON.stringify(control))
     return blocks[target].map((block, profile) => {
@@ -124,7 +125,7 @@ export async function runFontProfiles(ctx) {
     const points = []
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4
-      if (rgba[i + 3] > 240 && other[i + 3] < 15) points.push([32 + x, 132 + y])
+      if (rgba[i + 3] > 240 && (other[i + 3] ?? 0) < 15) points.push([32 + x, 132 + y])
     }
     assert(points.length > 12)
     const canvas = await (await page.waitForFunction(({ time, id, points }) => {
