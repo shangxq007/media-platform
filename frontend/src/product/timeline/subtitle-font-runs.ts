@@ -40,12 +40,23 @@ export function setRangeFont(runs: FontRun[], range: Range, profile: string): Fo
 }
 
 /** Preserve the unchanged prefix and suffix. Inserted/replaced graphemes inherit the cue font. */
-export function editRangeFonts(before: string, after: string, runs: FontRun[]): FontRun[] {
+export function editRangeFonts(before: string, after: string, runs: FontRun[], caret?: number): FontRun[] {
   if (!runs.length || before === after) return runs
   const segments = (s: string) => Array.from(segmenter.segment(s), g => g.segment)
   const a = segments(before), b = segments(after)
   let prefix = 0, suffix = 0
-  while (prefix < a.length && prefix < b.length && a[prefix] === b[prefix]) prefix++
+  // Anchor the unchanged suffix at the native post-edit caret. This disambiguates typing
+  // another identical character immediately before a styled occurrence of that character.
+  if (caret !== undefined) {
+    let utf16End = after.length
+    while (suffix < a.length && suffix < b.length && a[a.length - 1 - suffix] === b[b.length - 1 - suffix]) {
+      const nextStart = utf16End - b[b.length - 1 - suffix].length
+      if (nextStart < caret) break
+      utf16End = nextStart
+      suffix++
+    }
+  }
+  while (prefix < a.length - suffix && prefix < b.length - suffix && a[prefix] === b[prefix]) prefix++
   while (suffix < a.length - prefix && suffix < b.length - prefix && a[a.length - 1 - suffix] === b[b.length - 1 - suffix]) suffix++
   const length = (s: string) => Array.from(s).length
   const left = length(a.slice(0, prefix).join(''))

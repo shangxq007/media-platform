@@ -88,7 +88,7 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
     <fieldset disabled={remove}>
       <label>Subtitle text <textarea aria-label="Subtitle text" maxLength={384} value={form.text}
         onSelect={e => setSelection({ scope, text: form.text, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd })}
-        onChange={e => { setSelection(null); change({ text: e.target.value, fontRuns: editRangeFonts(form.text, e.target.value, form.fontRuns) }) }} /></label>
+        onChange={e => { setSelection(null); change({ text: e.target.value, fontRuns: editRangeFonts(form.text, e.target.value, form.fontRuns, e.target.selectionEnd) }) }} /></label>
       {range && <label>Font for selected text <select aria-label="Font for selected text" value="" disabled={!catalog}
         onChange={e => change({ fontRuns: setRangeFont(form.fontRuns, range, e.target.value === 'inherit' ? '' : e.target.value) })}>
         <option value="" disabled>Choose font</option>

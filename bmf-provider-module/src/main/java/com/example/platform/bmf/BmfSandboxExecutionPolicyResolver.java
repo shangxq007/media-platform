@@ -393,17 +393,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(decoded)).toString();
             int width = Integer.parseInt(values[5]);
             int size = Integer.parseInt(values[6]);
-            var fontRuns = new java.util.ArrayList<com.example.platform.fonttext.typography.SubtitleFontRun>();
-            if (values.length == 10) {
-                if (values[9].length() > 3200) return null;
-                for (String entry : values[9].split("\\|", -1)) {
-                    if (!entry.matches("[0-9]{1,3}:[0-9]{1,3}:[a-z0-9-]{1,40}")) return null;
-                    var fields = entry.split(":");
-                    fontRuns.add(new com.example.platform.fonttext.typography.SubtitleFontRun(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]), fields[2]));
-                }
-            }
             return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
-                    new BlockRasterRecipe(text, width, size, values.length >= 9 ? values[8] : null, fontRuns));
+                    BlockRasterRecipe.fromEncodedRuns(text, width, size, values.length >= 9 ? values[8] : null,
+                            values.length == 10 ? values[9] : null));
         } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
             return null;
         }

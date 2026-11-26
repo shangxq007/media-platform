@@ -7,6 +7,7 @@ import com.example.platform.fonttext.typography.FontRational;
 import com.example.platform.fonttext.typography.TextFrame;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonical.SubtitleCueMotion;
+import com.example.platform.fonttext.typography.SubtitleFontRun;
 import com.example.platform.fonttext.typography.SubtitleBlockLayout;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TextElementId;
@@ -82,7 +83,7 @@ public record TimedTextMaterializationRequirement(
     }
 
     /** Render-owned raster request. The worker never receives the canonical text/style model. */
-    public record BlockRasterRecipe(String text, int width, int fontSize, String fontProfile, List<com.example.platform.fonttext.typography.SubtitleFontRun> fontRuns) {
+    public record BlockRasterRecipe(String text, int width, int fontSize, String fontProfile, List<SubtitleFontRun> fontRuns) {
         public BlockRasterRecipe(String text, int width, int fontSize, String fontProfile) {
             this(text, width, fontSize, fontProfile, List.of());
         }
@@ -91,7 +92,26 @@ public record TimedTextMaterializationRequirement(
             SubtitleBlockLayout.validateShape(text, width, fontSize);
             fontProfile = SubtitleBlockLayout.resolveProfile(fontProfile);
             fontRuns = List.copyOf(fontRuns);
-            com.example.platform.fonttext.typography.SubtitleFontRun.validate(text, fontRuns);
+            SubtitleFontRun.validate(text, fontRuns);
+        }
+
+        public String encodedRunsSuffix() {
+            if (fontRuns.isEmpty()) return "";
+            return "," + fontRuns.stream().map(SubtitleFontRun::canonical).collect(java.util.stream.Collectors.joining("|"));
+        }
+
+        public static BlockRasterRecipe fromEncodedRuns(String text, int width, int size, String profile, String encoded) {
+            if (encoded == null) return new BlockRasterRecipe(text, width, size, profile);
+            if (encoded.length() > 3200) throw new IllegalArgumentException("Oversized inline subtitle recipe");
+            var runs = new java.util.ArrayList<SubtitleFontRun>();
+            for (String entry : encoded.split("\\|", -1)) {
+                if (!entry.matches("[0-9]{1,3}:[0-9]{1,3}:[a-z0-9-]{1,40}")) {
+                    throw new IllegalArgumentException("Malformed inline subtitle recipe");
+                }
+                var fields = entry.split(":");
+                runs.add(new SubtitleFontRun(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]), fields[2]));
+            }
+            return new BlockRasterRecipe(text, width, size, profile, runs);
         }
 
         public byte[] png(int destinationWidth) {

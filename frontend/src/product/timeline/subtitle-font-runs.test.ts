@@ -14,3 +14,8 @@ it('preserves surrounding overrides and gives inserted text the inherited font',
   ])
   expect(setRangeFont(runs, { start: 1, end: 4 }, '')).toEqual([])
 })
+
+it('uses the textarea caret to distinguish identical neighboring characters', () => {
+  expect(editRangeFonts('中中', '中中中', [{ start: 0, end: 1, fontProfile: 'serif-v1' }], 1))
+    .toEqual([{ start: 1, end: 2, fontProfile: 'serif-v1' }])
+})
