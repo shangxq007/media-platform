@@ -131,6 +131,7 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
                     "Submit the complete subtitle edit as one operation");
         }
         String profile = null;
+        boolean previouslyOmittedFade = false;
         if (applying != null) {
             // Only the existing, fully scoped immutable receipt can carry an old
             // policy decision across a restart. The normal planner/digest, write
@@ -138,6 +139,12 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
             var previous = domain.completedBatchDocument(request, applying);
             if (previous.isPresent() && cue.useDefault()) profile = cueFont(previous.get(), cue.cueId());
             if (previous.isPresent() && !cue.useDefault()) profile = cue.motion().effectiveFontProfile();
+            if (cue.fadeIntent() == SubtitleCueParameters.FadeIntent.PRESERVE && previous.isPresent()) {
+                String cueId = cue.cueId();
+                previouslyOmittedFade = previous.get().getTextElements().stream()
+                        .anyMatch(element -> element.id().value().equals(cueId) && element.subtitleCue() != null
+                                && element.subtitleCue().selectedTextFade() == null);
+            }
         }
         if (profile == null) {
             var base = domain.resolveBase(request.target(), request.baseRevisionId(), request.baseContentHash());
@@ -163,7 +170,8 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
                 throw new BatchException(BatchErrorCode.PLAN_CHANGED, 0, "Subtitle font availability changed. Preview again.");
             }
         }
-        return replaceCue(request, cue.withResolvedFont(profile));
+        var resolved = cue.withResolvedFont(profile);
+        return replaceCue(request, previouslyOmittedFade ? resolved.asCompletedFadeOmission() : resolved);
     }
 
     private static OperationBatchRequest replaceCue(OperationBatchRequest request, SubtitleCueParameters cue) {

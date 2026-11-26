@@ -43,7 +43,7 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
   const scope = JSON.stringify([project, props.tenant, props.head?.revisionId, props.head?.contentHash, selected])
   const form = draft?.scope === scope ? draft : {
     scope, text: saved?.text ?? '', start: saved?.start ?? '', end: saved?.end ?? '',
-    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, fontRuns: saved?.fontRuns ?? [], selectedTextFade: saved?.selectedTextFade, remove: false,
+    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, fontRuns: saved?.fontRuns ?? [], selectedTextFade: saved?.selectedTextFade ?? undefined, remove: false,
     keys: saved?.keys.map((k,i) => ({ id: String(i), time: k.time, x: String(k.xMicros / 10000),
       y: String(k.yMicros / 10000), opacity: String(k.opacityMicros / 10000) })) ?? [],
   }
@@ -98,7 +98,8 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
           start: formatRational(start!), end: formatRational(end!),
           ...(form.fontProfile && form.fontProfile !== savedProfile ? { fontProfile: form.fontProfile } : {}),
           ...(form.fontRuns.length || saved?.fontRuns?.length ? { fontRuns: form.fontRuns } : {}),
-          ...(fade && { selectedTextFade: { ...fade, time: formatRational(fadeTime!), duration: formatRational(fadeLength!) } }),
+          ...(fade ? { selectedTextFade: { ...fade, time: formatRational(fadeTime!), duration: formatRational(fadeLength!) } }
+            : saved?.selectedTextFade ? { selectedTextFade: null } : {}),
           keys: keys.map(key => ({ ...key, time: formatRational(key.time) })),
         } }
       return { step, ranges: [remove ? 'Remove the selected subtitle.' : `Subtitle [${formatRational(start!)}, ${formatRational(end!)}) s`] }

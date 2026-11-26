@@ -156,6 +156,8 @@ public final class ParameterDigest {
             }
             if (cue.motion().selectedTextFade() != null) {
                 version = framed("subtitle-selected-text-fade-v1", version, cue.motion().selectedTextFade().canonical());
+            } else if (cue.fadeIntent() == OperationParameters.SubtitleCueParameters.FadeIntent.CLEAR) {
+                version = framed("subtitle-selected-text-fade-clear-v1", version);
             }
             return framed(version, cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
                     Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().effectiveFontProfile(),

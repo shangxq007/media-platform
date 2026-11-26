@@ -1147,6 +1147,46 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void completedFadeOmissionFromBeforeF1ReplaysWithoutASecondRevision() {
+        String sans = "noto-sc-color-emoji-v1";
+        var base = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(), TimelineMetadata.empty()));
+        var seed = subtitleRequest(base, "fade-seed", "cue", sans, "FadeWord");
+        var fade = new com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade(0, 8, "0", "1/1");
+        var motion = new com.example.platform.timeline.canonical.SubtitleCueMotion(sans, List.of(), List.of(), fade);
+        var seeded = applyPrepared(withCueParameters(seed,
+                new OperationParameters.SubtitleCueParameters("cue", time("0"), time("2/1"), "FadeWord", 240, 24, motion)));
+        var head = saveService.findById(TENANT, seeded.newRevisionId());
+
+        // Freeze the plan that the reviewed N20 candidate would have committed when the field was omitted.
+        var wire = subtitleRequest(head, "old-fade-omission", "cue", sans, "FadeWord");
+        var legacy = ((OperationParameters.SubtitleCueParameters) wire.operations().getFirst().parameters()).asCompletedFadeOmission();
+        var old = withCueParameters(wire, legacy);
+        var plan = new com.example.platform.operation.batch.OperationBatchPlanner().plan(old, domain);
+        var actor = mutation().actor();
+        var bound = com.example.platform.operation.plan.AuthorizationDecision.allow(plan.batchDigest(),
+                actor.actorId(), PROJECT, TENANT, "main", "pre-f1-fixture");
+        var accepted = domain.commit(old, plan,
+                OperationBatchContext.apply(old.batchId(), actor, bound, "pre-f1-fixture", plan.batchDigest()));
+
+        var invocation = new CanonicalBatchInvocationService(domain, authorization);
+        var replay = invocation.commit(wire,
+                OperationBatchContext.apply(wire.batchId(), actor, null, "pre-f1-fixture", plan.batchDigest()));
+        assertTrue(replay.replayed());
+        assertEquals(accepted.newRevisionId(), replay.newRevisionId());
+        assertNull(saveService.findPayloadDocument(TENANT, replay.newRevisionId()).orElseThrow()
+                .getTextElements().getFirst().subtitleCue().selectedTextFade());
+        assertEquals(3, count("timeline.timeline_revision"));
+        assertEquals(2, count("timeline.apply_command"));
+    }
+
+    private static OperationBatchRequest withCueParameters(OperationBatchRequest batch, OperationParameters.SubtitleCueParameters parameters) {
+        var source = batch.operations().getFirst();
+        var step = new OperationRequest(source.definitionId(), source.version(), source.target(),
+                parameters, source.baseRevisionId(), source.baseContentHash(), source.requestMetadata());
+        return new OperationBatchRequest(batch.batchId(), batch.target(), batch.baseRevisionId(), List.of(step), batch.message());
+    }
+
+    @Test
     void historicalMissingFontRetainsSansWhenLaterDefaultIsSerif() {
         String sans = "noto-sc-color-emoji-v1";
         String serif = "noto-serif-sc-color-emoji-v1";

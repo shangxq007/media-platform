@@ -8,6 +8,7 @@ import com.example.platform.fonttext.text.TextRange;
 import com.example.platform.fonttext.typography.*;
 import com.example.platform.operation.operation.OperationInstance;
 import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.timeline.canonical.SubtitleCueMotion;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonical.TextElementId;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -39,7 +40,7 @@ final class SubtitleCuePlanner {
             } catch (IllegalArgumentException invalid) {
                 throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
             }
-            var replacement = element(id, set);
+            var replacement = element(id, set, resolvedMotion(set, previous));
             if (replacement.equals(previous)) return base;
             elements.remove(previous);
             elements.add(replacement);
@@ -53,7 +54,30 @@ final class SubtitleCuePlanner {
                 base.getSemanticRelationships(), elements, base.getTransitions(), base.getAutomations());
     }
 
-    private static TextElement element(TextElementId id, OperationParameters.SubtitleCueParameters cue) {
+    private static SubtitleCueMotion resolvedMotion(OperationParameters.SubtitleCueParameters cue, TextElement previous) {
+        var motion = cue.motion();
+        if (cue.fadeIntent() != OperationParameters.SubtitleCueParameters.FadeIntent.PRESERVE || previous == null
+                || previous.subtitleCue().selectedTextFade() == null) {
+            return motion;
+        }
+        // A legacy payload supplies no edit span. Even matching substrings cannot prove
+        // that the intended occurrence survived a text replacement.
+        if (!previous.styledText().content().value().equals(cue.text())) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "The saved selected-text fade cannot be preserved across a text change. Supply its new range and timing, or send selectedTextFade: null to remove it.");
+        }
+        var preserved = new SubtitleCueMotion(motion.fontProfile(), motion.keys(), motion.fontRuns(),
+                previous.subtitleCue().selectedTextFade());
+        try {
+            preserved.requireInside(cue.end().subtract(cue.start()));
+        } catch (IllegalArgumentException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "The saved selected-text fade does not fit the new cue interval. Adjust its timing or send selectedTextFade: null to remove it.");
+        }
+        return preserved;
+    }
+
+    private static TextElement element(TextElementId id, OperationParameters.SubtitleCueParameters cue, SubtitleCueMotion motion) {
         var families = SubtitleBlockLayout.fontFamilies(cue.motion().fontProfile());
         var text = new TextContent(cue.text());
         var style = style(cue.motion().effectiveFontProfile(), cue.fontSize());
@@ -74,7 +98,7 @@ final class SubtitleCuePlanner {
         var fallback = new FontFallbackPolicy(families, List.of(), List.of(), List.of(new FontFamilyName("Noto Color Emoji")));
         var duration = cue.end().subtract(cue.start());
         return new TextElement(id, FontRational.of(cue.start().ticks(), cue.start().timeScale()),
-                FontRational.of(duration.ticks(), duration.timeScale()), styled, frame, fallback, List.of(), cue.motion());
+                FontRational.of(duration.ticks(), duration.timeScale()), styled, frame, fallback, List.of(), motion);
     }
 
     private static TextStyle style(String profile, int size) {

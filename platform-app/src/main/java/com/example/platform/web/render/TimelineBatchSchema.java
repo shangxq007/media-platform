@@ -97,10 +97,11 @@ public final class TimelineBatchSchema {
             case "cue-font-runs" -> Map.of("type", "array", "maxItems", com.example.platform.fonttext.typography.SubtitleFontRun.MAX_RUNS,
                     "items", object(Map.of("start", integerRange(0,383), "end", integerRange(1,384),
                             "fontProfile", parameterType("cue-font")), List.of("start","end","fontProfile")));
-            case "cue-selected-text-fade" -> object(Map.of(
+            case "cue-selected-text-fade" -> Map.of("description", "Omit to preserve, supply an object to set, or send null to clear.",
+                    "oneOf", List.of(Map.of("type", "null"), object(Map.of(
                     "start", integerRange(0,383), "end", integerRange(1,384), "time", parameterType("cue-time"),
                     "duration", Map.of("type", "string", "pattern", "^[1-9][0-9]{0,18}/[1-9][0-9]{0,18}$")),
-                    List.of("start","end","time","duration"));
+                    List.of("start","end","time","duration"))));
             case "cue-width" -> integerRange(40,304);
             case "cue-font-size" -> integerRange(12,44);
             case "cue-key-array" -> Map.of("type","array","maxItems",16,

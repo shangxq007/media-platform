@@ -95,6 +95,26 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void subtitleFadeConfirmationDistinguishesOmissionFromExplicitClear() {
+        var parameters = new java.util.HashMap<String, Object>(Map.of("cueId", "fade", "start", "1/1", "end", "5/1",
+                "text", "FadeWord", "width", 220, "fontSize", 24, "keys", List.of()));
+        String id = "timeline.subtitle.cue.set";
+        var preserve = map(new TimelineOperationStep(id, null, parameters));
+        parameters.put("selectedTextFade", null);
+        var clear = map(new TimelineOperationStep(id, null, parameters));
+        var preserved = assertInstanceOf(OperationParameters.SubtitleCueParameters.class, preserve.parameters());
+        var cleared = assertInstanceOf(OperationParameters.SubtitleCueParameters.class, clear.parameters());
+        assertEquals(OperationParameters.SubtitleCueParameters.FadeIntent.PRESERVE, preserved.fadeIntent());
+        assertEquals(OperationParameters.SubtitleCueParameters.FadeIntent.CLEAR, cleared.fadeIntent());
+        assertEquals(cleared.fadeIntent(), cleared.withResolvedFont("noto-sc-color-emoji-v1").fadeIntent());
+        assertNotEquals(
+                com.example.platform.operation.operation.ParameterDigest.compute(preserve.definitionId(), preserve.version(), preserved),
+                com.example.platform.operation.operation.ParameterDigest.compute(clear.definitionId(), clear.version(), cleared));
+        parameters.put("selectedTextFade", "clear");
+        assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, null, parameters)));
+    }
+
+    @Test
     void wholeCueFontsNormalizeMissingAndRejectUnknownOrNullProfiles() {
         var parameters = new java.util.HashMap<String, Object>(Map.of("cueId", "mixed", "start", "0", "end", "4/1",
                 "text", "春㐀🌻", "width", 200, "fontSize", 24, "keys", List.of()));

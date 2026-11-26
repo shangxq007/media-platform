@@ -476,15 +476,19 @@ public final class TimelineBatchCommandMapper {
                     || !(range.get("fontProfile") instanceof String pin)) throw new IllegalArgumentException("Invalid inline font fields");
             runs.add(new com.example.platform.fonttext.typography.SubtitleFontRun(cueInteger(range,"start"), cueInteger(range,"end"), pin));
         }
+        var fade = selectedTextFade(p);
+        var fadeIntent = fade != null ? OperationParameters.SubtitleCueParameters.FadeIntent.SET
+                : p.containsKey("selectedTextFade") ? OperationParameters.SubtitleCueParameters.FadeIntent.CLEAR
+                : OperationParameters.SubtitleCueParameters.FadeIntent.PRESERVE;
         return new OperationParameters.SubtitleCueParameters(requiredText(p,"cueId"), MediaTime.parse(start), MediaTime.parse(end),
                 requiredText(p,"text"), cueInteger(p,"width"),cueInteger(p,"fontSize"),
                 new com.example.platform.timeline.canonical.SubtitleCueMotion(
-                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs, selectedTextFade(p)),
-                !p.containsKey("fontProfile"), false, p.containsKey("fontRuns"));
+                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs, fade),
+                !p.containsKey("fontProfile"), false, p.containsKey("fontRuns"), fadeIntent);
     }
 
     private static com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade selectedTextFade(Map<String, Object> p) {
-        if (!p.containsKey("selectedTextFade")) return null;
+        if (p.get("selectedTextFade") == null) return null;
         if (!(p.get("selectedTextFade") instanceof Map<?, ?> fade)
                 || !fade.keySet().equals(Set.of("start", "end", "time", "duration"))
                 || !(fade.get("time") instanceof String time) || !(fade.get("duration") instanceof String duration)) {
