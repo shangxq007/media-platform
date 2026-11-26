@@ -151,7 +151,19 @@ class BmfArchitectureGuardTest {
         assertThat(instanceFields).extracting(Field::getName)
                 .containsExactlyInAnyOrder("executableTaskId", "providerBindingPin", "operation",
                         "inputId", "outputId", "sourceWindow",
-                        "compositeInputs", "compositeDuration", "compositeFrameRate", "raster");
+                        "compositeInputs", "compositeDuration", "compositeFrameRate", "raster", "subtitles");
+
+        // N15 permits only the bounded, provider-facing raster projection, never authored text
+        // or Timeline state, to enter the native plan for a composite.
+        var rasterComponents = com.example.platform.render.domain.renderplan
+                .TimedTextMaterializationRequirement.CueRaster.class.getRecordComponents();
+        assertThat(Arrays.stream(rasterComponents).map(c -> c.getName() + ":" + c.getType().getSimpleName()))
+                .containsExactly("firstFrame:long", "endFrame:long", "start:MediaTime",
+                        "elapsed:MediaTime", "samples:String", "pngBase64:String");
+        assertThat(BmfCpuTranscodePlan.class.getRecordComponents())
+                .filteredOn(c -> c.getName().equals("subtitles"))
+                .singleElement().satisfies(c -> assertThat(c.getGenericType().getTypeName())
+                        .isEqualTo("java.util.List<" + rasterComponents[0].getDeclaringRecord().getName() + ">"));
         assertThat(BmfCpuTranscodePlan.VideoPlacement.class.getRecordComponents())
                 .allSatisfy(component -> assertThat(component.getType()).isEqualTo(double.class));
         for (Field field : instanceFields) {
