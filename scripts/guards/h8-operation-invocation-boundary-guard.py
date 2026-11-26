@@ -47,7 +47,7 @@ H8_AUTHORIZED_CHANGED_PATHS = frozenset({
 })
 
 REQUIRED_LAW_COUNT = 54
-REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 115
+REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 116
 
 # Exact SHA-256 attestation of the committed e570cf93 H8/H7 runtime authority
 # universe. These repository-relative paths cover the exposed Operation intent
@@ -88,6 +88,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java": "62489823e9198564097652c57e8c1e54feb7801668cb577f07ecc688a9d54215",
     "operation-module/src/main/java/com/example/platform/operation/plan/PlanErrorCode.java": "65767188af0add681d1a7b1baf4a3fc36a60f6e943f18eeecfd3e72bdd9864fd",
     "operation-module/src/main/java/com/example/platform/operation/plan/PlanException.java": "7ac7420787a16623891f8cab2bbff2e269fc9f8ebbfc67e6696fa067286fe5af",
+    "operation-module/src/main/java/com/example/platform/operation/plan/SubtitleCuePlanner.java": "426fe1dc61a0e43121ec9e3d4b6d6bcca56c164cf932b5f697e08212e681cd78",
     "operation-module/src/main/java/com/example/platform/operation/plan/TargetRevisionRef.java": "830ddf30c78343bb185b8cde6c9e446cc3569a376b5299600eda537e6a405b00",
     "operation-module/src/main/java/com/example/platform/operation/application/AddMediaClipCommand.java": "245fde68c66a6e48a8fd9497c6ca32e60f09a9106849177a226b1a3412a599a1",
     "operation-module/src/main/java/com/example/platform/operation/application/AddMediaClipPreview.java": "ea81c64c9c9409e56c851bc32a145451ee3ff05f6519e49a5b127811cab8487c",
@@ -301,6 +302,7 @@ CLASSIFIED_RUNTIME_FQ_TYPES = {
     "com.example.platform.operation.application.AlignmentOperationService": "delegated-operation-service",
     "com.example.platform.operation.operation.TextOperationPlanner": "operation-mechanic",
     "com.example.platform.operation.operation.ParameterDigest": "operation-mechanic",
+    "com.example.platform.operation.plan.SubtitleCuePlanner": "operation-mechanic",
     "com.example.platform.observability.context.TraceKeys": "observability-vocabulary",
     "com.example.platform.timeline.canonical.TimelineMetadata": "canonical-dto",
     "com.example.platform.timeline.canonical.TrackType": "canonical-dto",
