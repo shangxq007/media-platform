@@ -268,6 +268,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlideParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.OpacityParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.PositionParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));

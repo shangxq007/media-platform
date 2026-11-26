@@ -1048,22 +1048,41 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
     }
 
-    @Test
-    void pairedPositionKeysRollBackAtomicallyAfterOutboxFailure() {
-        var base = rangeFixture(false);
+    private OperationBatchRequest positionRequest(TimelineRevision base, String batchId, String samples) {
         var def = OperationDefinition.V3.SET_POSITION_KEYS;
         var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
                 new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))), SelectionSpec.ExpansionPolicy.EXACT);
-        var keys = com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples("6/1;100000;-80000|7/1;250000;50000");
+        var keys = samples.isEmpty() ? new com.example.platform.timeline.semantics.effect.PositionKeys(List.of())
+                : com.example.platform.timeline.semantics.effect.PositionKeys.parseSamples(samples);
         var op = new OperationRequest(def.definitionId(), def.version(), target, new OperationParameters.PositionParameters(keys),
                 base.revisionId(), hash(base), null);
-        var batch = new OperationBatchRequest("position-one", new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+        return new OperationBatchRequest(batchId, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
                 base.revisionId(), List.of(op), null);
+    }
+
+    @Test
+    void pairedPositionKeysRollBackAtomicallyAfterOutboxFailure() {
+        var base = rangeFixture(false);
+        var batch = positionRequest(base, "position-one", "6/1;100000;-80000|7/1;250000;50000");
         var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
         var pins = jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id");
         assertRippleRollsBack(base, batch);
         assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
         assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
+    }
+
+    @Test
+    void positionAndClearKeepTheExactSeparatelyStoredEffectCommitment() {
+        var base = rangeFixture(false);
+        var first = applyPrepared(positionRequest(base, "position-set", "6/1;100000;-80000|7/1;250000;50000"));
+        var saved = saveService.findById(TENANT, first.newRevisionId());
+        assertEquals(base.semanticContext().effectReference(), saved.semanticContext().effectReference());
+        assertEquals(base.revisionId(), saved.parentRevisionId());
+        var cleared = saveService.findById(TENANT, applyPrepared(positionRequest(saved, "position-clear", "")).newRevisionId());
+        assertEquals(saved.revisionId(), cleared.parentRevisionId());
+        assertEquals(base.semanticContext(), cleared.semanticContext());
+        assertEquals(saveService.findPayloadDocument(TENANT, base.revisionId()).orElseThrow().getTracks(),
+                saveService.findPayloadDocument(TENANT, cleared.revisionId()).orElseThrow().getTracks());
     }
 
     private OperationBatchRequest opacityRequest(TimelineRevision base) {
