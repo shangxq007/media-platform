@@ -223,8 +223,6 @@ try:
   if a.nle_multitrack:
    command('exercise_nle_multitrack',['python3','-B',str(HELP/'exercise_nle_workflow.py')],timeout=300)
    if a.n12_opacity:
-    if a.n19_inline_fonts:
-     command('n19-inline-fonts',['python3','-B',str(HELP/'n01_history_browser.py'),'--n19-inline'],timeout=900)
     command('n12-opacity-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--opacity'],timeout=700)
     if a.n13_dissolve:command('n13-dissolve-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--dissolve'],timeout=700)
     if a.n14_position:command('n14-position-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--position'],timeout=700)
@@ -239,6 +237,8 @@ try:
       command('n17-'+kind,['python3','-B',str(HELP/'n01_history_browser.py'),'--n17-'+kind],timeout=900)
     if a.n18_font_profiles:
      command('n18-font-profiles',['python3','-B',str(HELP/'n01_history_browser.py'),'--n18-fonts'],timeout=900)
+    if a.n19_inline_fonts:
+     command('n19-inline-fonts',['python3','-B',str(HELP/'n01_history_browser.py'),'--n19-inline'],timeout=900)
    else:
     command('nle-multitrack-browser',['python3','-B',str(HELP/'nle_workflow_browser.py')],timeout=1500)
     command('verify-multitrack-bmf',['python3','-B',str(HELP/'check_nle_multitrack.py')],timeout=120)
