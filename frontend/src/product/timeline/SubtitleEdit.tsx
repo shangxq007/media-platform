@@ -183,7 +183,7 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
         <button type="button" onClick={() => reload(previous => previous + 1)}>Retry subtitle fonts</button></>}
       <fieldset>
         <legend>Subtitle decoration</legend>
-        <label>Decoration <select value={decoration?.assetId ?? ''} disabled={!decorations} onChange={e => {
+        <label>Decoration <select aria-label="Decoration" value={decoration?.assetId ?? ''} disabled={!decorations} onChange={e => {
           const asset = decorations?.find(item => item.id === e.target.value)
           if (asset) change({ decoration: { assetId: asset.id, placement: asset.placement,
             enabled: true, start: '0', end: interval ? formatRational(subtract(end, start)) : '1/1' } })
