@@ -1,4 +1,4 @@
-import { savedSubtitleFont, subtitlePose, type SubtitleCue } from './subtitle-cues'
+import { savedSubtitleFont, selectedTextAlpha, subtitlePose, type SubtitleCue } from './subtitle-cues'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { DEFAULT_COMPOSITION_ASPECT } from '../../contracts/app/composition-aspect'
 import { previewRaster } from './composition-raster'
@@ -11,6 +11,13 @@ import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } 
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
+interface SubtitleBitmaps { fixed: ImageBitmap; selected?: ImageBitmap }
+
+function closeSubtitle(images: SubtitleBitmaps) {
+  images.fixed.close()
+  images.selected?.close()
+}
+
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
 interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mute: boolean; pan: number }
 interface PreviewSession {
@@ -18,7 +25,8 @@ interface PreviewSession {
   controller: AbortController
   urls: string[]
   videos: Map<string, HTMLVideoElement>
-  subtitleBlocks: Map<string, ImageBitmap>
+  subtitleBlocks: Map<string, SubtitleBitmaps>
+  subtitleSurface?: HTMLCanvasElement
   audioClips: AudioClip[]
   scheduled: AudioBufferSourceNode[]
   audio?: AudioContext
@@ -122,7 +130,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview])
   const currentSubtitlePlan = useRef(subtitlePlan)
   currentSubtitlePlan.current = subtitlePlan
-  const pendingSubtitle = useRef<{ plan: SemanticBatch; image: ImageBitmap } | null>(null)
+  const pendingSubtitle = useRef<{ plan: SemanticBatch; image: SubtitleBitmaps } | null>(null)
   const [cueTarget, setCueTarget] = useState<{ session: PreviewSession; width: number } | null>(null)
   useEffect(() => {
     const session = current.current
@@ -131,9 +139,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     if (!tenantId || !subtitlePlan || step?.definitionId !== 'timeline.subtitle.cue.set'
         || !cueTarget || cueTarget.session !== session) return
     const controller = new AbortController()
-    let bitmap: ImageBitmap | null = null
+    let bitmap: SubtitleBitmaps | null = null
     void loadSubtitle(tenantId, step.parameters, cueTarget.width, controller.signal).then(image => {
-      if (controller.signal.aborted) { image.close(); return }
+      if (controller.signal.aborted) { closeSubtitle(image); return }
       bitmap = image
       pendingSubtitle.current = { plan: subtitlePlan, image }
       if (current.current?.projection) draw(current.current)
@@ -142,7 +150,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     })
     return () => {
       controller.abort()
-      bitmap?.close()
+      if (bitmap) closeSubtitle(bitmap)
       if (pendingSubtitle.current?.plan === subtitlePlan) pendingSubtitle.current = null
     }
   }, [subtitlePlan, tenantId, projectId, revisionId, cueTarget])
@@ -190,9 +198,20 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   }
 
   async function loadSubtitle(tenant: string, cue: SubtitleCue, destinationWidth: number, signal: AbortSignal) {
-    const { text, width, fontSize, fontProfile } = cue
-    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile: savedSubtitleFont(fontProfile), ...(cue.fontRuns?.length ? { fontRuns: cue.fontRuns } : {}), destinationWidth }, signal)
-    return createImageBitmap(png)
+    const { text, width, fontSize, fontProfile, selectedTextFade } = cue
+    const selection = selectedTextFade && { start: selectedTextFade.start, end: selectedTextFade.end }
+    const body = { text, width, fontSize, fontProfile: savedSubtitleFont(fontProfile), destinationWidth,
+      ...(cue.fontRuns?.length ? { fontRuns: cue.fontRuns } : {}), ...(selection && { selection }) }
+    const raster = async (input: typeof body & { paintSelected?: boolean }) =>
+      createImageBitmap(await FormalRenderAPI.subtitleLayout(tenant, projectId, input, signal))
+    const fixed = await raster(body)
+    if (!selection) return { fixed }
+    try {
+      return { fixed, selected: await raster({ ...body, paintSelected: true }) }
+    } catch (error) {
+      fixed.close()
+      throw error
+    }
   }
 
   function draw(session: PreviewSession, forceSeek = false) {
@@ -335,7 +354,22 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       context.save()
       context.globalAlpha = pose.alpha
       context.translate(moving ? x : Math.round(x), moving ? y : Math.round(y))
-      context.drawImage(image, 0, 0)
+      if (image.selected) {
+        const surface = session.subtitleSurface ??= document.createElement('canvas')
+        if (surface.width !== image.fixed.width || surface.height !== image.fixed.height) {
+          surface.width = image.fixed.width
+          surface.height = image.fixed.height
+        }
+        const layers = surface.getContext('2d')!
+        layers.globalAlpha = 1
+        layers.clearRect(0, 0, surface.width, surface.height)
+        layers.drawImage(image.fixed, 0, 0)
+        layers.globalAlpha = selectedTextAlpha(cue, time)
+        layers.drawImage(image.selected, 0, 0)
+        context.drawImage(surface, 0, 0)
+      } else {
+        context.drawImage(image.fixed, 0, 0)
+      }
       context.restore()
       visibleCues.push(cue.cueId)
     }
@@ -370,7 +404,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         setCueTarget({ session, width: raster.width })
         for (const cue of projection.subtitles ?? []) {
           const bitmap = await loadSubtitle(tenant, cue, raster.width, signal)
-          if (signal.aborted) { bitmap.close(); return }
+          if (signal.aborted) { closeSubtitle(bitmap); return }
           session.subtitleBlocks.set(cue.cueId, bitmap)
         }
         const audioTracks = projection.tracks.filter(track => track.type === 'AUDIO')
@@ -478,7 +512,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         media.removeAttribute('src')
         media.load()
       }
-      for (const bitmap of session.subtitleBlocks.values()) bitmap.close()
+      for (const bitmap of session.subtitleBlocks.values()) closeSubtitle(bitmap)
       for (const url of session.urls) URL.revokeObjectURL(url)
       if (session.audio) void session.audio.close()
       current.current = null

@@ -82,7 +82,7 @@ public sealed interface OperationParameters permits
 
         public SubtitleCueParameters withResolvedFont(String profile) {
             return new SubtitleCueParameters(cueId, start, end, text, width, fontSize,
-                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys(), motion.fontRuns()), useDefault, false, fontRunsSupplied);
+                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys(), motion.fontRuns(), motion.selectedTextFade()), useDefault, false, fontRunsSupplied);
         }
 
         /** Used only to reconstruct a pre-catalog command whose durable digest already matches. */
@@ -108,6 +108,7 @@ public sealed interface OperationParameters permits
             }
             com.example.platform.fonttext.typography.SubtitleBlockLayout.validateShape(text, width, fontSize);
             com.example.platform.fonttext.typography.SubtitleFontRun.validate(text, motion.fontRuns());
+            if (motion.selectedTextFade() != null) motion.selectedTextFade().range().requireWholeGraphemes(text);
         }
     }
 

@@ -1,7 +1,9 @@
 import type { SemanticStep } from '../../contracts/semantic-batch.generated'
-import { compare, parseRational, subtract, toSeconds, type Rational } from './trim'
+import { add, compare, parseRational, subtract, toSeconds, type Rational } from './trim'
 
 export type SubtitleCue = Extract<SemanticStep, { definitionId: 'timeline.subtitle.cue.set' }>['parameters']
+
+export type SelectedTextFade = NonNullable<SubtitleCue['selectedTextFade']>
 
 const LEGACY_SUBTITLE_FONT = 'noto-sc-color-emoji-v1'
 
@@ -24,4 +26,14 @@ export function subtitlePose(cue: SubtitleCue, time: Rational) {
   const u = left === right ? 0 : toSeconds(subtract(local, t)) / toSeconds(subtract(parseRational(right.time)!, t))
   const value = (field: 'xMicros'|'yMicros'|'opacityMicros') => (left[field] + u * (right[field] - left[field])) / 1_000_000
   return { x: value('xMicros'), y: value('yMicros'), alpha: value('opacityMicros') }
+}
+
+export function selectedTextAlpha(cue: SubtitleCue, time: Rational) {
+  const fade = cue.selectedTextFade
+  if (!fade) return 1
+  const start = add(parseRational(cue.start)!, parseRational(fade.time)!)
+  const length = parseRational(fade.duration)!
+  if (compare(time, start) <= 0) return 0
+  if (compare(time, add(start, length)) >= 0) return 1
+  return toSeconds(subtract(time, start)) / toSeconds(length)
 }

@@ -65,6 +65,9 @@ public class TextElement {
         this.fallbackPolicy = Objects.requireNonNull(fallbackPolicy, "fallbackPolicy");
         this.resolvedFontRuns = List.copyOf(resolvedFontRuns);
         this.subtitleCue = subtitleCue;
+        if (subtitleCue != null && subtitleCue.selectedTextFade() != null) {
+            subtitleCue.selectedTextFade().range().requireWholeGraphemes(styledText.content().value());
+        }
         if (duration.numerator().signum() <= 0) {
             throw new IllegalArgumentException("duration must be > 0");
         }

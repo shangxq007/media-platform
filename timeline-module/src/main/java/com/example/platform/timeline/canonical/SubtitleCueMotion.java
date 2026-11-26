@@ -1,6 +1,7 @@
 package com.example.platform.timeline.canonical;
 
 import com.example.platform.fonttext.typography.SubtitleBlockLayout;
+import com.example.platform.fonttext.typography.SubtitleTextRange;
 import com.example.platform.shared.time.MediaTime;
 import java.util.List;
 import com.example.platform.fonttext.typography.SubtitleFontRun;
@@ -10,7 +11,13 @@ public record SubtitleCueMotion(
         @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
         String fontProfile, List<Key> keys,
         @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
-        List<SubtitleFontRun> fontRuns) {
+        List<SubtitleFontRun> fontRuns,
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        SelectedTextFade selectedTextFade) {
+    public SubtitleCueMotion(String fontProfile, List<Key> keys, List<SubtitleFontRun> fontRuns) {
+        this(fontProfile, keys, fontRuns, null);
+    }
+
     public SubtitleCueMotion(String fontProfile, List<Key> keys) {
         this(fontProfile, keys, List.of());
     }
@@ -18,6 +25,44 @@ public record SubtitleCueMotion(
     public static final int MAX_KEYS = 16;
     public static final int STATIC_X = 100_000;
     public static final int STATIC_Y = 550_000;
+
+    public record SelectedTextFade(int start, int end, String time, String duration) {
+        public SelectedTextFade {
+            new SubtitleTextRange(start, end);
+            time = exactFadeTime(time).toString();
+            if (duration == null || !duration.matches("[1-9][0-9]{0,18}/[1-9][0-9]{0,18}")) {
+                throw new IllegalArgumentException("Subtitle fade duration must be a positive rational");
+            }
+            var length = exactFadeTime(duration);
+            if (length.ticks() == 0) throw new IllegalArgumentException("Subtitle fade duration must be positive");
+            duration = length.toString();
+            try {
+                var finish = MediaTime.parse(time).add(length);
+                for (var point : List.of(MediaTime.parse(time), length, finish)) {
+                    if (point.ticks() > 9_007_199_254_740_991L || point.timeScale() > 9_007_199_254_740_991L) {
+                        throw new IllegalArgumentException("Subtitle fade timing cannot be read exactly by the editor");
+                    }
+                }
+            } catch (ArithmeticException overflow) {
+                throw new IllegalArgumentException("Subtitle fade timing exceeds the exact arithmetic range", overflow);
+            }
+        }
+
+        private static MediaTime exactFadeTime(String value) {
+            if (value == null || !value.matches("(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})")) {
+                throw new IllegalArgumentException("Subtitle fade time must be an exact nonnegative rational");
+            }
+            return MediaTime.parse(value);
+        }
+
+        public SubtitleTextRange range() {
+            return new SubtitleTextRange(start, end);
+        }
+
+        public String canonical() {
+            return start + ";" + end + ";" + time + ";" + duration;
+        }
+    }
 
     public record Key(String time, int xMicros, int yMicros, int opacityMicros) {
         public Key {
@@ -54,10 +99,13 @@ public record SubtitleCueMotion(
     }
 
     public void requireInside(MediaTime duration) {
-        if (keys.isEmpty()) return;
         try {
-            if (!MediaTime.parse(keys.getLast().time()).isLessThan(duration)) {
+            if (!keys.isEmpty() && !MediaTime.parse(keys.getLast().time()).isLessThan(duration)) {
                 throw new IllegalArgumentException("Subtitle motion keys must lie inside the cue");
+            }
+            if (selectedTextFade != null && MediaTime.parse(selectedTextFade.time())
+                    .add(MediaTime.parse(selectedTextFade.duration())).isGreaterThan(duration)) {
+                throw new IllegalArgumentException("Selected text fade must lie inside the cue");
             }
         } catch (ArithmeticException overflow) {
             throw new IllegalArgumentException("Subtitle timing exceeds the exact arithmetic range", overflow);

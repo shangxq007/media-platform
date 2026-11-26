@@ -114,7 +114,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             output, duration, rate, raster = sys.argv[2 + count:6 + count]
             canvas_width, canvas_height = map(int, raster.split('x'))
             placements = [value.split(',') for value in sys.argv[6 + count:6 + 2 * count]]
-            subtitles = [value.split(',', 5) for value in sys.argv[6 + 2 * count:]]
+            subtitles = [value.split(',') for value in sys.argv[6 + 2 * count:]]
             graph = bmf.graph()
             print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
 
@@ -252,20 +252,31 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     clip, px, py = position_layer(clip, placement[17], start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
-            if subtitles:
-                raster_paths = set(fields[-1] for fields in subtitles)
-                print('BMF_SUBTITLE_RASTERS unique=' + str(len(raster_paths)) + ' layers=' + str(len(subtitles))
-                      + ' bytes=' + str(sum(os.path.getsize(path) for path in raster_paths)), flush=True)
-            for onset, end, start, elapsed, samples, path in subtitles:
+            def still_at_output_rate(path):
                 block = graph.decode({'input_path': path})['video']
-                # Duplicate pixels first. The still decoder's clock is unrelated to the output
-                # clock, so assign one exact output-frame tick to each duplicate before geq.
+                # Duplicate pixels first, then assign one exact output-frame tick to each duplicate.
                 block = ff.ff_filter(block, 'format', 'rgba')
                 output_rate = Fraction(rate)
                 frames = -(-Fraction(duration) * output_rate // 1)
                 block = ff.loop(block, loop=frames - 1, size=1, start=0)
                 block = ff.ff_filter(block, 'settb', 'expr=' + str(1 / output_rate))
-                block = ff.setpts(block, 'N')
+                return ff.setpts(block, 'N')
+
+            if subtitles:
+                raster_paths = {path for fields in subtitles for path in fields[5::3]}
+                print('BMF_SUBTITLE_RASTERS unique=' + str(len(raster_paths)) + ' layers=' + str(len(subtitles))
+                      + ' bytes=' + str(sum(os.path.getsize(path) for path in raster_paths)), flush=True)
+            for onset, end, start, elapsed, samples, path, *fade in subtitles:
+                block = still_at_output_rate(path)
+                if fade:
+                    fade_start, fade_duration, selected_path = fade
+                    begin = Fraction(start) - Fraction(elapsed) + Fraction(fade_start)
+                    local = 'clip((T-(' + str(begin) + '))/(' + fade_duration + '),0,1)'
+                    selected = ff.ff_filter(still_at_output_rate(selected_path), 'geq',
+                                            r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
+                                            a='alpha(X,Y)*' + local, interpolation='nearest')
+                    block = ff.overlay(block, selected, x='0', y='0', format='rgb')
+                    block = ff.ff_filter(block, 'format', 'rgba')
                 if any(point.split(';')[3] != '1000000' for point in samples.split('|')):
                     alpha = motion_expression(samples, 3, start, elapsed, 'T')
                     block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
@@ -393,7 +404,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     + cue.samples() + "," + cue.recipe().width() + "," + cue.recipe().fontSize() + ","
                     + java.util.Base64.getUrlEncoder().withoutPadding()
                             .encodeToString(cue.recipe().text().getBytes(java.nio.charset.StandardCharsets.UTF_8)) + "," + cue.recipe().fontProfile()
-                            + cue.recipe().encodedRunsSuffix());
+                            + cue.encodedStyleSuffix());
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
     }

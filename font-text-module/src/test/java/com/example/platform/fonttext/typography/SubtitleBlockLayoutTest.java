@@ -8,6 +8,31 @@ import org.junit.jupiter.api.Test;
 class SubtitleBlockLayoutTest {
 
     @Test
+    void selectedLayerAndStationaryLayerReuseTheSameWrappedMixedFontAndEmojiPixels() throws Exception {
+        String text = "春 A🌻️B Word\nTail";
+        var runs = java.util.List.of(new SubtitleFontRun(2, 5, SubtitleBlockLayout.SERIF_PROFILE));
+        var range = new SubtitleTextRange(2, 6);
+        String profile = SubtitleBlockLayout.PROFILE;
+        var full = ImageIO.read(new ByteArrayInputStream(SubtitleBlockLayout.png(text, 120, 22, profile, 320, runs)));
+        var fixed = ImageIO.read(new ByteArrayInputStream(SubtitleBlockLayout.png(text, 120, 22, profile, 320, runs, range, false)));
+        var selected = ImageIO.read(new ByteArrayInputStream(SubtitleBlockLayout.png(text, 120, 22, profile, 320, runs, range, true)));
+        assertEquals(full.getHeight(), fixed.getHeight());
+        assertEquals(full.getHeight(), selected.getHeight());
+        int coloredEmojiPixels = 0;
+        int stationaryPixels = 0;
+        for (int y = 0; y < full.getHeight(); y++) for (int x = 0; x < full.getWidth(); x++) {
+            int a = fixed.getRGB(x, y);
+            int b = selected.getRGB(x, y);
+            if (a >>> 24 != 0) stationaryPixels++;
+            if (b >>> 24 != 0 && (b & 255) < 125 && (b >> 16 & 255) > 140) coloredEmojiPixels++;
+            assertTrue(a >>> 24 == 0 || b >>> 24 == 0);
+            assertEquals(full.getRGB(x, y), a | b);
+        }
+        assertTrue(coloredEmojiPixels > 10);
+        assertTrue(stationaryPixels > 20);
+    }
+
+    @Test
     void largest_profile_extent_keeps_six_logical_lines_at_delivery_scale() throws Exception {
         String row = "鬱永🌻🦋🦚🍉";
         String dense = String.join("\n", java.util.Collections.nCopies(6, row));

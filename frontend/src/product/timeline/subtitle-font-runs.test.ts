@@ -36,3 +36,26 @@ it.each([
   expect(textareaText(result.text)).toBe(after)
   expect(result).toEqual({ text, fontRuns: expected })
 })
+
+it('remaps a selected-text fade without animating inserted or replaced graphemes', () => {
+  const fade = { start: 1, end: 4, time: '1/1', duration: '1/1' }
+  const edit = (after: string, start: number, end: number, inputType = 'insertText') =>
+    editRangeFonts('甲cat乙', after, [], start + 1, { start, end, inputType }, fade).selectedTextFade
+  expect(edit('甲Xcat乙', 1, 1)).toEqual({ ...fade, start: 2, end: 5 })
+  expect(edit('甲catX乙', 4, 4)).toEqual(fade)
+  expect(edit('甲car乙', 3, 4)).toEqual({ ...fade, end: 3 })
+  expect(edit('甲car乙', 1, 4, 'insertFromPaste')).toBeUndefined()
+  expect(edit('甲cXat乙', 2, 2)).toBeUndefined()
+  expect(edit('甲ct乙', 2, 3, 'deleteContentBackward')).toEqual({ ...fade, end: 3 })
+})
+
+it('retains a fade on the original repeated word and maps emoji across CR/LF edits', () => {
+  const repeated = { start: 0, end: 3, time: '0/1', duration: '1/2' }
+  expect(editRangeFonts('catcat', 'catcatcat', [], 3, { start: 0, end: 0, inputType: 'insertFromPaste' }, repeated)
+    .selectedTextFade).toEqual({ ...repeated, start: 3, end: 6 })
+  const emoji = { ...repeated, start: 2, end: 4 }
+  const edited = editRangeFonts('甲\r🌻️', '甲\n\n🌻️', [], 3, { start: 2, end: 2, inputType: 'insertLineBreak' }, emoji)
+  expect(edited.text).toBe('甲\r\n\n🌻️')
+  expect(edited.selectedTextFade).toEqual({ ...emoji, start: 4, end: 6 })
+  expect(subtitleSelection(edited.text, 3, 5)).toBeNull()
+})

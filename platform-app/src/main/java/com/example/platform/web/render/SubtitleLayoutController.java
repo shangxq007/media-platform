@@ -1,6 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.fonttext.typography.SubtitleBlockLayout;
+import com.example.platform.fonttext.typography.SubtitleTextRange;
 import com.example.platform.operation.application.SubtitleFontPolicy;
 import java.util.List;
 import org.springframework.http.CacheControl;
@@ -30,7 +31,8 @@ public final class SubtitleLayoutController {
                 .map(font -> new CatalogEntry(font.id(), font.label(), font.family(), font.style())).toList());
     }
 
-    public record Layout(String text, int width, int fontSize, String fontProfile, Integer destinationWidth, List<com.example.platform.fonttext.typography.SubtitleFontRun> fontRuns) {}
+    public record Layout(String text, int width, int fontSize, String fontProfile, Integer destinationWidth, List<com.example.platform.fonttext.typography.SubtitleFontRun> fontRuns, SubtitleTextRange selection,
+            boolean paintSelected) {}
 
     @PostMapping(path = "/subtitle-layout", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> layout(@PathVariable String tenantId, @PathVariable String projectId,
@@ -39,6 +41,6 @@ public final class SubtitleLayoutController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.IMAGE_PNG)
                     .body(SubtitleBlockLayout.png(input.text(), input.width(), input.fontSize(), input.fontProfile(),
                         input.destinationWidth() == null ? SubtitleBlockLayout.REFERENCE_WIDTH : input.destinationWidth(),
-                        input.fontRuns() == null ? List.of() : input.fontRuns()));
+                        input.fontRuns() == null ? List.of() : input.fontRuns(), input.selection(), input.paintSelected()));
     }
 }

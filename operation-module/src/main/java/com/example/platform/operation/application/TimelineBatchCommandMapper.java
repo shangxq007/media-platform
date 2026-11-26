@@ -479,8 +479,19 @@ public final class TimelineBatchCommandMapper {
         return new OperationParameters.SubtitleCueParameters(requiredText(p,"cueId"), MediaTime.parse(start), MediaTime.parse(end),
                 requiredText(p,"text"), cueInteger(p,"width"),cueInteger(p,"fontSize"),
                 new com.example.platform.timeline.canonical.SubtitleCueMotion(
-                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs),
+                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs, selectedTextFade(p)),
                 !p.containsKey("fontProfile"), false, p.containsKey("fontRuns"));
+    }
+
+    private static com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade selectedTextFade(Map<String, Object> p) {
+        if (!p.containsKey("selectedTextFade")) return null;
+        if (!(p.get("selectedTextFade") instanceof Map<?, ?> fade)
+                || !fade.keySet().equals(Set.of("start", "end", "time", "duration"))
+                || !(fade.get("time") instanceof String time) || !(fade.get("duration") instanceof String duration)) {
+            throw new IllegalArgumentException("Invalid selected text fade fields");
+        }
+        return new com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade(
+                cueInteger(fade, "start"), cueInteger(fade, "end"), time, duration);
     }
 
     private static int cueInteger(Map<?, ?> map, String key) {

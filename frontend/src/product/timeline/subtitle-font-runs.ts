@@ -2,7 +2,7 @@
 import type { SubtitleCue } from './subtitle-cues'
 
 export type FontRun = NonNullable<SubtitleCue['fontRuns']>[number]
-type Range = Pick<FontRun, 'start' | 'end'>
+export type Range = Pick<FontRun, 'start' | 'end'>
 const segmenter = new Intl.Segmenter('und', { granularity: 'grapheme' })
 
 export const textareaText = (text: string) => text.replace(/\r\n?/g, '\n')
@@ -65,12 +65,12 @@ function editSpan(before: string, after: string, caret: number, span: TextInputS
 }
 
 /** Use the native edit span to distinguish typing over a letter from replacing an entire word. */
-export function editRangeFonts(
-  authored: string, after: string, runs: FontRun[], caret = after.length, input: TextInputSpan | null = null,
-): { text: string; fontRuns: FontRun[] } {
+export function editRangeFonts<T extends Range = Range>(
+  authored: string, after: string, runs: FontRun[], caret = after.length, input: TextInputSpan | null = null, fade?: T,
+): { text: string; fontRuns: FontRun[]; selectedTextFade?: T } {
   const before = textareaText(authored)
   const span = editSpan(before, after, caret, input)
-  if (before === after && (!span || span.start === span.end)) return { text: authored, fontRuns: runs }
+  if (before === after && (!span || span.start === span.end)) return { text: authored, fontRuns: runs, ...(fade && { selectedTextFade: fade }) }
 
   const oldPoints = graphemeBoundaries(authored), newPoints = graphemeBoundaries(after)
   const oldLast = oldPoints.length - 1, newLast = newPoints.length - 1
@@ -102,15 +102,21 @@ export function editRangeFonts(
   const continuedBreak = prefixText.endsWith('\r') && (inserted || suffixText).startsWith('\n') ? '\n' : ''
   const text = prefixText + continuedBreak + inserted + suffixText
   const delta = Array.from(inserted).length + continuedBreak.length - (right.scalars - left.scalars)
-  const fontRuns: FontRun[] = []
-  for (const run of runs) {
-    if (run.start < left.scalars) {
-      const end = run.end < left.scalars ? run.end : left.scalars + continuedBreak.length
-      fontRuns.push({ ...run, end })
+  function remap<R extends Range>(range: R): R[] {
+    const parts: R[] = []
+    if (range.start < left.scalars) {
+      const end = range.end < left.scalars ? range.end : left.scalars + continuedBreak.length
+      parts.push({ ...range, end })
     }
-    if (run.end > right.scalars) {
-      fontRuns.push({ ...run, start: Math.max(right.scalars, run.start) + delta, end: run.end + delta })
+    if (range.end > right.scalars) {
+      parts.push({ ...range, start: Math.max(right.scalars, range.start) + delta, end: range.end + delta })
     }
+    return parts
   }
-  return { text, fontRuns }
+  const [first, second] = fade ? remap(fade) : []
+  // Newly authored text cannot inherit the effect. Two separated survivors cannot
+  // be represented as one contiguous range, so clear the effect in that case.
+  const selectedTextFade = first && (!second || first.end === second.start)
+    ? { ...first, end: second?.end ?? first.end } : undefined
+  return { text, fontRuns: runs.flatMap(run => remap(run)), ...(selectedTextFade && { selectedTextFade }) }
 }

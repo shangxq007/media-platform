@@ -446,6 +446,10 @@ public final class RenderPlanCanonicalCodec {
                 if (!text.subtitleCue().fontRuns().isEmpty()) {
                     list(sb, text.subtitleCue().fontRuns().stream().map(run -> run.canonical()).toList());
                 }
+                if (text.subtitleCue().selectedTextFade() != null) {
+                    s(sb, "subtitle-selected-text-fade-v1");
+                    s(sb, text.subtitleCue().selectedTextFade().canonical());
+                }
             }
         } else {
             // R3-M1: unknown sealed variant fails closed — a future

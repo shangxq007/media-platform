@@ -44,6 +44,7 @@ public final class SubtitleBlockLayout {
     // uncompressible RGBA PNG with scanline/filter overhead fits this bound.
     public static final int MAX_NATIVE_PNG_BYTES = 18 * 1024 * 1024;
     private static final String ROOT = "/subtitle-cue-v1/";
+    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
     private static final Pattern GRAPHEME = Pattern.compile("\\X");
 
     private SubtitleBlockLayout() {}
@@ -90,8 +91,15 @@ public final class SubtitleBlockLayout {
     }
 
     public static byte[] png(String text, int width, int size, String profile, int destinationWidth, List<SubtitleFontRun> runs) {
+        return png(text, width, size, profile, destinationWidth, runs, null, false);
+    }
+
+    /** Paint just one layer of a selection, using the original full paragraph for layout. */
+    public static byte[] png(String text, int width, int size, String profile, int destinationWidth,
+            List<SubtitleFontRun> runs, SubtitleTextRange selection, boolean paintSelected) {
         validateShape(text, width, size);
         SubtitleFontRun.validate(text, runs);
+        if (selection != null) selection.requireWholeGraphemes(text);
         if (destinationWidth < 1 || destinationWidth > MAX_DESTINATION_WIDTH) {
             throw new IllegalArgumentException("Subtitle destination width is outside the raster budget");
         }
@@ -110,7 +118,7 @@ public final class SubtitleBlockLayout {
             if (paragraph.isEmpty()) {
                 lines.add(null);
             } else {
-                var content = paragraph(paragraph, paragraphStart, runs, font, fallback, size);
+                var content = paragraph(paragraph, paragraphStart, runs, font, fallback, size, selection, paintSelected);
                 var lineMeasurer = new LineBreakMeasurer(content.getIterator(), BreakIterator.getLineInstance(Locale.ROOT), frc);
                 int last = content.getIterator().getEndIndex();
                 while (lineMeasurer.getPosition() < last) {
@@ -158,11 +166,14 @@ public final class SubtitleBlockLayout {
     }
 
     private record FontRange(int start, int end, Font font) {}
+    private record HiddenRange(int start, int end) {}
 
-    private static AttributedString paragraph(String paragraph, int scalar, List<SubtitleFontRun> runs, Font font, Font fallback, int size) {
+    private static AttributedString paragraph(String paragraph, int scalar, List<SubtitleFontRun> runs,
+            Font font, Font fallback, int size, SubtitleTextRange selection, boolean paintSelected) {
         var display = new StringBuilder();
         var inline = new HashMap<Integer, String>();
         var fallbackRanges = new ArrayList<FontRange>();
+        var hidden = new ArrayList<HiddenRange>();
         var matcher = GRAPHEME.matcher(paragraph);
         int runIndex = 0;
         while (matcher.find()) {
@@ -171,6 +182,8 @@ public final class SubtitleBlockLayout {
             if (runIndex < runs.size() && runs.get(runIndex).start() <= scalar) {
                 primary = profile(runs.get(runIndex).fontProfile()).serif() ? Serif.FONT.deriveFont((float) size) : fallback;
             }
+            boolean hide = selection != null && selection.contains(scalar) != paintSelected;
+            int displayStart = display.length();
             scalar += paragraph.codePointCount(matcher.start(), matcher.end());
             String grapheme = matcher.group();
             String candidate = grapheme.codePoints().filter(cp -> cp != 0xfe0f)
@@ -190,15 +203,24 @@ public final class SubtitleBlockLayout {
                 if (!actual.equals(font)) fallbackRanges.add(new FontRange(display.length(), display.length() + grapheme.length(), actual));
                 display.append(grapheme);
             }
+            if (hide) {
+                if (!hidden.isEmpty() && hidden.getLast().end() == displayStart) {
+                    hidden.add(new HiddenRange(hidden.removeLast().start(), display.length()));
+                } else {
+                    hidden.add(new HiddenRange(displayStart, display.length()));
+                }
+            }
         }
         var styled = new AttributedString(display.toString());
         styled.addAttribute(TextAttribute.FONT, font);
         for (var range : fallbackRanges) styled.addAttribute(TextAttribute.FONT, range.font(), range.start(), range.end());
+        for (var range : hidden) styled.addAttribute(TextAttribute.FOREGROUND, TRANSPARENT, range.start(), range.end());
         for (var graphic : inline.entrySet()) {
             try {
                 BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(Resources.EMOJI.get(graphic.getValue())));
-                styled.addAttribute(TextAttribute.CHAR_REPLACEMENT, new Emoji(image, size),
-                        graphic.getKey(), graphic.getKey() + 1);
+                int index = graphic.getKey();
+                boolean visible = hidden.stream().noneMatch(range -> range.start() <= index && index < range.end());
+                styled.addAttribute(TextAttribute.CHAR_REPLACEMENT, new Emoji(image, size, visible), index, index + 1);
             } catch (IOException failure) {
                 throw new IllegalStateException("Bundled emoji raster could not be decoded", failure);
             }
@@ -210,11 +232,13 @@ public final class SubtitleBlockLayout {
         private final BufferedImage image;
         private final int size;
         private final int width;
+        private final boolean visible;
 
-        Emoji(BufferedImage image, int size) {
+        Emoji(BufferedImage image, int size, boolean visible) {
             super(ROMAN_BASELINE);
             this.image = image;
             this.size = size;
+            this.visible = visible;
             this.width = Math.round(size * image.getWidth() / (float) image.getHeight());
         }
 
@@ -222,7 +246,7 @@ public final class SubtitleBlockLayout {
         @Override public float getDescent() { return size - getAscent(); }
         @Override public float getAdvance() { return width; }
         @Override public void draw(Graphics2D graphics, float x, float y) {
-            graphics.drawImage(image, Math.round(x), Math.round(y - getAscent()), width, size, null);
+            if (visible) graphics.drawImage(image, Math.round(x), Math.round(y - getAscent()), width, size, null);
         }
     }
 

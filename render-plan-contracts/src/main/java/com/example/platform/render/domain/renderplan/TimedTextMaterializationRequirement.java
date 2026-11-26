@@ -117,11 +117,50 @@ public record TimedTextMaterializationRequirement(
         public byte[] png(int destinationWidth) {
             return SubtitleBlockLayout.png(text, width, fontSize, fontProfile, destinationWidth, fontRuns);
         }
+
+        public byte[] png(int destinationWidth, RasterRange selection, boolean selected) {
+            var range = selection == null ? null
+                    : new com.example.platform.fonttext.typography.SubtitleTextRange(selection.start(), selection.end());
+            return SubtitleBlockLayout.png(text, width, fontSize, fontProfile, destinationWidth, fontRuns, range, selected);
+        }
+    }
+
+    public record RasterRange(int start, int end) {}
+
+    public record FadeRaster(RasterRange range, String time, String duration) {
+        public static FadeRaster parse(String encoded) {
+            if (encoded == null) return null;
+            String[] fields = encoded.split(";", -1);
+            if (fields.length != 4 || !fields[0].matches("[0-9]{1,3}") || !fields[1].matches("[0-9]{1,3}")) {
+                throw new IllegalArgumentException("Malformed subtitle fade recipe");
+            }
+            return from(new SubtitleCueMotion.SelectedTextFade(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]),
+                    fields[2], fields[3]));
+        }
+
+        private static FadeRaster from(SubtitleCueMotion.SelectedTextFade fade) {
+            return fade == null ? null : new FadeRaster(new RasterRange(fade.start(), fade.end()), fade.time(), fade.duration());
+        }
+
+        public String encoded() {
+            return range.start() + ";" + range.end() + ";" + time + ";" + duration;
+        }
     }
 
     /** Provider-facing bounded raster recipe and placement. The time is relative to the render extent. */
     public record CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed,
-                            String samples, BlockRasterRecipe recipe) {}
+                            String samples, BlockRasterRecipe recipe, FadeRaster fade) {
+        public CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed,
+                String samples, BlockRasterRecipe recipe) {
+            this(firstFrame, endFrame, start, elapsed, samples, recipe, null);
+        }
+
+        public String encodedStyleSuffix() {
+            String runs = recipe.encodedRunsSuffix();
+            if (fade == null) return runs;
+            return (runs.isEmpty() ? "," : runs) + "," + fade.encoded();
+        }
+    }
 
     public java.util.Optional<CueRaster> cueRaster(RenderExtent extent) {
         if (!editableCue()) throw new IllegalArgumentException("Only a pinned subtitle profile can prepare a block raster");
@@ -149,7 +188,8 @@ public record TimedTextMaterializationRequirement(
         }
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
                 visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
-                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile(), subtitleCue.fontRuns())));
+                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile(), subtitleCue.fontRuns()),
+                FadeRaster.from(subtitleCue.selectedTextFade())));
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

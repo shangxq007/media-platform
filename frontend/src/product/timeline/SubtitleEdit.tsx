@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI, type SubtitleFontCatalog } from '../../api/formal-render'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
 import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
-import { savedSubtitleFont, type SubtitleCue } from './subtitle-cues'
-import { compare, formatRational, parseRational, subtract } from './trim'
+import { savedSubtitleFont, type SelectedTextFade, type SubtitleCue } from './subtitle-cues'
+import { add, compare, formatRational, parseRational, subtract } from './trim'
 
 type Row = { id: string; time: string; x: string; y: string; opacity: string }
-type Form = { scope: string; text: string; start: string; end: string; width: string; fontSize: string; fontProfile: string; fontRuns: FontRun[]; keys: Row[]; remove: boolean }
+type Form = { scope: string; text: string; start: string; end: string; width: string; fontSize: string; fontProfile: string; fontRuns: FontRun[]; selectedTextFade?: SelectedTextFade; keys: Row[]; remove: boolean }
 const percent = (input: string, min: number, max: number) => {
   const exact = /^([+-]?)(\d+)(?:\.(\d{1,4}))?$/.exec(input.trim())
   if (!exact) return null
@@ -43,7 +43,7 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
   const scope = JSON.stringify([project, props.tenant, props.head?.revisionId, props.head?.contentHash, selected])
   const form = draft?.scope === scope ? draft : {
     scope, text: saved?.text ?? '', start: saved?.start ?? '', end: saved?.end ?? '',
-    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, fontRuns: saved?.fontRuns ?? [], remove: false,
+    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, fontRuns: saved?.fontRuns ?? [], selectedTextFade: saved?.selectedTextFade, remove: false,
     keys: saved?.keys.map((k,i) => ({ id: String(i), time: k.time, x: String(k.xMicros / 10000),
       y: String(k.yMicros / 10000), opacity: String(k.opacityMicros / 10000) })) ?? [],
   }
@@ -78,7 +78,11 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
     return time && time.numerator >= 0n && xMicros != null && yMicros != null && opacityMicros != null
       ? [{ time, xMicros, yMicros, opacityMicros }] : []
   })
-  const valid = interval && form.fontRuns.length <= 64 && form.text.trim().length > 0 && form.text.length <= 384
+  const fade = form.selectedTextFade
+  const fadeTime = parseRational(fade?.time), fadeLength = parseRational(fade?.duration)
+  const validFade = !fade || (!!fadeTime && !!fadeLength && interval && fadeTime.numerator >= 0n
+    && fadeLength.numerator > 0n && compare(add(fadeTime, fadeLength), subtract(end, start)) <= 0)
+  const valid = interval && validFade && form.fontRuns.length <= 64 && form.text.trim().length > 0 && form.text.length <= 384
     && integer(form.width, 40, 304) && integer(form.fontSize, 12, 44)
     && keys.length === form.keys.length && keys.every((k, i) => compare(k.time, subtract(end, start)) < 0
       && (!i || compare(keys[i - 1].time, k.time) < 0))
@@ -94,6 +98,7 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
           start: formatRational(start!), end: formatRational(end!),
           ...(form.fontProfile && form.fontProfile !== savedProfile ? { fontProfile: form.fontProfile } : {}),
           ...(form.fontRuns.length || saved?.fontRuns?.length ? { fontRuns: form.fontRuns } : {}),
+          ...(fade && { selectedTextFade: { ...fade, time: formatRational(fadeTime!), duration: formatRational(fadeLength!) } }),
           keys: keys.map(key => ({ ...key, time: formatRational(key.time) })),
         } }
       return { step, ranges: [remove ? 'Remove the selected subtitle.' : `Subtitle [${formatRational(start!)}, ${formatRational(end!)}) s`] }
@@ -114,7 +119,8 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
           const input = pending?.scope === scope && pending.value === textareaText(form.text) && pending.inputType === (e.nativeEvent as InputEvent).inputType
             ? pending : null
           setSelection(null)
-          change(editRangeFonts(form.text, value, form.fontRuns, selectionEnd, input))
+          const edited = editRangeFonts(form.text, value, form.fontRuns, selectionEnd, input, form.selectedTextFade)
+          change({ ...edited, selectedTextFade: edited.selectedTextFade })
         }} /></label>
       {range && <label>Font for selected text <select aria-label="Font for selected text" value="" disabled={!catalog}
         onChange={e => change({ fontRuns: setRangeFont(form.fontRuns, range, e.target.value === 'inherit' ? '' : e.target.value) })}>
@@ -122,6 +128,19 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
         <option value="inherit">Use cue font</option>
         {catalog?.map(font => <option key={font.id} value={font.id}>{font.label}</option>)}
       </select></label>}
+      <button type="button" disabled={!range} onClick={() => range && change({
+        selectedTextFade: { time: fade?.time ?? '0', duration: fade?.duration ?? '1/1', ...range },
+      })}>Fade selected text</button>
+      {fade && <fieldset>
+        <legend>Selected-text fade</legend>
+        <p>{Array.from(form.text).slice(fade.start, fade.end).join('')}</p>
+        <label>Fade start (cue seconds) <input value={fade.time}
+          onChange={e => change({ selectedTextFade: { ...fade, time: e.target.value } })} /></label>
+        <label>Fade duration (seconds) <input value={fade.duration}
+          onChange={e => change({ selectedTextFade: { ...fade, duration: e.target.value } })} /></label>
+        <button type="button" onClick={() => change({ selectedTextFade: undefined })}>Remove selected-text fade</button>
+        {interval && !validFade && <p role="alert">Use a nonnegative start and positive duration that fit inside the cue.</p>}
+      </fieldset>}
       {selection?.scope === scope && selection.text === form.text && selection.from !== selection.to && !range &&
         <p role="alert">Select whole characters, including combining marks and emoji sequences.</p>}
       {form.fontRuns.length > 64 && <p role="alert">A subtitle supports up to 64 font ranges.</p>}

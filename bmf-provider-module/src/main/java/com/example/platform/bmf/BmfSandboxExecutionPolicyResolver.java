@@ -1,6 +1,8 @@
 package com.example.platform.bmf;
 
 import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.FadeRaster;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.RasterRange;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.sandbox.DeviceExposurePolicy;
@@ -198,10 +200,15 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
         try {
             List<Path> subtitlePaths = new ArrayList<>(subtitles.size());
+            List<Path> selectionPaths = new ArrayList<>(subtitles.size());
             for (var subtitle : subtitles) {
-                Path path = prepared.raster(subtitle.recipe(), raster.width());
+                var selection = subtitle.fade() == null ? null : subtitle.fade().range();
+                Path path = prepared.raster(subtitle.recipe(), raster.width(), selection, false);
                 subtitlePaths.add(path);
                 readOnlyInputs.add(path);
+                Path selected = selection == null ? null : prepared.raster(subtitle.recipe(), raster.width(), selection, true);
+                selectionPaths.add(selected);
+                if (selected != null) readOnlyInputs.add(selected);
             }
             var mounts = List.copyOf(readOnlyInputs);
             int runtimeIndex = mounts.indexOf(runtimeRoot);
@@ -223,7 +230,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.addAll(placements);
                 for (int index = 0; index < subtitles.size(); index++) {
                     int mount = mounts.indexOf(subtitlePaths.get(index));
-                    args.add(subtitles.get(index).timing() + ",/sandbox-inputs/input-" + mount);
+                    var subtitle = subtitles.get(index);
+                    String token = subtitle.timing() + ",/sandbox-inputs/input-" + mount;
+                    if (subtitle.fade() != null) {
+                        token += "," + subtitle.fade().time() + "," + subtitle.fade().duration()
+                                + ",/sandbox-inputs/input-" + mounts.indexOf(selectionPaths.get(index));
+                    }
+                    args.add(token);
                 }
             } else {
                 Path inputPath = byToken.get(inputTokens.getFirst())
@@ -364,13 +377,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private record SubtitleInput(String timing, BlockRasterRecipe recipe) {}
+    private record SubtitleInput(String timing, BlockRasterRecipe recipe, FadeRaster fade) {}
 
     private static SubtitleInput parseSubtitle(String block) {
-        if (block.length() > 3_600 + 3_201) return null;
-        String[] values = block.split(",", 10);
+        if (block.length() > 3_600 + 3_201 + 90) return null;
+        String[] values = block.split(",", 11);
         String timeShape = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
-        if ((values.length < 8 || values.length > 10) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
+        if ((values.length < 8 || values.length > 11) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
                 || Long.parseLong(values[0]) >= Long.parseLong(values[1])
                 || !values[2].matches(timeShape) || !values[3].matches(timeShape)
                 || !values[5].matches("[1-9][0-9]{1,2}") || !values[6].matches("[1-9][0-9]")
@@ -395,7 +408,8 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             int size = Integer.parseInt(values[6]);
             return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
                     BlockRasterRecipe.fromEncodedRuns(text, width, size, values.length >= 9 ? values[8] : null,
-                            values.length == 10 ? values[9] : null));
+                            values.length >= 10 && !values[9].isEmpty() ? values[9] : null),
+                    FadeRaster.parse(values.length == 11 ? values[10] : null));
         } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
             return null;
         }
@@ -403,16 +417,16 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     /** One private input set per launch. Names are generated here, never supplied by a cue. */
     private static final class SubtitleInputs implements Closeable {
-        private record RasterKey(BlockRasterRecipe recipe, int width) {}
+        private record RasterKey(BlockRasterRecipe recipe, int width, RasterRange selection, boolean selected) {}
         private final Map<RasterKey, Path> files = new LinkedHashMap<>();
         private final List<Path> allocated = new ArrayList<>();
         private Path directory;
 
-        Path raster(BlockRasterRecipe recipe, int destinationWidth) throws IOException {
-            var key = new RasterKey(recipe, destinationWidth);
+        Path raster(BlockRasterRecipe recipe, int destinationWidth, RasterRange selection, boolean selected) throws IOException {
+            var key = new RasterKey(recipe, destinationWidth, selection, selected);
             Path existing = files.get(key);
             if (existing != null) return existing;
-            byte[] png = recipe.png(destinationWidth);
+            byte[] png = recipe.png(destinationWidth, selection, selected);
             if (directory == null) directory = Files.createTempDirectory("bmf-subtitle-inputs-");
             Path target = directory.resolve("block-" + files.size() + ".png");
             allocated.add(target);

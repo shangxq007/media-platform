@@ -73,6 +73,28 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void selectedSubtitleFadeRequiresCompleteGraphemesAndExactCueLocalTiming() {
+        var parameters = new java.util.HashMap<String, Object>(Map.of("cueId","fade","start","1/1","end","5/1",
+                "text","甲\r\n🌻️word","width",160,"fontSize",24,"keys",List.of()));
+        String id = "timeline.subtitle.cue.set";
+        parameters.put("selectedTextFade", Map.of("start",3,"end",7,"time","2/2","duration","1/1"));
+        var mapped = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
+                map(new TimelineOperationStep(id, null, parameters)).parameters());
+        assertEquals("3;7;1/1;1/1", mapped.motion().selectedTextFade().canonical());
+        assertEquals(mapped.motion().selectedTextFade(), mapped.withResolvedFont("noto-sc-color-emoji-v1").motion().selectedTextFade());
+        for (var invalid : List.of(
+                Map.of("start",4,"end",7,"time","1/1","duration","1/1"),
+                Map.of("start",2,"end",7,"time","1/1","duration","1/1"),
+                Map.of("start",3,"end",10,"time","1/1","duration","1/1"),
+                Map.of("start",3,"end",7,"time","3/1","duration","2/1"),
+                Map.of("start",3,"end",7,"time","0","duration","0/1"),
+                Map.of("start",3,"end",7,"time","1.5","duration","1/1"))) {
+            parameters.put("selectedTextFade", invalid);
+            assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, null, parameters)));
+        }
+    }
+
+    @Test
     void wholeCueFontsNormalizeMissingAndRejectUnknownOrNullProfiles() {
         var parameters = new java.util.HashMap<String, Object>(Map.of("cueId", "mixed", "start", "0", "end", "4/1",
                 "text", "春㐀🌻", "width", 200, "fontSize", 24, "keys", List.of()));

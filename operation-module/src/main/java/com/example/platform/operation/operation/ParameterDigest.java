@@ -154,6 +154,9 @@ public final class ParameterDigest {
                 version = framed("subtitle-font-runs-v1", version, cue.motion().fontRuns().stream()
                         .map(run -> run.canonical()).collect(java.util.stream.Collectors.joining("|")));
             }
+            if (cue.motion().selectedTextFade() != null) {
+                version = framed("subtitle-selected-text-fade-v1", version, cue.motion().selectedTextFade().canonical());
+            }
             return framed(version, cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
                     Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().effectiveFontProfile(),
                     cue.motion().keys().stream().map(k -> framed(k.time(), Integer.toString(k.xMicros()),

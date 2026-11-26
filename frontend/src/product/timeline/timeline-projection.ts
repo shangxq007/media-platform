@@ -252,6 +252,19 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start) throw new Error('Invalid subtitle font range')
     return { start, end, fontProfile: savedSubtitleFont(text(run.fontProfile, 'font range profile')) }
   })
+  let selectedTextFade: SubtitleCue['selectedTextFade']
+  if (motion.selectedTextFade != null) {
+    const fade = object(motion.selectedTextFade, 'selected text fade')
+    const from = projectedNumber(fade.start, 'fade selection start', 0, 383)
+    const to = projectedNumber(fade.end, 'fade selection end', 1, 384)
+    const time = parseRational(text(fade.time, 'fade start'))
+    const length = parseRational(text(fade.duration, 'fade duration'))
+    if (!Number.isInteger(from) || !Number.isInteger(to) || to <= from || !time || time.numerator < 0n
+      || !length || length.numerator <= 0n || compare(add(time, length), duration) > 0) {
+      throw new Error('Invalid selected text fade')
+    }
+    selectedTextFade = { start: from, end: to, time: formatRational(time), duration: formatRational(length) }
+  }
   const keys = entries(motion.keys, 'subtitle keys').map(row => {
     const k = object(row, 'subtitle key')
     const time = parseRational(text(k.time, 'subtitle cue-local key time'))
@@ -267,7 +280,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     throw new Error('Invalid subtitle motion')
   return { cueId: text(element.id, 'subtitle identity'), text: text(styled.content, 'subtitle text'),
     start: formatRational(start), end: formatRational(add(start, duration)), width: Number(width.numerator),
-    fontSize: Number(size.numerator), fontProfile, keys, ...(fontRuns.length ? { fontRuns } : {}) }
+    fontSize: Number(size.numerator), fontProfile, keys, ...(fontRuns.length ? { fontRuns } : {}), ...(selectedTextFade && { selectedTextFade }) }
 }
 
 /** Reject unsupported semantics at the read-only projection boundary. */
