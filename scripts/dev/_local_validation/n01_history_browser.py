@@ -185,7 +185,7 @@ if opacity or dissolve or position or subtitle or correction or motion or raster
         assert profiles(accepted) == profiles(redo) == {'legacy-cue': sans, result['serifCueId']: sans if inline else serif}
         if inline:
             for stage in (legacy, accepted, undo, redo, facts['cleared']):
-                cue = next(c for c in rows[stage['head']]['snapshot']['textElements'] if c['id'] == 'second-cue')
+                [cue] = [c for c in rows[stage['head']]['snapshot']['textElements'] if c['id'] == 'second-cue']
                 assert cue['subtitleCue'].get('fontRuns', []) == (result['inlineRuns'] if stage in (accepted, redo) else [])
             assert facts['cleared']['rows'] == redo['rows'] + 1
         (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
