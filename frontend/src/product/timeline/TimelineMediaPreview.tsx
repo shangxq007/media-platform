@@ -329,9 +329,13 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         : session.subtitleBlocks.get(cue.cueId)
       if (!pose || !image) continue
       const scale = target.width / 320
+      const x = pose.x * target.width, y = pose.y * target.height
+      const moving = cue.keys.some(key => key.xMicros !== cue.keys[0].xMicros || key.yMicros !== cue.keys[0].yMicros)
+      context.save()
       context.globalAlpha = pose.alpha
-      context.drawImage(image, Math.round(pose.x * target.width), Math.round(pose.y * target.height),
-        Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)))
+      context.translate(moving ? x : Math.round(x), moving ? y : Math.round(y))
+      context.drawImage(image, 0, 0, Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)))
+      context.restore()
       visibleCues.push(cue.cueId)
     }
     context.globalAlpha = 1

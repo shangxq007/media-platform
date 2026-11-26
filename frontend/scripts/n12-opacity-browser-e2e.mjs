@@ -10,6 +10,7 @@ const [appRoot, outputRoot, mode] = process.argv.slice(2)
 const dissolve = mode === '--dissolve'
 const position = mode === '--position'
 const correction = ['--subtitle-correction','--reviewed-subtitle-parent'].includes(mode)
+const motion = ['--n16-clip','--n16-subtitle','--n16-hd'].includes(mode)
 const subtitle = mode === '--subtitle'
 assert(appRoot && outputRoot)
 const base = 'http://127.0.0.1:18080'
@@ -34,7 +35,7 @@ await context.addInitScript(({ access, profile }) => {
 
 async function run() {
   const created = await page.request.post(`${base}/api/identity/tenants/${tenant}/projects`, {
-    headers, data: { name: correction ? 'N15 correction witness' : subtitle ? 'N15 editable subtitles' : position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
+    headers, data: { name: motion ? 'N16 motion witness '+mode : correction ? 'N15 correction witness' : subtitle ? 'N15 editable subtitles' : position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
   })
   assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
@@ -111,14 +112,15 @@ async function run() {
   const endpoint = base + scope + '/timeline-operations/batch/v2'
   const post = async (method, body, digest) => page.request.post(endpoint+'/'+method,{
     headers: digest ? { ...headers, 'If-Match': '"'+digest+'"' } : headers, data: body })
-  if (dissolve || position || subtitle || correction) {
-    const runEdit = correction ? (await import('./n15-subtitle-correction-browser.mjs')).runSubtitleCorrection
+  if (dissolve || position || subtitle || correction || motion) {
+    const runEdit = motion ? (await import('./n16-motion-browser.mjs')).runMotion
+      : correction ? (await import('./n15-subtitle-correction-browser.mjs')).runSubtitleCorrection
       : subtitle ? (await import('./n15-subtitle-browser.mjs')).runSubtitle
       : position ? (await import('./n14-position-browser.mjs')).runPosition
       : (await import('./n13-cross-dissolve-browser.mjs')).runDissolve
     const context = { page, base, scope, project, headers, outputRoot, url, endpoint, post, cp, waitRevision, addTrack, addClip,
       head: () => current, syncHead: async () => { current = await head(); return current }, upload: async file => { sources[file] = await upload(file) } }
-    await runEdit(context, mode === '--reviewed-subtitle-parent')
+    await runEdit(context, motion ? mode : mode === '--reviewed-subtitle-parent')
     return
   }
   await addTrack('VIDEO','top','n12-top')

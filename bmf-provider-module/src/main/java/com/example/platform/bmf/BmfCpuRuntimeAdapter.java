@@ -192,9 +192,42 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     expression += '+(' + delta + ')*clip((' + local + '-(' + left[0] + '))/(' + span + '),0,1)'
                 return expression
 
-            def position_expression(samples, axis, pixels, start, elapsed):
-                expression = motion_expression(samples, axis, start, elapsed, 't')
-                return 'floor((' + expression + ')*' + str(pixels) + '/1000000+0.5)'
+            def position_layer(layer, samples, start, elapsed):
+                points = [sample.split(';') for sample in samples.split('|')]
+                moving = any(point[1:3] != points[0][1:3] for point in points[1:])
+                if not moving:
+                    return (layer, (int(points[0][1]) * canvas_width + 500000) // 1000000,
+                            (int(points[0][2]) * canvas_height + 500000) // 1000000)
+
+                def coordinate(axis, pixels, clock):
+                    # Both filters see the same output frame lattice. Keep the provider's
+                    # placement precision at 1/256 output pixel and snap exact pixel holds.
+                    grid = '(floor(' + clock + '*(' + rate + ')+0.5)/(' + rate + '))'
+                    value = motion_expression(samples, axis, start, elapsed, grid)
+                    return 'floor((' + value + ')*' + str(pixels) + '*256/1000000+0.5)/256'
+
+                x = coordinate(1, canvas_width, 't')
+                y = coordinate(2, canvas_height, 't')
+                fx = 'mod(' + coordinate(1, canvas_width, 'T') + ',1)'
+                fy = 'mod(' + coordinate(2, canvas_height, 'T') + ',1)'
+                shifted = 'gt(mod(' + x + ',1)+mod(' + y + ',1),0)'
+
+                # FFmpeg overlay truncates coordinates even in RGB. Split out the integer
+                # portion and sample only the subject at the complementary fractional
+                # phase. The one-pixel transparent halo preserves edge contribution
+                # and off-canvas clipping without increasing the output canvas.
+                layer = ff.ff_filter(layer, 'format', 'gbrap')
+                layer = ff.ff_filter(layer, 'pad', 'w=iw+2:h=ih+2:x=1:y=1:color=black@0')
+                layer = ff.ff_filter(layer, 'premultiply', inplace=1, enable=shifted)
+                # geq evaluates each row from X=0, including when rows are slice-threaded.
+                # Cache the phase in each expression's registers once per row, not per pixel.
+                phase = 'if(eq(X,0),st(0,' + fx + ')+st(1,' + fy + '),0);'
+                sample_at = '(X-ld(0),Y-ld(1))'
+                layer = ff.ff_filter(layer, 'geq', r=phase + 'r' + sample_at,
+                                     g=phase + 'g' + sample_at, b=phase + 'b' + sample_at,
+                                     a=phase + 'alpha' + sample_at, interpolation='bilinear', enable=shifted)
+                layer = ff.ff_filter(layer, 'unpremultiply', inplace=1, enable=shifted)
+                return layer, 'floor(' + x + ')-1', 'floor(' + y + ')-1'
 
             video_inputs = [(path, placement) for path, placement in zip(paths, placements)
                             if placement[0] == 'V']
@@ -219,8 +252,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
                 visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
                 if len(placement) > 17:
-                    px = position_expression(placement[17], 1, canvas_width, start, fx[7])
-                    py = position_expression(placement[17], 2, canvas_height, start, fx[7])
+                    clip, px, py = position_layer(clip, placement[17], start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
             cue_files = tempfile.TemporaryDirectory(dir='.') if subtitles else None
@@ -244,11 +276,10 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 alpha = motion_expression(samples, 3, start, elapsed, 'T')
                 block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
                                      a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
-                px = position_expression(samples, 1, canvas_width, start, elapsed)
-                py = position_expression(samples, 2, canvas_height, start, elapsed)
+                block, px, py = position_layer(block, samples, start, elapsed)
                 frame_number = 'floor(t*(' + rate + ')+0.5)'
                 visible = '(1+sgn(' + frame_number + '-' + onset + '+0.5))*(1-sgn(' + frame_number + '-' + end + '+0.5))'
-                canvas = ff.overlay(canvas, block, x=px, y=py, enable=visible, format='rgb')
+                canvas = ff.overlay(canvas, block, x=str(px), y=str(py), enable=visible, format='rgb')
 
             audio_inputs = []
             for path, placement in zip(paths, placements):

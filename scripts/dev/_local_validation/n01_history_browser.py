@@ -26,15 +26,16 @@ branches = sys.argv[1:] == ['--branches']
 opacity = sys.argv[1:] == ['--opacity']
 dissolve = sys.argv[1:] == ['--dissolve']
 position = sys.argv[1:] == ['--position']
+motion = len(sys.argv)==2 and sys.argv[1] in ('--n16-clip','--n16-subtitle','--n16-hd')
 correction = sys.argv[1:] in (['--subtitle-correction'], ['--reviewed-subtitle-parent'])
 subtitle = sys.argv[1:] == ['--subtitle']
-assert correction or subtitle or position or dissolve or opacity or branches or not sys.argv[1:]
-out = root / '04-tests' / ('n15-subtitle-correction' if correction else 'n15-subtitle' if subtitle else 'n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
+assert correction or motion or subtitle or position or dissolve or opacity or branches or not sys.argv[1:]
+out = root / '04-tests' / (sys.argv[1][2:] if motion else 'n15-subtitle-correction' if correction else 'n15-subtitle' if subtitle else 'n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
 assert deps.is_dir() and not deps.is_symlink() and not target.is_symlink()
-target.mkdir(exist_ok=branches or dissolve or position or subtitle or correction)
+target.mkdir(exist_ok=branches or dissolve or position or subtitle or correction or motion)
 assert not any(target.iterdir())
 prefix = sandbox_prefix(app / 'binding.json')
 prefix[-1:-1] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
@@ -91,9 +92,12 @@ if branches:
     checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
-if dissolve or opacity or position or subtitle or correction:
+if dissolve or opacity or position or subtitle or correction or motion:
     browser_script = 'n12-opacity-browser-e2e.mjs'
     checkpoints = ('base','draft','accepted','recovery','edited','undo','redo','stale','noop')
+
+if motion:
+    checkpoints = ('base','preview','accepted','reopened')
 
 if correction:
     checkpoints = ('short','new-preview','new-cancel','existing-base','existing-applied',
@@ -113,7 +117,7 @@ if dissolve:
 
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
-                                str(app), str(out), *([sys.argv[1]] if position or dissolve or subtitle or correction else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
+                                str(app), str(out), *([sys.argv[1]] if position or dissolve or subtitle or correction or motion else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
     deadline = time.monotonic() + 600
     facts = {}
     try:
@@ -122,7 +126,7 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
                 raise RuntimeError('N01 browser deadline reached')
             for name in checkpoints:
                 if name not in facts and (out / ('checkpoint-' + name)).is_file():
-                    if opacity or dissolve or position or subtitle or correction:
+                    if opacity or dissolve or position or subtitle or correction or motion:
                         project = (out / 'project-id').read_text()
                         assert re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', project)
                         scope = f"tenant_id='tenant-fr-e2e' and project_id='{project}'"
@@ -142,12 +146,19 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
-if opacity or dissolve or position or subtitle or correction:
+if opacity or dissolve or position or subtitle or correction or motion:
     rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (select rev.id,rev.parent_revision_id,rev.content_hash,
         doc.payload_json::json as snapshot,ctx.payload_json::json as semantics
         from timeline.timeline_revision rev join timeline.timeline_snapshot doc on doc.id=rev.snapshot_id and doc.project_id=rev.project_id and doc.tenant_id=rev.tenant_id
         join timeline.timeline_snapshot ctx on ctx.id='revctx_'||rev.id and ctx.tenant_id=rev.tenant_id and ctx.project_id=rev.project_id
         where rev.tenant_id='tenant-fr-e2e' and rev.project_id='{project}') r;""")
+    if motion:
+        assert facts['base']==facts['preview'] and facts['accepted']==facts['reopened']
+        assert facts['accepted']['rows']==facts['base']['rows']+1
+        assert facts['accepted']['commands']==facts['base']['commands']+1
+        (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
+        print(json.dumps({'status':'PASS','scenario':sys.argv[1][2:]}))
+        sys.exit(0)
     if correction:
         for unchanged, original in (('new-preview','short'),('new-cancel','short'),
                                     ('extend-preview','existing-applied'),('extend-cancel','existing-applied'),
