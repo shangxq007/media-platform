@@ -70,6 +70,7 @@ public sealed interface OperationParameters permits
         public PositionParameters { java.util.Objects.requireNonNull(keys); }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record OpacityParameters(com.example.platform.timeline.semantics.effect.OpacityKeys keys) implements OperationParameters {
         public OpacityParameters { java.util.Objects.requireNonNull(keys); }
     }
