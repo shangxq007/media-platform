@@ -1058,7 +1058,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         var accepted = saveService.findById(TENANT, applyPrepared(opacityRequest(base)).newRevisionId());
         assertEquals(base.semanticContext().effectReference(), accepted.semanticContext().effectReference());
         assertEquals(base.revisionId(), accepted.parentRevisionId());
-        var curve = accepted.canonicalTimeline().getAutomations().getFirst();
+        var curve = saveService.findPayloadDocument(TENANT, accepted.revisionId()).orElseThrow().getAutomations().getFirst();
         assertEquals("opacity", curve.parameterPath());
         assertEquals("video-basic-clip-a", curve.targetEntityId());
         assertEquals(List.of(time("6/1"),time("7/1")), curve.keyframes().stream().map(k -> k.time()).toList());

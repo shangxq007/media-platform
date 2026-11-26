@@ -161,8 +161,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                                          + ':ow=rotw(' + angle + '):oh=roth(' + angle
                                          + '):fillcolor=none')
                 if len(fx) == 14:
-                    t0, a0, t1, a1 = map(float, fx[10:])
-                    ramp = str(a0) + '+(' + str(a1-a0) + ')*clip((T-' + str(t0) + ')/' + str(t1-t0) + ',0,1)'
+                    t0, a0, span, a1 = fx[10:]
+                    ramp = a0 + '+(' + a1 + '-' + a0 + ')*clip((T-(' + t0 + '))/(' + span + '),0,1)'
                     video = ff.ff_filter(video, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
                                          a='alpha(X,Y)*(' + ramp + ')', interpolation='nearest')
                 elif opacity < 1:
@@ -241,8 +241,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 + (e.grayscale() ? "1" : "0") + ";" + e.fadeInSeconds() + ";"
                 + e.fadeOutSeconds() + ";" + (e.enabled() ? "1" : "0") + ";"
                 + seconds(input.elapsed()) + ";" + seconds(input.authoredDuration()) + ";"
-                + seconds(input.dissolveDuration()) + input.opacityKeys().map(k -> ";" + seconds(k.firstTime())
-                        + ";" + k.firstValue() + ";" + seconds(k.lastTime()) + ";" + k.lastValue()).orElse("");
+                + seconds(input.dissolveDuration()) + input.opacityKeys().map(k -> ";" + k.firstTime().toString()
+                        + ";" + k.firstValue() + ";" + k.lastTime().subtract(k.firstTime()).toString() + ";" + k.lastValue()).orElse("");
     }
 
     private final Path python;

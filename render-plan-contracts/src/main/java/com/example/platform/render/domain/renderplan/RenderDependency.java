@@ -106,6 +106,18 @@ public sealed interface RenderDependency permits
      * so the physical provider receives the authored mix values without a second
      * audio authority. Video inputs use neutral defaults.
      */
+    /** Execution projection of verified opacity samples. Times use the same domain as the track placement. */
+    record OpacityRamp(com.example.platform.shared.time.MediaTime firstTime, double firstValue,
+                       com.example.platform.shared.time.MediaTime lastTime, double lastValue) {
+        public OpacityRamp {
+            if (!firstTime.isLessThan(lastTime) || !(firstValue >= 0 && firstValue <= 1 && lastValue >= 0 && lastValue <= 1))
+                throw new IllegalArgumentException("Invalid opacity ramp");
+        }
+        public OpacityRamp relativeTo(com.example.platform.shared.time.MediaTime origin) {
+            return new OpacityRamp(firstTime.subtract(origin), firstValue, lastTime.subtract(origin), lastValue);
+        }
+    }
+
     record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
             double left, double right, double top, double bottom, double opacity) {}
 
@@ -118,7 +130,7 @@ public sealed interface RenderDependency permits
                            VideoEffectSpec effect,
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
-                           java.util.Optional<Dissolve> dissolve, java.util.Optional<com.example.platform.timeline.semantics.effect.OpacityKeys> opacityKeys)
+                           java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys)
             implements RenderDependency {
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
@@ -144,7 +156,8 @@ public sealed interface RenderDependency permits
             java.util.Objects.requireNonNull(authoredStart, "authoredStart");
             java.util.Objects.requireNonNull(authoredEnd, "authoredEnd");
             java.util.Objects.requireNonNull(dissolve, "dissolve");
-            opacityKeys.ifPresent(k -> k.requireInside(authoredStart, authoredEnd));
+            if (opacityKeys.isPresent() && (opacityKeys.get().firstTime().isLessThan(authoredStart)
+                    || !opacityKeys.get().lastTime().isLessThan(authoredEnd))) throw new IllegalArgumentException("Opacity ramp outside clip");
             if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
                     || layer < 0 || (audio && dissolve.isPresent())) {
@@ -165,7 +178,7 @@ public sealed interface RenderDependency permits
         public static TimedTrackInput video(com.example.platform.shared.time.MediaTime start,
                 com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
                 VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
-                com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve, java.util.Optional<com.example.platform.timeline.semantics.effect.OpacityKeys> opacityKeys) {
+                com.example.platform.shared.time.MediaTime authoredEnd, java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys) {
             return new TimedTrackInput(start, end, layer, false,
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),
@@ -230,7 +243,8 @@ public sealed interface RenderDependency permits
                     + dissolve.map(d -> ":" + d.transitionId().length() + ":" + d.transitionId()
                             + ":" + d.outgoingClipId().length() + ":" + d.outgoingClipId()
                             + ":" + d.incomingClipId().length() + ":" + d.incomingClipId()
-                            + ":" + d.duration()).orElse("");
+                            + ":" + d.duration()).orElse("")
+                    + opacityKeys.map(k -> ":opacity:" + k.firstTime() + ":" + k.firstValue() + ":" + k.lastTime() + ":" + k.lastValue()).orElse("");
         }
     }
 }

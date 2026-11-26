@@ -203,7 +203,7 @@ public final class TimelineBatchCommandMapper {
                     CompositionAspectRatio.fromParameters(parameters));
             case "timeline.clip.opacity.keyframes.set" -> new OperationParameters.OpacityParameters(
                     new com.example.platform.timeline.semantics.effect.OpacityKeys(time(parameters, "firstTime"),
-                            requiredDouble(parameters, "firstValue"), time(parameters, "lastTime"), requiredDouble(parameters, "lastValue")));
+                            opacity(parameters, "firstValue"), time(parameters, "lastTime"), opacity(parameters, "lastValue")));
             case "timeline.clip.transform.set" -> new OperationParameters.VideoTransformParameters(
                     VideoTransform.fromParameters(parameters));
             case "timeline.clip.effect.set" -> new OperationParameters.VideoEffectParameters(
@@ -449,6 +449,14 @@ public final class TimelineBatchCommandMapper {
         if (value instanceof Integer integer) return integer.longValue();
         if (value instanceof Long integer) return integer;
         throw new IllegalArgumentException(field + " must be an exact signed 64-bit integer");
+    }
+
+    private static double opacity(Map<?, ?> parameters, String field) {
+        var value = new java.math.BigDecimal(number(parameters, field).toString());
+        if (value.signum() < 0 || value.compareTo(java.math.BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException(field + " must be between zero and one");
+        }
+        return value.doubleValue();
     }
 
     private static double requiredDouble(Map<?, ?> parameters, String field) {

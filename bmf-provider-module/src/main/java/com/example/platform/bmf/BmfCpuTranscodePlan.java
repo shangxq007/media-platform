@@ -41,7 +41,7 @@ public record BmfCpuTranscodePlan(
                              VideoPlacement transform,
                              com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
-                             java.util.Optional<com.example.platform.timeline.semantics.effect.OpacityKeys> opacityKeys) {
+                             java.util.Optional<com.example.platform.render.domain.renderplan.RenderDependency.OpacityRamp> opacityKeys) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
                              VideoPlacement transform,

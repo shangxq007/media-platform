@@ -617,7 +617,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                             Double.parseDouble(reader.field("fadeIn")), Double.parseDouble(reader.field("fadeOut")),
                             reader.fieldBoolean("effectEnabled")),
                     MediaTime.parse(reader.field("authoredStart")), MediaTime.parse(reader.field("authoredEnd")),
-                    dissolve(reader.optionalNested()), variant.equals("TIMED_TRACK_OPACITY_V1") ? Optional.of(new com.example.platform.timeline.semantics.effect.OpacityKeys(
+                    dissolve(reader.optionalNested()), variant.equals("TIMED_TRACK_OPACITY_V1") ? Optional.of(new RenderDependency.OpacityRamp(
                             MediaTime.parse(reader.field("firstTime")), Double.parseDouble(reader.field("firstValue")),
                             MediaTime.parse(reader.field("lastTime")), Double.parseDouble(reader.field("lastValue")))) : Optional.empty());
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);

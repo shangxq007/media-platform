@@ -415,7 +415,8 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                                 clip.transform(),
                                                 VideoEffectSpec.from(clip.effect()),
                                                 clip.timelineRange().start(), clip.timelineRange().end(),
-                                                Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())), revision.opacity(clip.clipId()))));
+                                                Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())), revision.opacity(clip.clipId()).map(k ->
+                                                        new RenderDependency.OpacityRamp(k.firstTime(), k.firstValue(), k.lastTime(), k.lastValue())))));
                                 RenderNodeId embedded = getEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId());
                                 if (embedded != null) {
                                     edges.add(new RenderDependencyEdge(embedded, compositeId,

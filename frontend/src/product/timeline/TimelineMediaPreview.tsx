@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
-import { toSeconds } from './trim'
+import { compare, subtract, toSeconds } from './trim'
 import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
@@ -206,8 +206,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       const keys = override && override.revisionId === revisionId && override.clipId === clip.clipId ? override.keys : clip.opacityKeys
       let opacity = t.opacity
       if (keys) {
-        const first = toSeconds(keys.firstTime), last = toSeconds(keys.lastTime)
-        const progress = Math.max(0, Math.min(1, (now - first) / (last - first)))
+        const progress = compare(time, keys.firstTime) <= 0 ? 0 : compare(time, keys.lastTime) >= 0 ? 1
+          : toSeconds(subtract(time, keys.firstTime)) / toSeconds(subtract(keys.lastTime, keys.firstTime))
         opacity = keys.firstValue + progress * (keys.lastValue - keys.firstValue)
       }
       context.globalAlpha = opacity * fadeIn * fadeOut * transitionAlpha
