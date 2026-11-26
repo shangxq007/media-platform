@@ -31,6 +31,43 @@ public final class SubtitleBlockLayout {
     public static final String FIXTURE_PROFILE = "n18-fixture-serif-v1";
     public static final String PROFILE_ID_PATTERN = "[a-z0-9-]{1,40}";
 
+    public record DecorationAsset(String id, String label, String placement, int size, int gap, int referenceWidth) {}
+
+    private static final DecorationAsset SUNFLOWER = new DecorationAsset(
+            "sunflower-v1", "Sunflower", "right-of-cue-v1", 24, 4, 320);
+
+    public static DecorationAsset decoration(String id) {
+        if (!SUNFLOWER.id().equals(id)) throw new IllegalArgumentException("Unknown subtitle decoration asset");
+        return SUNFLOWER;
+    }
+
+    public static List<DecorationAsset> decorations() {
+        return List.of(SUNFLOWER);
+    }
+
+    public static byte[] decorationPng(String id, int destinationWidth) {
+        var asset = decoration(id);
+        if (destinationWidth < 1 || destinationWidth > MAX_DESTINATION_WIDTH)
+            throw new IllegalArgumentException("Subtitle decoration destination width is outside the raster budget");
+        int size = Math.max(1, (int) Math.round(asset.size() * (double) destinationWidth / asset.referenceWidth()));
+        var block = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        try {
+            var graphic = ImageIO.read(new java.io.ByteArrayInputStream(Resources.EMOJI.get("1f33b")));
+            var graphics = block.createGraphics();
+            try {
+                graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                graphics.drawImage(graphic, 0, 0, size, size, null);
+            } finally {
+                graphics.dispose();
+            }
+            var bytes = new ByteArrayOutputStream();
+            if (!ImageIO.write(block, "png", bytes)) throw new IllegalStateException("PNG encoder unavailable");
+            return bytes.toByteArray();
+        } catch (IOException failure) {
+            throw new IllegalStateException("Bundled subtitle decoration could not be rasterized", failure);
+        }
+    }
+
     public record Profile(String id, String label, String family, String style, boolean serif) {}
 
     private static final Map<String, Profile> PROFILES = Map.of(

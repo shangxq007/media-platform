@@ -102,6 +102,14 @@ public final class TimelineBatchSchema {
                     "start", integerRange(0,383), "end", integerRange(1,384), "time", parameterType("cue-time"),
                     "duration", Map.of("type", "string", "pattern", "^[1-9][0-9]{0,18}/[1-9][0-9]{0,18}$")),
                     List.of("start","end","time","duration"))));
+            case "cue-decoration" -> Map.of("description", "Omit to preserve, supply a complete configuration, or send null to remove.",
+                    "oneOf", List.of(Map.of("type", "null"), object(Map.of(
+                            "assetId", Map.of("type", "string", "enum", com.example.platform.fonttext.typography.SubtitleBlockLayout
+                                    .decorations().stream().map(asset -> asset.id()).toList()),
+                            "placement", Map.of("type", "string", "enum", com.example.platform.fonttext.typography.SubtitleBlockLayout
+                                    .decorations().stream().map(asset -> asset.placement()).distinct().toList()),
+                            "enabled", parameterType("boolean"), "start", parameterType("cue-time"), "end", parameterType("cue-time")),
+                            List.of("assetId","placement","enabled","start","end"))));
             case "cue-width" -> integerRange(40,304);
             case "cue-font-size" -> integerRange(12,44);
             case "cue-key-array" -> Map.of("type","array","maxItems",16,

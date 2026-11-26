@@ -59,6 +59,7 @@ public final class TimelineOperationWireContract {
                 fields.put("fontProfile", new Field("cue-font", false));
                 fields.put("fontRuns", new Field("cue-font-runs", false));
                 fields.put("selectedTextFade", new Field("cue-selected-text-fade", false));
+                fields.put("decoration", new Field("cue-decoration", false));
                 fields(fields, "cue-width", "width");
                 fields(fields, "cue-font-size", "fontSize");
                 fields(fields, "cue-key-array", "keys");
@@ -148,7 +149,8 @@ public final class TimelineOperationWireContract {
             if ("single-clip-id-array".equals(field.type()) && (!(values.get(name) instanceof List<?> ids) || ids.size() != 1)) {
                 throw new IllegalArgumentException("Ripple Insert requires exactly one clip in " + name);
             }
-            if (values.containsKey(name) && values.get(name) == null && !"cue-selected-text-fade".equals(field.type())) {
+            if (values.containsKey(name) && values.get(name) == null && !"cue-selected-text-fade".equals(field.type())
+                    && !"cue-decoration".equals(field.type())) {
                 throw new IllegalArgumentException(name + " cannot be null");
             }
         });

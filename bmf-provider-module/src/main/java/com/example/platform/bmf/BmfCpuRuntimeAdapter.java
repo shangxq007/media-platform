@@ -263,13 +263,24 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 return ff.setpts(block, 'N')
 
             if subtitles:
-                raster_paths = {path for fields in subtitles for path in fields[5::3]}
+                raster_paths = {fields[index] for fields in subtitles for index in (5, 8, 12) if len(fields) > index and fields[index]}
                 print('BMF_SUBTITLE_RASTERS unique=' + str(len(raster_paths)) + ' layers=' + str(len(subtitles))
                       + ' bytes=' + str(sum(os.path.getsize(path) for path in raster_paths)), flush=True)
-            for onset, end, start, elapsed, samples, path, *fade in subtitles:
+            def cue_opacity(layer, samples, start, elapsed):
+                if not any(point.split(';')[3] != '1000000' for point in samples.split('|')):
+                    return layer
+                alpha = motion_expression(samples, 3, start, elapsed, 'T')
+                return ff.ff_filter(layer, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
+                                    a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
+
+            def frames_visible(onset, end):
+                number = 'floor(t*(' + rate + ')+0.5)'
+                return '(1+sgn(' + number + '-' + onset + '+0.5))*(1-sgn(' + number + '-' + end + '+0.5))'
+
+            for onset, end, start, elapsed, samples, path, *style in subtitles:
                 block = still_at_output_rate(path)
-                if fade:
-                    fade_start, fade_duration, selected_path = fade
+                if style and style[0]:
+                    fade_start, fade_duration, selected_path = style[:3]
                     begin = Fraction(start) - Fraction(elapsed) + Fraction(fade_start)
                     local = 'clip((T-(' + str(begin) + '))/(' + fade_duration + '),0,1)'
                     selected = ff.ff_filter(still_at_output_rate(selected_path), 'geq',
@@ -277,14 +288,14 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                                             a='alpha(X,Y)*' + local, interpolation='nearest')
                     block = ff.overlay(block, selected, x='0', y='0', format='rgb')
                     block = ff.ff_filter(block, 'format', 'rgba')
-                if any(point.split(';')[3] != '1000000' for point in samples.split('|')):
-                    alpha = motion_expression(samples, 3, start, elapsed, 'T')
-                    block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
-                                         a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
-                block, px, py = position_layer(block, samples, start, elapsed)
-                frame_number = 'floor(t*(' + rate + ')+0.5)'
-                visible = '(1+sgn(' + frame_number + '-' + onset + '+0.5))*(1-sgn(' + frame_number + '-' + end + '+0.5))'
-                canvas = ff.overlay(canvas, block, x=str(px), y=str(py), enable=visible, format='rgb')
+                block, px, py = position_layer(cue_opacity(block, samples, start, elapsed), samples, start, elapsed)
+                canvas = ff.overlay(canvas, block, x=str(px), y=str(py), enable=frames_visible(onset, end), format='rgb')
+                if len(style) == 7:
+                    first, last, offset, sprite_path = style[3:]
+                    sprite = cue_opacity(still_at_output_rate(sprite_path), samples, start, elapsed)
+                    sprite, sprite_x, sprite_y = position_layer(sprite, samples, start, elapsed)
+                    canvas = ff.overlay(canvas, sprite, x='(' + str(sprite_x) + ')+' + offset, y=str(sprite_y),
+                                        enable=frames_visible(first, last), format='rgb')
 
             audio_inputs = []
             for path, placement in zip(paths, placements):

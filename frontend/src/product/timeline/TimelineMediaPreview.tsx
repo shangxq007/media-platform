@@ -1,4 +1,4 @@
-import { savedSubtitleFont, selectedTextAlpha, subtitlePose, type SubtitleCue } from './subtitle-cues'
+import { decorationVisible, savedSubtitleFont, selectedTextAlpha, subtitlePose, type SubtitleCue } from './subtitle-cues'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { DEFAULT_COMPOSITION_ASPECT } from '../../contracts/app/composition-aspect'
 import { previewRaster } from './composition-raster'
@@ -11,11 +11,16 @@ import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } 
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
-interface SubtitleBitmaps { fixed: ImageBitmap; selected?: ImageBitmap }
+interface SubtitleBitmaps {
+  fixed: ImageBitmap
+  selected?: ImageBitmap
+  decoration?: { image: ImageBitmap; gap: number }
+}
 
 function closeSubtitle(images: SubtitleBitmaps) {
   images.fixed.close()
   images.selected?.close()
+  images.decoration?.image.close()
 }
 
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
@@ -204,12 +209,21 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       ...(cue.fontRuns?.length ? { fontRuns: cue.fontRuns } : {}), ...(selection && { selection }) }
     const raster = async (input: typeof body & { paintSelected?: boolean }) =>
       createImageBitmap(await FormalRenderAPI.subtitleLayout(tenant, projectId, input, signal))
-    const fixed = await raster(body)
-    if (!selection) return { fixed }
+    const images: SubtitleBitmaps = { fixed: await raster(body) }
     try {
-      return { fixed, selected: await raster({ ...body, paintSelected: true }) }
+      if (selection) images.selected = await raster({ ...body, paintSelected: true })
+      if (cue.decoration?.enabled) {
+        const { assetId, placement } = cue.decoration
+        const catalog = await FormalRenderAPI.listSubtitleDecorations(tenant, projectId, signal)
+        const asset = catalog.find(item => item.id === assetId && item.placement === placement)
+        if (!asset) throw new Error('Subtitle decoration is unavailable')
+        const png = await FormalRenderAPI.subtitleDecorationRaster(tenant, projectId, asset.id, destinationWidth, signal)
+        images.decoration = { image: await createImageBitmap(png),
+          gap: Math.round(asset.gap * destinationWidth / asset.referenceWidth) }
+      }
+      return images
     } catch (error) {
-      fixed.close()
+      closeSubtitle(images)
       throw error
     }
   }
@@ -343,6 +357,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const { cues, replacement } = projection ? effectiveSubtitleCues(projection, cuePlan, session.revisionId)
       : { cues: [], replacement: null }
     const visibleCues: string[] = []
+    const visibleDecorations: string[] = []
     for (const cue of cues.sort((a,b) => a.cueId < b.cueId ? -1 : a.cueId === b.cueId ? 0 : 1)) {
       const pose = subtitlePose(cue, time)
       const image = cue.cueId === replacement
@@ -370,11 +385,18 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       } else {
         context.drawImage(image.fixed, 0, 0)
       }
+      if (image.decoration && decorationVisible(cue, time)) {
+        context.drawImage(image.decoration.image, image.fixed.width + image.decoration.gap, 0)
+        visibleDecorations.push(cue.cueId)
+      }
       context.restore()
       visibleCues.push(cue.cueId)
     }
     context.globalAlpha = 1
-    if (host.current) host.current.dataset.activeSubtitles = visibleCues.join(',')
+    if (host.current) {
+      host.current.dataset.activeSubtitles = visibleCues.join(',')
+      host.current.dataset.activeDecorations = visibleDecorations.join(',')
+    }
   }
 
   useEffect(() => {

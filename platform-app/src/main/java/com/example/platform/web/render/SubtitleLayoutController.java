@@ -31,6 +31,20 @@ public final class SubtitleLayoutController {
                 .map(font -> new CatalogEntry(font.id(), font.label(), font.family(), font.style())).toList());
     }
 
+    @GetMapping("/subtitle-decorations")
+    public ResponseEntity<List<SubtitleBlockLayout.DecorationAsset>> decorations(@PathVariable String tenantId, @PathVariable String projectId) {
+        authorization.requireRead(tenantId, projectId);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(SubtitleBlockLayout.decorations());
+    }
+
+    @GetMapping(path = "/subtitle-decorations/{assetId}/raster", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> decorationRaster(@PathVariable String tenantId, @PathVariable String projectId,
+            @PathVariable String assetId, @RequestParam int destinationWidth) {
+        authorization.requireRead(tenantId, projectId);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.IMAGE_PNG)
+                .body(SubtitleBlockLayout.decorationPng(assetId, destinationWidth));
+    }
+
     public record Layout(String text, int width, int fontSize, String fontProfile, Integer destinationWidth, List<com.example.platform.fonttext.typography.SubtitleFontRun> fontRuns, SubtitleTextRange selection,
             Boolean paintSelected) {}
 

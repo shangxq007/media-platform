@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { subtitlePose, type SubtitleCue } from './subtitle-cues'
+import { decorationVisible, subtitlePose, type SubtitleCue } from './subtitle-cues'
 import { parseRational } from './trim'
 
 const cue: SubtitleCue = {
@@ -21,4 +21,14 @@ describe('whole subtitle pose', () => {
     expect(at('10/3')).toBeNull()
     expect(subtitlePose({ ...cue, keys: [] }, parseRational('1/3')!)).toEqual({ x: 0.1, y: 0.55, alpha: 1 })
   })
+})
+
+it('opens and closes the independent decoration interval at exact cue-relative frame boundaries', () => {
+  const cue: SubtitleCue = { cueId: 'cue', text: 'FadeWord', start: '1/1', end: '5/1', width: 240, fontSize: 24, keys: [],
+    fontRuns: [{ start: 0, end: 4, fontProfile: 'noto-serif-sc-color-emoji-v1' }],
+    selectedTextFade: { start: 0, end: 8, time: '1/1', duration: '1/1' },
+    decoration: { assetId: 'sunflower-v1', placement: 'right-of-cue-v1', enabled: true, start: '1/1', end: '2/1' } }
+  expect([47, 48, 60, 71, 72].map(frame => decorationVisible(cue, parseRational(`${frame}/24`)!)))
+    .toEqual([false, true, true, true, false])
+  expect(decorationVisible({ ...cue, decoration: { ...cue.decoration!, enabled: false } }, parseRational('5/2')!)).toBe(false)
 })

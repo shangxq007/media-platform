@@ -1,13 +1,13 @@
 import { editRangeFonts, setRangeFont, subtitleSelection, textareaText, type FontRun, type TextInputSpan } from './subtitle-font-runs'
 import { useEffect, useRef, useState } from 'react'
-import { FormalRenderAPI, type SubtitleFontCatalog } from '../../api/formal-render'
+import { FormalRenderAPI, type SubtitleDecorationCatalog, type SubtitleFontCatalog } from '../../api/formal-render'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
 import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
-import { savedSubtitleFont, type SelectedTextFade, type SubtitleCue } from './subtitle-cues'
+import { savedSubtitleFont, type SelectedTextFade, type SubtitleCue, type SubtitleDecoration } from './subtitle-cues'
 import { add, compare, formatRational, parseRational, subtract } from './trim'
 
 type Row = { id: string; time: string; x: string; y: string; opacity: string }
-type Form = { scope: string; text: string; start: string; end: string; width: string; fontSize: string; fontProfile: string; fontRuns: FontRun[]; selectedTextFade?: SelectedTextFade; keys: Row[]; remove: boolean }
+type Form = { scope: string; text: string; start: string; end: string; width: string; fontSize: string; fontProfile: string; fontRuns: FontRun[]; selectedTextFade?: SelectedTextFade; decoration?: SubtitleDecoration; keys: Row[]; remove: boolean }
 const percent = (input: string, min: number, max: number) => {
   const exact = /^([+-]?)(\d+)(?:\.(\d{1,4}))?$/.exec(input.trim())
   if (!exact) return null
@@ -38,12 +38,25 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
     return () => cancel.abort()
   }, [catalogScope, project, props.tenant])
   const catalog = catalogState?.scope === catalogScope ? catalogState.fonts : undefined
+  const [decorationCatalogState, setDecorationCatalog] =
+    useState<{ scope: string; assets: SubtitleDecorationCatalog | null } | null>(null)
+  useEffect(() => {
+    if (!catalogScope || !project || !props.tenant) return
+    const cancel = new AbortController()
+    void FormalRenderAPI.listSubtitleDecorations(props.tenant, project, cancel.signal).then(
+      assets => { if (!cancel.signal.aborted) setDecorationCatalog({ scope: catalogScope, assets }) },
+      () => { if (!cancel.signal.aborted) setDecorationCatalog({ scope: catalogScope, assets: null }) },
+    )
+    return () => cancel.abort()
+  }, [catalogScope, project, props.tenant])
+  const decorations = decorationCatalogState?.scope === catalogScope ? decorationCatalogState.assets : undefined
   const saved = cues.find(c => c.cueId === selected)
   const savedProfile = saved ? savedSubtitleFont(saved.fontProfile) : ''
   const scope = JSON.stringify([project, props.tenant, props.head?.revisionId, props.head?.contentHash, selected])
   const form = draft?.scope === scope ? draft : {
     scope, text: saved?.text ?? '', start: saved?.start ?? '', end: saved?.end ?? '',
-    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, fontRuns: saved?.fontRuns ?? [], selectedTextFade: saved?.selectedTextFade ?? undefined, remove: false,
+    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, fontRuns: saved?.fontRuns ?? [], selectedTextFade: saved?.selectedTextFade ?? undefined,
+    decoration: saved?.decoration ?? undefined, remove: false,
     keys: saved?.keys.map((k,i) => ({ id: String(i), time: k.time, x: String(k.xMicros / 10000),
       y: String(k.yMicros / 10000), opacity: String(k.opacityMicros / 10000) })) ?? [],
   }
@@ -82,7 +95,12 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
   const fadeTime = parseRational(fade?.time), fadeLength = parseRational(fade?.duration)
   const validFade = !fade || (!!fadeTime && !!fadeLength && interval && fadeTime.numerator >= 0n
     && fadeLength.numerator > 0n && compare(add(fadeTime, fadeLength), subtract(end, start)) <= 0)
-  const valid = interval && validFade && form.fontRuns.length <= 64 && form.text.trim().length > 0 && form.text.length <= 384
+  const decoration = form.decoration
+  const decorationStart = parseRational(decoration?.start), decorationEnd = parseRational(decoration?.end)
+  const validDecoration = !decoration || (interval && !!decorationStart && !!decorationEnd
+    && decorationStart.numerator >= 0n && compare(decorationStart, decorationEnd) < 0
+    && compare(decorationEnd, subtract(end, start)) <= 0)
+  const valid = interval && validFade && validDecoration && form.fontRuns.length <= 64 && form.text.trim().length > 0 && form.text.length <= 384
     && integer(form.width, 40, 304) && integer(form.fontSize, 12, 44)
     && keys.length === form.keys.length && keys.every((k, i) => compare(k.time, subtract(end, start)) < 0
       && (!i || compare(keys[i - 1].time, k.time) < 0))
@@ -100,6 +118,9 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
           ...(form.fontRuns.length || saved?.fontRuns?.length ? { fontRuns: form.fontRuns } : {}),
           ...(fade ? { selectedTextFade: { ...fade, time: formatRational(fadeTime!), duration: formatRational(fadeLength!) } }
             : saved?.selectedTextFade ? { selectedTextFade: null } : {}),
+          ...(decoration ? { decoration: { ...decoration,
+            start: formatRational(decorationStart!), end: formatRational(decorationEnd!) } }
+            : saved?.decoration ? { decoration: null } : {}),
           keys: keys.map(key => ({ ...key, time: formatRational(key.time) })),
         } }
       return { step, ranges: [remove ? 'Remove the selected subtitle.' : `Subtitle [${formatRational(start!)}, ${formatRational(end!)}) s`] }
@@ -160,6 +181,31 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
       {catalog === undefined && catalogScope && <p role="status">Loading subtitle fonts…</p>}
       {catalog === null && <><p role="alert">Subtitle font catalog unavailable. No font was substituted.</p>
         <button type="button" onClick={() => reload(previous => previous + 1)}>Retry subtitle fonts</button></>}
+      <fieldset>
+        <legend>Subtitle decoration</legend>
+        <label>Decoration <select value={decoration?.assetId ?? ''} disabled={!decorations} onChange={e => {
+          const asset = decorations?.find(item => item.id === e.target.value)
+          if (asset) change({ decoration: { assetId: asset.id, placement: asset.placement,
+            enabled: true, start: '0', end: interval ? formatRational(subtract(end, start)) : '1/1' } })
+        }}>
+          <option value="" disabled>Choose a decoration</option>
+          {decoration && !decorations?.some(asset => asset.id === decoration.assetId)
+            && <option value={decoration.assetId}>{decoration.assetId}</option>}
+          {decorations?.map(asset => <option key={asset.id} value={asset.id}>{asset.label}</option>)}
+        </select></label>
+        {decorations === null && <p role="status">Decoration catalog unavailable.</p>}
+        {decoration && <>
+          <p>Right of the subtitle box</p>
+          <label><input type="checkbox" checked={decoration.enabled}
+            onChange={e => change({ decoration: { ...decoration, enabled: e.target.checked } })} />Enable decoration</label>
+          <label>Decoration start (cue seconds) <input value={decoration.start}
+            onChange={e => change({ decoration: { ...decoration, start: e.target.value } })} /></label>
+          <label>Decoration end (cue seconds) <input value={decoration.end}
+            onChange={e => change({ decoration: { ...decoration, end: e.target.value } })} /></label>
+          <button type="button" onClick={() => change({ decoration: undefined })}>Remove decoration</button>
+          {interval && !validDecoration && <p role="alert">Set an increasing decoration interval inside the cue.</p>}
+        </>}
+      </fieldset>
       <label><input type="checkbox" checked={form.keys.length > 0}
         onChange={e => change({ keys: e.target.checked
           ? [{ id: 'first', time: '0', x: '10', y: '55', opacity: '100' },

@@ -66,6 +66,12 @@ const resolvedFont = z.object({ id: profileId, label: id })
 const fontCatalog = z.array(resolvedFont.extend({ family: id, style: id })).min(1)
   .refine(entries => new Set(entries.map(entry => entry.id)).size === entries.length, 'Duplicate subtitle font ID')
 export type SubtitleFontCatalog = z.infer<typeof fontCatalog>
+const subtitleDecorationCatalog = z.array(z.object({
+  id: z.literal('sunflower-v1'), label: z.string(), placement: z.literal('right-of-cue-v1'),
+  size: z.number().int().positive(), gap: z.number().int().nonnegative(), referenceWidth: z.number().int().positive(),
+}))
+export type SubtitleDecorationCatalog = z.infer<typeof subtitleDecorationCatalog>
+
 const planSchema = z.object({ batchDigest: z.string().regex(/^[0-9a-f]{64}$/),
   resolvedSubtitleFont: resolvedFont.optional(),
   steps: z.array(z.object({ changes: z.array(z.object({ identity: z.string(), primary: z.boolean() })) })) })
@@ -74,6 +80,15 @@ export const FormalRenderAPI = {
   async listSubtitleFonts(tenant: string, project: string, signal?: AbortSignal) {
     return fontCatalog.parse(await request(c => versionlessApi.get(
       `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-fonts`, c), signal))
+  },
+  async listSubtitleDecorations(tenant: string, project: string, signal?: AbortSignal) {
+    return subtitleDecorationCatalog.parse(await request(c => versionlessApi.get(
+      `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-decorations`, c), signal))
+  },
+  async subtitleDecorationRaster(tenant: string, project: string, assetId: string, destinationWidth: number, signal?: AbortSignal) {
+    return request(c => versionlessApi.get<Blob>(
+      `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-decorations/${part(assetId)}/raster`,
+      { ...c, params: { destinationWidth }, responseType: 'blob', headers: { Accept: 'image/png' } }), signal)
   },
   async subtitleLayout(tenant: string, project: string,
       body: { text: string; width: number; fontSize: number; fontProfile: string; fontRuns?: { start: number; end: number; fontProfile: string }[]; destinationWidth: number; selection?: { start: number; end: number }; paintSelected?: boolean }, signal?: AbortSignal) {

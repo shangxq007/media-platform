@@ -265,6 +265,18 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     }
     selectedTextFade = { start: from, end: to, time: formatRational(time), duration: formatRational(length) }
   }
+  let decoration: SubtitleCue['decoration']
+  if (motion.decoration != null) {
+    const config = object(motion.decoration, 'subtitle decoration')
+    const begin = parseRational(text(config.start, 'decoration start'))
+    const finish = parseRational(text(config.end, 'decoration end'))
+    if (config.assetId !== 'sunflower-v1' || config.placement !== 'right-of-cue-v1' || typeof config.enabled !== 'boolean'
+        || !begin || !finish || begin.numerator < 0n || compare(begin, finish) >= 0 || compare(finish, duration) > 0) {
+      throw new Error('Invalid subtitle decoration')
+    }
+    decoration = { assetId: config.assetId, placement: config.placement, enabled: config.enabled,
+      start: formatRational(begin), end: formatRational(finish) }
+  }
   const keys = entries(motion.keys, 'subtitle keys').map(row => {
     const k = object(row, 'subtitle key')
     const time = parseRational(text(k.time, 'subtitle cue-local key time'))
@@ -280,7 +292,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     throw new Error('Invalid subtitle motion')
   return { cueId: text(element.id, 'subtitle identity'), text: text(styled.content, 'subtitle text'),
     start: formatRational(start), end: formatRational(add(start, duration)), width: Number(width.numerator),
-    fontSize: Number(size.numerator), fontProfile, keys, ...(fontRuns.length ? { fontRuns } : {}), ...(selectedTextFade && { selectedTextFade }) }
+    fontSize: Number(size.numerator), fontProfile, keys, ...(fontRuns.length ? { fontRuns } : {}), ...(selectedTextFade && { selectedTextFade }), ...(decoration && { decoration }) }
 }
 
 /** Reject unsupported semantics at the read-only projection boundary. */

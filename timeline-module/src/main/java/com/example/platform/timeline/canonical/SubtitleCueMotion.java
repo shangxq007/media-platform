@@ -13,7 +13,13 @@ public record SubtitleCueMotion(
         @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
         List<SubtitleFontRun> fontRuns,
         @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-        SelectedTextFade selectedTextFade) {
+        SelectedTextFade selectedTextFade,
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        Decoration decoration) {
+    public SubtitleCueMotion(String fontProfile, List<Key> keys, List<SubtitleFontRun> fontRuns, SelectedTextFade selectedTextFade) {
+        this(fontProfile, keys, fontRuns, selectedTextFade, null);
+    }
+
     public SubtitleCueMotion(String fontProfile, List<Key> keys, List<SubtitleFontRun> fontRuns) {
         this(fontProfile, keys, fontRuns, null);
     }
@@ -64,6 +70,41 @@ public record SubtitleCueMotion(
         }
     }
 
+    public record Decoration(String assetId, String placement, boolean enabled, String start, String end) {
+        public Decoration {
+            if (!SubtitleBlockLayout.decoration(assetId).placement().equals(placement)) {
+                throw new IllegalArgumentException("Unsupported subtitle decoration placement");
+            }
+            var begin = decorationTime(start);
+            var finish = decorationTime(end);
+            if (!begin.isLessThan(finish)) {
+                throw new IllegalArgumentException("Subtitle decoration needs an increasing cue-relative interval");
+            }
+            start = begin.toString();
+            end = finish.toString();
+        }
+
+        private static MediaTime decorationTime(String value) {
+            if (value == null || !value.matches("(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})")) {
+                throw new IllegalArgumentException("Subtitle decoration times must be exact nonnegative rationals");
+            }
+            var time = MediaTime.parse(value);
+            if (time.ticks() > 9_007_199_254_740_991L || time.timeScale() > 9_007_199_254_740_991L)
+                throw new IllegalArgumentException("Subtitle decoration timing cannot be read exactly by the editor");
+            return time;
+        }
+
+        public void requireInside(MediaTime duration) {
+            if (MediaTime.parse(end).isGreaterThan(duration)) {
+                throw new IllegalArgumentException("Subtitle decoration does not fit the cue interval. Adjust its timing or send decoration: null to remove it.");
+            }
+        }
+
+        public String canonical() {
+            return assetId + ";" + placement + ";" + enabled + ";" + start + ";" + end;
+        }
+    }
+
     public record Key(String time, int xMicros, int yMicros, int opacityMicros) {
         public Key {
             if (time == null || !time.matches("(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})")
@@ -107,6 +148,7 @@ public record SubtitleCueMotion(
                     .add(MediaTime.parse(selectedTextFade.duration())).isGreaterThan(duration)) {
                 throw new IllegalArgumentException("Selected text fade must lie inside the cue");
             }
+            if (decoration != null) decoration.requireInside(duration);
         } catch (ArithmeticException overflow) {
             throw new IllegalArgumentException("Subtitle timing exceeds the exact arithmetic range", overflow);
         }

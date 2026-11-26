@@ -450,6 +450,10 @@ public final class RenderPlanCanonicalCodec {
                     s(sb, "subtitle-selected-text-fade-v1");
                     s(sb, text.subtitleCue().selectedTextFade().canonical());
                 }
+                if (text.subtitleCue().decoration() != null) {
+                    s(sb, "subtitle-decoration-v1");
+                    s(sb, text.subtitleCue().decoration().canonical());
+                }
             }
         } else {
             // R3-M1: unknown sealed variant fails closed — a future

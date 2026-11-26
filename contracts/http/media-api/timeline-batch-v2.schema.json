@@ -2588,6 +2588,37 @@
                 "cueId" : {
                   "type" : "string"
                 },
+                "decoration" : {
+                  "description" : "Omit to preserve, supply a complete configuration, or send null to remove.",
+                  "oneOf" : [ {
+                    "type" : "null"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "assetId" : {
+                        "enum" : [ "sunflower-v1" ],
+                        "type" : "string"
+                      },
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
+                      "end" : {
+                        "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                        "type" : "string"
+                      },
+                      "placement" : {
+                        "enum" : [ "right-of-cue-v1" ],
+                        "type" : "string"
+                      },
+                      "start" : {
+                        "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "assetId", "enabled", "end", "placement", "start" ],
+                    "type" : "object"
+                  } ]
+                },
                 "end" : {
                   "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
                   "type" : "string"

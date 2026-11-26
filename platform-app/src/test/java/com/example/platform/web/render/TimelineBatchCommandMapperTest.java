@@ -115,6 +115,32 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void subtitleDecorationPinsTheAssetAndAnExactIntervalEvenWhenDisabled() {
+        var fields = new java.util.HashMap<String, Object>(Map.of("cueId", "decorated", "start", "1/1", "end", "5/1",
+                "text", "Anchor", "width", 240, "fontSize", 24, "keys", List.of()));
+        String id = "timeline.subtitle.cue.set";
+        var preserve = map(new TimelineOperationStep(id, null, fields));
+        fields.put("decoration", Map.of("assetId","sunflower-v1","placement","right-of-cue-v1",
+                "enabled",false,"start","2/2","end","4/2"));
+        var configured = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
+                map(new TimelineOperationStep(id, null, fields)).parameters());
+        assertEquals("sunflower-v1;right-of-cue-v1;false;1/1;2/1", configured.motion().decoration().canonical());
+        assertEquals(configured.motion().decoration(), configured.withResolvedFont("noto-sc-color-emoji-v1").motion().decoration());
+        fields.put("end", "5/2");
+        assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, null, fields)));
+        fields.put("end", "5/1");
+        fields.put("decoration", Map.of("assetId","unregistered","placement","right-of-cue-v1",
+                "enabled",true,"start","0","end","2/1"));
+        assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, null, fields)));
+        fields.put("decoration", null);
+        var remove = map(new TimelineOperationStep(id, null, fields));
+        assertTrue(assertInstanceOf(OperationParameters.SubtitleCueParameters.class, remove.parameters()).decorationSupplied());
+        assertNotEquals(
+                com.example.platform.operation.operation.ParameterDigest.compute(preserve.definitionId(), preserve.version(), preserve.parameters()),
+                com.example.platform.operation.operation.ParameterDigest.compute(remove.definitionId(), remove.version(), remove.parameters()));
+    }
+
+    @Test
     void wholeCueFontsNormalizeMissingAndRejectUnknownOrNullProfiles() {
         var parameters = new java.util.HashMap<String, Object>(Map.of("cueId", "mixed", "start", "0", "end", "4/1",
                 "text", "春㐀🌻", "width", 200, "fontSize", 24, "keys", List.of()));

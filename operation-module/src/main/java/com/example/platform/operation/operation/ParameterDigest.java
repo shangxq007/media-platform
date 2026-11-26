@@ -159,6 +159,10 @@ public final class ParameterDigest {
             } else if (cue.fadeIntent() == OperationParameters.SubtitleCueParameters.FadeIntent.CLEAR) {
                 version = framed("subtitle-selected-text-fade-clear-v1", version);
             }
+            if (cue.decorationSupplied()) {
+                version = framed("subtitle-decoration-v1", version,
+                        cue.motion().decoration() == null ? "remove" : cue.motion().decoration().canonical());
+            }
             return framed(version, cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
                     Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().effectiveFontProfile(),
                     cue.motion().keys().stream().map(k -> framed(k.time(), Integer.toString(k.xMicros()),

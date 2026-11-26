@@ -2,6 +2,7 @@ package com.example.platform.bmf;
 
 import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe;
 import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.FadeRaster;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.DecorationRaster;
 import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.RasterRange;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
@@ -201,6 +202,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         try {
             List<Path> subtitlePaths = new ArrayList<>(subtitles.size());
             List<Path> selectionPaths = new ArrayList<>(subtitles.size());
+            List<Path> decorationPaths = new ArrayList<>(subtitles.size());
             for (var subtitle : subtitles) {
                 var selection = subtitle.fade() == null ? null : subtitle.fade().range();
                 Path path = prepared.raster(subtitle.recipe(), raster.width(), selection, false);
@@ -209,6 +211,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 Path selected = selection == null ? null : prepared.raster(subtitle.recipe(), raster.width(), selection, true);
                 selectionPaths.add(selected);
                 if (selected != null) readOnlyInputs.add(selected);
+                Path decoration = subtitle.decoration() == null ? null : prepared.decoration(subtitle.decoration(), raster.width());
+                decorationPaths.add(decoration);
+                if (decoration != null) readOnlyInputs.add(decoration);
             }
             var mounts = List.copyOf(readOnlyInputs);
             int runtimeIndex = mounts.indexOf(runtimeRoot);
@@ -235,6 +240,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     if (subtitle.fade() != null) {
                         token += "," + subtitle.fade().time() + "," + subtitle.fade().duration()
                                 + ",/sandbox-inputs/input-" + mounts.indexOf(selectionPaths.get(index));
+                    }
+                    if (subtitle.decoration() != null) {
+                        if (subtitle.fade() == null) token += ",,,";
+                        var decoration = subtitle.decoration();
+                        token += "," + decoration.firstFrame() + "," + decoration.endFrame()
+                                + "," + decoration.offset(subtitle.recipe().width(), raster.width())
+                                + ",/sandbox-inputs/input-" + mounts.indexOf(decorationPaths.get(index));
                     }
                     args.add(token);
                 }
@@ -377,13 +389,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private record SubtitleInput(String timing, BlockRasterRecipe recipe, FadeRaster fade) {}
+    private record SubtitleInput(String timing, BlockRasterRecipe recipe, FadeRaster fade, DecorationRaster decoration) {}
 
     private static SubtitleInput parseSubtitle(String block) {
-        if (block.length() > 3_600 + 3_201 + 90) return null;
-        String[] values = block.split(",", 11);
+        if (block.length() > 3_600 + 3_201 + 90 + 80) return null;
+        String[] values = block.split(",", 12);
         String timeShape = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
-        if ((values.length < 8 || values.length > 11) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
+        if ((values.length < 8 || values.length > 12) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
                 || Long.parseLong(values[0]) >= Long.parseLong(values[1])
                 || !values[2].matches(timeShape) || !values[3].matches(timeShape)
                 || !values[5].matches("[1-9][0-9]{1,2}") || !values[6].matches("[1-9][0-9]")
@@ -406,10 +418,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(decoded)).toString();
             int width = Integer.parseInt(values[5]);
             int size = Integer.parseInt(values[6]);
+            var decoration = DecorationRaster.parse(values.length == 12 ? values[11] : null);
+            if (decoration != null && (decoration.firstFrame() < Long.parseLong(values[0])
+                    || decoration.endFrame() > Long.parseLong(values[1]))) return null;
             return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
                     BlockRasterRecipe.fromEncodedRuns(text, width, size, values.length >= 9 ? values[8] : null,
                             values.length >= 10 && !values[9].isEmpty() ? values[9] : null),
-                    FadeRaster.parse(values.length == 11 ? values[10] : null));
+                    FadeRaster.parse(values.length >= 11 && !values[10].isEmpty() ? values[10] : null), decoration);
         } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
             return null;
         }
@@ -419,6 +434,8 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     private static final class SubtitleInputs implements Closeable {
         private record RasterKey(BlockRasterRecipe recipe, int width, RasterRange selection, boolean selected) {}
         private final Map<RasterKey, Path> files = new LinkedHashMap<>();
+        private record DecorationKey(String id, int width) {}
+        private final Map<DecorationKey, Path> decorations = new LinkedHashMap<>();
         private final List<Path> allocated = new ArrayList<>();
         private Path directory;
 
@@ -432,6 +449,19 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             allocated.add(target);
             Files.write(target, png, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
             files.put(key, target);
+            return target;
+        }
+
+        Path decoration(DecorationRaster recipe, int destinationWidth) throws IOException {
+            var key = new DecorationKey(recipe.assetId(), destinationWidth);
+            Path existing = decorations.get(key);
+            if (existing != null) return existing;
+            byte[] png = recipe.png(destinationWidth);
+            if (directory == null) directory = Files.createTempDirectory("bmf-subtitle-inputs-");
+            Path target = directory.resolve("decoration-" + decorations.size() + ".png");
+            allocated.add(target);
+            Files.write(target, png, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            decorations.put(key, target);
             return target;
         }
 

@@ -147,18 +147,49 @@ public record TimedTextMaterializationRequirement(
         }
     }
 
+    public record DecorationRaster(long firstFrame, long endFrame, String assetId) {
+        public DecorationRaster {
+            if (firstFrame < 0 || firstFrame >= endFrame)
+                throw new IllegalArgumentException("Invalid subtitle decoration frame interval");
+            SubtitleBlockLayout.decoration(assetId);
+        }
+
+        public static DecorationRaster parse(String encoded) {
+            if (encoded == null) return null;
+            String[] fields = encoded.split(";", -1);
+            if (fields.length != 3 || !fields[0].matches("[0-9]{1,10}") || !fields[1].matches("[0-9]{1,10}"))
+                throw new IllegalArgumentException("Malformed subtitle decoration recipe");
+            return new DecorationRaster(Long.parseLong(fields[0]), Long.parseLong(fields[1]), fields[2]);
+        }
+
+        public String encoded() {
+            return firstFrame + ";" + endFrame + ";" + assetId;
+        }
+
+        public byte[] png(int destinationWidth) {
+            return SubtitleBlockLayout.decorationPng(assetId, destinationWidth);
+        }
+
+        public int offset(int width, int destinationWidth) {
+            var asset = SubtitleBlockLayout.decoration(assetId);
+            double scale = (double) destinationWidth / asset.referenceWidth();
+            return (int) Math.round(width * scale) + (int) Math.round(asset.gap() * scale);
+        }
+    }
+
     /** Provider-facing bounded raster recipe and placement. The time is relative to the render extent. */
     public record CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed,
-                            String samples, BlockRasterRecipe recipe, FadeRaster fade) {
+                            String samples, BlockRasterRecipe recipe, FadeRaster fade, DecorationRaster decoration) {
         public CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed,
                 String samples, BlockRasterRecipe recipe) {
-            this(firstFrame, endFrame, start, elapsed, samples, recipe, null);
+            this(firstFrame, endFrame, start, elapsed, samples, recipe, null, null);
         }
 
         public String encodedStyleSuffix() {
             String runs = recipe.encodedRunsSuffix();
-            if (fade == null) return runs;
-            return (runs.isEmpty() ? "," : runs) + "," + fade.encoded();
+            if (fade == null && decoration == null) return runs;
+            String style = (runs.isEmpty() ? "," : runs) + "," + (fade == null ? "" : fade.encoded());
+            return decoration == null ? style : style + "," + decoration.encoded();
         }
     }
 
@@ -189,7 +220,20 @@ public record TimedTextMaterializationRequirement(
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
                 visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
                         width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile(), subtitleCue.fontRuns()),
-                FadeRaster.from(subtitleCue.selectedTextFade())));
+                FadeRaster.from(subtitleCue.selectedTextFade()), decorationRaster(extent, begin.mediaTime(), firstFrame, endFrame)));
+    }
+
+    private DecorationRaster decorationRaster(RenderExtent extent, MediaTime cueStart, long firstFrame, long endFrame) {
+        var decoration = subtitleCue.decoration();
+        if (decoration == null || !decoration.enabled()) return null;
+        var begin = cueStart.add(MediaTime.parse(decoration.start()));
+        var finish = cueStart.add(MediaTime.parse(decoration.end()));
+        if (!begin.isLessThan(extent.end()) || !finish.isGreaterThan(extent.start())) return null;
+        long first = begin.isGreaterThan(extent.start())
+                ? Math.max(firstFrame, firstFrameAtOrAfter(begin.subtract(extent.start()), extent.frameRate())) : firstFrame;
+        long end = finish.isLessThan(extent.end())
+                ? Math.min(endFrame, firstFrameAtOrAfter(finish.subtract(extent.start()), extent.frameRate())) : endFrame;
+        return first < end ? new DecorationRaster(first, end, decoration.assetId()) : null;
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

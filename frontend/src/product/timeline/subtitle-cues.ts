@@ -3,6 +3,7 @@ import { add, compare, parseRational, subtract, toSeconds, type Rational } from 
 
 export type SubtitleCue = Extract<SemanticStep, { definitionId: 'timeline.subtitle.cue.set' }>['parameters']
 
+export type SubtitleDecoration = NonNullable<SubtitleCue['decoration']>
 export type SelectedTextFade = NonNullable<SubtitleCue['selectedTextFade']>
 
 const LEGACY_SUBTITLE_FONT = 'noto-sc-color-emoji-v1'
@@ -36,4 +37,11 @@ export function selectedTextAlpha(cue: SubtitleCue, time: Rational) {
   if (compare(time, start) <= 0) return 0
   if (compare(time, add(start, length)) >= 0) return 1
   return toSeconds(subtract(time, start)) / toSeconds(length)
+}
+
+export function decorationVisible(cue: SubtitleCue, time: Rational) {
+  const decoration = cue.decoration
+  if (!decoration?.enabled) return false
+  const local = subtract(time, parseRational(cue.start)!)
+  return compare(local, parseRational(decoration.start)!) >= 0 && compare(local, parseRational(decoration.end)!) < 0
 }

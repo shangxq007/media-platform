@@ -8,6 +8,21 @@ import org.junit.jupiter.api.Test;
 class SubtitleBlockLayoutTest {
 
     @Test
+    void bundledDecorationReusesThePinnedSunflowerStrikeWithTransparentEdges() throws Exception {
+        var asset = SubtitleBlockLayout.decorations().getFirst();
+        var raster = ImageIO.read(new ByteArrayInputStream(SubtitleBlockLayout.decorationPng(asset.id(), 320)));
+        var large = ImageIO.read(new ByteArrayInputStream(SubtitleBlockLayout.decorationPng(asset.id(), 1600)));
+        assertEquals(24, raster.getWidth());
+        assertEquals(24, raster.getHeight());
+        assertEquals(120, large.getWidth());
+        int color = raster.getRGB(12, 12);
+        assertTrue((color >>> 24) > 150);
+        assertTrue((color >> 16 & 255) > (color & 255));
+        assertEquals(0, raster.getRGB(0, 0) >>> 24);
+        assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.decorationPng("other", 320));
+    }
+
+    @Test
     void selectedLayerAndStationaryLayerReuseTheSameWrappedMixedFontAndEmojiPixels() throws Exception {
         String text = "春 A🌻️B Word\nTail";
         var runs = java.util.List.of(new SubtitleFontRun(2, 5, SubtitleBlockLayout.SERIF_PROFILE));

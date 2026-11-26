@@ -70,14 +70,14 @@ public sealed interface OperationParameters permits
     @org.springframework.modulith.NamedInterface("invocation")
     record SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
             com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault,
-            boolean legacyReceipt, boolean fontRunsSupplied, FadeIntent fadeIntent) implements OperationParameters {
+            boolean legacyReceipt, boolean fontRunsSupplied, FadeIntent fadeIntent, boolean decorationSupplied) implements OperationParameters {
         @org.springframework.modulith.NamedInterface("invocation")
         public enum FadeIntent { PRESERVE, SET, CLEAR, REPLAY_OMISSION }
 
         public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
                 com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault) {
             this(cueId, start, end, text, width, fontSize, motion, useDefault, false, !motion.fontRuns().isEmpty(),
-                    motion.selectedTextFade() == null ? FadeIntent.PRESERVE : FadeIntent.SET);
+                    motion.selectedTextFade() == null ? FadeIntent.PRESERVE : FadeIntent.SET, motion.decoration() != null);
         }
         public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
                 com.example.platform.timeline.canonical.SubtitleCueMotion motion) {
@@ -86,25 +86,29 @@ public sealed interface OperationParameters permits
 
         public SubtitleCueParameters withResolvedFont(String profile) {
             return new SubtitleCueParameters(cueId, start, end, text, width, fontSize,
-                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys(), motion.fontRuns(), motion.selectedTextFade()), useDefault, false, fontRunsSupplied, fadeIntent);
+                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys(), motion.fontRuns(), motion.selectedTextFade(), motion.decoration()),
+                    useDefault, false, fontRunsSupplied, fadeIntent, decorationSupplied);
         }
 
         /** Used only to reconstruct a pre-catalog command whose durable digest already matches. */
         public SubtitleCueParameters asLegacyReceipt() {
-            return new SubtitleCueParameters(cueId, start, end, text, width, fontSize, motion, useDefault, true, fontRunsSupplied, fadeIntent);
+            return new SubtitleCueParameters(cueId, start, end, text, width, fontSize, motion, useDefault, true, fontRunsSupplied, fadeIntent, decorationSupplied);
         }
 
         /** Reproduce an earlier completed omission; the caller must verify its scoped receipt. */
         public SubtitleCueParameters asCompletedFadeOmission() {
             if (fadeIntent != FadeIntent.PRESERVE) throw new IllegalStateException("Expected an omitted fade");
             return new SubtitleCueParameters(cueId, start, end, text, width, fontSize, motion, useDefault, legacyReceipt,
-                    fontRunsSupplied, FadeIntent.REPLAY_OMISSION);
+                    fontRunsSupplied, FadeIntent.REPLAY_OMISSION, decorationSupplied);
         }
 
         public SubtitleCueParameters {
             java.util.Objects.requireNonNull(fadeIntent, "fadeIntent");
             if ((fadeIntent == FadeIntent.SET) != (motion.selectedTextFade() != null)) {
                 throw new IllegalArgumentException("Subtitle fade intent differs from its value");
+            }
+            if (!decorationSupplied && motion.decoration() != null) {
+                throw new IllegalArgumentException("Subtitle decoration must be supplied to configure it");
             }
             new RemoveSubtitleCueParameters(cueId);
             try {

@@ -56,25 +56,31 @@ final class SubtitleCuePlanner {
 
     private static SubtitleCueMotion resolvedMotion(OperationParameters.SubtitleCueParameters cue, TextElement previous) {
         var motion = cue.motion();
-        if (cue.fadeIntent() != OperationParameters.SubtitleCueParameters.FadeIntent.PRESERVE || previous == null
-                || previous.subtitleCue().selectedTextFade() == null) {
-            return motion;
+        if (previous == null) return motion;
+        var saved = previous.subtitleCue();
+        var fade = motion.selectedTextFade();
+        var duration = cue.end().subtract(cue.start());
+        if (cue.fadeIntent() == OperationParameters.SubtitleCueParameters.FadeIntent.PRESERVE && saved.selectedTextFade() != null) {
+            // Without an edit span a legacy client cannot prove which occurrence survived.
+            if (!previous.styledText().content().value().equals(cue.text())) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                        "The saved selected-text fade cannot be preserved across a text change. Supply its new range and timing, or send selectedTextFade: null to remove it.");
+            }
+            fade = saved.selectedTextFade();
+            var finish = com.example.platform.shared.time.MediaTime.parse(fade.time())
+                    .add(com.example.platform.shared.time.MediaTime.parse(fade.duration()));
+            if (finish.isGreaterThan(duration)) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                        "The saved selected-text fade does not fit the new cue interval. Adjust its timing or send selectedTextFade: null to remove it.");
+            }
         }
-        // A legacy payload supplies no edit span. Even matching substrings cannot prove
-        // that the intended occurrence survived a text replacement.
-        if (!previous.styledText().content().value().equals(cue.text())) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN,
-                    "The saved selected-text fade cannot be preserved across a text change. Supply its new range and timing, or send selectedTextFade: null to remove it.");
-        }
-        var preserved = new SubtitleCueMotion(motion.fontProfile(), motion.keys(), motion.fontRuns(),
-                previous.subtitleCue().selectedTextFade());
+        var decoration = cue.decorationSupplied() ? motion.decoration() : saved.decoration();
         try {
-            preserved.requireInside(cue.end().subtract(cue.start()));
+            if (decoration != null) decoration.requireInside(duration);
         } catch (IllegalArgumentException invalid) {
-            throw new PlanException(PlanErrorCode.INVALID_PLAN,
-                    "The saved selected-text fade does not fit the new cue interval. Adjust its timing or send selectedTextFade: null to remove it.");
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
         }
-        return preserved;
+        return new SubtitleCueMotion(motion.fontProfile(), motion.keys(), motion.fontRuns(), fade, decoration);
     }
 
     private static TextElement element(TextElementId id, OperationParameters.SubtitleCueParameters cue, SubtitleCueMotion motion) {

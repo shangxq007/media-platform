@@ -483,8 +483,8 @@ public final class TimelineBatchCommandMapper {
         return new OperationParameters.SubtitleCueParameters(requiredText(p,"cueId"), MediaTime.parse(start), MediaTime.parse(end),
                 requiredText(p,"text"), cueInteger(p,"width"),cueInteger(p,"fontSize"),
                 new com.example.platform.timeline.canonical.SubtitleCueMotion(
-                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs, fade),
-                !p.containsKey("fontProfile"), false, p.containsKey("fontRuns"), fadeIntent);
+                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs, fade, decoration(p)),
+                !p.containsKey("fontProfile"), false, p.containsKey("fontRuns"), fadeIntent, p.containsKey("decoration"));
     }
 
     private static com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade selectedTextFade(Map<String, Object> p) {
@@ -496,6 +496,18 @@ public final class TimelineBatchCommandMapper {
         }
         return new com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade(
                 cueInteger(fade, "start"), cueInteger(fade, "end"), time, duration);
+    }
+
+    private static com.example.platform.timeline.canonical.SubtitleCueMotion.Decoration decoration(Map<String, Object> p) {
+        if (p.get("decoration") == null) return null;
+        if (!(p.get("decoration") instanceof Map<?, ?> value)
+                || !value.keySet().equals(Set.of("assetId", "placement", "enabled", "start", "end"))
+                || !(value.get("assetId") instanceof String asset) || !(value.get("placement") instanceof String placement)
+                || !(value.get("enabled") instanceof Boolean enabled)
+                || !(value.get("start") instanceof String start) || !(value.get("end") instanceof String end)) {
+            throw new IllegalArgumentException("Invalid subtitle decoration fields");
+        }
+        return new com.example.platform.timeline.canonical.SubtitleCueMotion.Decoration(asset, placement, enabled, start, end);
     }
 
     private static int cueInteger(Map<?, ?> map, String key) {
