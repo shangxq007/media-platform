@@ -69,7 +69,12 @@ public sealed interface OperationParameters permits
 
     @org.springframework.modulith.NamedInterface("invocation")
     record SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
-            com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault) implements OperationParameters {
+            com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault,
+            boolean legacyReceipt) implements OperationParameters {
+        public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
+                com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault) {
+            this(cueId, start, end, text, width, fontSize, motion, useDefault, false);
+        }
         public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
                 com.example.platform.timeline.canonical.SubtitleCueMotion motion) {
             this(cueId, start, end, text, width, fontSize, motion, false);
@@ -78,6 +83,11 @@ public sealed interface OperationParameters permits
         public SubtitleCueParameters withResolvedFont(String profile) {
             return new SubtitleCueParameters(cueId, start, end, text, width, fontSize,
                     new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys()), useDefault);
+        }
+
+        /** Used only to reconstruct a pre-catalog command whose durable digest already matches. */
+        public SubtitleCueParameters asLegacyReceipt() {
+            return new SubtitleCueParameters(cueId, start, end, text, width, fontSize, motion, useDefault, true);
         }
 
         public SubtitleCueParameters {

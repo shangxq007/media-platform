@@ -74,7 +74,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionVersion.java": "4fd8c29fcb4ab015b32d83f7b364fa527e1ff2936ad3be71a5ce244c76e197ce",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationErrorCode.java": "3c87cc67c56966a0fa50032f405c56d89ec7659ef5c49e21e14239206404b13b",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationInstance.java": "edb0498ebe979829a449c71dc9c90d5c16575b9cd41a42f731e7e5231913d2eb",
-    "operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java": "931be77a6facd882f55bdf8ed21ac559a4edc7f3020d01a6356df05771c086b9",
+    "operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java": "34ebcb5e0d30ef6071029b25d8060795e5bd7b923c2706a3808699c2fb2f4dda",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationRequest.java": "ddda77c0e58bacd6de5d5e58aa93e5f690a10c1d110cc1d70540142a31def649",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationRequestResolver.java": "6ba85ad4e7eb2c41d448ccf026d13d338ee501e913f32f3c3431addee9a69c3a",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationResolutionException.java": "c7d7992a674eadd2a839fb8117a68e3a97fcc7d8a8969cd141f97696142902b6",

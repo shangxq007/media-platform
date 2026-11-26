@@ -84,6 +84,15 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
         requireProjectAccess(request, context.actor(), TIMELINE_READ);
         var resolved = resolveSubtitleFont(request, context);
         OperationBatchPlan<TimelineDocument> plan = planner.plan(resolved, domain);
+        if (!plan.batchDigest().equals(context.expectedBatchDigest())
+                && resolved.operations().getFirst().parameters() instanceof SubtitleCueParameters cue
+                && domain.completedBatchDocument(request, context).isPresent()) {
+            // N18 before the authoring catalog treated a missing field as
+            // explicit Sans. Check that old plan version only on an existing
+            // exact receipt. New commands always bind the choice separately.
+            resolved = replaceCue(resolved, cue.asLegacyReceipt());
+            plan = planner.plan(resolved, domain);
+        }
 
         if (!plan.batchDigest().equals(context.expectedBatchDigest())) {
             throw new BatchException(BatchErrorCode.PLAN_CHANGED, null, "Confirmed plan differs from submitted batch");
@@ -140,9 +149,13 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
                 throw new BatchException(BatchErrorCode.PLAN_CHANGED, 0, "Subtitle font availability changed. Preview again.");
             }
         }
-        var source = operations.getFirst();
+        return replaceCue(request, cue.withResolvedFont(profile));
+    }
+
+    private static OperationBatchRequest replaceCue(OperationBatchRequest request, SubtitleCueParameters cue) {
+        var source = request.operations().getFirst();
         var step = new OperationRequest(source.definitionId(), source.version(), source.target(),
-                cue.withResolvedFont(profile), source.baseRevisionId(), source.baseContentHash(), source.requestMetadata());
+                cue, source.baseRevisionId(), source.baseContentHash(), source.requestMetadata());
         return new OperationBatchRequest(request.batchId(), request.target(), request.baseRevisionId(),
                 List.of(step), request.message());
     }

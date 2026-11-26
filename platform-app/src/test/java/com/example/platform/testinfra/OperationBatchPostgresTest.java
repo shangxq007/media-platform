@@ -1121,6 +1121,32 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void existingSubtitleCommandFromBeforeTheCatalogReplaysWithoutResolvingTheNewDefault() {
+        String sans = "noto-sc-color-emoji-v1", serif = "noto-serif-sc-color-emoji-v1";
+        var base = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(), TimelineMetadata.empty()));
+        var wire = subtitleRequest(base, "pre-policy-omitted", "old", null, "Legacy command");
+        var original = wire.operations().getFirst();
+        var legacy = ((OperationParameters.SubtitleCueParameters) original.parameters()).withResolvedFont(sans).asLegacyReceipt();
+        var step = new OperationRequest(original.definitionId(), original.version(), original.target(),
+                legacy, original.baseRevisionId(), original.baseContentHash(), null);
+        var old = new OperationBatchRequest(wire.batchId(), wire.target(), base.revisionId(), List.of(step), null);
+        var planned = new com.example.platform.operation.batch.OperationBatchPlanner().plan(old, domain);
+        var actor = mutation().actor();
+        var bound = com.example.platform.operation.plan.AuthorizationDecision.allow(planned.batchDigest(),
+                actor.actorId(), PROJECT, TENANT, "main", "legacy-fixture");
+        var confirm = OperationBatchContext.apply(old.batchId(), actor, null, "legacy-fixture", planned.batchDigest());
+        var committed = domain.commit(old, planned,
+                OperationBatchContext.apply(old.batchId(), actor, bound, "legacy-fixture", planned.batchDigest()));
+        var newPolicy = new CanonicalBatchInvocationService(domain, authorization,
+                new SubtitleFontPolicy(sans + "," + serif, serif, ""));
+        var replay = newPolicy.commit(wire, confirm);
+        assertTrue(replay.replayed());
+        assertEquals(committed.newRevisionId(), replay.newRevisionId());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+    }
+
+    @Test
     void historicalMissingFontRetainsSansWhenLaterDefaultIsSerif() {
         String sans = "noto-sc-color-emoji-v1";
         String serif = "noto-serif-sc-color-emoji-v1";

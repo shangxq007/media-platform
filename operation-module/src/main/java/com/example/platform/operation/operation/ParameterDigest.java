@@ -148,7 +148,9 @@ public final class ParameterDigest {
             return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
         if (p instanceof OperationParameters.SubtitleCueParameters cue) {
-            return framed(cue.useDefault() ? "subtitle-cue-default-v1" : "subtitle-cue-v1", cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
+            String version = cue.legacyReceipt()
+                    ? "subtitle-cue-v1" : cue.useDefault() ? "subtitle-cue-default-v2" : "subtitle-cue-explicit-v2";
+            return framed(version, cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
                     Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().effectiveFontProfile(),
                     cue.motion().keys().stream().map(k -> framed(k.time(), Integer.toString(k.xMicros()),
                             Integer.toString(k.yMicros()), Integer.toString(k.opacityMicros()))).collect(java.util.stream.Collectors.joining()));
