@@ -196,7 +196,9 @@ export async function runFontProfiles(ctx) {
     assert.deepEqual(edited, [{ start: 0, end: 2, fontProfile: serif },
       { start: runs[0].start + Array.from(prefix).length, end: runs[0].end + Array.from(prefix).length, fontProfile: serif }])
     await button('Cancel subtitle').click()
-    await area.fill(text)
+    await area.focus()
+    await area.evaluate((input, end) => input.setSelectionRange(0, end), prefix.length)
+    await page.keyboard.press('Backspace')
   } else await input('Subtitle font').selectOption(serif)
   await preview()
   await frame('draft-serif', 3, 'second-cue', 1)
