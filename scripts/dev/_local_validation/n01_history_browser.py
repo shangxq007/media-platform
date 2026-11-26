@@ -102,7 +102,7 @@ if motion or raster:
     checkpoints = ('base','preview','accepted','reopened')
 
 if fonts:
-    checkpoints = ('base','legacy','cancel','denied','invalid','lost','recovered','undo','redo','stale','reopened')
+    checkpoints = ('base','first','legacy','cancel','denied','invalid','lost','recovered','undo','redo','stale','reopened')
 
 if correction:
     checkpoints = ('short','new-preview','new-cancel','existing-base','existing-applied',
@@ -169,13 +169,14 @@ if opacity or dissolve or position or subtitle or correction or motion or raster
         assert facts['cancel'] == facts['denied'] == facts['invalid'] == legacy
         assert facts['recovered'] == accepted
         assert facts['stale'] == facts['reopened'] == redo
-        for previous, next in ((facts['base'], legacy), (legacy, accepted), (accepted, undo), (undo, redo)):
+        for previous, next in ((facts['base'], facts['first']), (facts['first'], legacy), (legacy, accepted), (accepted, undo), (undo, redo)):
             assert next['rows'] == previous['rows'] + 1 and next['commands'] == previous['commands'] + 1
             assert rows[next['head']]['parent_revision_id'] == previous['head']
         def profiles(stage):
             return {c['id']: c['subtitleCue']['fontProfile'] for c in rows[stage['head']]['snapshot']['textElements']}
         sans, serif = 'noto-sc-color-emoji-v1', 'noto-serif-sc-color-emoji-v1'
         result = json.loads((out/'font-result.json').read_text())
+        assert profiles(facts['first']) == {'legacy-cue': sans}
         assert profiles(legacy) == profiles(undo) == {'legacy-cue': sans, result['serifCueId']: sans}
         assert profiles(accepted) == profiles(redo) == {'legacy-cue': sans, result['serifCueId']: serif}
         (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))

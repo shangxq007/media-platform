@@ -58,22 +58,25 @@ export async function runFontProfiles(ctx) {
   await upload('background.mp4')
   await addClip('background.mp4', 'track-1', '0', '4', '4')
   const base = await cp('base')
-  const initialHead = ctx.head()
   const params = { text, width, fontSize, keys: [] }
-  const body = {
-    batchId: ctx.project + '-default-fonts',
-    baseRevisionId: initialHead.revisionId, baseContentHash: initialHead.contentHash,
-    operations: [
-      { definitionId: 'timeline.subtitle.cue.set', parameters: { ...params, cueId: 'legacy-cue', start: '0', end: '2/1' } },
-      { definitionId: 'timeline.subtitle.cue.set', parameters: { ...params, cueId: 'second-cue', start: '2/1', end: '4/1', fontProfile: sans } },
-    ],
+  async function seedCue(cue) {
+    const current = await ctx.syncHead()
+    const body = {
+      batchId: ctx.project + '-' + cue.cueId,
+      baseRevisionId: current.revisionId, baseContentHash: current.contentHash,
+      operations: [{ definitionId: 'timeline.subtitle.cue.set', parameters: { ...params, ...cue } }],
+    }
+    const preview = await post('preview', body)
+    assert.equal(preview.status(), 200, await preview.text())
+    const applied = await post('apply', body, (await preview.json()).batchDigest)
+    assert.equal(applied.status(), 201, await applied.text())
   }
-  const seed = await post('preview', body)
-  assert.equal(seed.status(), 200, await seed.text())
-  const seeded = await post('apply', body, (await seed.json()).batchDigest)
-  assert.equal(seeded.status(), 201, await seeded.text())
+  await seedCue({ cueId: 'legacy-cue', start: '0', end: '2/1' })
+  const first = await cp('first')
+  assert.equal(first.rows, base.rows + 1)
+  await seedCue({ cueId: 'second-cue', start: '2/1', end: '4/1', fontProfile: sans })
   const defaults = await cp('legacy')
-  assert.equal(defaults.rows, base.rows + 1)
+  assert.equal(defaults.rows, first.rows + 1)
   await page.goto(url)
   await waitRevision(defaults.head)
 
