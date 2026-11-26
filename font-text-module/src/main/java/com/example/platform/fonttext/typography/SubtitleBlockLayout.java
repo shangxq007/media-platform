@@ -28,7 +28,15 @@ import javax.imageio.ImageIO;
 public final class SubtitleBlockLayout {
     public static final String PROFILE = "noto-sc-color-emoji-v1";
     public static final String SERIF_PROFILE = "noto-serif-sc-color-emoji-v1";
-    public static final List<String> PROFILES = List.of(PROFILE, SERIF_PROFILE);
+    public static final String FIXTURE_PROFILE = "n18-fixture-serif-v1";
+    public static final String PROFILE_ID_PATTERN = "[a-z0-9-]{1,40}";
+
+    public record Profile(String id, String label, String family, String style, boolean serif) {}
+
+    private static final Map<String, Profile> PROFILES = Map.of(
+            PROFILE, new Profile(PROFILE, "Noto Sans SC + Color Emoji", "MP Cue Sans", "Regular", false),
+            SERIF_PROFILE, new Profile(SERIF_PROFILE, "Noto Serif SC + Color Emoji", "MP Cue Serif", "Regular", true),
+            FIXTURE_PROFILE, new Profile(FIXTURE_PROFILE, "N18 fixture Serif", "MP Cue Serif", "Regular", true));
     public static final int REFERENCE_WIDTH = 320;
     public static final int MAX_PNG_BYTES = 72_000;
     public static final int MAX_DESTINATION_WIDTH = 1920;
@@ -42,14 +50,20 @@ public final class SubtitleBlockLayout {
 
     /** An absent profile resolves to the exact N15–N17 design. Unknown IDs fail closed. */
     public static String resolveProfile(String profile) {
-        if (profile == null) return PROFILE;
-        if (!PROFILES.contains(profile)) throw new IllegalArgumentException("Unsupported subtitle font profile");
+        return profile(profile).id();
+    }
+
+    /** Installed pinned identities are not the same as the selectable catalog. */
+    public static Profile profile(String id) {
+        Profile profile = PROFILES.get(id == null ? PROFILE : id);
+        if (profile == null) throw new IllegalArgumentException("Unsupported subtitle font profile");
         return profile;
     }
 
-    public static List<FontFamilyName> fontFamilies(String profile) {
+    public static List<FontFamilyName> fontFamilies(String id) {
+        var profile = profile(id);
         var sans = new FontFamilyName("MP Cue Sans");
-        return PROFILE.equals(resolveProfile(profile)) ? List.of(sans) : List.of(new FontFamilyName("MP Cue Serif"), sans);
+        return profile.serif() ? List.of(new FontFamilyName(profile.family()), sans) : List.of(sans);
     }
 
     public static void validateShape(String text, int width, int size) {
@@ -78,7 +92,7 @@ public final class SubtitleBlockLayout {
         }
         double scale = destinationWidth / (double) REFERENCE_WIDTH;
         Font fallback = Resources.FONT.deriveFont((float) size);
-        Font font = PROFILE.equals(resolveProfile(profile)) ? fallback : Serif.FONT.deriveFont((float) size);
+        Font font = profile(profile).serif() ? Serif.FONT.deriveFont((float) size) : fallback;
         var frc = new java.awt.font.FontRenderContext(null, true, true);
         var lines = new ArrayList<TextLayout>();
         for (String paragraph : text.split("\\R", -1)) {

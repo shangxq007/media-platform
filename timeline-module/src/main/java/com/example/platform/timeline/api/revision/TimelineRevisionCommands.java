@@ -94,6 +94,10 @@ RevisionWriteResult saveRestoreForCommand(TimelineMutationContext context, Revis
             String expectedCurrentRevisionId, String sourceRevisionId, String candidateHash,
             RevisionWriteCommand command, RevisionProvenance provenance);
 
+/** An immutable result reference for reconstructing a prior plan. The writer still checks the full fingerprint. */
+Optional<String> completedCommandRevision(RevisionRef ref, String commandId, String domain,
+        String expectedHead, String planDigest);
+
 String findEditingRefHead(RevisionRef ref);
 
 /** Validates effects inherited from the exact scoped parent before confirming a branch edit. */

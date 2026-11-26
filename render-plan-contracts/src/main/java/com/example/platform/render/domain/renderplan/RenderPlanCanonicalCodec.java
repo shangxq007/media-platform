@@ -441,7 +441,7 @@ public final class RenderPlanCanonicalCodec {
             list(sb, sortedEncodings(text.resolvedFontRuns().stream()
                     .map(this::resolvedFontRunCanonical).toList()));
             if (text.editableCue()) {
-                s(sb, text.subtitleCue().fontProfile());
+                s(sb, text.subtitleCue().effectiveFontProfile());
                 s(sb, text.cueSamples());
             }
         } else {

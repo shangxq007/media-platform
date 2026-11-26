@@ -15,6 +15,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -76,9 +79,13 @@ class TimelineBatchCommandMapperTest {
         String operation = "timeline.subtitle.cue.set";
         var missing = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
                 map(new TimelineOperationStep(operation, null, parameters)).parameters());
-        assertEquals("noto-sc-color-emoji-v1", missing.motion().fontProfile());
+        assertTrue(missing.useDefault());
+        assertEquals("noto-sc-color-emoji-v1", missing.motion().effectiveFontProfile());
         parameters.put("fontProfile", "noto-sc-color-emoji-v1");
-        assertEquals(missing, map(new TimelineOperationStep(operation, null, parameters)).parameters());
+        var explicit = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
+                map(new TimelineOperationStep(operation, null, parameters)).parameters());
+        assertFalse(explicit.useDefault());
+        assertNotEquals(missing, explicit);
         parameters.put("fontProfile", "noto-serif-sc-color-emoji-v1");
         var alternative = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
                 map(new TimelineOperationStep(operation, null, parameters)).parameters());

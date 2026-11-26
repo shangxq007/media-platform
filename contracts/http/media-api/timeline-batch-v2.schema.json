@@ -2593,8 +2593,7 @@
                   "type" : "string"
                 },
                 "fontProfile" : {
-                  "default" : "noto-sc-color-emoji-v1",
-                  "enum" : [ "noto-sc-color-emoji-v1", "noto-serif-sc-color-emoji-v1" ],
+                  "pattern" : "^[a-z0-9-]{1,40}$",
                   "type" : "string"
                 },
                 "fontSize" : {

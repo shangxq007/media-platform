@@ -109,7 +109,7 @@ public class TimelineMediaClipOperationService {
         requirePreparationAuthorization(tenantId, projectId, context.actor(), TIMELINE_EDIT);
         var document = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack(parameters.trackId(), "Video", TrackType.VIDEO, List.of())),
-                TimelineMetadata.empty());
+                TimelineMetadata.forSubtitleLanguage(parameters.subtitleTrackLanguage()));
         String contentHash = new TimelineContentDigester().digest(document);
         String parameterDigest = ParameterDigest.compute(request.definitionId(), request.version(),
                 request.parameters());

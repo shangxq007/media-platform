@@ -5,7 +5,9 @@ import com.example.platform.shared.time.MediaTime;
 import java.util.List;
 
 /** Whole-block motion for an editable TextElement. Coordinates are composition micros. */
-public record SubtitleCueMotion(String fontProfile, List<Key> keys) {
+public record SubtitleCueMotion(
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        String fontProfile, List<Key> keys) {
     public static final int MAX_KEYS = 16;
     public static final int STATIC_X = 100_000;
     public static final int STATIC_Y = 550_000;
@@ -22,7 +24,7 @@ public record SubtitleCueMotion(String fontProfile, List<Key> keys) {
     }
 
     public SubtitleCueMotion {
-        fontProfile = SubtitleBlockLayout.resolveProfile(fontProfile);
+        if (fontProfile != null) SubtitleBlockLayout.resolveProfile(fontProfile);
         if (keys == null || keys.size() == 1 || keys.size() > MAX_KEYS) {
             throw new IllegalArgumentException("Choose either zero or two to sixteen subtitle motion keys");
         }
@@ -36,6 +38,11 @@ public record SubtitleCueMotion(String fontProfile, List<Key> keys) {
         } catch (ArithmeticException overflow) {
             throw new IllegalArgumentException("Subtitle key times exceed the exact arithmetic range", overflow);
         }
+    }
+
+    /** Compatibility only. The mutable authoring default never participates in saved revisions. */
+    public String effectiveFontProfile() {
+        return SubtitleBlockLayout.resolveProfile(fontProfile);
     }
 
     public void requireInside(MediaTime duration) {

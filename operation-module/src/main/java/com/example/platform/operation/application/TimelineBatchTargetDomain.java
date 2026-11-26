@@ -240,6 +240,14 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                                 ? plan.noOp() : null);
     }
 
+    java.util.Optional<TimelineDocument> completedBatchDocument(OperationBatchRequest request, OperationBatchContext context) {
+        var target = request.target();
+        var ref = new RevisionRef(target.tenantId(), target.projectId(), target.refId());
+        return revisions.completedCommandRevision(ref, context.applyCommandId(), BATCH_COMMAND_DOMAIN,
+                        request.baseRevisionId(), context.expectedBatchDigest())
+                .map(id -> requireRestoreRevision(request, id).document());
+    }
+
     private TimelineRevisionCommands.RestoreSource requireRestoreRevision(OperationBatchRequest batch, String revisionId) {
         return revisions.findRestoreSource(batch.target().projectId(), batch.target().tenantId(), revisionId)
                 .orElseThrow(() -> new BatchException(BatchErrorCode.BASE_REVISION_NOT_FOUND, null,

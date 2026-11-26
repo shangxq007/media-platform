@@ -355,8 +355,11 @@ describe('N15 subtitle cue', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('withdraws a late confirmation after a draft text change and retains its original Unicode on the next preview', async () => {
+    vi.spyOn(FormalRenderAPI, 'listSubtitleFonts').mockResolvedValue([
+      { id: 'noto-sc-color-emoji-v1', label: 'Sans', family: 'MP Cue Sans', style: 'Regular' },
+    ])
     renderBranchWorkspace('main')
-    const result = { batchDigest: HASH_C, steps: [] }
+    const result = { batchDigest: HASH_C, steps: [], resolvedSubtitleFont: { id: 'noto-sc-color-emoji-v1', label: 'Sans' } }
     const held = deferred<typeof result>()
     const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
     const apply = vi.spyOn(FormalRenderAPI, 'commitBatch')

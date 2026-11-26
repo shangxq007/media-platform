@@ -6,7 +6,9 @@ import com.example.platform.operation.batch.BatchErrorCode;
 import com.example.platform.operation.batch.BatchException;
 import com.example.platform.operation.batch.BatchInvocationPort;
 import com.example.platform.operation.batch.BatchPreview;
-import com.example.platform.operation.batch.BatchTargetDomain;
+import com.example.platform.fonttext.typography.SubtitleBlockLayout;
+import com.example.platform.operation.operation.OperationParameters.SubtitleCueParameters;
+import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.batch.OperationBatchContext;
 import com.example.platform.operation.batch.OperationBatchPlan;
 import com.example.platform.operation.batch.OperationBatchPlanner;
@@ -19,6 +21,7 @@ import com.example.platform.shared.authorization.AuthorizationResourceType;
 import com.example.platform.shared.authorization.AuthorizableResourceRef;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.timeline.canonical.TimelineDocument;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -39,12 +42,21 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
     private static final AuthorizationAction TIMELINE_READ = new AuthorizationAction(
             "READ", AuthorizationResourceType.PROJECT, "Read canonical Timeline for batch planning");
 
-    private final BatchTargetDomain<TimelineDocument> domain;
+    private final TimelineBatchTargetDomain domain;
+    private final SubtitleFontPolicy subtitleFonts;
     private final AuthorizationDecisionPort authorizationPort;
     private final OperationBatchPlanner planner = new OperationBatchPlanner();
 
     public CanonicalBatchInvocationService(TimelineBatchTargetDomain domain,
                                            AuthorizationDecisionPort authorizationPort) {
+        this(domain, authorizationPort, new SubtitleFontPolicy(SubtitleBlockLayout.PROFILE + ","
+                + SubtitleBlockLayout.SERIF_PROFILE, SubtitleBlockLayout.PROFILE, ""));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CanonicalBatchInvocationService(TimelineBatchTargetDomain domain, AuthorizationDecisionPort authorizationPort,
+                                           SubtitleFontPolicy subtitleFonts) {
+        this.subtitleFonts = Objects.requireNonNull(subtitleFonts, "subtitleFonts");
         this.domain = Objects.requireNonNull(domain, "domain");
         this.authorizationPort = Objects.requireNonNull(authorizationPort, "authorizationPort");
     }
@@ -53,7 +65,12 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
     public BatchPreview preview(OperationBatchRequest request, OperationBatchContext context) {
         requireTenantContext(request, context.actor());
         requireProjectAccess(request, context.actor(), TIMELINE_READ);
-        OperationBatchPlan<TimelineDocument> plan = planner.plan(request, domain);
+        var resolved = resolveSubtitleFont(request, null);
+        OperationBatchPlan<TimelineDocument> plan = planner.plan(resolved, domain);
+        if (resolved.operations().getFirst().parameters() instanceof SubtitleCueParameters cue) {
+            var font = SubtitleBlockLayout.profile(cue.motion().effectiveFontProfile());
+            return BatchPreview.of(plan, new BatchPreview.ResolvedSubtitleFont(font.id(), font.label()));
+        }
         return BatchPreview.of(plan);
     }
 
@@ -65,7 +82,8 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
         }
         requireTenantContext(request, context.actor());
         requireProjectAccess(request, context.actor(), TIMELINE_READ);
-        OperationBatchPlan<TimelineDocument> plan = planner.plan(request, domain);
+        var resolved = resolveSubtitleFont(request, context);
+        OperationBatchPlan<TimelineDocument> plan = planner.plan(resolved, domain);
 
         if (!plan.batchDigest().equals(context.expectedBatchDigest())) {
             throw new BatchException(BatchErrorCode.PLAN_CHANGED, null, "Confirmed plan differs from submitted batch");
@@ -93,7 +111,46 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
         }
         OperationBatchContext authorized = OperationBatchContext.apply(
                 context.applyCommandId(), context.actor(), bound, context.correlationId(), context.expectedBatchDigest());
-        return domain.commit(request, plan, authorized);
+        return domain.commit(resolved, plan, authorized);
+    }
+
+    private OperationBatchRequest resolveSubtitleFont(OperationBatchRequest request, OperationBatchContext applying) {
+        var operations = request.operations();
+        if (!(operations.getFirst().parameters() instanceof SubtitleCueParameters cue)) return request;
+        if (operations.size() != 1) {
+            throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, 0,
+                    "Submit the complete subtitle edit as one operation");
+        }
+        String profile = null;
+        if (applying != null) {
+            // Only the existing, fully scoped immutable receipt can carry an old
+            // policy decision across a restart. The normal planner/digest, write
+            // authorization and durable writer verify the request and principal.
+            var previous = domain.completedBatchDocument(request, applying);
+            if (previous.isPresent() && cue.useDefault()) profile = cueFont(previous.get(), cue.cueId());
+            if (previous.isPresent() && !cue.useDefault()) profile = cue.motion().effectiveFontProfile();
+        }
+        if (profile == null) {
+            var base = domain.resolveBase(request.target(), request.baseRevisionId(), request.baseContentHash());
+            try {
+                profile = subtitleFonts.resolve(cue.useDefault() ? null : cue.motion().effectiveFontProfile(),
+                        base.getMetadata().subtitleTrackLanguage(), cueFont(base, cue.cueId()));
+            } catch (IllegalArgumentException unavailable) {
+                if (applying == null) throw unavailable;
+                throw new BatchException(BatchErrorCode.PLAN_CHANGED, 0, "Subtitle font availability changed. Preview again.");
+            }
+        }
+        var source = operations.getFirst();
+        var step = new OperationRequest(source.definitionId(), source.version(), source.target(),
+                cue.withResolvedFont(profile), source.baseRevisionId(), source.baseContentHash(), source.requestMetadata());
+        return new OperationBatchRequest(request.batchId(), request.target(), request.baseRevisionId(),
+                List.of(step), request.message());
+    }
+
+    private static String cueFont(TimelineDocument document, String cueId) {
+        return document.getTextElements().stream()
+                .filter(element -> element.id().value().equals(cueId) && element.subtitleCue() != null)
+                .map(element -> element.subtitleCue().effectiveFontProfile()).findFirst().orElse(null);
     }
 
     private void requireTenantContext(OperationBatchRequest request, CanonicalActor actor) {

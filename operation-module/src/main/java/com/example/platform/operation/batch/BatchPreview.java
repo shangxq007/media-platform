@@ -16,7 +16,11 @@ public record BatchPreview(
         String finalCandidateHash,
         boolean noOp,
         List<BatchStepDescriptor> steps,
-        List<BatchStepOutcome> outcomes) {
+        List<BatchStepOutcome> outcomes,
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        ResolvedSubtitleFont resolvedSubtitleFont) {
+
+    public record ResolvedSubtitleFont(String id, String label) {}
 
     public static final String PLANNED = "PLANNED";
 
@@ -29,8 +33,12 @@ public record BatchPreview(
     }
 
     public static BatchPreview of(OperationBatchPlan<?> plan) {
+        return of(plan, null);
+    }
+
+    public static BatchPreview of(OperationBatchPlan<?> plan, ResolvedSubtitleFont font) {
         return new BatchPreview(PLANNED, plan.batchId(), plan.batchDigest(),
                 plan.baseRevisionId(), plan.baseContentHash(), plan.finalCandidateHash(),
-                plan.noOp(), plan.steps(), plan.outcomes());
+                plan.noOp(), plan.steps(), plan.outcomes(), font);
     }
 }

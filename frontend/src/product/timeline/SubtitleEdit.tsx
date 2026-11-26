@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { FormalRenderAPI, type SubtitleFontCatalog } from '../../api/formal-render'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
 import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
-import { resolveSubtitleFont, SUBTITLE_FONTS, type SubtitleCue, type SubtitleFontProfile } from './subtitle-cues'
+import { savedSubtitleFont, type SubtitleCue } from './subtitle-cues'
 import { compare, formatRational, parseRational, subtract } from './trim'
 
 type Row = { id: string; time: string; x: string; y: string; opacity: string }
-type Form = { scope: string; text: string; start: string; end: string; width: string; fontSize: string; fontProfile: SubtitleFontProfile; keys: Row[]; remove: boolean }
+type Form = { scope: string; text: string; start: string; end: string; width: string; fontSize: string; fontProfile: string; keys: Row[]; remove: boolean }
 const percent = (input: string, min: number, max: number) => {
   const exact = /^([+-]?)(\d+)(?:\.(\d{1,4}))?$/.exec(input.trim())
   if (!exact) return null
@@ -21,11 +22,26 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
 }) {
   const [selected, select] = useState('')
   const [draft, update] = useState<Form | null>(null)
+  const [attempt, reload] = useState(0)
+  const project = props.head?.projectId
+  const catalogScope = project && props.tenant ? JSON.stringify([project, props.tenant, attempt]) : null
+  const [catalogState, setCatalog] = useState<{ scope: string; fonts: SubtitleFontCatalog | null } | null>(null)
+  useEffect(() => {
+    if (!catalogScope || !project || !props.tenant) return
+    const cancel = new AbortController()
+    void FormalRenderAPI.listSubtitleFonts(props.tenant, project, cancel.signal).then(
+      fonts => { if (!cancel.signal.aborted) setCatalog({ scope: catalogScope, fonts }) },
+      () => { if (!cancel.signal.aborted) setCatalog({ scope: catalogScope, fonts: null }) },
+    )
+    return () => cancel.abort()
+  }, [catalogScope, project, props.tenant])
+  const catalog = catalogState?.scope === catalogScope ? catalogState.fonts : undefined
   const saved = cues.find(c => c.cueId === selected)
-  const scope = JSON.stringify([props.head?.revisionId, props.head?.contentHash, selected])
+  const savedProfile = saved ? savedSubtitleFont(saved.fontProfile) : ''
+  const scope = JSON.stringify([project, props.tenant, props.head?.revisionId, props.head?.contentHash, selected])
   const form = draft?.scope === scope ? draft : {
     scope, text: saved?.text ?? '', start: saved?.start ?? '', end: saved?.end ?? '',
-    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: resolveSubtitleFont(saved?.fontProfile), remove: false,
+    width: String(saved?.width ?? 240), fontSize: String(saved?.fontSize ?? 24), fontProfile: savedProfile, remove: false,
     keys: saved?.keys.map((k,i) => ({ id: String(i), time: k.time, x: String(k.xMicros / 10000),
       y: String(k.yMicros / 10000), opacity: String(k.opacityMicros / 10000) })) ?? [],
   }
@@ -45,13 +61,16 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
     && keys.length === form.keys.length && keys.every((k, i) => compare(k.time, subtract(end, start)) < 0
       && (!i || compare(keys[i - 1].time, k.time) < 0))
   const remove = form.remove && !!saved
-  return <ConfirmedClipEdit {...props} edit="subtitle" inputIdentity={JSON.stringify([scope, form])} onPreview={onPreview}
-    draft={remove || valid ? () => {
+  const eligible = !!catalog && (!form.fontProfile || form.fontProfile === savedProfile
+    || catalog.some(font => font.id === form.fontProfile))
+  return <ConfirmedClipEdit {...props} edit="subtitle" inputIdentity={JSON.stringify([scope, attempt, form])} onPreview={onPreview}
+    draft={remove || (valid && eligible) ? () => {
       const cueId = saved?.cueId ?? crypto.randomUUID()
       const step: SemanticStep = remove ? { definitionId: 'timeline.subtitle.cue.remove', parameters: { cueId } }
         : { definitionId: 'timeline.subtitle.cue.set', parameters: {
           cueId, text: form.text, width: Number(form.width), fontSize: Number(form.fontSize),
-          start: formatRational(start!), end: formatRational(end!), fontProfile: form.fontProfile,
+          start: formatRational(start!), end: formatRational(end!),
+          ...(form.fontProfile && form.fontProfile !== savedProfile ? { fontProfile: form.fontProfile } : {}),
           keys: keys.map(key => ({ ...key, time: formatRational(key.time) })),
         } }
       return { step, ranges: [remove ? 'Remove the selected subtitle.' : `Subtitle [${formatRational(start!)}, ${formatRational(end!)}) s`] }
@@ -66,9 +85,16 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
       {([['start', 'Subtitle start (timeline seconds)'], ['end', 'Subtitle end (timeline seconds)'],
         ['width', 'Subtitle width (at 320 px)'], ['fontSize', 'Subtitle font size (at 320 px)']] as const)
         .map(([key,label]) => <label key={key}>{label} <input value={form[key]} onChange={e => change({ [key]: e.target.value })} /></label>)}
-      <label>Subtitle font <select aria-label="Subtitle font" value={form.fontProfile} onChange={e => change({ fontProfile: resolveSubtitleFont(e.target.value) })}>
-        {Object.entries(SUBTITLE_FONTS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      <label>Subtitle font <select aria-label="Subtitle font" value={form.fontProfile} disabled={!catalog}
+        onChange={e => change({ fontProfile: e.target.value })}>
+        {!saved && <option value="">Use project default</option>}
+        {savedProfile && !catalog?.some(font => font.id === savedProfile)
+          && <option value={savedProfile}>Keep saved font ({savedProfile})</option>}
+        {catalog?.map(font => <option key={font.id} value={font.id}>{font.label}</option>)}
       </select></label>
+      {catalog === undefined && catalogScope && <p role="status">Loading subtitle fonts…</p>}
+      {catalog === null && <><p role="alert">Subtitle font catalog unavailable. No font was substituted.</p>
+        <button type="button" onClick={() => reload(previous => previous + 1)}>Retry subtitle fonts</button></>}
       <label><input type="checkbox" checked={form.keys.length > 0}
         onChange={e => change({ keys: e.target.checked
           ? [{ id: 'first', time: '0', x: '10', y: '55', opacity: '100' },

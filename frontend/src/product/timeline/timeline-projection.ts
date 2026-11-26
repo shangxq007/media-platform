@@ -8,7 +8,7 @@ import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAs
  * from the same snapshot bytes at any time.
  */
 import { add, compare, formatRational, parseRational, type Rational } from './trim'
-import { resolveSubtitleFont, type SubtitleCue } from './subtitle-cues'
+import { savedSubtitleFont, type SubtitleCue } from './subtitle-cues'
 
 export interface ProjectedVideoEffect {
   readonly brightness: number
@@ -230,7 +230,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
   const element = object(raw, 'TextElement')
   if (!element.subtitleCue) throw new Error('Unsupported Timeline preview semantics: textElements')
   const motion = object(element.subtitleCue, 'subtitle motion')
-  const fontProfile = resolveSubtitleFont(motion.fontProfile)
+  const fontProfile = savedSubtitleFont(motion.fontProfile)
   const fontRational = (raw: unknown) => {
     const value = object(raw, 'exact subtitle time or dimension')
     if (!Number.isSafeInteger(value.numerator) || !Number.isSafeInteger(value.denominator)) throw new Error('Invalid subtitle rational')

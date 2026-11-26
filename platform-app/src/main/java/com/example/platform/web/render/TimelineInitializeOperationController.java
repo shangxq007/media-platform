@@ -36,7 +36,7 @@ public final class TimelineInitializeOperationController {
         var definition = OperationDefinition.V3.INITIALIZE_TIMELINE;
         var request = new OperationRequest(definition.definitionId(), definition.version(),
                 new OperationTargetRequest.TimelineTargetRequest(projectId),
-                new OperationParameters.InitializeTimelineParameters(body.trackId()),
+                new OperationParameters.InitializeTimelineParameters(body.trackId(), body.subtitleTrackLanguage()),
                 TimelineMediaClipOperationService.INITIAL_BASE_REVISION_ID,
                 TimelineMediaClipOperationService.INITIAL_BASE_CONTENT_HASH, null);
         var result = invocations.invoke(request,
@@ -72,7 +72,8 @@ public final class TimelineInitializeOperationController {
         }
     }
 
-    public record InitializeRequest(String trackId, String commandId) {
+    public record InitializeRequest(String trackId, String commandId, String subtitleTrackLanguage) {
+        public InitializeRequest(String trackId, String commandId) { this(trackId, commandId, null); }
         public InitializeRequest {
             if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}")
                     || commandId == null || !commandId.matches("[A-Za-z0-9._:-]{1,128}")) {

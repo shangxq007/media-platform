@@ -3,17 +3,13 @@ import { compare, parseRational, subtract, toSeconds, type Rational } from './tr
 
 export type SubtitleCue = Extract<SemanticStep, { definitionId: 'timeline.subtitle.cue.set' }>['parameters']
 
-export type SubtitleFontProfile = NonNullable<SubtitleCue['fontProfile']>
-export const DEFAULT_SUBTITLE_FONT = 'noto-sc-color-emoji-v1'
-export const SUBTITLE_FONTS: Readonly<Record<SubtitleFontProfile, string>> = {
-  [DEFAULT_SUBTITLE_FONT]: 'Noto Sans SC + Color Emoji',
-  'noto-serif-sc-color-emoji-v1': 'Noto Serif SC + Color Emoji',
-}
+const LEGACY_SUBTITLE_FONT = 'noto-sc-color-emoji-v1'
 
-export function resolveSubtitleFont(value: unknown): SubtitleFontProfile {
-  if (value == null) return DEFAULT_SUBTITLE_FONT
-  if (typeof value === 'string' && Object.prototype.hasOwnProperty.call(SUBTITLE_FONTS, value)) return value as SubtitleFontProfile
-  throw new Error('Unsupported subtitle font profile')
+/** Saved snapshots may omit the legacy pin. Whether an ID is installed is decided by the backend. */
+export function savedSubtitleFont(value: unknown): string {
+  if (value == null) return LEGACY_SUBTITLE_FONT
+  if (typeof value === 'string' && /^[a-z0-9-]{1,40}$/.test(value)) return value
+  throw new Error('Invalid saved subtitle font identity')
 }
 
 export function subtitlePose(cue: SubtitleCue, time: Rational) {

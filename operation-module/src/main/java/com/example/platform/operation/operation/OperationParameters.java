@@ -69,7 +69,17 @@ public sealed interface OperationParameters permits
 
     @org.springframework.modulith.NamedInterface("invocation")
     record SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
-            com.example.platform.timeline.canonical.SubtitleCueMotion motion) implements OperationParameters {
+            com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault) implements OperationParameters {
+        public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
+                com.example.platform.timeline.canonical.SubtitleCueMotion motion) {
+            this(cueId, start, end, text, width, fontSize, motion, false);
+        }
+
+        public SubtitleCueParameters withResolvedFont(String profile) {
+            return new SubtitleCueParameters(cueId, start, end, text, width, fontSize,
+                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys()), useDefault);
+        }
+
         public SubtitleCueParameters {
             new RemoveSubtitleCueParameters(cueId);
             try {
@@ -207,8 +217,10 @@ public sealed interface OperationParameters permits
     }
 
     @org.springframework.modulith.NamedInterface("invocation")
-    record InitializeTimelineParameters(String trackId) implements OperationParameters {
+    record InitializeTimelineParameters(String trackId, String subtitleTrackLanguage) implements OperationParameters {
+        public InitializeTimelineParameters(String trackId) { this(trackId, null); }
         public InitializeTimelineParameters {
+            subtitleTrackLanguage = com.example.platform.timeline.canonical.TimelineMetadata.checkedSubtitleLanguage(subtitleTrackLanguage);
             if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}")) {
                 throw new IllegalArgumentException("bounded trackId required");
             }

@@ -21,6 +21,7 @@ import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
 import com.example.platform.operation.application.CanonicalBatchInvocationService;
+import com.example.platform.operation.application.SubtitleFontPolicy;
 import com.example.platform.operation.application.TimelineBatchTargetDomain;
 import com.example.platform.outbox.app.OutboxEventRouter;
 import com.example.platform.outbox.app.OutboxEventService;
@@ -119,6 +120,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     private OutboxEventRouter eventRouter;
     private StubAuthorization authorization;
     private CanonicalBatchInvocationService batch;
+    private TimelineBatchTargetDomain domain;
     private TimelineContentDigester digester;
 
     @BeforeAll
@@ -195,7 +197,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 return new ValidationResult(true, List.of());
             }
         };
-        var domain = new TimelineBatchTargetDomain(saveService, sourceValidation,
+        domain = new TimelineBatchTargetDomain(saveService, sourceValidation,
                 new InternalTimelineValidationService());
         batch = new CanonicalBatchInvocationService(domain, authorization);
     }
@@ -1069,6 +1071,89 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals("spring", cue.id().value());
         assertEquals(text, cue.styledText().content().value());
         assertEquals(motion, cue.subtitleCue());
+    }
+
+    @Test
+    void subtitlePolicyChangesRejectOldConfirmationButReplayTheOriginalDurableResult() {
+        var saved = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(),
+                TimelineMetadata.forSubtitleLanguage("zh-Hans")));
+        String sans = "noto-sc-color-emoji-v1";
+        String serif = "noto-serif-sc-color-emoji-v1";
+        String fixture = "n18-fixture-serif-v1";
+        var a = new CanonicalBatchInvocationService(domain, authorization, new SubtitleFontPolicy(
+                String.join(",", sans, serif, fixture), sans, "zh-Hans=" + fixture + ",zh-Hant=" + serif));
+        var b = new CanonicalBatchInvocationService(domain, authorization, new SubtitleFontPolicy(
+                String.join(",", sans, serif), serif, "zh-Hans=" + serif + ",zh-Hant=" + sans));
+        var actor = mutation().actor();
+        var pc = OperationBatchContext.preview(actor, "font policy");
+        var req = subtitleRequest(saved, "policy-default", "default", null, "人月㐀永 🌻");
+        var shown = a.preview(req, pc);
+        assertEquals(fixture, shown.resolvedSubtitleFont().id());
+        assertEquals(sans, a.preview(subtitleRequest(saved, "policy-explicit", "default", sans, "人月㐀永 🌻"), pc)
+                .resolvedSubtitleFont().id());
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
+        var confirm = OperationBatchContext.apply(req.batchId(), actor, null, "font policy", shown.batchDigest());
+        assertEquals(BatchErrorCode.PLAN_CHANGED, assertThrows(BatchException.class, () -> b.commit(req, confirm)).code());
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
+
+        var applied = a.commit(req, confirm);
+        var replay = b.commit(req, confirm);
+        assertTrue(replay.replayed());
+        assertEquals(applied.newRevisionId(), replay.newRevisionId());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+        var current = saveService.findById(TENANT, applied.newRevisionId());
+        var document = saveService.findPayloadDocument(TENANT, current.revisionId()).orElseThrow();
+        assertEquals(fixture, document.getTextElements().getFirst().subtitleCue().fontProfile());
+        assertEquals("zh-Hans", document.getMetadata().subtitleTrackLanguage());
+        assertEquals(fixture, b.preview(subtitleRequest(current, "policy-edit", "default", null, "Changed"), pc)
+                .resolvedSubtitleFont().id());
+        assertEquals(serif, b.preview(subtitleRequest(current, "policy-new", "new", null, "New"), pc)
+                .resolvedSubtitleFont().id());
+        assertThrows(IllegalArgumentException.class, () ->
+                b.preview(subtitleRequest(current, "retired", "new", fixture, "New"), pc));
+        var changedBody = subtitleRequest(saved, "policy-default", "default", null, "Different");
+        assertEquals(BatchErrorCode.PLAN_CHANGED, assertThrows(BatchException.class,
+                () -> b.commit(changedBody, confirm)).code());
+        assertEquals(2, count("timeline.timeline_revision"));
+    }
+
+    @Test
+    void historicalMissingFontRetainsSansWhenLaterDefaultIsSerif() {
+        String sans = "noto-sc-color-emoji-v1";
+        String serif = "noto-serif-sc-color-emoji-v1";
+        var actor = mutation().actor();
+        var pc = OperationBatchContext.preview(actor, "old font");
+        var base = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(), TimelineMetadata.empty()));
+        var initial = applyPrepared(subtitleRequest(base, "font-fixture", "old", sans, "Legacy"));
+        var doc = saveService.findPayloadDocument(TENANT, initial.newRevisionId()).orElseThrow();
+        var cue = doc.getTextElements().getFirst();
+        var legacy = new com.example.platform.timeline.canonical.TextElement(cue.id(), cue.start(), cue.duration(),
+                cue.styledText(), cue.frame(), cue.fallbackPolicy(), cue.resolvedFontRuns(),
+                new com.example.platform.timeline.canonical.SubtitleCueMotion(null, cue.subtitleCue().keys()));
+        var oldDoc = new TimelineDocument(doc.getSchemaVersion(), doc.getTracks(), doc.getMetadata(),
+                doc.getAudioMix(), doc.getSemanticRelationships(), List.of(legacy), doc.getTransitions(), doc.getAutomations());
+        var old = saveService.saveRevision(mutation(), initial.newRevisionId(), oldDoc);
+        var loaded = saveService.findRestoreSource(PROJECT, TENANT, old.revisionId()).orElseThrow().document();
+        assertNull(loaded.getTextElements().getFirst().subtitleCue().fontProfile());
+        var newPolicy = new CanonicalBatchInvocationService(domain, authorization,
+                new SubtitleFontPolicy(sans + "," + serif, serif, ""));
+        assertEquals(sans, newPolicy.preview(subtitleRequest(old, "legacy-edit", "old", null, "Editing another property"), pc)
+                .resolvedSubtitleFont().id());
+        assertEquals(serif, newPolicy.preview(subtitleRequest(old, "global-new", "fresh", null, "Global"), pc)
+                .resolvedSubtitleFont().id());
+    }
+
+    private OperationBatchRequest subtitleRequest(TimelineRevision base, String batchId, String cueId, String profile, String text) {
+        var def = OperationDefinition.V3.SET_SUBTITLE_CUE;
+        var params = new OperationParameters.SubtitleCueParameters(cueId, time("0"), time("2/1"), text, 160, 24,
+                new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, List.of()), profile == null);
+        var request = new OperationRequest(def.definitionId(), def.version(), new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                params, base.revisionId(), hash(base), null);
+        return new OperationBatchRequest(batchId, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(request), null);
     }
 
     private OperationBatchRequest positionRequest(TimelineRevision base, String batchId, String samples) {

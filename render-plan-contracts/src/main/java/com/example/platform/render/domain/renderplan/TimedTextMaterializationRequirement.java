@@ -123,7 +123,7 @@ public record TimedTextMaterializationRequirement(
         }
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
                 visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
-                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.fontProfile())));
+                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile())));
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

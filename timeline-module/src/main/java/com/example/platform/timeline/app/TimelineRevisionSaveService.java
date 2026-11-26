@@ -613,6 +613,19 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         }));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> completedCommandRevision(RevisionRef ref, String commandId, String domain,
+            String expectedHead, String planDigest) {
+        var row = dsl.fetchOne("""
+                select result_revision_id from timeline.apply_command
+                where apply_command_id = ? and tenant_id = ? and project_id = ?
+                  and command_domain = ? and target_ref_id = ? and expected_head_revision_id = ?
+                  and plan_digest = ? and status = 'COMPLETED' and result_status = expected_result_status
+                """, commandId, ref.tenantId(), ref.projectId(), domain, ref.refId(), expectedHead, planDigest);
+        return row == null ? Optional.empty() : Optional.of(row.get("result_revision_id", String.class));
+    }
+
     private static SaveOutcome claimOrReplayCommand(
             org.jooq.DSLContext tx,
             RevisionWriteCommand command,

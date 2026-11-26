@@ -92,8 +92,8 @@ public final class TimelineBatchSchema {
             case "revision-id" -> Map.of("type", "string", "pattern", "^"
                     + com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters.SOURCE_REVISION_ID_PATTERN + "$");
             case "cue-time" -> Map.of("type","string","pattern","^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$");
-            case "cue-font" -> Map.of("type", "string", "enum", com.example.platform.fonttext.typography.SubtitleBlockLayout.PROFILES,
-                    "default", com.example.platform.fonttext.typography.SubtitleBlockLayout.PROFILE);
+            case "cue-font" -> Map.of("type", "string", "pattern", "^"
+                    + com.example.platform.fonttext.typography.SubtitleBlockLayout.PROFILE_ID_PATTERN + "$");
             case "cue-width" -> integerRange(40,304);
             case "cue-font-size" -> integerRange(12,44);
             case "cue-key-array" -> Map.of("type","array","maxItems",16,

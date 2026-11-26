@@ -10,6 +10,7 @@ interface RangePlan {
   project: string
   context: string
   body: SemanticBatch
+  display: SemanticBatch
   digest: string
   ranges: string[]
 }
@@ -50,7 +51,7 @@ export function ConfirmedClipEdit({ edit, head, tenant, disabled, access, readba
 
   useLayoutEffect(() => {
     if (!onPreview) return
-    onPreview(visible?.body ?? null)
+    onPreview(visible?.display ?? null)
     return () => onPreview(null)
   }, [visible, onPreview])
 
@@ -65,7 +66,15 @@ export function ConfirmedClipEdit({ edit, head, tenant, disabled, access, readba
     try {
       const result = await FormalRenderAPI.previewBatch(tenant, head.projectId, body, request.signal)
       if (request.signal.aborted) return
-      setPlan({ tenant, project: head.projectId, context, body, digest: result.batchDigest, ranges })
+      let display = body
+      if (step.definitionId === 'timeline.subtitle.cue.set') {
+        const font = result.resolvedSubtitleFont
+        if (!font) throw new Error('Subtitle preview did not resolve a font')
+        // Keep the submitted body (including omitted/default intent) intact for Apply/replay.
+        display = { ...body, operations: [{ ...step, parameters: { ...step.parameters, fontProfile: font.id } }] }
+        ranges.push(`Preview font: ${font.label} (${font.id})`)
+      }
+      setPlan({ tenant, project: head.projectId, context, body, display, digest: result.batchDigest, ranges })
     } catch (error) {
       if (!request.signal.aborted) {
         setFailed(true)

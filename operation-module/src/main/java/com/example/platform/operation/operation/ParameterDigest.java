@@ -60,7 +60,8 @@ public final class ParameterDigest {
             return "add-track(" + track.trackId() + "," + track.trackType() + ")";
         }
         if (p instanceof OperationParameters.InitializeTimelineParameters init) {
-            return "initialize-timeline(video-track=" + init.trackId() + ")";
+            return init.subtitleTrackLanguage() == null ? "initialize-timeline(video-track=" + init.trackId() + ")"
+                    : framed("initialize-timeline-with-subtitle-language-v1", init.trackId(), init.subtitleTrackLanguage());
         }
         if (p instanceof OperationParameters.ImportTimelineParameters imported) {
             return "import-timeline(content="
@@ -147,8 +148,8 @@ public final class ParameterDigest {
             return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
         if (p instanceof OperationParameters.SubtitleCueParameters cue) {
-            return framed("subtitle-cue-v1", cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
-                    Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().fontProfile(),
+            return framed(cue.useDefault() ? "subtitle-cue-default-v1" : "subtitle-cue-v1", cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
+                    Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().effectiveFontProfile(),
                     cue.motion().keys().stream().map(k -> framed(k.time(), Integer.toString(k.xMicros()),
                             Integer.toString(k.yMicros()), Integer.toString(k.opacityMicros()))).collect(java.util.stream.Collectors.joining()));
         }
