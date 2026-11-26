@@ -9,13 +9,13 @@ it('maps textarea selection through CRLF, supplementary characters and combining
 })
 it('preserves surrounding overrides and gives inserted text the inherited font', () => {
   const runs = [{ start: 1, end: 4, fontProfile: 'serif-v1' }]
-  expect(editRangeFonts('甲abc🌻', '甲a中c🌻', runs)).toEqual([
+  expect(editRangeFonts('甲abc🌻', '甲a中c🌻', runs).fontRuns).toEqual([
     { start: 1, end: 2, fontProfile: 'serif-v1' }, { start: 3, end: 4, fontProfile: 'serif-v1' },
   ])
   expect(setRangeFont(runs, { start: 1, end: 4 }, '')).toEqual([])
 })
 
 it('uses the textarea caret to distinguish identical neighboring characters', () => {
-  expect(editRangeFonts('中中', '中中中', [{ start: 0, end: 1, fontProfile: 'serif-v1' }], 1))
+  expect(editRangeFonts('中中', '中中中', [{ start: 0, end: 1, fontProfile: 'serif-v1' }], 1).fontRuns)
     .toEqual([{ start: 1, end: 2, fontProfile: 'serif-v1' }])
 })

@@ -1,5 +1,5 @@
-import { editRangeFonts, setRangeFont, subtitleSelection, type FontRun } from './subtitle-font-runs'
-import { useEffect, useState } from 'react'
+import { editRangeFonts, setRangeFont, subtitleSelection, textareaText, type FontRun, type TextInputSpan } from './subtitle-font-runs'
+import { useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI, type SubtitleFontCatalog } from '../../api/formal-render'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
 import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
@@ -47,6 +47,24 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
     keys: saved?.keys.map((k,i) => ({ id: String(i), time: k.time, x: String(k.xMicros / 10000),
       y: String(k.yMicros / 10000), opacity: String(k.opacityMicros / 10000) })) ?? [],
   }
+  const textarea = useRef<HTMLTextAreaElement>(null)
+  const pendingInput = useRef<(TextInputSpan & { scope: string; value: string }) | null>(null)
+  const clearInput = () => { pendingInput.current = null }
+  useEffect(() => {
+    const target = textarea.current
+    if (!target) return
+    const capture = (event: InputEvent) => {
+      pendingInput.current = {
+        scope, start: target.selectionStart, end: target.selectionEnd, inputType: event.inputType, value: target.value,
+      }
+    }
+    // React's synthesized beforeinput omits native edits such as paste and deletion.
+    target.addEventListener('beforeinput', capture)
+    return () => {
+      pendingInput.current = null
+      target.removeEventListener('beforeinput', capture)
+    }
+  }, [scope])
   const change = (values: Partial<Form>) => update({ ...form, ...values })
   const range = selection && selection.scope === scope && selection.text === form.text
     ? subtitleSelection(form.text, selection.from, selection.to) : null
@@ -86,9 +104,18 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
     </select></label>
     {saved && <label><input type="checkbox" checked={remove} onChange={e => change({ remove: e.target.checked })} />Remove saved subtitle</label>}
     <fieldset disabled={remove}>
-      <label>Subtitle text <textarea aria-label="Subtitle text" maxLength={384} value={form.text}
+      <label>Subtitle text <textarea aria-label="Subtitle text" maxLength={384} ref={textarea} value={textareaText(form.text)} onBlur={clearInput}
+        onCompositionStart={clearInput} onCompositionEnd={clearInput}
         onSelect={e => setSelection({ scope, text: form.text, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd })}
-        onChange={e => { setSelection(null); change({ text: e.target.value, fontRuns: editRangeFonts(form.text, e.target.value, form.fontRuns, e.target.selectionEnd) }) }} /></label>
+        onInput={e => {
+          const pending = pendingInput.current
+          clearInput()
+          const { value, selectionEnd } = e.currentTarget
+          const input = pending?.scope === scope && pending.value === textareaText(form.text) && pending.inputType === (e.nativeEvent as InputEvent).inputType
+            ? pending : null
+          setSelection(null)
+          change(editRangeFonts(form.text, value, form.fontRuns, selectionEnd, input))
+        }} /></label>
       {range && <label>Font for selected text <select aria-label="Font for selected text" value="" disabled={!catalog}
         onChange={e => change({ fontRuns: setRangeFont(form.fontRuns, range, e.target.value === 'inherit' ? '' : e.target.value) })}>
         <option value="" disabled>Choose font</option>

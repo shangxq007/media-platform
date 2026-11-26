@@ -188,7 +188,8 @@ export async function runFontProfiles(ctx) {
     await chooseRange(serif)
     const area = input('Subtitle text')
     const prefix = 'e\u0301👩‍🚀'
-    await area.fill(prefix + text)
+    await area.press('Control+Home')
+    await page.keyboard.insertText(prefix)
     // The pinned Serif face covers the decomposed mark, while Sans does not.
     await chooseRange(serif, 'e\u0301')
     const edited = (await preview()).body.operations[0].parameters.fontRuns
