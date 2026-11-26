@@ -96,11 +96,18 @@ export function editRangeFonts(
 
   const left = oldPoints[prefix], right = oldPoints[oldLast - suffix]
   const inserted = after.slice(newPoints[prefix].dom, newPoints[newLast - suffix].dom)
-  const text = authored.slice(0, left.utf16) + inserted + authored.slice(right.utf16)
-  const delta = Array.from(inserted).length - (right.scalars - left.scalars)
+  const prefixText = authored.slice(0, left.utf16)
+  const suffixText = authored.slice(right.utf16)
+  // Complete a retained bare CR before a separate LF so the textarea still sees two breaks.
+  const continuedBreak = prefixText.endsWith('\r') && (inserted || suffixText).startsWith('\n') ? '\n' : ''
+  const text = prefixText + continuedBreak + inserted + suffixText
+  const delta = Array.from(inserted).length + continuedBreak.length - (right.scalars - left.scalars)
   const fontRuns: FontRun[] = []
   for (const run of runs) {
-    if (run.start < left.scalars) fontRuns.push({ ...run, end: Math.min(left.scalars, run.end) })
+    if (run.start < left.scalars) {
+      const end = run.end < left.scalars ? run.end : left.scalars + continuedBreak.length
+      fontRuns.push({ ...run, end })
+    }
     if (run.end > right.scalars) {
       fontRuns.push({ ...run, start: Math.max(right.scalars, run.start) + delta, end: run.end + delta })
     }
