@@ -443,6 +443,9 @@ public final class RenderPlanCanonicalCodec {
             if (text.editableCue()) {
                 s(sb, text.subtitleCue().effectiveFontProfile());
                 s(sb, text.cueSamples());
+                if (!text.subtitleCue().fontRuns().isEmpty()) {
+                    list(sb, text.subtitleCue().fontRuns().stream().map(run -> run.canonical()).toList());
+                }
             }
         } else {
             // R3-M1: unknown sealed variant fails closed — a future

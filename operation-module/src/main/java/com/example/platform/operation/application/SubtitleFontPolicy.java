@@ -49,7 +49,7 @@ public final class SubtitleFontPolicy {
         return language == null ? defaultProfile : byLanguage.getOrDefault(languageKey(language), defaultProfile);
     }
 
-    private String requireSelectable(String id) {
+    String requireSelectable(String id) {
         if (selectable.stream().noneMatch(profile -> profile.id().equals(id))) {
             throw new IllegalArgumentException("Subtitle font profile is unavailable for new selection");
         }

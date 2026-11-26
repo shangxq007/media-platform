@@ -30,7 +30,7 @@ public final class SubtitleLayoutController {
                 .map(font -> new CatalogEntry(font.id(), font.label(), font.family(), font.style())).toList());
     }
 
-    public record Layout(String text, int width, int fontSize, String fontProfile, Integer destinationWidth) {}
+    public record Layout(String text, int width, int fontSize, String fontProfile, Integer destinationWidth, List<com.example.platform.fonttext.typography.SubtitleFontRun> fontRuns) {}
 
     @PostMapping(path = "/subtitle-layout", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> layout(@PathVariable String tenantId, @PathVariable String projectId,
@@ -38,6 +38,7 @@ public final class SubtitleLayoutController {
         authorization.requireRead(tenantId, projectId);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.IMAGE_PNG)
                     .body(SubtitleBlockLayout.png(input.text(), input.width(), input.fontSize(), input.fontProfile(),
-                        input.destinationWidth() == null ? SubtitleBlockLayout.REFERENCE_WIDTH : input.destinationWidth()));
+                        input.destinationWidth() == null ? SubtitleBlockLayout.REFERENCE_WIDTH : input.destinationWidth(),
+                        input.fontRuns() == null ? List.of() : input.fontRuns()));
     }
 }

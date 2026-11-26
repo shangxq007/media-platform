@@ -35,7 +35,7 @@ final class SubtitleCuePlanner {
             }
             try {
                 SubtitleBlockLayout.png(set.text(), set.width(), set.fontSize(), set.motion().fontProfile(),
-                        SubtitleBlockLayout.REFERENCE_WIDTH);
+                        SubtitleBlockLayout.REFERENCE_WIDTH, set.motion().fontRuns());
             } catch (IllegalArgumentException invalid) {
                 throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
             }
@@ -56,20 +56,31 @@ final class SubtitleCuePlanner {
     private static TextElement element(TextElementId id, OperationParameters.SubtitleCueParameters cue) {
         var families = SubtitleBlockLayout.fontFamilies(cue.motion().fontProfile());
         var text = new TextContent(cue.text());
-        var style = new TextStyle(new FontSelectionIntent(List.of(families.getFirst()), FontSelectionIntent.WeightIntent.NORMAL,
-                FontSelectionIntent.StretchIntent.NORMAL, FontSelectionIntent.SlantIntent.NORMAL,
-                OpticalSizingIntent.disabled(), List.of()), new FontSize(FontRational.whole(cue.fontSize())),
-                FontRational.whole(0), OpenTypeFeatureIntent.empty());
+        var style = style(cue.motion().effectiveFontProfile(), cue.fontSize());
+        var styles = new ArrayList<TextStyleRun>();
+        int cursor = 0;
+        for (var run : cue.motion().fontRuns()) {
+            if (cursor < run.start()) styles.add(new TextStyleRun(TextRange.of(cursor, run.start()), style));
+            styles.add(new TextStyleRun(TextRange.of(run.start(), run.end()), style(run.fontProfile(), cue.fontSize())));
+            cursor = run.end();
+        }
+        if (cursor < text.scalarCount()) styles.add(new TextStyleRun(TextRange.of(cursor, text.scalarCount()), style));
         var paragraph = new ParagraphStyle(ParagraphStyle.Alignment.START, ParagraphStyle.Justification.NONE,
                 LineHeight.ratio(FontRational.of(29, 20)), ParagraphStyle.WrapPolicy.WRAP,
                 ParagraphBaseDirection.AUTO, ParagraphStyle.LineBreakPolicy.STANDARD);
-        var styled = new StyledText(text, List.of(),
-                List.of(new TextStyleRun(TextRange.of(0, text.scalarCount()), style)), paragraph);
+        var styled = new StyledText(text, List.of(), styles, paragraph);
         var frame = new TextFrame(FontRational.whole(cue.width()), null, TextFrame.HorizontalAlignment.START,
                 TextFrame.VerticalAlignment.TOP, ParagraphStyle.WrapPolicy.WRAP, TextFrame.OverflowBehavior.CLIP);
         var fallback = new FontFallbackPolicy(families, List.of(), List.of(), List.of(new FontFamilyName("Noto Color Emoji")));
         var duration = cue.end().subtract(cue.start());
         return new TextElement(id, FontRational.of(cue.start().ticks(), cue.start().timeScale()),
                 FontRational.of(duration.ticks(), duration.timeScale()), styled, frame, fallback, List.of(), cue.motion());
+    }
+
+    private static TextStyle style(String profile, int size) {
+        return new TextStyle(new FontSelectionIntent(List.of(SubtitleBlockLayout.fontFamilies(profile).getFirst()), FontSelectionIntent.WeightIntent.NORMAL,
+                FontSelectionIntent.StretchIntent.NORMAL, FontSelectionIntent.SlantIntent.NORMAL,
+                OpticalSizingIntent.disabled(), List.of()), new FontSize(FontRational.whole(size)),
+                FontRational.whole(0), OpenTypeFeatureIntent.empty());
     }
 }

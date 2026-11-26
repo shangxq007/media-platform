@@ -1172,10 +1172,43 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 .resolvedSubtitleFont().id());
     }
 
+    @Test
+    void inlinePinsSurviveCatalogWithdrawalAndExactReplay() {
+        var base = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(), TimelineMetadata.empty()));
+        String sans = "noto-sc-color-emoji-v1";
+        String other = "n18-fixture-serif-v1";
+        var enabled = new CanonicalBatchInvocationService(domain, authorization, new SubtitleFontPolicy(sans + "," + other, sans, ""));
+        var withdrawn = new CanonicalBatchInvocationService(domain, authorization, new SubtitleFontPolicy(sans, sans, ""));
+        var run = new com.example.platform.fonttext.typography.SubtitleFontRun(1, 4, other);
+        var request = subtitleRequest(base, "inline-command", "cue", sans, "中ABC🌻", List.of(run));
+        var actor = mutation().actor();
+        var preview = OperationBatchContext.preview(actor, "inline font");
+        var plan = enabled.preview(request, preview);
+        var apply = OperationBatchContext.apply(request.batchId(), actor, null, "inline font", plan.batchDigest());
+        assertThrows(IllegalArgumentException.class, () -> withdrawn.preview(request, preview));
+        assertEquals(BatchErrorCode.PLAN_CHANGED, assertThrows(BatchException.class, () -> withdrawn.commit(request, apply)).code());
+        var accepted = enabled.commit(request, apply);
+        assertEquals(accepted.newRevisionId(), withdrawn.commit(request, apply).newRevisionId());
+        var head = saveService.findById(TENANT, accepted.newRevisionId());
+        var cue = saveService.findPayloadDocument(TENANT, head.revisionId()).orElseThrow().getTextElements().getFirst();
+        assertEquals(List.of(run), cue.subtitleCue().fontRuns());
+        assertEquals(3, cue.styledText().styleRuns().size());
+        assertNotNull(withdrawn.preview(subtitleRequest(head, "keep", "cue", sans, "中ABC🌻尾", List.of(run)), preview));
+        assertThrows(IllegalArgumentException.class, () ->
+                withdrawn.preview(subtitleRequest(head, "replace", "cue", sans, "中DEF🌻", List.of(run)), preview));
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+    }
+
     private OperationBatchRequest subtitleRequest(TimelineRevision base, String batchId, String cueId, String profile, String text) {
+        return subtitleRequest(base, batchId, cueId, profile, text, List.of());
+    }
+
+    private OperationBatchRequest subtitleRequest(TimelineRevision base, String batchId, String cueId,
+            String profile, String text, List<com.example.platform.fonttext.typography.SubtitleFontRun> runs) {
         var def = OperationDefinition.V3.SET_SUBTITLE_CUE;
         var params = new OperationParameters.SubtitleCueParameters(cueId, time("0"), time("2/1"), text, 160, 24,
-                new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, List.of()), profile == null);
+                new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, List.of(), runs), profile == null);
         var request = new OperationRequest(def.definitionId(), def.version(), new OperationTargetRequest.TimelineTargetRequest(PROJECT),
                 params, base.revisionId(), hash(base), null);
         return new OperationBatchRequest(batchId, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),

@@ -2596,6 +2596,31 @@
                   "pattern" : "^[a-z0-9-]{1,40}$",
                   "type" : "string"
                 },
+                "fontRuns" : {
+                  "items" : {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "end" : {
+                        "maximum" : 384,
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "fontProfile" : {
+                        "pattern" : "^[a-z0-9-]{1,40}$",
+                        "type" : "string"
+                      },
+                      "start" : {
+                        "maximum" : 383,
+                        "minimum" : 0,
+                        "type" : "integer"
+                      }
+                    },
+                    "required" : [ "end", "fontProfile", "start" ],
+                    "type" : "object"
+                  },
+                  "maxItems" : 64,
+                  "type" : "array"
+                },
                 "fontSize" : {
                   "maximum" : 44,
                   "minimum" : 12,

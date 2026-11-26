@@ -26,7 +26,8 @@ branches = sys.argv[1:] == ['--branches']
 opacity = sys.argv[1:] == ['--opacity']
 dissolve = sys.argv[1:] == ['--dissolve']
 position = sys.argv[1:] == ['--position']
-fonts = sys.argv[1:] == ['--n18-fonts']
+inline = sys.argv[1:] == ['--n19-inline']
+fonts = inline or sys.argv[1:] == ['--n18-fonts']
 raster = len(sys.argv)==2 and sys.argv[1] in ('--n17-raster','--n17-dense')
 motion = len(sys.argv)==2 and sys.argv[1] in ('--n16-clip','--n16-subtitle','--n16-hd')
 correction = sys.argv[1:] in (['--subtitle-correction'], ['--reviewed-subtitle-parent'])
@@ -104,6 +105,9 @@ if motion or raster:
 if fonts:
     checkpoints = ('base','first','legacy','cancel','denied','invalid','lost','recovered','undo','redo','stale','reopened')
 
+if inline:
+    checkpoints += ('cleared',)
+
 if correction:
     checkpoints = ('short','new-preview','new-cancel','existing-base','existing-applied',
                    'extend-preview','extend-cancel','extend-applied','extend-reopened','long-base','long-applied')
@@ -178,9 +182,14 @@ if opacity or dissolve or position or subtitle or correction or motion or raster
         result = json.loads((out/'font-result.json').read_text())
         assert profiles(facts['first']) == {'legacy-cue': sans}
         assert profiles(legacy) == profiles(undo) == {'legacy-cue': sans, result['serifCueId']: sans}
-        assert profiles(accepted) == profiles(redo) == {'legacy-cue': sans, result['serifCueId']: serif}
+        assert profiles(accepted) == profiles(redo) == {'legacy-cue': sans, result['serifCueId']: sans if inline else serif}
+        if inline:
+            for stage in (legacy, accepted, undo, redo, facts['cleared']):
+                cue = next(c for c in rows[stage['head']]['snapshot']['textElements'] if c['id'] == 'second-cue')
+                assert cue['subtitleCue'].get('fontRuns', []) == (result['inlineRuns'] if stage in (accepted, redo) else [])
+            assert facts['cleared']['rows'] == redo['rows'] + 1
         (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
-        print(json.dumps({'status':'PASS','scenario':'n18-fonts'}))
+        print(json.dumps({'status':'PASS','scenario':sys.argv[1][2:]}))
         sys.exit(0)
     if correction:
         for unchanged, original in (('new-preview','short'),('new-cancel','short'),

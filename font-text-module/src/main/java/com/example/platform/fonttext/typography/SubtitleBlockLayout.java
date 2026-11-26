@@ -86,7 +86,12 @@ public final class SubtitleBlockLayout {
 
     /** Layout is always decided in the original 320-unit space, before painting. */
     public static byte[] png(String text, int width, int size, String profile, int destinationWidth) {
+        return png(text, width, size, profile, destinationWidth, List.of());
+    }
+
+    public static byte[] png(String text, int width, int size, String profile, int destinationWidth, List<SubtitleFontRun> runs) {
         validateShape(text, width, size);
+        SubtitleFontRun.validate(text, runs);
         if (destinationWidth < 1 || destinationWidth > MAX_DESTINATION_WIDTH) {
             throw new IllegalArgumentException("Subtitle destination width is outside the raster budget");
         }
@@ -95,11 +100,17 @@ public final class SubtitleBlockLayout {
         Font font = profile(profile).serif() ? Serif.FONT.deriveFont((float) size) : fallback;
         var frc = new java.awt.font.FontRenderContext(null, true, true);
         var lines = new ArrayList<TextLayout>();
-        for (String paragraph : text.split("\\R", -1)) {
+        var parts = Pattern.compile("\\R").splitWithDelimiters(text, -1);
+        int scalar = 0;
+        for (int part = 0; part < parts.length; part += 2) {
+            String paragraph = parts[part];
+            int paragraphStart = scalar;
+            scalar += paragraph.codePointCount(0, paragraph.length());
+            if (part + 1 < parts.length) scalar += parts[part + 1].codePointCount(0, parts[part + 1].length());
             if (paragraph.isEmpty()) {
                 lines.add(null);
             } else {
-                var content = paragraph(paragraph, font, fallback, size);
+                var content = paragraph(paragraph, paragraphStart, runs, font, fallback, size);
                 var lineMeasurer = new LineBreakMeasurer(content.getIterator(), BreakIterator.getLineInstance(Locale.ROOT), frc);
                 int last = content.getIterator().getEndIndex();
                 while (lineMeasurer.getPosition() < last) {
@@ -146,14 +157,21 @@ public final class SubtitleBlockLayout {
         }
     }
 
-    private record FallbackRange(int start, int end) {}
+    private record FontRange(int start, int end, Font font) {}
 
-    private static AttributedString paragraph(String paragraph, Font font, Font fallback, int size) {
+    private static AttributedString paragraph(String paragraph, int scalar, List<SubtitleFontRun> runs, Font font, Font fallback, int size) {
         var display = new StringBuilder();
         var inline = new HashMap<Integer, String>();
-        var fallbackRanges = new ArrayList<FallbackRange>();
+        var fallbackRanges = new ArrayList<FontRange>();
         var matcher = GRAPHEME.matcher(paragraph);
+        int runIndex = 0;
         while (matcher.find()) {
+            while (runIndex < runs.size() && runs.get(runIndex).end() <= scalar) runIndex++;
+            Font primary = font;
+            if (runIndex < runs.size() && runs.get(runIndex).start() <= scalar) {
+                primary = profile(runs.get(runIndex).fontProfile()).serif() ? Serif.FONT.deriveFont((float) size) : fallback;
+            }
+            scalar += paragraph.codePointCount(matcher.start(), matcher.end());
             String grapheme = matcher.group();
             String candidate = grapheme.codePoints().filter(cp -> cp != 0xfe0f)
                     .mapToObj(Integer::toHexString).collect(java.util.stream.Collectors.joining("-"));
@@ -162,19 +180,20 @@ public final class SubtitleBlockLayout {
                 display.append('\ufffc');
             } else {
                 // An entire grapheme uses one face. No platform-installed font participates.
-                boolean missingInPrimary = font.canDisplayUpTo(grapheme) != -1;
-                if ((missingInPrimary && (font == fallback || fallback.canDisplayUpTo(grapheme) != -1))
+                boolean missingInPrimary = primary.canDisplayUpTo(grapheme) != -1;
+                if ((missingInPrimary && (primary == fallback || fallback.canDisplayUpTo(grapheme) != -1))
                         || grapheme.codePoints().anyMatch(cp -> cp == 0x200d || cp == 0xfe0f || cp >= 0x1f000 && cp <= 0x1faff)) {
                     throw new IllegalArgumentException("Subtitle font profile does not cover the sequence U+"
                             + grapheme.codePoints().mapToObj(Integer::toHexString).collect(java.util.stream.Collectors.joining("+")));
                 }
-                if (missingInPrimary) fallbackRanges.add(new FallbackRange(display.length(), display.length() + grapheme.length()));
+                Font actual = missingInPrimary ? fallback : primary;
+                if (!actual.equals(font)) fallbackRanges.add(new FontRange(display.length(), display.length() + grapheme.length(), actual));
                 display.append(grapheme);
             }
         }
         var styled = new AttributedString(display.toString());
         styled.addAttribute(TextAttribute.FONT, font);
-        for (var range : fallbackRanges) styled.addAttribute(TextAttribute.FONT, fallback, range.start(), range.end());
+        for (var range : fallbackRanges) styled.addAttribute(TextAttribute.FONT, range.font(), range.start(), range.end());
         for (var graphic : inline.entrySet()) {
             try {
                 BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(Resources.EMOJI.get(graphic.getValue())));

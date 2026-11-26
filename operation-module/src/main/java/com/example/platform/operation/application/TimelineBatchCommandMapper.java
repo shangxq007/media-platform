@@ -468,11 +468,19 @@ public final class TimelineBatchCommandMapper {
             frames.add(new com.example.platform.timeline.canonical.SubtitleCueMotion.Key(time,
                     cueInteger(key,"xMicros"),cueInteger(key,"yMicros"),cueInteger(key,"opacityMicros")));
         }
+        var runs = new ArrayList<com.example.platform.fonttext.typography.SubtitleFontRun>();
+        if (!(p.getOrDefault("fontRuns", List.of()) instanceof List<?> supplied) || supplied.size() > com.example.platform.fonttext.typography.SubtitleFontRun.MAX_RUNS)
+            throw new IllegalArgumentException("Expected a bounded array of subtitle font ranges");
+        for (Object item : supplied) {
+            if (!(item instanceof Map<?,?> range) || !range.keySet().equals(Set.of("start","end","fontProfile"))
+                    || !(range.get("fontProfile") instanceof String pin)) throw new IllegalArgumentException("Invalid inline font fields");
+            runs.add(new com.example.platform.fonttext.typography.SubtitleFontRun(cueInteger(range,"start"), cueInteger(range,"end"), pin));
+        }
         return new OperationParameters.SubtitleCueParameters(requiredText(p,"cueId"), MediaTime.parse(start), MediaTime.parse(end),
                 requiredText(p,"text"), cueInteger(p,"width"),cueInteger(p,"fontSize"),
                 new com.example.platform.timeline.canonical.SubtitleCueMotion(
-                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames),
-                !p.containsKey("fontProfile"));
+                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames, runs),
+                !p.containsKey("fontProfile"), false, p.containsKey("fontRuns"));
     }
 
     private static int cueInteger(Map<?, ?> map, String key) {

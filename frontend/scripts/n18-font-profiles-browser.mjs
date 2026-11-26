@@ -16,14 +16,19 @@ export async function runFontProfiles(ctx) {
   const report = { status: 'RUNNING', browser: page.context().browser().version(), frames: {}, requests: {}, blocks: {}, exports: {} }
   const save = () => writeFileSync(path('font-result.json'), JSON.stringify(report, null, 2) + '\n')
   const bg = [24, 36, 64]
-  const text = '人月㐀永 🌻\uFE0F Small Latin Aa'
+  const inline = ctx.inline === true
+  const text = inline ? '人月🌻\uFE0F\nMiddleword\n水永' : '人月㐀永 🌻\uFE0F Small Latin Aa'
   const width = 114
   const fontSize = 16
+  const word = 'Middleword'
+  const start = Array.from(text.slice(0, text.indexOf(word))).length
+  const runs = [{ start, end: start + word.length, fontProfile: serif }]
+  if (inline) report.inlineRuns = runs
   const layoutEndpoint = ctx.base + ctx.scope + '/timeline-operations/subtitle-layout'
-  const requestLayout = async (label, content, w, size, fontProfile, destinationWidth) => {
+  const requestLayout = async (label, content, w, size, fontProfile, destinationWidth, fontRuns = []) => {
     const r = await page.request.post(layoutEndpoint, {
       headers: { ...ctx.headers, Accept: 'image/png' },
-      data: { text: content, width: w, fontSize: size, ...(fontProfile ? { fontProfile } : {}), destinationWidth },
+      data: { text: content, width: w, fontSize: size, ...(fontProfile ? { fontProfile } : {}), fontRuns, destinationWidth },
     })
     assert.equal(r.status(), 200, await r.text())
     const bytes = await r.body(), file = path(label + '.png')
@@ -41,12 +46,21 @@ export async function runFontProfiles(ctx) {
   for (const target of [320, 1600]) {
     blocks[target] = [
       await requestLayout('sans-' + target, text, width, fontSize, sans, target),
-      await requestLayout('serif-' + target, text, width, fontSize, serif, target),
+      await requestLayout('serif-' + target, text, width, fontSize, inline ? sans : serif, target, inline ? runs : []),
     ]
     assert.notEqual(blocks[target][0].sha256, blocks[target][1].sha256)
     const lineHeight = Math.ceil(fontSize * 1.45)
     // Narrow enough to expose a real metric-driven wrap difference with the same text.
-    assert.deepEqual(blocks[target].map(block => (block.height * 320 / target - 4) / lineHeight), [2, 3])
+    assert.deepEqual(blocks[target].map(block => (block.height * 320 / target - 4) / lineHeight), inline ? [3, 3] : [2, 3])
+    if (inline) {
+      const [a, b] = blocks[target], stride = a.width * 4
+      const first = (2 + lineHeight) * target / 320 * stride, last = (2 + 2 * lineHeight) * target / 320 * stride
+      assert(a.rgba.subarray(0, first).equals(b.rgba.subarray(0, first)))
+      const reference = await requestLayout('whole-serif-reference-' + target, text, width, fontSize, serif, target)
+      assert(b.rgba.subarray(first, last).equals(reference.rgba.subarray(first, last)))
+      assert(!a.rgba.subarray(first, last).equals(b.rgba.subarray(first, last)))
+      assert(a.rgba.subarray(last).equals(b.rgba.subarray(last)))
+    }
   }
   for (const [label, fallback] of [['han-fallback', '㐀'], ['color-emoji', '🌻']]) {
     const a = await requestLayout(label + '-sans', fallback, width, fontSize, sans, 1600)
@@ -159,7 +173,26 @@ export async function runFontProfiles(ctx) {
     return { body: result.request().postDataJSON(), digest: (await result.json()).batchDigest }
   }
 
-  await input('Subtitle font').selectOption(serif)
+  async function chooseRange(value) {
+    const area = input('Subtitle text')
+    await area.focus()
+    await area.evaluate((element, word) => {
+      const start = element.value.indexOf(word)
+      element.setSelectionRange(start, start + word.length)
+      element.dispatchEvent(new Event('select', { bubbles: true }))
+      document.dispatchEvent(new Event('selectionchange'))
+    }, word)
+    await input('Font for selected text').selectOption(value)
+  }
+  if (inline) {
+    await chooseRange(serif)
+    const area = input('Subtitle text')
+    const prefix = 'e\u0301👩‍🚀'
+    await area.fill(prefix + text)
+    assert.equal((await preview()).body.operations[0].parameters.fontRuns[0].start, runs[0].start + Array.from(prefix).length)
+    await button('Cancel subtitle').click()
+    await area.fill(text)
+  } else await input('Subtitle font').selectOption(serif)
   await preview()
   await frame('draft-serif', 3, 'second-cue', 1)
   await button('Cancel subtitle').click()
@@ -170,7 +203,8 @@ export async function runFontProfiles(ctx) {
   const frozen = await preview()
   const alt = frozen.body.operations[0].parameters
   assert.equal(alt.cueId, 'second-cue')
-  assert.equal(alt.fontProfile, serif)
+  if (inline) assert.deepEqual(alt.fontRuns, runs)
+  else assert.equal(alt.fontProfile, serif)
   report.serifCueId = alt.cueId
   save()
   const unauth = await page.request.post(endpoint + '/apply', {
@@ -186,6 +220,19 @@ export async function runFontProfiles(ctx) {
     const rejected = await post(method, invalid, method === 'apply' ? frozen.digest : null)
     assert.equal(rejected.status(), 400, await rejected.text())
     report.requests['invalid-' + method] = { status: rejected.status(), problem: await rejected.json() }
+  }
+  if (inline) {
+    for (const [label, sample, start, end] of [['combining-split', 'e\u0301', 0, 1],
+        ['emoji-split', '🌻️', 0, 1], ['unsupported-cluster', '🌻‍🌻', 0, 3]]) {
+      const bad = structuredClone(frozen.body)
+      bad.batchId += '-' + label
+      Object.assign(bad.operations[0].parameters, { text: sample, fontRuns: [{ start, end, fontProfile: serif }] })
+      for (const method of ['preview', 'apply']) {
+        const r = await post(method, bad, method === 'apply' ? frozen.digest : null)
+        assert([400, 422].includes(r.status()), await r.text())
+        report.requests[label + '-' + method] = { status: r.status(), problem: await r.json() }
+      }
+    }
   }
   assert.deepEqual(await cp('invalid'), defaults)
 
@@ -218,7 +265,8 @@ export async function runFontProfiles(ctx) {
 
   const currentFont = async name => {
     await input('Subtitle cue').selectOption('second-cue')
-    assert.equal(await input('Subtitle font').inputValue(), name)
+    assert.equal(await input('Subtitle font').inputValue(), inline ? sans : name)
+    if (inline && name === serif) await edit.getByRole('list', { name: 'Selected text fonts' }).getByText(/Middleword/).waitFor()
   }
   await currentFont(serif)
   await frame('accepted-serif', 3, 'second-cue', 1)
@@ -263,6 +311,19 @@ export async function runFontProfiles(ctx) {
       measure(label, ff(['-i', path(label + '.png'), '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']),
         target, variant, target === 320 ? .72 : .85)
     }
+  }
+  if (inline) {
+    await chooseRange('inherit')
+    const cleared = await preview()
+    assert.deepEqual(cleared.body.operations[0].parameters.fontRuns, [])
+    const accepted = response('apply')
+    await button('Confirm subtitle').click()
+    const r = await accepted
+    assert.equal(r.status(), 201, await r.text())
+    await waitRevision((await r.json()).newRevisionId)
+    await page.reload()
+    await waitRevision((await cp('cleared')).head)
+    await frame('cleared-inherited', 3, 'second-cue', 0)
   }
   report.status = 'PASS'
   save()

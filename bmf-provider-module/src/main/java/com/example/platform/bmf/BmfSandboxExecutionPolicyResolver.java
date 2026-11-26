@@ -367,14 +367,14 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     private record SubtitleInput(String timing, BlockRasterRecipe recipe) {}
 
     private static SubtitleInput parseSubtitle(String block) {
-        if (block.length() > 3_600) return null;
+        if (block.length() > 3_600 + 3_201) return null;
         String[] values = block.split(",", 10);
         String timeShape = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
-        if ((values.length != 8 && values.length != 9) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
+        if ((values.length < 8 || values.length > 10) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
                 || Long.parseLong(values[0]) >= Long.parseLong(values[1])
                 || !values[2].matches(timeShape) || !values[3].matches(timeShape)
                 || !values[5].matches("[1-9][0-9]{1,2}") || !values[6].matches("[1-9][0-9]")
-                || values[7].length() > 1_536 || (values.length == 9 && !values[8].matches("[a-z0-9-]{1,40}"))) return null;
+                || values[7].length() > 1_536 || (values.length >= 9 && !values[8].matches("[a-z0-9-]{1,40}"))) return null;
         String sample = timeShape + ";-?[0-9]{1,8};-?[0-9]{1,8};[0-9]{1,7}";
         if (!values[4].matches(sample + "(?:\\|" + sample + "){0,15}")) return null;
         try {
@@ -393,8 +393,17 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(decoded)).toString();
             int width = Integer.parseInt(values[5]);
             int size = Integer.parseInt(values[6]);
+            var fontRuns = new java.util.ArrayList<com.example.platform.fonttext.typography.SubtitleFontRun>();
+            if (values.length == 10) {
+                if (values[9].length() > 3200) return null;
+                for (String entry : values[9].split("\\|", -1)) {
+                    if (!entry.matches("[0-9]{1,3}:[0-9]{1,3}:[a-z0-9-]{1,40}")) return null;
+                    var fields = entry.split(":");
+                    fontRuns.add(new com.example.platform.fonttext.typography.SubtitleFontRun(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]), fields[2]));
+                }
+            }
             return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
-                    new BlockRasterRecipe(text, width, size, values.length == 9 ? values[8] : null));
+                    new BlockRasterRecipe(text, width, size, values.length >= 9 ? values[8] : null, fontRuns));
         } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
             return null;
         }

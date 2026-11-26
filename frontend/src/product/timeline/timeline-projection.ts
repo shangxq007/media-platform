@@ -245,6 +245,13 @@ function projectSubtitle(raw: unknown): SubtitleCue {
   const size = fontRational(object(style.fontSize, 'subtitle font size').value)
   const width = fontRational(frame.widthConstraint)
   if (size.denominator !== 1n || width.denominator !== 1n) throw new Error('Invalid subtitle layout dimensions')
+  const fontRuns = entries(motion.fontRuns ?? [], 'subtitle font ranges').map(raw => {
+    const run = object(raw, 'subtitle font range')
+    const start = projectedNumber(run.start, 'font range start', 0, 383)
+    const end = projectedNumber(run.end, 'font range end', 1, 384)
+    if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start) throw new Error('Invalid subtitle font range')
+    return { start, end, fontProfile: savedSubtitleFont(text(run.fontProfile, 'font range profile')) }
+  })
   const keys = entries(motion.keys, 'subtitle keys').map(row => {
     const k = object(row, 'subtitle key')
     const time = parseRational(text(k.time, 'subtitle cue-local key time'))
@@ -260,7 +267,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     throw new Error('Invalid subtitle motion')
   return { cueId: text(element.id, 'subtitle identity'), text: text(styled.content, 'subtitle text'),
     start: formatRational(start), end: formatRational(add(start, duration)), width: Number(width.numerator),
-    fontSize: Number(size.numerator), fontProfile, keys }
+    fontSize: Number(size.numerator), fontProfile, keys, ...(fontRuns.length ? { fontRuns } : {}) }
 }
 
 /** Reject unsupported semantics at the read-only projection boundary. */

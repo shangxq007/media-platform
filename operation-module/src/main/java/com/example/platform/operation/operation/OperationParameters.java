@@ -70,10 +70,10 @@ public sealed interface OperationParameters permits
     @org.springframework.modulith.NamedInterface("invocation")
     record SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
             com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault,
-            boolean legacyReceipt) implements OperationParameters {
+            boolean legacyReceipt, boolean fontRunsSupplied) implements OperationParameters {
         public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
                 com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault) {
-            this(cueId, start, end, text, width, fontSize, motion, useDefault, false);
+            this(cueId, start, end, text, width, fontSize, motion, useDefault, false, !motion.fontRuns().isEmpty());
         }
         public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
                 com.example.platform.timeline.canonical.SubtitleCueMotion motion) {
@@ -82,12 +82,12 @@ public sealed interface OperationParameters permits
 
         public SubtitleCueParameters withResolvedFont(String profile) {
             return new SubtitleCueParameters(cueId, start, end, text, width, fontSize,
-                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys()), useDefault);
+                    new com.example.platform.timeline.canonical.SubtitleCueMotion(profile, motion.keys(), motion.fontRuns()), useDefault, false, fontRunsSupplied);
         }
 
         /** Used only to reconstruct a pre-catalog command whose durable digest already matches. */
         public SubtitleCueParameters asLegacyReceipt() {
-            return new SubtitleCueParameters(cueId, start, end, text, width, fontSize, motion, useDefault, true);
+            return new SubtitleCueParameters(cueId, start, end, text, width, fontSize, motion, useDefault, true, fontRunsSupplied);
         }
 
         public SubtitleCueParameters {
@@ -107,6 +107,7 @@ public sealed interface OperationParameters permits
                 throw new IllegalArgumentException("Subtitle timing exceeds the exact arithmetic range", overflow);
             }
             com.example.platform.fonttext.typography.SubtitleBlockLayout.validateShape(text, width, fontSize);
+            com.example.platform.fonttext.typography.SubtitleFontRun.validate(text, motion.fontRuns());
         }
     }
 

@@ -150,6 +150,10 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.SubtitleCueParameters cue) {
             String version = cue.legacyReceipt()
                     ? "subtitle-cue-v1" : cue.useDefault() ? "subtitle-cue-default-v2" : "subtitle-cue-explicit-v2";
+            if (!cue.motion().fontRuns().isEmpty()) {
+                version = framed("subtitle-font-runs-v1", version, cue.motion().fontRuns().stream()
+                        .map(run -> run.canonical()).collect(java.util.stream.Collectors.joining("|")));
+            }
             return framed(version, cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
                     Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().effectiveFontProfile(),
                     cue.motion().keys().stream().map(k -> framed(k.time(), Integer.toString(k.xMicros()),

@@ -11,7 +11,7 @@ const dissolve = mode === '--dissolve'
 const position = mode === '--position'
 const correction = ['--subtitle-correction','--reviewed-subtitle-parent'].includes(mode)
 const motion = ['--n16-clip','--n16-subtitle','--n16-hd'].includes(mode)
-const fonts = mode === '--n18-fonts'
+const fonts = ['--n18-fonts', '--n19-inline'].includes(mode)
 const raster = ['--n17-raster','--n17-dense'].includes(mode)
 const subtitle = mode === '--subtitle'
 assert(appRoot && outputRoot)
@@ -122,7 +122,7 @@ async function run() {
       : subtitle ? (await import('./n15-subtitle-browser.mjs')).runSubtitle
       : position ? (await import('./n14-position-browser.mjs')).runPosition
       : (await import('./n13-cross-dissolve-browser.mjs')).runDissolve
-    const context = { page, base, scope, project, headers, outputRoot, url, endpoint, post, cp, waitRevision, addTrack, addClip,
+    const context = { inline: mode === '--n19-inline', page, base, scope, project, headers, outputRoot, url, endpoint, post, cp, waitRevision, addTrack, addClip,
       head: () => current, syncHead: async () => { current = await head(); return current }, upload: async file => { sources[file] = await upload(file) } }
     await runEdit(context, motion || raster ? mode : mode === '--reviewed-subtitle-parent')
     return

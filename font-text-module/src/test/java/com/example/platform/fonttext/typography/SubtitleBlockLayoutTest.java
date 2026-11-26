@@ -69,4 +69,19 @@ class SubtitleBlockLayoutTest {
         assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.png("\u0378", 100, 24));
         assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.png("春\n".repeat(7), 100, 24));
     }
+
+    @Test
+    void inlineFontRunsUseScalarGraphemeBoundariesAndPinnedGlyphCoverage() {
+        String text = "中🌻️e\u0301尾";
+        String pin = SubtitleBlockLayout.SERIF_PROFILE;
+        var runs = java.util.List.of(new SubtitleFontRun(1, 3, pin), new SubtitleFontRun(3, 5, pin));
+        SubtitleFontRun.validate(text, runs);
+        assertThrows(IllegalArgumentException.class, () -> SubtitleFontRun.validate(text, java.util.List.of(new SubtitleFontRun(1, 2, pin))));
+        assertThrows(IllegalArgumentException.class, () -> SubtitleFontRun.validate(text, java.util.List.of(new SubtitleFontRun(4, 5, pin))));
+        assertTrue(SubtitleBlockLayout.png("中👩‍🚀", 140, 16, pin, 320,
+                java.util.List.of(new SubtitleFontRun(1, 4, pin))).length > 100);
+        assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.png("中🌻‍🌻", 140, 16, pin, 320,
+                java.util.List.of(new SubtitleFontRun(1, 4, pin))));
+        assertThrows(IllegalArgumentException.class, () -> SubtitleFontRun.validate(text, java.util.List.of(runs.getLast(), runs.getFirst())));
+    }
 }

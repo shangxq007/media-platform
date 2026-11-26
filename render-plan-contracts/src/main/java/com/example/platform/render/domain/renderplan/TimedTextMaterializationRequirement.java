@@ -82,14 +82,20 @@ public record TimedTextMaterializationRequirement(
     }
 
     /** Render-owned raster request. The worker never receives the canonical text/style model. */
-    public record BlockRasterRecipe(String text, int width, int fontSize, String fontProfile) {
+    public record BlockRasterRecipe(String text, int width, int fontSize, String fontProfile, List<com.example.platform.fonttext.typography.SubtitleFontRun> fontRuns) {
+        public BlockRasterRecipe(String text, int width, int fontSize, String fontProfile) {
+            this(text, width, fontSize, fontProfile, List.of());
+        }
+
         public BlockRasterRecipe {
             SubtitleBlockLayout.validateShape(text, width, fontSize);
             fontProfile = SubtitleBlockLayout.resolveProfile(fontProfile);
+            fontRuns = List.copyOf(fontRuns);
+            com.example.platform.fonttext.typography.SubtitleFontRun.validate(text, fontRuns);
         }
 
         public byte[] png(int destinationWidth) {
-            return SubtitleBlockLayout.png(text, width, fontSize, fontProfile, destinationWidth);
+            return SubtitleBlockLayout.png(text, width, fontSize, fontProfile, destinationWidth, fontRuns);
         }
     }
 
@@ -123,7 +129,7 @@ public record TimedTextMaterializationRequirement(
         }
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
                 visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
-                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile())));
+                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile(), subtitleCue.fontRuns())));
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

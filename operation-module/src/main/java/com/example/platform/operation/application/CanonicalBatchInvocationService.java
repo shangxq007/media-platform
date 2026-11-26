@@ -142,6 +142,20 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
         if (profile == null) {
             var base = domain.resolveBase(request.target(), request.baseRevisionId(), request.baseContentHash());
             try {
+                var saved = base.getTextElements().stream().filter(e -> e.id().value().equals(cue.cueId()) && e.subtitleCue() != null)
+                        .findFirst();
+                if (!cue.fontRunsSupplied() && saved.isPresent() && !saved.get().subtitleCue().fontRuns().isEmpty()) {
+                    throw new IllegalArgumentException("Include the saved subtitle font runs or explicitly clear them with an empty list");
+                }
+                for (var run : cue.motion().fontRuns()) {
+                    // Allow an existing withdrawn pin to remain on its unchanged text.
+                    boolean retained = saved.filter(element -> element.subtitleCue().fontRuns().stream().anyMatch(old ->
+                            old.fontProfile().equals(run.fontProfile()) && old.start() <= run.start() && old.end() >= run.end()
+                            && element.styledText().content().substringByScalars(run.start(), run.end()).equals(
+                                cue.text().substring(cue.text().offsetByCodePoints(0, run.start()), cue.text().offsetByCodePoints(0, run.end())))))
+                            .isPresent();
+                    if (!retained) subtitleFonts.requireSelectable(run.fontProfile());
+                }
                 profile = subtitleFonts.resolve(cue.useDefault() ? null : cue.motion().effectiveFontProfile(),
                         base.getMetadata().subtitleTrackLanguage(), cueFont(base, cue.cueId()));
             } catch (IllegalArgumentException unavailable) {

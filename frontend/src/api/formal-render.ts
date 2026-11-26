@@ -76,7 +76,7 @@ export const FormalRenderAPI = {
       `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-fonts`, c), signal))
   },
   async subtitleLayout(tenant: string, project: string,
-      body: { text: string; width: number; fontSize: number; fontProfile: string; destinationWidth: number }, signal?: AbortSignal) {
+      body: { text: string; width: number; fontSize: number; fontProfile: string; fontRuns?: { start: number; end: number; fontProfile: string }[]; destinationWidth: number }, signal?: AbortSignal) {
     return request(c => versionlessApi.post<Blob>(
       `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-layout`,
       body, { ...c, responseType: 'blob', headers: { Accept: 'image/png' } }), signal)

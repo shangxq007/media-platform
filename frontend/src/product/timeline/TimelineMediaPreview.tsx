@@ -191,7 +191,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
 
   async function loadSubtitle(tenant: string, cue: SubtitleCue, destinationWidth: number, signal: AbortSignal) {
     const { text, width, fontSize, fontProfile } = cue
-    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile: savedSubtitleFont(fontProfile), destinationWidth }, signal)
+    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile: savedSubtitleFont(fontProfile), ...(cue.fontRuns?.length ? { fontRuns: cue.fontRuns } : {}), destinationWidth }, signal)
     return createImageBitmap(png)
   }
 

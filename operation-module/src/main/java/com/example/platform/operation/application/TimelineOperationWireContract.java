@@ -57,6 +57,7 @@ public final class TimelineOperationWireContract {
                 fields(fields, "string", "cueId", "text");
                 fields(fields, "cue-time", "start", "end");
                 fields.put("fontProfile", new Field("cue-font", false));
+                fields.put("fontRuns", new Field("cue-font-runs", false));
                 fields(fields, "cue-width", "width");
                 fields(fields, "cue-font-size", "fontSize");
                 fields(fields, "cue-key-array", "keys");
