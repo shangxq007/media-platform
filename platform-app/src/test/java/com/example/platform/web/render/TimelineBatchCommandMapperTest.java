@@ -39,6 +39,20 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void opacityMapsBothNumericEndpointsAndRejectsValuesOutsideTheirExactBounds() {
+        var target = new TimelineBatchCommand.Target("clip-a", null, null, null, null);
+        var parameters = new java.util.HashMap<String, Object>(Map.of(
+                "firstTime", "3/1", "lastTime", "5/1", "firstValue", 0, "lastValue", 1));
+        var mapped = map(new TimelineOperationStep("timeline.clip.opacity.keyframes.set", target, parameters));
+        var keys = assertInstanceOf(OperationParameters.OpacityParameters.class, mapped.parameters()).keys();
+        assertEquals(0.0, keys.firstValue());
+        assertEquals(1.0, keys.lastValue());
+        parameters.put("lastValue", new java.math.BigDecimal("1.00000000000000000001"));
+        assertThrows(IllegalArgumentException.class, () ->
+                map(new TimelineOperationStep("timeline.clip.opacity.keyframes.set", target, parameters)));
+    }
+
+    @Test
     void groupCreateMapsItsMembersAsTheClipScope() {
         OperationRequest request = map(new TimelineOperationStep(
                 "timeline.group.create", null,

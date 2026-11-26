@@ -452,7 +452,7 @@ public final class TimelineBatchCommandMapper {
     }
 
     private static double opacity(Map<?, ?> parameters, String field) {
-        var value = new java.math.BigDecimal(number(parameters, field).toString());
+        var value = new java.math.BigDecimal(number(parameters.get(field), field).toString());
         if (value.signum() < 0 || value.compareTo(java.math.BigDecimal.ONE) > 0) {
             throw new IllegalArgumentException(field + " must be between zero and one");
         }
