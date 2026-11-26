@@ -50,20 +50,20 @@ async function run() {
   })
   let current
   const init = await page.request.post(base + scope + '/timeline-operations/initialize',
-    { headers, data: { trackId: 'track-1', commandId: 'audio-init' } })
+    { headers, data: { trackId: 'track-1', commandId: project+'-initialize' } })
   assert.equal(init.status(), 201, await init.text())
   const initBody = await init.json()
   current = { revisionId: initBody.newRevisionId, contentHash: initBody.resultContentHash }
   const addTrack = async (trackType, trackId, commandId) => {
     const response = await page.request.post(base + scope + '/timeline-operations/tracks',
-      { headers, data: { baseRevisionId: current.revisionId, baseContentHash: current.contentHash, trackType, trackId, commandId } })
+      { headers, data: { baseRevisionId: current.revisionId, baseContentHash: current.contentHash, trackType, trackId, commandId: project+'-'+commandId } })
     assert([200, 201].includes(response.status()), await response.text())
     const body = await response.json()
     current = { revisionId: body.newRevisionId ?? current.revisionId, contentHash: body.resultContentHash ?? body.unchangedContentHash ?? current.contentHash }
   }
   const upload = async file => {
     const response = await page.request.post(base + scope + '/source-media', {
-      headers: { ...headers, 'Idempotency-Key': `audio-source-${file}` }, multipart: { file: { name: file, mimeType: file.endsWith('.wav') ? 'audio/wav' : 'video/mp4',
+      headers: { ...headers, 'Idempotency-Key': `${project}-source-${file}` }, multipart: { file: { name: file, mimeType: file.endsWith('.wav') ? 'audio/wav' : 'video/mp4',
         buffer: readFileSync(join(outputRoot, file)) } },
     })
     assert.equal(response.status(), 201, await response.text())
@@ -83,7 +83,7 @@ async function run() {
     assert.equal(previewResponse.status(), 200, await previewResponse.text())
     const preview = await previewResponse.json()
     const response = await page.request.post(base + scope + '/timeline-operations/add-media-clip/apply', {
-      headers, data: { request: command, expectedPlanDigest: preview.planDigest, applyCommandId: `apply-${clipId}` },
+      headers, data: { request: command, expectedPlanDigest: preview.planDigest, applyCommandId: `${project}-apply-${clipId}` },
     })
     assert.equal(response.status(), 201, await response.text())
     const body = await response.json()

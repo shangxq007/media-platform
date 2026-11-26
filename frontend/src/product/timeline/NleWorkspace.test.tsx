@@ -373,6 +373,10 @@ describe('N13 shared-cut dissolve', () => {
     await region.findByText('Blend [7/1, 8/1) s · duration 1/1 s')
     expect(read).toHaveBeenCalledTimes(2)
     expect(write).not.toHaveBeenCalled()
+    const opacity = within(screen.getByRole('region', { name: 'Opacity edit' }))
+    expect(opacity.getByRole<HTMLFieldSetElement>('group').disabled).toBe(true)
+    fireEvent.click(region.getByRole('button', { name: 'Cancel dissolve' }))
+    await waitFor(() => expect(opacity.getByRole<HTMLFieldSetElement>('group').disabled).toBe(false))
   })
 })
 

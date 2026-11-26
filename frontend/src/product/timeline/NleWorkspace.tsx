@@ -647,12 +647,12 @@ export function NleWorkspace({
           </section>}
           {defaultBranch && !historyRevision && <DissolveEdit transitions={transitions} key={JSON.stringify(['dissolve', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
-            disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!opacityPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('dissolve')} readback={() => loadHead('RANGE_READBACK')} onPreview={setDissolvePlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'dissolve')} />}
           {defaultBranch && !historyRevision && <OpacityEdit key={JSON.stringify(['opacity', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
-            disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!dissolvePlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('opacity')} readback={() => loadHead('RANGE_READBACK')} onPreview={setOpacityPlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'opacity')} />}
           {defaultBranch && !historyRevision && (['roll', 'slip', 'slide'] as const).map(edit => <SourceRangeEdit edit={edit} key={JSON.stringify([edit, project.workspaceId, project.tenantId, project.projectId, editingBranch])}

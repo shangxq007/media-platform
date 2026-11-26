@@ -213,6 +213,9 @@ public final class TimelineCanonicalValidator {
             try {
                 validateDissolve(candidate, layers, transition, outgoing, incoming,
                         incomingEndpoints, windows, path, diagnostics);
+            } catch (IllegalArgumentException invalid) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_EFFECT_PARAMETERS_INVALID,
+                        path, transition.transitionId(), invalid.getMessage()));
             } catch (ArithmeticException invalid) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID,
                         path, transition.transitionId(), "Transition time is outside the representable range"));
