@@ -1081,8 +1081,12 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         var cleared = saveService.findById(TENANT, applyPrepared(positionRequest(saved, "position-clear", "")).newRevisionId());
         assertEquals(saved.revisionId(), cleared.parentRevisionId());
         assertEquals(base.semanticContext(), cleared.semanticContext());
-        assertEquals(saveService.findPayloadDocument(TENANT, base.revisionId()).orElseThrow().getTracks(),
-                saveService.findPayloadDocument(TENANT, cleared.revisionId()).orElseThrow().getTracks());
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var baseline = json.valueToTree(saveService.findPayloadDocument(TENANT, base.revisionId()).orElseThrow());
+        var savedDocument = json.valueToTree(saveService.findPayloadDocument(TENANT, saved.revisionId()).orElseThrow());
+        var clearedDocument = json.valueToTree(saveService.findPayloadDocument(TENANT, cleared.revisionId()).orElseThrow());
+        assertEquals(baseline.path("tracks"), savedDocument.path("tracks"));
+        assertEquals(baseline, clearedDocument);
     }
 
     private OperationBatchRequest opacityRequest(TimelineRevision base) {
