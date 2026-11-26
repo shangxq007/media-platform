@@ -91,6 +91,15 @@ public final class TimelineBatchSchema {
             case "composition-aspect-rational-v1" -> ASPECT;
             case "revision-id" -> Map.of("type", "string", "pattern", "^"
                     + com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters.SOURCE_REVISION_ID_PATTERN + "$");
+            case "cue-time" -> Map.of("type","string","pattern","^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$");
+            case "cue-font" -> literal(com.example.platform.fonttext.typography.SubtitleBlockLayout.PROFILE);
+            case "cue-width" -> integerRange(40,304);
+            case "cue-font-size" -> integerRange(12,44);
+            case "cue-key-array" -> Map.of("type","array","maxItems",16,
+                    "not", Map.of("minItems",1,"maxItems",1),
+                    "items", object(Map.of("time",parameterType("cue-time"),
+                            "xMicros",integerRange(-16000000,16000000), "yMicros",integerRange(-16000000,16000000),
+                            "opacityMicros",integerRange(0,1000000)), List.of("time","xMicros","yMicros","opacityMicros")));
             case "position-key-array" -> {
                 int limit = com.example.platform.timeline.semantics.effect.PositionKeys.LIMIT;
                 int count = com.example.platform.timeline.semantics.effect.PositionKeys.MAX_KEYS;
@@ -109,6 +118,10 @@ public final class TimelineBatchSchema {
                     attribute("BOOLEAN", Map.of("type", "boolean")))));
             default -> throw new IllegalArgumentException("Unsupported wire parameter type " + type);
         };
+    }
+
+    private static Map<String, Object> integerRange(int min, int max) {
+        return Map.of("type","integer","minimum",min,"maximum",max);
     }
 
     private static Map<String, Object> attribute(String kind, Map<String, Object> value) {

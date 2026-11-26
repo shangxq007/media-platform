@@ -7,7 +7,8 @@ import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAs
  * second persistent Timeline authority: it holds no draft, performs no writes and can be rebuilt
  * from the same snapshot bytes at any time.
  */
-import { add, compare, parseRational, type Rational } from './trim'
+import { add, compare, formatRational, parseRational, type Rational } from './trim'
+import type { SubtitleCue } from './subtitle-cues'
 
 export interface ProjectedVideoEffect {
   readonly brightness: number
@@ -189,6 +190,7 @@ export interface TimelineProjection {
   readonly clips: readonly ProjectedClip[]
   readonly audioRoutes: readonly ProjectedAudioRoute[]
   readonly transitions: readonly ProjectedTransition[]
+  readonly subtitles?: readonly SubtitleCue[]
 }
 
 function exactTime(value: unknown, label: string): Rational {
@@ -224,15 +226,48 @@ function projectClip(value: unknown, trackId: string): ProjectedClip {
   }
 }
 
+function projectSubtitle(raw: unknown): SubtitleCue {
+  const element = object(raw, 'TextElement')
+  if (!element.subtitleCue) throw new Error('Unsupported Timeline preview semantics: textElements')
+  const motion = object(element.subtitleCue, 'subtitle motion')
+  if (motion.fontProfile !== 'noto-sc-color-emoji-v1') throw new Error('Unsupported subtitle font profile')
+  const fontRational = (raw: unknown) => {
+    const value = object(raw, 'exact subtitle time or dimension')
+    if (!Number.isSafeInteger(value.numerator) || !Number.isSafeInteger(value.denominator)) throw new Error('Invalid subtitle rational')
+    const rational = parseRational(String(value.numerator) + '/' + String(value.denominator))
+    if (!rational) throw new Error('Invalid subtitle rational')
+    return rational
+  }
+  const start = fontRational(element.start), duration = fontRational(element.duration)
+  const styled = object(element.styledText, 'styled subtitle')
+  const frame = object(element.frame, 'subtitle frame')
+  const style = object(object(entries(styled.styleRuns, 'subtitle style runs')[0], 'subtitle style run').style, 'subtitle style')
+  const size = fontRational(object(style.fontSize, 'subtitle font size').value)
+  const width = fontRational(frame.widthConstraint)
+  if (size.denominator !== 1n || width.denominator !== 1n) throw new Error('Invalid subtitle layout dimensions')
+  const keys = entries(motion.keys, 'subtitle keys').map(row => {
+    const k = object(row, 'subtitle key')
+    const time = parseRational(text(k.time, 'subtitle cue-local key time'))
+    if (!time || time.numerator < 0n || compare(time, duration) >= 0) throw new Error('Invalid subtitle key time')
+    const xMicros = projectedNumber(k.xMicros, 'subtitle X', -16000000, 16000000)
+    const yMicros = projectedNumber(k.yMicros, 'subtitle Y', -16000000, 16000000)
+    const opacityMicros = projectedNumber(k.opacityMicros, 'subtitle opacity', 0, 1000000)
+    if (![xMicros,yMicros,opacityMicros].every(Number.isInteger)) throw new Error('Subtitle key values must be integral')
+    return { time: formatRational(time), xMicros, yMicros, opacityMicros }
+  })
+  if (keys.length === 1 || keys.length > 16 ||
+      keys.some((k,i) => i > 0 && compare(parseRational(keys[i-1].time)!, parseRational(k.time)!) >= 0))
+    throw new Error('Invalid subtitle motion')
+  return { cueId: text(element.id, 'subtitle identity'), text: text(styled.content, 'subtitle text'),
+    start: formatRational(start), end: formatRational(add(start, duration)), width: Number(width.numerator),
+    fontSize: Number(size.numerator), fontProfile: motion.fontProfile, keys }
+}
+
 /** Reject unsupported semantics at the read-only projection boundary. */
 export function projectTimeline(document: unknown): TimelineProjection {
   const root = object(document, 'Timeline snapshot')
   if (root.schemaVersion !== 'timeline-1.0') throw new Error('Unsupported Timeline schema version')
-  for (const field of ['textElements']) {
-    if (root[field] !== undefined && entries(root[field], field).length) {
-      throw new Error('Unsupported Timeline preview semantics: ' + field)
-    }
-  }
+  const subtitles = entries(root.textElements ?? [], 'textElements').map(projectSubtitle)
   const metadata = root.metadata == null ? {} : object(root.metadata, 'Timeline metadata')
   const aspect = metadata.compositionAspectRatio === undefined ? DEFAULT_COMPOSITION_ASPECT
     : decodeCompositionAspect(metadata.compositionAspectRatio)
@@ -326,7 +361,7 @@ export function projectTimeline(document: unknown): TimelineProjection {
     incoming.add(incomingClipId)
     return { transitionId, outgoingClipId, incomingClipId, duration, ...(outgoingHandle ? { outgoingHandle } : {}) }
   })
-  return { compositionAspectRatio: aspect, tracks, clips, audioRoutes, transitions }
+  return { compositionAspectRatio: aspect, tracks, clips, audioRoutes, transitions, ...(subtitles.length ? { subtitles } : {}) }
 }
 
 export function projectSnapshotJson(canonicalTimelineJson: string): TimelineProjection {

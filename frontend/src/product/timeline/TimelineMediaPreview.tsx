@@ -1,3 +1,5 @@
+import { subtitlePose, type SubtitleCue } from './subtitle-cues'
+import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { DEFAULT_COMPOSITION_ASPECT } from '../../contracts/app/composition-aspect'
 import { previewRaster } from './composition-raster'
 import { useEffect, useRef, useState } from 'react'
@@ -15,6 +17,7 @@ interface PreviewSession {
   controller: AbortController
   urls: string[]
   videos: Map<string, HTMLVideoElement>
+  subtitleBlocks: Map<string, ImageBitmap>
   audioClips: AudioClip[]
   scheduled: AudioBufferSourceNode[]
   audio?: AudioContext
@@ -86,10 +89,11 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, subtitlePlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
+  subtitlePlan?: SemanticBatch | null
   dissolvePlan?: import('../../contracts/semantic-batch.generated').SemanticBatch | null
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
@@ -105,6 +109,30 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   const positionDraft = useRef(positionPreview)
   positionDraft.current = positionPreview
   useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview])
+  const currentSubtitlePlan = useRef(subtitlePlan)
+  currentSubtitlePlan.current = subtitlePlan
+  const pendingSubtitle = useRef<{ plan: SemanticBatch; image: ImageBitmap } | null>(null)
+  useEffect(() => {
+    const session = current.current
+    const step = subtitlePlan?.baseRevisionId === revisionId ? subtitlePlan?.operations[0] : null
+    if (session?.projection) draw(session)
+    if (!tenantId || !subtitlePlan || step?.definitionId !== 'timeline.subtitle.cue.set') return
+    const controller = new AbortController()
+    let bitmap: ImageBitmap | null = null
+    void loadSubtitle(tenantId, step.parameters, controller.signal).then(image => {
+      if (controller.signal.aborted) { image.close(); return }
+      bitmap = image
+      pendingSubtitle.current = { plan: subtitlePlan, image }
+      if (current.current?.projection) draw(current.current)
+    }).catch(error => {
+      if (!controller.signal.aborted && current.current) fail(current.current, error)
+    })
+    return () => {
+      controller.abort()
+      bitmap?.close()
+      if (pendingSubtitle.current?.plan === subtitlePlan) pendingSubtitle.current = null
+    }
+  }, [subtitlePlan, tenantId, projectId, revisionId])
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
@@ -123,6 +151,12 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     stopPlayback(session)
     setStatus('FAILED')
     setMessage(error instanceof Error ? error.message : 'Timeline media could not be played.')
+  }
+
+  async function loadSubtitle(tenant: string, cue: SubtitleCue, signal: AbortSignal) {
+    const { text, width, fontSize, fontProfile } = cue
+    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile }, signal)
+    return createImageBitmap(png)
   }
 
   function draw(session: PreviewSession, forceSeek = false) {
@@ -250,11 +284,32 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       context.drawImage(sample, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh)
       context.restore()
     }
+    const cuePlan = currentSubtitlePlan.current
+    const cueEdit = cuePlan?.baseRevisionId === revisionId ? cuePlan?.operations[0] : null
+    const replacement = cueEdit?.definitionId === 'timeline.subtitle.cue.set' || cueEdit?.definitionId === 'timeline.subtitle.cue.remove'
+      ? cueEdit.parameters.cueId : null
+    const cues = (projection?.subtitles ?? []).filter(cue => cue.cueId !== replacement)
+    if (cueEdit?.definitionId === 'timeline.subtitle.cue.set') cues.push(cueEdit.parameters)
+    const visibleCues: string[] = []
+    for (const cue of cues.sort((a,b) => a.cueId < b.cueId ? -1 : a.cueId === b.cueId ? 0 : 1)) {
+      const pose = subtitlePose(cue, time)
+      const image = cue.cueId === replacement
+        ? (pendingSubtitle.current?.plan === cuePlan ? pendingSubtitle.current?.image : null)
+        : session.subtitleBlocks.get(cue.cueId)
+      if (!pose || !image) continue
+      const scale = target.width / 320
+      context.globalAlpha = pose.alpha
+      context.drawImage(image, Math.round(pose.x * target.width), Math.round(pose.y * target.height),
+        Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)))
+      visibleCues.push(cue.cueId)
+    }
+    context.globalAlpha = 1
+    if (host.current) host.current.dataset.activeSubtitles = visibleCues.join(',')
   }
 
   useEffect(() => {
     const session: PreviewSession = {
-      controller: new AbortController(), urls: [], videos: new Map(), audioClips: [], scheduled: [],
+      controller: new AbortController(), urls: [], videos: new Map(), subtitleBlocks: new Map(), audioClips: [], scheduled: [],
       duration: 0, seekInputEnd: 0, cursor: 0, origin: 0, playing: false, starting: false,
     }
     current.current = session
@@ -273,6 +328,11 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
         if (!previewRaster(projection.compositionAspectRatio)) {
           throw new Error('No supported preview raster exactly matches the authored composition aspect ratio.')
+        }
+        for (const cue of projection.subtitles ?? []) {
+          const bitmap = await loadSubtitle(tenant, cue, signal)
+          if (signal.aborted) { bitmap.close(); return }
+          session.subtitleBlocks.set(cue.cueId, bitmap)
         }
         const audioTracks = projection.tracks.filter(track => track.type === 'AUDIO')
         const videoTracks = projection.tracks.filter(track => track.type === 'VIDEO')
@@ -363,7 +423,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
           }
         }
         session.projection = projection
-        session.duration = toSeconds(timelineDuration(projection))
+        session.duration = Math.max(toSeconds(timelineDuration(projection)),
+          ...(projection.subtitles ?? []).map(cue => toSeconds(parseRational(cue.end)!)))
         session.seekInputEnd = nativeSeekInputEnd(session.duration)
         setDuration(session.duration)
         setStatus('READY')
@@ -382,6 +443,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         media.removeAttribute('src')
         media.load()
       }
+      for (const bitmap of session.subtitleBlocks.values()) bitmap.close()
       for (const url of session.urls) URL.revokeObjectURL(url)
       if (session.audio) void session.audio.close()
       current.current = null

@@ -72,6 +72,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         boolean multitrack = BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM.equals(program);
         boolean multiInput = multitrack || BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM.equals(program);
         List<String> placements = List.of();
+        List<String> subtitleBlocks = List.of();
         List<String> inputTokens;
         String operation;
         String start;
@@ -90,7 +91,8 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 return rejected("BMF composite input count is out of range");
             }
             int expected = 8 + count + (multitrack ? count : 0);
-            if (arguments.size() != expected
+            if ((!multitrack && arguments.size() != expected)
+                    || (multitrack && (arguments.size() < expected || arguments.size() > expected + 16))
                     || !arguments.get(4 + count).equals(ProviderNativeOutputFiles.RENDER_OUTPUT)
                     || !isNonNegativeSeconds(arguments.get(5 + count))
                     || !arguments.get(6 + count).matches("[1-9][0-9]*/[1-9][0-9]*")) {
@@ -105,6 +107,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             if (raster == null) return rejected("BMF output raster is outside the bounded invocation contract");
             if (multitrack) {
                 placements = List.copyOf(arguments.subList(8 + count, expected));
+                subtitleBlocks = List.copyOf(arguments.subList(expected, arguments.size()));
+                if (subtitleBlocks.stream().anyMatch(block -> !validSubtitleBlock(block))) {
+                    return rejected("BMF subtitle block is outside the bounded composition contract");
+                }
                 if (placements.stream().anyMatch(placement -> !validPlacement(placement, duration, raster))) {
                     return rejected("BMF multitrack placement is invalid");
                 }
@@ -181,6 +187,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.add(rate);
                 args.add(raster.width() + "x" + raster.height());
                 args.addAll(placements);
+                args.addAll(subtitleBlocks);
             } else {
                 Path inputPath = byToken.get(inputTokens.getFirst())
                         .materializedArtifact().path().toAbsolutePath().normalize();
@@ -316,6 +323,38 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     && (parts[0].equals("A") || BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(
                             raster, scaleX.doubleValue(), scaleY.doubleValue(), degrees.doubleValue()));
         } catch (NumberFormatException invalid) {
+            return false;
+        }
+    }
+
+    private static boolean validSubtitleBlock(String block) {
+        if (block.length() > 100_000) return false;
+        String[] values = block.split(",", 6);
+        String timeShape = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        if (values.length != 6 || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
+                || Long.parseLong(values[0]) >= Long.parseLong(values[1])
+                || !values[2].matches(timeShape) || !values[3].matches(timeShape) || values[5].length() > 96_000) return false;
+        String sample = timeShape + ";-?[0-9]{1,8};-?[0-9]{1,8};[0-9]{1,7}";
+        if (!values[4].matches(sample + "(?:\\|" + sample + "){0,15}")) return false;
+        try {
+            com.example.platform.shared.time.MediaTime.parse(values[2]);
+            com.example.platform.shared.time.MediaTime.parse(values[3]);
+            com.example.platform.shared.time.MediaTime previous = null;
+            for (String entry : values[4].split("\\|")) {
+                var fields = entry.split(";");
+                var time = com.example.platform.shared.time.MediaTime.parse(fields[0]);
+                if (previous != null && !previous.isLessThan(time)) return false;
+                if (Math.abs(Integer.parseInt(fields[1])) > 16_000_000 || Math.abs(Integer.parseInt(fields[2])) > 16_000_000
+                        || Integer.parseInt(fields[3]) > 1_000_000) return false;
+                previous = time;
+            }
+            byte[] png = java.util.Base64.getDecoder().decode(values[5]);
+            if (png.length < 33 || png.length > 72_000) return false;
+            var header = java.nio.ByteBuffer.wrap(png);
+            if (header.getLong() != 0x89504E470D0A1A0AL || header.getInt() != 13 || header.getInt() != 0x49484452) return false;
+            int width = header.getInt(), height = header.getInt();
+            return width >= 40 && width <= 304 && height > 0 && height <= 388;
+        } catch (ArithmeticException | IllegalArgumentException malformed) {
             return false;
         }
     }

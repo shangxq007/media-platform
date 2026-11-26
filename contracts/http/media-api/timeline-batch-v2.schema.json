@@ -2579,6 +2579,113 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.subtitle.cue.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "cueId" : {
+                  "type" : "string"
+                },
+                "end" : {
+                  "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                  "type" : "string"
+                },
+                "fontProfile" : {
+                  "enum" : [ "noto-sc-color-emoji-v1" ],
+                  "type" : "string"
+                },
+                "fontSize" : {
+                  "maximum" : 44,
+                  "minimum" : 12,
+                  "type" : "integer"
+                },
+                "keys" : {
+                  "items" : {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "opacityMicros" : {
+                        "maximum" : 1000000,
+                        "minimum" : 0,
+                        "type" : "integer"
+                      },
+                      "time" : {
+                        "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                        "type" : "string"
+                      },
+                      "xMicros" : {
+                        "maximum" : 16000000,
+                        "minimum" : -16000000,
+                        "type" : "integer"
+                      },
+                      "yMicros" : {
+                        "maximum" : 16000000,
+                        "minimum" : -16000000,
+                        "type" : "integer"
+                      }
+                    },
+                    "required" : [ "opacityMicros", "time", "xMicros", "yMicros" ],
+                    "type" : "object"
+                  },
+                  "maxItems" : 16,
+                  "not" : {
+                    "maxItems" : 1,
+                    "minItems" : 1
+                  },
+                  "type" : "array"
+                },
+                "start" : {
+                  "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                  "type" : "string"
+                },
+                "text" : {
+                  "type" : "string"
+                },
+                "width" : {
+                  "maximum" : 304,
+                  "minimum" : 40,
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "cueId", "end", "fontProfile", "fontSize", "keys", "start", "text", "width" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.subtitle.cue.remove" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "cueId" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "cueId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.transform.set" ],
               "type" : "string"
             },

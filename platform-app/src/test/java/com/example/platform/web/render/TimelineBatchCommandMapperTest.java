@@ -53,6 +53,23 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void subtitleMapsExactCueTimesAndOriginalUnicodeAndRejectsInvalidKeys() {
+        String text = "春天来了 🌻\uFE0F\nSpring is here";
+        var parameters = new java.util.HashMap<String, Object>(Map.of("cueId","spring","start","1/1","end","4/1",
+                "text",text,"width",160,"fontSize",24,"fontProfile","noto-sc-color-emoji-v1","keys",List.of(
+                        Map.of("time","0","xMicros",100000,"yMicros",400000,"opacityMicros",1000000),
+                        Map.of("time","2/1","xMicros",250000,"yMicros",550000,"opacityMicros",600000))));
+        var cue = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
+                map(new TimelineOperationStep("timeline.subtitle.cue.set", null, parameters)).parameters());
+        assertEquals(text, cue.text());
+        assertEquals("1/1", cue.start().toString());
+        assertEquals("2/1", cue.motion().keys().getLast().time());
+        parameters.put("end","3/1");
+        assertThrows(IllegalArgumentException.class,
+                () -> map(new TimelineOperationStep("timeline.subtitle.cue.set", null, parameters)));
+    }
+
+    @Test
     void positionKeysCarryPairedExactCoordinatesAndSupportExplicitClear() {
         var target = new TimelineBatchCommand.Target("clip-a", null, null, null, null);
         var first = Map.of("time", "91/30", "xMicros", -16000000, "yMicros", 0);

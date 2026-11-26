@@ -1048,6 +1048,29 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
     }
 
+    @Test
+    void subtitleBatchPreservesExactEffectPinAndOriginalEditableText() {
+        var base = rangeFixture(false);
+        var definition = OperationDefinition.V3.SET_SUBTITLE_CUE;
+        var target = new OperationTargetRequest.TimelineTargetRequest(PROJECT);
+        String text = "春天来了 🌻\uFE0F\nSpring is here";
+        var motion = new com.example.platform.timeline.canonical.SubtitleCueMotion("noto-sc-color-emoji-v1", List.of(
+                new com.example.platform.timeline.canonical.SubtitleCueMotion.Key("0",100000,400000,1000000),
+                new com.example.platform.timeline.canonical.SubtitleCueMotion.Key("2/1",250000,550000,600000)));
+        var parameters = new OperationParameters.SubtitleCueParameters("spring",time("1/1"),time("4/1"),text,200,24,motion);
+        var request = new OperationRequest(definition.definitionId(), definition.version(),
+                target, parameters, base.revisionId(), hash(base), null);
+        var batch = new OperationBatchRequest("subtitle-one", new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(request), null);
+        var saved = saveService.findById(TENANT, applyPrepared(batch).newRevisionId());
+        assertEquals(base.revisionId(), saved.parentRevisionId());
+        assertEquals(base.semanticContext().effectReference(), saved.semanticContext().effectReference());
+        var cue = saveService.findPayloadDocument(TENANT, saved.revisionId()).orElseThrow().getTextElements().getFirst();
+        assertEquals("spring", cue.id().value());
+        assertEquals(text, cue.styledText().content().value());
+        assertEquals(motion, cue.subtitleCue());
+    }
+
     private OperationBatchRequest positionRequest(TimelineRevision base, String batchId, String samples) {
         var def = OperationDefinition.V3.SET_POSITION_KEYS;
         var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,

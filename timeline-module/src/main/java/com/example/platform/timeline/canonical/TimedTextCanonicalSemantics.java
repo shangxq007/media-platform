@@ -73,6 +73,7 @@ public final class TimedTextCanonicalSemantics {
             runs.add(resolvedFontRun(run));
         }
         node.set("resolvedFontRuns", runs);
+        if (element.subtitleCue() != null) node.set("subtitleCue", MAPPER.valueToTree(element.subtitleCue()));
         return node;
     }
 

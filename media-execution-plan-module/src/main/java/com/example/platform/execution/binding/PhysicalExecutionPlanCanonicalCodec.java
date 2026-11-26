@@ -416,7 +416,13 @@ public final class PhysicalExecutionPlanCanonicalCodec {
 
     // ---------- materialization requirements ----------
 
-    private static final ObjectMapper MATERIALIZATION_MAPPER = new ObjectMapper();
+    private static final ObjectMapper MATERIALIZATION_MAPPER = new ObjectMapper()
+            .addMixIn(TimedTextMaterializationRequirement.class, LegacyTimedTextShape.class);
+
+    private abstract static class LegacyTimedTextShape {
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        abstract Object subtitleCue();
+    }
 
     private record MaterializationEnvelope(String variant, Object payload) {
     }

@@ -65,6 +65,12 @@ const planSchema = z.object({ batchDigest: z.string().regex(/^[0-9a-f]{64}$/),
   steps: z.array(z.object({ changes: z.array(z.object({ identity: z.string(), primary: z.boolean() })) })) })
 
 export const FormalRenderAPI = {
+  async subtitleLayout(tenant: string, project: string,
+      body: { text: string; width: number; fontSize: number; fontProfile: string }, signal?: AbortSignal) {
+    return request(c => versionlessApi.post<Blob>(
+      `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-layout`,
+      body, { ...c, responseType: 'blob', headers: { Accept: 'image/png' } }), signal)
+  },
   async createEditingBranch(project: string, body: { refId: string; sourceRevisionId: string; commandId: string }, signal?: AbortSignal) {
     const schema = z.object({ refId: id, sourceRevisionId: id, replayed: z.boolean() })
     const accepted = schema.parse(await request(c => versionlessApi.post(

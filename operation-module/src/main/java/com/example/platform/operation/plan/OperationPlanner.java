@@ -76,6 +76,7 @@ public final class OperationPlanner {
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.composition.aspect.set" -> planCompositionAspect(instance, base, changes);
+            case "timeline.subtitle.cue.set", "timeline.subtitle.cue.remove" -> SubtitleCuePlanner.plan(instance, base, changes);
             case "timeline.clip.position.keyframes.set" -> planPosition(instance, base, changes);
             case "timeline.clip.opacity.keyframes.set" -> planOpacity(instance, base, changes);
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);

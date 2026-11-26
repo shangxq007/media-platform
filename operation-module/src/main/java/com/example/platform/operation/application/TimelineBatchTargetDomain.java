@@ -186,6 +186,15 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Multi-clip move must be the only operation in its batch");
             }
         }
+        if (operation.parameters() instanceof OperationParameters.SubtitleCueParameters
+                || operation.parameters() instanceof OperationParameters.RemoveSubtitleCueParameters) {
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, "Subtitle editing requires the default branch");
+            }
+            if (batch.operations().size() != 1) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Submit the complete subtitle edit as one operation");
+            }
+        }
         validateSource(instance, batch, currentCandidate, projectId);
         final OperationPlan plan;
         try {
@@ -268,6 +277,8 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlideParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.OpacityParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.SubtitleCueParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.RemoveSubtitleCueParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PositionParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters

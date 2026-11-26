@@ -52,6 +52,7 @@ public final class BmfCpuProvider {
                     ProviderStaticCompatibility.Knowledge.DECLARED,
                     List.of(ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
                             ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
+                            ProviderStaticCompatibility.ArtifactRequirementKind.MANDATORY_MATERIALIZATION,
                             ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT),
                     List.of(StaticCompatibilityConstraint.CodecId.of("h264")),
                     List.of(StaticCompatibilityConstraint.ProviderDeviceKind.CPU),

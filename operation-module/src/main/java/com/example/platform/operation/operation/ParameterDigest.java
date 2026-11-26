@@ -146,6 +146,15 @@ public final class ParameterDigest {
             }
             return "composition-aspect(" + aspect.aspectRatio() + ")";
         }
+        if (p instanceof OperationParameters.SubtitleCueParameters cue) {
+            return framed("subtitle-cue-v1", cue.cueId(), cue.start().toString(), cue.end().toString(), cue.text(),
+                    Integer.toString(cue.width()), Integer.toString(cue.fontSize()), cue.motion().fontProfile(),
+                    cue.motion().keys().stream().map(k -> framed(k.time(), Integer.toString(k.xMicros()),
+                            Integer.toString(k.yMicros()), Integer.toString(k.opacityMicros()))).collect(java.util.stream.Collectors.joining()));
+        }
+        if (p instanceof OperationParameters.RemoveSubtitleCueParameters remove) {
+            return framed("subtitle-cue-remove-v1", remove.cueId());
+        }
         if (p instanceof OperationParameters.PositionParameters position) {
             return framed("position-keys-v1", position.keys().canonicalSamples());
         }

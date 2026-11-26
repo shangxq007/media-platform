@@ -44,6 +44,8 @@ public sealed interface OperationParameters permits
         OperationParameters.StereoBalanceParameters,
         OperationParameters.OpacityParameters,
         OperationParameters.PositionParameters,
+        OperationParameters.SubtitleCueParameters,
+        OperationParameters.RemoveSubtitleCueParameters,
         OperationParameters.VideoTransformParameters,
         OperationParameters.CompositionAspectParameters,
         OperationParameters.VideoEffectParameters,
@@ -64,6 +66,36 @@ public sealed interface OperationParameters permits
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters,
         OperationParameters.CreateAlignmentParameters {
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
+            com.example.platform.timeline.canonical.SubtitleCueMotion motion) implements OperationParameters {
+        public SubtitleCueParameters {
+            new RemoveSubtitleCueParameters(cueId);
+            try {
+                if (!start.isLessThan(end) || end.isGreaterThan(MediaTime.ofMillis(86_400_000))) {
+                    throw new IllegalArgumentException("Subtitle needs an increasing interval within the first 24 hours");
+                }
+                var duration = end.subtract(start);
+                for (var time : java.util.List.of(start, duration)) {
+                    if (time.ticks() > 9_007_199_254_740_991L || time.timeScale() > 9_007_199_254_740_991L) {
+                        throw new IllegalArgumentException("Subtitle time cannot be read exactly by the editor");
+                    }
+                }
+                motion.requireInside(duration);
+            } catch (ArithmeticException overflow) {
+                throw new IllegalArgumentException("Subtitle timing exceeds the exact arithmetic range", overflow);
+            }
+            com.example.platform.fonttext.typography.SubtitleBlockLayout.validateShape(text, width, fontSize);
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record RemoveSubtitleCueParameters(String cueId) implements OperationParameters {
+        public RemoveSubtitleCueParameters {
+            if (cueId == null || !cueId.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("Invalid subtitle cue identity");
+        }
+    }
 
     @org.springframework.modulith.NamedInterface("invocation")
     record PositionParameters(com.example.platform.timeline.semantics.effect.PositionKeys keys) implements OperationParameters {

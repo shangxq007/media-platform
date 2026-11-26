@@ -297,6 +297,7 @@ public final class TextOperationPlanner {
     private static TextElement requireElement(List<TextElement> elements, TextElementId id) {
         for (TextElement e : elements) {
             if (e.id().equals(id)) {
+                if (e.subtitleCue() != null) throw new TextPlanException("Use the subtitle cue operation for an editable cue");
                 return e;
             }
         }
@@ -304,6 +305,9 @@ public final class TextOperationPlanner {
     }
 
     private static boolean removeElement(List<TextElement> elements, TextElementId id) {
+        if (elements.stream().anyMatch(e -> e.id().equals(id) && e.subtitleCue() != null)) {
+            throw new TextPlanException("Use the subtitle cue operation for an editable cue");
+        }
         return elements.removeIf(e -> e.id().equals(id));
     }
 

@@ -201,6 +201,8 @@ public final class TimelineBatchCommandMapper {
                     time(parameters, "delta"));
             case "timeline.composition.aspect.set" -> new OperationParameters.CompositionAspectParameters(
                     CompositionAspectRatio.fromParameters(parameters));
+            case "timeline.subtitle.cue.set" -> subtitleCue(parameters);
+            case "timeline.subtitle.cue.remove" -> new OperationParameters.RemoveSubtitleCueParameters(requiredText(parameters, "cueId"));
             case "timeline.clip.position.keyframes.set" -> positionKeys(parameters);
             case "timeline.clip.opacity.keyframes.set" -> new OperationParameters.OpacityParameters(
                     new com.example.platform.timeline.semantics.effect.OpacityKeys(time(parameters, "firstTime"),
@@ -450,6 +452,31 @@ public final class TimelineBatchCommandMapper {
         if (value instanceof Integer integer) return integer.longValue();
         if (value instanceof Long integer) return integer;
         throw new IllegalArgumentException(field + " must be an exact signed 64-bit integer");
+    }
+
+    private static OperationParameters.SubtitleCueParameters subtitleCue(Map<String, Object> p) {
+        if (!(p.get("keys") instanceof List<?> keys) || keys.size() > com.example.platform.timeline.canonical.SubtitleCueMotion.MAX_KEYS) {
+            throw new IllegalArgumentException("Subtitle keys must be a bounded array");
+        }
+        String start = requiredText(p, "start"), end = requiredText(p, "end");
+        String rational = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        if (!start.matches(rational) || !end.matches(rational)) throw new IllegalArgumentException("Subtitle times must be exact rationals");
+        var frames = new ArrayList<com.example.platform.timeline.canonical.SubtitleCueMotion.Key>();
+        for (Object item : keys) {
+            if (!(item instanceof Map<?, ?> key) || !key.keySet().equals(Set.of("time","xMicros","yMicros","opacityMicros"))
+                    || !(key.get("time") instanceof String time)) throw new IllegalArgumentException("Invalid subtitle key fields");
+            frames.add(new com.example.platform.timeline.canonical.SubtitleCueMotion.Key(time,
+                    cueInteger(key,"xMicros"),cueInteger(key,"yMicros"),cueInteger(key,"opacityMicros")));
+        }
+        return new OperationParameters.SubtitleCueParameters(requiredText(p,"cueId"), MediaTime.parse(start), MediaTime.parse(end),
+                requiredText(p,"text"), cueInteger(p,"width"),cueInteger(p,"fontSize"),
+                new com.example.platform.timeline.canonical.SubtitleCueMotion(requiredText(p,"fontProfile"),frames));
+    }
+
+    private static int cueInteger(Map<?, ?> map, String key) {
+        long value = requiredLong(map,key);
+        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) throw new IllegalArgumentException("Subtitle integer out of range");
+        return (int)value;
     }
 
     private static OperationParameters.PositionParameters positionKeys(Map<String, Object> parameters) {

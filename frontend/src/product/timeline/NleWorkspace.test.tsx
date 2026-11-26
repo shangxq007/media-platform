@@ -351,6 +351,38 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N15 subtitle cue', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('withdraws a late confirmation after a draft text change and retains its original Unicode on the next preview', async () => {
+    renderBranchWorkspace('main')
+    const result = { batchDigest: HASH_C, steps: [] }
+    const held = deferred<typeof result>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
+    const apply = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    await screen.findByRole('option', { name: 'clip-0 on Video' })
+    const section = within(screen.getByRole('region', { name: 'Subtitle edit' }))
+    const fill = (name: string, value: string) => fireEvent.change(section.getByLabelText(name), { target: { value } })
+    const caption = '春天来了 🌻\uFE0F\nSpring is here'
+    fill('Subtitle text', caption)
+    fill('Subtitle start (timeline seconds)', '1/3')
+    fill('Subtitle end (timeline seconds)', '2')
+    const button = section.getByRole('button', { name: 'Preview subtitle' })
+    fireEvent.click(button)
+    fill('Subtitle text', 'Spring')
+    fill('Subtitle text', caption)
+    await act(async () => held.resolve(result))
+    expect(section.queryByRole('button', { name: 'Confirm subtitle' })).toBeNull()
+    fireEvent.click(button)
+    await section.findByRole('button', { name: 'Confirm subtitle' })
+    expect(preview.mock.lastCall?.[2].operations[0]).toMatchObject({
+      definitionId: 'timeline.subtitle.cue.set', parameters: { text: caption, start: '1/3', end: '2/1', keys: [] },
+    })
+    fireEvent.click(section.getByRole('button', { name: 'Cancel subtitle' }))
+    expect(apply).not.toHaveBeenCalled()
+  })
+})
+
 describe('N14 position keys', () => {
   afterEach(() => vi.restoreAllMocks())
 

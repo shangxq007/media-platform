@@ -440,6 +440,10 @@ public final class RenderPlanCanonicalCodec {
             fontFallbackPolicyCanonical(sb, text.fallbackPolicy());
             list(sb, sortedEncodings(text.resolvedFontRuns().stream()
                     .map(this::resolvedFontRunCanonical).toList()));
+            if (text.editableCue()) {
+                s(sb, text.subtitleCue().fontProfile());
+                s(sb, text.cueSamples());
+            }
         } else {
             // R3-M1: unknown sealed variant fails closed — a future
             // materialization variant must never silently share canonical bytes.

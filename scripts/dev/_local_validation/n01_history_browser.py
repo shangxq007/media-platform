@@ -26,13 +26,14 @@ branches = sys.argv[1:] == ['--branches']
 opacity = sys.argv[1:] == ['--opacity']
 dissolve = sys.argv[1:] == ['--dissolve']
 position = sys.argv[1:] == ['--position']
-assert position or dissolve or opacity or branches or not sys.argv[1:]
-out = root / '04-tests' / ('n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
+subtitle = sys.argv[1:] == ['--subtitle']
+assert subtitle or position or dissolve or opacity or branches or not sys.argv[1:]
+out = root / '04-tests' / ('n15-subtitle' if subtitle else 'n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
 assert deps.is_dir() and not deps.is_symlink() and not target.is_symlink()
-target.mkdir(exist_ok=branches or dissolve or position)
+target.mkdir(exist_ok=branches or dissolve or position or subtitle)
 assert not any(target.iterdir())
 prefix = sandbox_prefix(app / 'binding.json')
 prefix[-1:-1] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
@@ -89,9 +90,13 @@ if branches:
     checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
-if dissolve or opacity or position:
+if dissolve or opacity or position or subtitle:
     browser_script = 'n12-opacity-browser-e2e.mjs'
     checkpoints = ('base','draft','accepted','recovery','edited','undo','redo','stale','noop')
+
+if subtitle:
+    checkpoints = ('base','draft','invalid','accepted','recovery','edited','undo','redo','stale','reopened-wrap',
+                   'removed','undo-remove','redo-remove','removed-reopen')
 
 if position:
     checkpoints = ('base','draft','invalid','accepted','recovery','changed','undo','redo','stale',
@@ -103,7 +108,7 @@ if dissolve:
 
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
-                                str(app), str(out), *([sys.argv[1]] if position or dissolve else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
+                                str(app), str(out), *([sys.argv[1]] if position or dissolve or subtitle else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
     deadline = time.monotonic() + 600
     facts = {}
     try:
@@ -112,7 +117,7 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
                 raise RuntimeError('N01 browser deadline reached')
             for name in checkpoints:
                 if name not in facts and (out / ('checkpoint-' + name)).is_file():
-                    if opacity or dissolve or position:
+                    if opacity or dissolve or position or subtitle:
                         project = (out / 'project-id').read_text()
                         assert re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', project)
                         scope = f"tenant_id='tenant-fr-e2e' and project_id='{project}'"
@@ -132,12 +137,50 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
-if opacity or dissolve or position:
+if opacity or dissolve or position or subtitle:
     rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (select rev.id,rev.parent_revision_id,rev.content_hash,
         doc.payload_json::json as snapshot,ctx.payload_json::json as semantics
         from timeline.timeline_revision rev join timeline.timeline_snapshot doc on doc.id=rev.snapshot_id and doc.project_id=rev.project_id and doc.tenant_id=rev.tenant_id
         join timeline.timeline_snapshot ctx on ctx.id='revctx_'||rev.id and ctx.tenant_id=rev.tenant_id and ctx.project_id=rev.project_id
         where rev.tenant_id='tenant-fr-e2e' and rev.project_id='{project}') r;""")
+    if subtitle:
+        result = json.loads((out/'subtitle-result.json').read_text())
+        expected = json.loads((out/'expected.json').read_text())
+        def revision(stage):
+            return rows[facts[stage]['head']]
+        def cue(stage):
+            items = revision(stage)['snapshot'].get('textElements', [])
+            assert len(items)==1
+            return items[0]
+        witness = dict(checkpoints=facts,revisions=rows)
+        (out/'postgres-result.json').write_text(json.dumps(witness,indent=2,ensure_ascii=False))
+        assert result['status']=='PASS'
+        assert facts['base']==facts['draft']==facts['invalid']
+        assert facts['accepted']==facts['recovery'] and facts['redo']==facts['stale']==facts['reopened-wrap']
+        assert facts['redo-remove']==facts['removed-reopen']
+        chain = ('base','accepted','edited','undo','redo','removed','undo-remove','redo-remove')
+        for a,b in zip(chain,chain[1:]):
+            assert facts[b]['rows']==facts[a]['rows']+1 and facts[b]['commands']==facts[a]['commands']+1
+            assert revision(b)['parent_revision_id']==facts[a]['head']
+        for a,b in [('accepted','undo'),('edited','redo'),('base','removed'),('edited','undo-remove'),('removed','redo-remove')]:
+            assert revision(a)['semantics']==revision(b)['semantics'] and revision(a)['snapshot']==revision(b)['snapshot'], (a,b)
+        assert cue('accepted')['id']==cue('edited')['id']==result['cueId']
+        assert cue('accepted')['styledText']['content']==expected['text']
+        assert cue('edited')['styledText']['content']==expected['wrapText']
+        assert cue('accepted')['frame']['widthConstraint']=={'numerator':200,'denominator':1}
+        assert cue('edited')['frame']['widthConstraint']=={'numerator':160,'denominator':1}
+        assert cue('accepted')['start']=={'numerator':1,'denominator':1}
+        assert cue('accepted')['duration']=={'numerator':3,'denominator':1}
+        assert cue('accepted')['subtitleCue']=={'fontProfile':'noto-sc-color-emoji-v1','keys':[
+            {'time':'0','xMicros':100000,'yMicros':400000,'opacityMicros':1000000},
+            {'time':'2/1','xMicros':250000,'yMicros':550000,'opacityMicros':600000}]}
+        assert not cue('edited')['subtitleCue']['keys'] and not revision('removed')['snapshot'].get('textElements', [])
+        assert all(revision(stage)['snapshot']['tracks']==revision('base')['snapshot']['tracks'] for stage in chain)
+        assert all(revision(stage)['semantics']['effectReference']==revision('base')['semantics']['effectReference'] for stage in chain)
+        assert result['n15-subtitle']['revisionId']==facts['accepted']['head']
+        assert result['n15-wrapped-static']['revisionId']==facts['edited']['head']
+        print('N15_SUBTITLE_CHROME_EXPORT_POSTGRES=PASS')
+        sys.exit(0)
     if position:
         result = json.loads((out/'position-result.json').read_text())
         assert result['status']=='PASS'

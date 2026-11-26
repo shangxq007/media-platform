@@ -1974,6 +1974,12 @@ try {
   const positionDigest = (await preview(positionBody, 200, reader)).batchDigest
   const deniedPosition = await apply(positionBody, positionDigest, 403, reader)
   result.http.n14Reader = { status: 403, errorCode: deniedPosition.errorCode, revision: readerHead.headRevisionId }
+  const subtitleBody = { ...opacityBody, batchId: 'n15-reader', operations: [
+    { definitionId:'timeline.subtitle.cue.set', parameters: { cueId:'reader-cue', text:'春天来了 🌻', width:200, fontSize:24,
+      fontProfile:'noto-sc-color-emoji-v1', start:'1/1', end:'4/1', keys:[] } }] }
+  const subtitleDigest = (await preview(subtitleBody, 200, reader)).batchDigest
+  const deniedSubtitle = await apply(subtitleBody, subtitleDigest, 403, reader)
+  result.http.n15Reader = { status:403, errorCode:deniedSubtitle.errorCode, revision:readerHead.headRevisionId }
   assert.equal((await branch()).headRevisionId, readerHead.headRevisionId)
   result.http.n13Reader = { status: 403, errorCode: deniedCut.errorCode, revision: readerHead.headRevisionId }
   result.http.n12Reader = { status: 403, errorCode: deniedOpacity.errorCode, revision: readerHead.headRevisionId }

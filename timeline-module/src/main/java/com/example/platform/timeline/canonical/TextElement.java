@@ -38,6 +38,15 @@ public class TextElement {
     @JsonProperty("resolvedFontRuns")
     private final List<ResolvedFontRun> resolvedFontRuns;
 
+    @JsonProperty("subtitleCue")
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private final SubtitleCueMotion subtitleCue;
+
+    public TextElement(TextElementId id, FontRational start, FontRational duration, StyledText styledText,
+            TextFrame frame, FontFallbackPolicy fallbackPolicy, List<ResolvedFontRun> resolvedFontRuns) {
+        this(id, start, duration, styledText, frame, fallbackPolicy, resolvedFontRuns, null);
+    }
+
     @JsonCreator
     public TextElement(
             @JsonProperty("id") TextElementId id,
@@ -46,7 +55,8 @@ public class TextElement {
             @JsonProperty("styledText") StyledText styledText,
             @JsonProperty("frame") TextFrame frame,
             @JsonProperty("fallbackPolicy") FontFallbackPolicy fallbackPolicy,
-            @JsonProperty("resolvedFontRuns") List<ResolvedFontRun> resolvedFontRuns) {
+            @JsonProperty("resolvedFontRuns") List<ResolvedFontRun> resolvedFontRuns,
+            @JsonProperty("subtitleCue") SubtitleCueMotion subtitleCue) {
         this.id = Objects.requireNonNull(id, "id");
         this.start = Objects.requireNonNull(start, "start");
         this.duration = Objects.requireNonNull(duration, "duration");
@@ -54,11 +64,13 @@ public class TextElement {
         this.frame = Objects.requireNonNull(frame, "frame");
         this.fallbackPolicy = Objects.requireNonNull(fallbackPolicy, "fallbackPolicy");
         this.resolvedFontRuns = List.copyOf(resolvedFontRuns);
+        this.subtitleCue = subtitleCue;
         if (duration.numerator().signum() <= 0) {
             throw new IllegalArgumentException("duration must be > 0");
         }
     }
 
+    public SubtitleCueMotion subtitleCue() { return subtitleCue; }
     public TextElementId id() { return id; }
     public FontRational start() { return start; }
     public FontRational duration() { return duration; }
@@ -72,11 +84,12 @@ public class TextElement {
         if (!(o instanceof TextElement e)) return false;
         return id.equals(e.id) && start.equals(e.start) && duration.equals(e.duration)
                 && styledText.equals(e.styledText) && frame.equals(e.frame)
-                && fallbackPolicy.equals(e.fallbackPolicy) && resolvedFontRuns.equals(e.resolvedFontRuns);
+                && fallbackPolicy.equals(e.fallbackPolicy) && resolvedFontRuns.equals(e.resolvedFontRuns)
+                && Objects.equals(subtitleCue, e.subtitleCue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, start, duration, styledText, frame, fallbackPolicy, resolvedFontRuns);
+        return Objects.hash(id, start, duration, styledText, frame, fallbackPolicy, resolvedFontRuns, subtitleCue);
     }
 }

@@ -57,7 +57,11 @@ class BmfCpuProviderContractTest {
     void declares_only_the_bounded_sandboxed_cpu_video_support() {
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.knowledge())
                 .isEqualTo(ProviderStaticCompatibility.Knowledge.DECLARED);
-        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedArtifactRequirements()).hasSize(3);
+        assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedArtifactRequirements()).containsExactlyInAnyOrder(
+                ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
+                ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
+                ProviderStaticCompatibility.ArtifactRequirementKind.MANDATORY_MATERIALIZATION,
+                ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT);
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedCodecs())
                 .extracting(codec -> codec.value()).containsExactly("h264");
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedDeviceKinds())

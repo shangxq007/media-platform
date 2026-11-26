@@ -29,8 +29,18 @@ public record BmfCpuTranscodePlan(
         java.util.List<TimedInput> compositeInputs,
         Optional<MediaTime> compositeDuration,
         Optional<com.example.platform.shared.time.FrameRate> compositeFrameRate,
-        com.example.platform.render.domain.renderplan.RenderRaster raster)
+        com.example.platform.render.domain.renderplan.RenderRaster raster,
+        java.util.List<com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.CueRaster> subtitles)
         implements ProviderNativeExecutionPlan {
+
+    public BmfCpuTranscodePlan(ExecutableTaskId executableTaskId, ProviderBindingPin providerBindingPin,
+            BmfOperation operation, ExecutionInputId inputId, ExecutionOutputId outputId,
+            Optional<SourceWindow> sourceWindow, java.util.List<TimedInput> compositeInputs,
+            Optional<MediaTime> compositeDuration, Optional<com.example.platform.shared.time.FrameRate> compositeFrameRate,
+            RenderRaster raster) {
+        this(executableTaskId, providerBindingPin, operation, inputId, outputId, sourceWindow, compositeInputs,
+                compositeDuration, compositeFrameRate, raster, java.util.List.of());
+    }
 
     /**
      * One media input positioned on the output timeline (offsets relative to the extent).
@@ -158,6 +168,10 @@ public record BmfCpuTranscodePlan(
             throw new IllegalArgumentException("only a decode unit may carry a source window");
         }
         compositeInputs = java.util.List.copyOf(compositeInputs);
+        subtitles = java.util.List.copyOf(subtitles);
+        if (!subtitles.isEmpty() && (operation != BmfOperation.MULTITRACK_COMPOSITE || subtitles.size() > 16)) {
+            throw new IllegalArgumentException("Subtitle blocks require a bounded multitrack composition");
+        }
         Objects.requireNonNull(compositeDuration, "compositeDuration");
         Objects.requireNonNull(compositeFrameRate, "compositeFrameRate");
         if (compositeInputs.isEmpty()) {

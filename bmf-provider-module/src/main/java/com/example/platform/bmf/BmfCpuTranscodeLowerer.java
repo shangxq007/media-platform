@@ -1,5 +1,6 @@
 package com.example.platform.bmf;
 
+import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.planning.ExecutionIoProjection.CapabilityRequirementRef;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.render.domain.renderplan.RenderDependency;
@@ -33,7 +34,8 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
             throw failure(ProviderNativeFailureCode.ILLEGAL_MULTI_MEMBERSHIP_LOWERING,
                     "BMF requires one physical unit");
         }
-        var unit = task.memberships().getFirst().physicalPlanUnit();
+        var membership = task.memberships().getFirst();
+        var unit = membership.physicalPlanUnit();
         BmfOperation operation;
         try {
             operation = BmfOperation.ofOperationKey(unit.operationKey());
@@ -51,7 +53,7 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                     "BMF does not accept authored execution intents or artifact capability parameters");
         }
         if (operation == BmfOperation.MULTITRACK_COMPOSITE) {
-            return multitrackPlan(task, unit);
+            return multitrackPlan(task, membership, unit);
         }
         if (operation == BmfOperation.COMPOSITE && isMultiInputComposite(unit)) {
             return compositePlan(task, unit);
@@ -86,7 +88,7 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                         : unit.propagatedExtent().raster());
     }
 
-    private static BmfCpuTranscodePlan multitrackPlan(ExecutableTask task,
+    private static BmfCpuTranscodePlan multitrackPlan(ExecutableTask task, ExecutableTaskMembership membership,
             com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit unit) {
         var extent = unit.propagatedExtent();
         var runtimeIds = task.requiredRuntimeInputs().stream().map(input -> input.inputId())
@@ -131,9 +133,19 @@ public final class BmfCpuTranscodeLowerer implements PlanLowerer<BmfCpuTranscode
                         "BMF rejects overlapping clips of the same stream type on one track");
             }
         }
+        var cues = new java.util.ArrayList<com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.CueRaster>();
+        try {
+            for (var marker : membership.mandatoryMaterializationMarkers()) {
+                if (!(marker instanceof com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement cue)
+                        || !cue.editableCue()) throw new IllegalArgumentException("Unsupported multitrack materialization");
+                cue.cueRaster(extent).ifPresent(cues::add);
+            }
+        } catch (ArithmeticException | IllegalArgumentException invalid) {
+            throw failure(ProviderNativeFailureCode.UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS, invalid.getMessage());
+        }
         return new BmfCpuTranscodePlan(task.id(), task.providerBindingPin(), BmfOperation.MULTITRACK_COMPOSITE,
                 inputs.getFirst().inputId(), task.authoritativeOutputIds().getFirst(), Optional.empty(),
-                List.copyOf(inputs), Optional.of(extent.end().subtract(extent.start())), Optional.of(extent.frameRate()), extent.raster());
+                List.copyOf(inputs), Optional.of(extent.end().subtract(extent.start())), Optional.of(extent.frameRate()), extent.raster(), cues);
     }
 
     private static BmfCpuTranscodePlan.VideoPlacement placement(

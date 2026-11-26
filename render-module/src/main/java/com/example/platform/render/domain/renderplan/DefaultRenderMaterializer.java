@@ -123,7 +123,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         boolean hasTransform = clips.stream().anyMatch(clip -> !clip.transform().equals(
                 com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
         boolean animated = clips.stream().anyMatch(clip -> revision.opacity(clip.clipId()).isPresent() || revision.position(clip.clipId()).isPresent());
-        boolean timedTracks = animated || hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
+        boolean timedTracks = revision.textElements().stream().anyMatch(text -> text.subtitleCue() != null) || animated || hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
                 || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
         boolean partialCoverage = clips.size() == 1 && request.extent() != null
                 && (clips.getFirst().timelineRange().start().isGreaterThan(request.extent().start())
@@ -334,7 +334,12 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         // ── TIMED_TEXT nodes (F2: typed materialization, connected to COMPOSITE) ──
         List<RenderNodeId> timedTextNodes = new ArrayList<>();
+        List<RenderMaterializationRequirement> subtitleCues = new ArrayList<>();
         for (TextElement textElement : input.verifiedRevision().textElements()) {
+            if (textElement.subtitleCue() != null) {
+                subtitleCues.add(TimedTextMaterializationRequirement.from(textElement));
+                continue;
+            }
             RenderComponentPath textPath = RenderComponentPath.of(
                     RenderComponentKind.TEXT_ELEMENT, textElement.id().value());
             List<CapabilityRequirement> textCaps = List.of(
@@ -399,13 +404,14 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                             new LogicalArtifactId("composite:video"), RenderOutputRole.DERIVED_MEDIA))
                     : List.of();
             String compositeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                    compositeArtifacts, compositeCaps, List.of(), List.of()));
+                    compositeArtifacts, compositeCaps, List.of(), subtitleCues.stream()
+                            .map(CODEC::materializationRequirementCanonicalPublic).toList()));
             String compositeOperation = timedTracks ? "multitrack-composite" : OP_COMPOSITE;
             compositeId = RenderNodeId.of(
                     new RenderNodeKind.Composite(), compositePath, compositeOperation, compositeReqFp);
             RenderNode compositeNode = new RenderNode(
                     compositeId, new RenderNodeKind.Composite(), compositePath, compositeOperation,
-                    compositeArtifacts, compositeCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
+                    compositeArtifacts, compositeCaps, List.of(), List.of(), List.copyOf(subtitleCues), Optional.empty(), null); // aggregate
             nodes.add(compositeNode);
             if (multiClip) {
                 for (MediaClip clip : clips) {

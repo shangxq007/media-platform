@@ -53,6 +53,15 @@ public final class TimelineOperationWireContract {
             case "timeline.trim" -> fields(fields, "string", "edge", "delta");
             case "timeline.clip.split" -> fields(fields, "string", "rightClipId", "splitTimelineTime");
             case "timeline.composition.aspect.set" -> fields(fields, "composition-aspect-rational-v1", "aspectRatio");
+            case "timeline.subtitle.cue.set" -> {
+                fields(fields, "string", "cueId", "text");
+                fields(fields, "cue-time", "start", "end");
+                fields(fields, "cue-font", "fontProfile");
+                fields(fields, "cue-width", "width");
+                fields(fields, "cue-font-size", "fontSize");
+                fields(fields, "cue-key-array", "keys");
+            }
+            case "timeline.subtitle.cue.remove" -> fields(fields, "string", "cueId");
             case "timeline.clip.position.keyframes.set" -> fields(fields, "position-key-array", "keys");
             case "timeline.clip.opacity.keyframes.set" -> {
                 fields(fields, "string", "firstTime", "lastTime");

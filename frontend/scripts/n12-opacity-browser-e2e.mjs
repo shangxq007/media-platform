@@ -9,6 +9,7 @@ import { chromium } from 'playwright'
 const [appRoot, outputRoot, mode] = process.argv.slice(2)
 const dissolve = mode === '--dissolve'
 const position = mode === '--position'
+const subtitle = mode === '--subtitle'
 assert(appRoot && outputRoot)
 const base = 'http://127.0.0.1:18080'
 const tenant = 'tenant-fr-e2e'
@@ -32,7 +33,7 @@ await context.addInitScript(({ access, profile }) => {
 
 async function run() {
   const created = await page.request.post(`${base}/api/identity/tenants/${tenant}/projects`, {
-    headers, data: { name: position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
+    headers, data: { name: subtitle ? 'N15 editable subtitles' : position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
   })
   assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
@@ -109,8 +110,9 @@ async function run() {
   const endpoint = base + scope + '/timeline-operations/batch/v2'
   const post = async (method, body, digest) => page.request.post(endpoint+'/'+method,{
     headers: digest ? { ...headers, 'If-Match': '"'+digest+'"' } : headers, data: body })
-  if (dissolve || position) {
-    const runEdit = position ? (await import('./n14-position-browser.mjs')).runPosition
+  if (dissolve || position || subtitle) {
+    const runEdit = subtitle ? (await import('./n15-subtitle-browser.mjs')).runSubtitle
+      : position ? (await import('./n14-position-browser.mjs')).runPosition
       : (await import('./n13-cross-dissolve-browser.mjs')).runDissolve
     const context = { page, base, scope, project, headers, outputRoot, url, endpoint, post, cp, waitRevision, addTrack, addClip,
       head: () => current, upload: async file => { sources[file] = await upload(file) } }

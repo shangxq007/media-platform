@@ -103,9 +103,12 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
     /** Builds a native BMF graph from typed, extent-relative placements. */
     static final String MULTITRACK_GRAPH_PROGRAM = """
             from fractions import Fraction
+            import base64
             import importlib
             import os
+            import struct
             import sys
+            import tempfile
             import bmf
 
             ff = importlib.import_module('bmf.builder.ff_filter')
@@ -113,7 +116,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             paths = sys.argv[2:2 + count]
             output, duration, rate, raster = sys.argv[2 + count:6 + count]
             canvas_width, canvas_height = map(int, raster.split('x'))
-            placements = [value.split(',') for value in sys.argv[6 + count:]]
+            placements = [value.split(',') for value in sys.argv[6 + count:6 + 2 * count]]
+            subtitles = [value.split(',', 5) for value in sys.argv[6 + 2 * count:]]
             graph = bmf.graph()
             print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
 
@@ -178,15 +182,18 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                                          + ':d=' + str(dissolve_duration) + ':alpha=1')
                 return video, px, py
 
-            def position_expression(samples, axis, pixels, start, elapsed):
-                # Overlay uses the output clock, while motion is relative to the authored clip.
+            def motion_expression(samples, axis, start, elapsed, clock):
                 points = [sample.split(';') for sample in samples.split('|')]
-                local = '(t-(' + start + ')+(' + elapsed + '))'
+                local = '(' + clock + '-(' + start + ')+(' + elapsed + '))'
                 expression = points[0][axis]
                 for left, right in zip(points, points[1:]):
                     delta = str(int(right[axis]) - int(left[axis]))
                     span = str(Fraction(right[0]) - Fraction(left[0]))
                     expression += '+(' + delta + ')*clip((' + local + '-(' + left[0] + '))/(' + span + '),0,1)'
+                return expression
+
+            def position_expression(samples, axis, pixels, start, elapsed):
+                expression = motion_expression(samples, axis, start, elapsed, 't')
                 return 'floor((' + expression + ')*' + str(pixels) + '/1000000+0.5)'
 
             video_inputs = [(path, placement) for path, placement in zip(paths, placements)
@@ -215,6 +222,30 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     px = position_expression(placement[17], 1, canvas_width, start, fx[7])
                     py = position_expression(placement[17], 2, canvas_height, start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
+
+            cue_files = tempfile.TemporaryDirectory(dir='.') if subtitles else None
+            for index, (onset, end, start, elapsed, samples, encoded) in enumerate(subtitles):
+                payload = base64.b64decode(encoded, validate=True)
+                width, height = struct.unpack('>II', payload[16:24])
+                path = os.path.join(cue_files.name, 'cue-' + str(index) + '.png')
+                with open(path, 'wb') as cue:
+                    cue.write(payload)
+                block = graph.decode({'input_path': path})['video']
+                # Hold the completed RGBA block for the composition, then apply one alpha envelope.
+                block = ff.ff_filter(block, 'format', 'rgba')
+                frames = -(-Fraction(duration) * Fraction(rate) // 1)
+                block = ff.loop(block, loop=frames, size=1, start=0)
+                block = ff.ff_filter(block, 'fps', rate)
+                size = str(max(1, round(width * canvas_width / 320))) + 'x' + str(max(1, round(height * canvas_width / 320)))
+                block = ff.ff_filter(block, 'scale', size)
+                alpha = motion_expression(samples, 3, start, elapsed, 'T')
+                block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
+                                     a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
+                px = position_expression(samples, 1, canvas_width, start, elapsed)
+                py = position_expression(samples, 2, canvas_height, start, elapsed)
+                frame_number = 'floor(t*(' + rate + ')+0.5)'
+                visible = '(1+sgn(' + frame_number + '-' + onset + '+0.5))*(1-sgn(' + frame_number + '-' + end + '+0.5))'
+                canvas = ff.overlay(canvas, block, x=px, y=py, enable=visible, format='rgb')
 
             audio_inputs = []
             for path, placement in zip(paths, placements):
@@ -328,6 +359,10 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         + t.opacity() + "," + fxToken(input)
                         + input.positionKeys().map(p -> "," + p.canonicalSamples()).orElse(""));
             }
+        }
+        for (var cue : plan.subtitles()) {
+            arguments.add(cue.firstFrame() + "," + cue.endFrame() + "," + cue.start() + "," + cue.elapsed() + ","
+                    + cue.samples() + "," + cue.pngBase64());
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
     }
