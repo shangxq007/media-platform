@@ -81,8 +81,13 @@ public record TimedTextMaterializationRequirement(
         return subtitleCue != null;
     }
 
-    /** Provider-facing raster and placement. The covered time is relative to the render extent. */
-    public record CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed, String samples, String pngBase64) {}
+    /** Provider-facing bounded raster recipe and placement. The covered time is relative to the render extent. */
+    public record CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed, String samples,
+                            String text, int width, int fontSize) {
+        public CueRaster {
+            SubtitleBlockLayout.validateShape(text, width, fontSize);
+        }
+    }
 
     public java.util.Optional<CueRaster> cueRaster(RenderExtent extent) {
         if (!editableCue()) throw new IllegalArgumentException("Only a pinned subtitle profile can prepare a block raster");
@@ -108,11 +113,9 @@ public record TimedTextMaterializationRequirement(
         if (!width.denominator().equals(java.math.BigInteger.ONE) || !size.denominator().equals(java.math.BigInteger.ONE)) {
             throw new IllegalArgumentException("Subtitle design width and size must be integral");
         }
-        byte[] png = SubtitleBlockLayout.png(styledText.content().value(),
-                width.numerator().intValueExact(), size.numerator().intValueExact());
-        String samples = cueSamples();
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
-                visibleStart.subtract(begin.mediaTime()), samples, java.util.Base64.getEncoder().encodeToString(png)));
+                visibleStart.subtract(begin.mediaTime()), cueSamples(), styledText.content().value(),
+                width.numerator().intValueExact(), size.numerator().intValueExact()));
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

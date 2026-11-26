@@ -123,14 +123,16 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   const currentSubtitlePlan = useRef(subtitlePlan)
   currentSubtitlePlan.current = subtitlePlan
   const pendingSubtitle = useRef<{ plan: SemanticBatch; image: ImageBitmap } | null>(null)
+  const [cueTarget, setCueTarget] = useState<{ session: PreviewSession; width: number } | null>(null)
   useEffect(() => {
     const session = current.current
     const step = subtitlePlan?.baseRevisionId === revisionId ? subtitlePlan?.operations[0] : null
     if (session?.projection) refreshComposition(session)
-    if (!tenantId || !subtitlePlan || step?.definitionId !== 'timeline.subtitle.cue.set') return
+    if (!tenantId || !subtitlePlan || step?.definitionId !== 'timeline.subtitle.cue.set'
+        || !cueTarget || cueTarget.session !== session) return
     const controller = new AbortController()
     let bitmap: ImageBitmap | null = null
-    void loadSubtitle(tenantId, step.parameters, controller.signal).then(image => {
+    void loadSubtitle(tenantId, step.parameters, cueTarget.width, controller.signal).then(image => {
       if (controller.signal.aborted) { image.close(); return }
       bitmap = image
       pendingSubtitle.current = { plan: subtitlePlan, image }
@@ -143,7 +145,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       bitmap?.close()
       if (pendingSubtitle.current?.plan === subtitlePlan) pendingSubtitle.current = null
     }
-  }, [subtitlePlan, tenantId, projectId, revisionId])
+  }, [subtitlePlan, tenantId, projectId, revisionId, cueTarget])
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
@@ -187,9 +189,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     setMessage(error instanceof Error ? error.message : 'Timeline media could not be played.')
   }
 
-  async function loadSubtitle(tenant: string, cue: SubtitleCue, signal: AbortSignal) {
+  async function loadSubtitle(tenant: string, cue: SubtitleCue, destinationWidth: number, signal: AbortSignal) {
     const { text, width, fontSize, fontProfile } = cue
-    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile }, signal)
+    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile, destinationWidth }, signal)
     return createImageBitmap(png)
   }
 
@@ -328,13 +330,12 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         ? (pendingSubtitle.current?.plan === cuePlan ? pendingSubtitle.current?.image : null)
         : session.subtitleBlocks.get(cue.cueId)
       if (!pose || !image) continue
-      const scale = target.width / 320
       const x = pose.x * target.width, y = pose.y * target.height
       const moving = cue.keys.some(key => key.xMicros !== cue.keys[0].xMicros || key.yMicros !== cue.keys[0].yMicros)
       context.save()
       context.globalAlpha = pose.alpha
       context.translate(moving ? x : Math.round(x), moving ? y : Math.round(y))
-      context.drawImage(image, 0, 0, Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)))
+      context.drawImage(image, 0, 0)
       context.restore()
       visibleCues.push(cue.cueId)
     }
@@ -348,6 +349,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       duration: 0, end: rationalTime(0), seekInputEnd: 0, cursor: 0, origin: 0, playing: false, starting: false,
     }
     current.current = session
+    setCueTarget(null)
     const signal = session.controller.signal
     publishTime(0)
     setDuration(0)
@@ -361,11 +363,13 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         const snapshot = await FormalRenderAPI.snapshot(projectId, revision, signal)
         if (signal.aborted) return
         const projection = projectSnapshotJson(snapshot.canonicalTimelineJson)
-        if (!previewRaster(projection.compositionAspectRatio)) {
+        const raster = previewRaster(projection.compositionAspectRatio)
+        if (!raster) {
           throw new Error('No supported preview raster exactly matches the authored composition aspect ratio.')
         }
+        setCueTarget({ session, width: raster.width })
         for (const cue of projection.subtitles ?? []) {
-          const bitmap = await loadSubtitle(tenant, cue, signal)
+          const bitmap = await loadSubtitle(tenant, cue, raster.width, signal)
           if (signal.aborted) { bitmap.close(); return }
           session.subtitleBlocks.set(cue.cueId, bitmap)
         }

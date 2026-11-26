@@ -6,6 +6,23 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 class SubtitleBlockLayoutTest {
+
+    @Test
+    void largest_profile_extent_keeps_six_logical_lines_at_delivery_scale() throws Exception {
+        String row = "鬱永🌻🦋🦚🍉";
+        String dense = String.join("\n", java.util.Collections.nCopies(6, row));
+        var logical = SubtitleBlockLayout.png(dense, 304, 44);
+        assertArrayEquals(logical, SubtitleBlockLayout.png(dense, 304, 44, 320));
+        assertTrue(logical.length <= SubtitleBlockLayout.MAX_PNG_BYTES);
+        var nativePng = SubtitleBlockLayout.png(dense, 304, 44, 1920);
+        var image = ImageIO.read(new ByteArrayInputStream(nativePng));
+        assertEquals(1824, image.getWidth());
+        assertEquals(2328, image.getHeight());
+        assertTrue(nativePng.length > 131072 && nativePng.length < SubtitleBlockLayout.MAX_NATIVE_PNG_BYTES);
+        assertEquals(0, image.getRGB(1823, 2327) >>> 24);
+        assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.png(row, 304, 44, 1921));
+    }
+
     @Test
     void explicitAndWidthDrivenBreaksUseTheSamePinnedGlyphs() throws Exception {
         String literal = "春天来了 🌻\uFE0F\nSpring is here";

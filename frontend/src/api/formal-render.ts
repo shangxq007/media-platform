@@ -66,7 +66,7 @@ const planSchema = z.object({ batchDigest: z.string().regex(/^[0-9a-f]{64}$/),
 
 export const FormalRenderAPI = {
   async subtitleLayout(tenant: string, project: string,
-      body: { text: string; width: number; fontSize: number; fontProfile: string }, signal?: AbortSignal) {
+      body: { text: string; width: number; fontSize: number; fontProfile: string; destinationWidth: number }, signal?: AbortSignal) {
     return request(c => versionlessApi.post<Blob>(
       `/tenants/${part(tenant)}/projects/${part(project)}/timeline-operations/subtitle-layout`,
       body, { ...c, responseType: 'blob', headers: { Accept: 'image/png' } }), signal)

@@ -1,5 +1,6 @@
 package com.example.platform.bmf;
 
+import com.example.platform.fonttext.typography.SubtitleBlockLayout;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.sandbox.DeviceExposurePolicy;
@@ -21,12 +22,18 @@ import com.example.platform.workerfabric.domain.providernative.ProcessInvocation
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeOutputFiles;
 import com.example.platform.workerfabric.domain.providernative.SandboxExecutionPolicyResolver;
 import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
+import java.io.Closeable;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +67,23 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     @Override
     public SandboxResolution resolve(ExecutionCommand command,
             List<MaterializedExecutionInput> runtimeLocalInputs) {
+        return resolve(command, runtimeLocalInputs, null);
+    }
+
+    @Override
+    public PreparedResolution prepare(ExecutionCommand command, List<MaterializedExecutionInput> inputs) {
+        var prepared = new SubtitleInputs();
+        try {
+            return new PreparedResolution(resolve(command, inputs, prepared), prepared);
+        } catch (RuntimeException | Error failure) {
+            try { prepared.close(); }
+            catch (IOException cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        }
+    }
+
+    private SandboxResolution resolve(ExecutionCommand command,
+            List<MaterializedExecutionInput> runtimeLocalInputs, SubtitleInputs prepared) {
         if (!(command.invocationSpec() instanceof ProcessInvocationSpec invocation)
                 || !invocation.executable().equals(python.toString())
                 || invocation.arguments().size() < 4
@@ -72,7 +96,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         boolean multitrack = BmfCpuRuntimeAdapter.MULTITRACK_GRAPH_PROGRAM.equals(program);
         boolean multiInput = multitrack || BmfCpuRuntimeAdapter.COMPOSITE_GRAPH_PROGRAM.equals(program);
         List<String> placements = List.of();
-        List<String> subtitleBlocks = List.of();
+        List<SubtitleInput> subtitles = new ArrayList<>();
         List<String> inputTokens;
         String operation;
         String start;
@@ -107,9 +131,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             if (raster == null) return rejected("BMF output raster is outside the bounded invocation contract");
             if (multitrack) {
                 placements = List.copyOf(arguments.subList(8 + count, expected));
-                subtitleBlocks = List.copyOf(arguments.subList(expected, arguments.size()));
-                if (subtitleBlocks.stream().anyMatch(block -> !validSubtitleBlock(block))) {
-                    return rejected("BMF subtitle block is outside the bounded composition contract");
+                if (prepared == null && arguments.size() > expected) {
+                    return rejected("BMF subtitle rasters require scoped input preparation");
+                }
+                for (var block : arguments.subList(expected, arguments.size())) {
+                    SubtitleInput subtitle = parseSubtitle(block);
+                    if (subtitle == null) return rejected("BMF subtitle recipe is outside the bounded composition contract");
+                    subtitles.add(subtitle);
                 }
                 if (placements.stream().anyMatch(placement -> !validPlacement(placement, duration, raster))) {
                     return rejected("BMF multitrack placement is invalid");
@@ -161,7 +189,6 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         for (var token : inputTokens) {
             readOnlyInputs.add(byToken.get(token).materializedArtifact().path().toAbsolutePath().normalize());
         }
-        var mounts = List.copyOf(readOnlyInputs);
         if (!Files.isRegularFile(python) || !Files.isExecutable(python)
                 || !Files.isDirectory(runtimeRoot.resolve("output/bmf"))
                 || !Files.isRegularFile(runtimeRoot.resolve("output/bmf/lib/libbuiltin_modules.so"))
@@ -170,6 +197,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             return rejected("BMF Python or pinned runtime distribution is unavailable");
         }
         try {
+            List<Path> subtitlePaths = new ArrayList<>(subtitles.size());
+            for (var subtitle : subtitles) {
+                Path path = prepared.raster(subtitle.recipe(), raster.width());
+                subtitlePaths.add(path);
+                readOnlyInputs.add(path);
+            }
+            var mounts = List.copyOf(readOnlyInputs);
             int runtimeIndex = mounts.indexOf(runtimeRoot);
             Path sandboxRuntime = Path.of("/sandbox-inputs/input-" + runtimeIndex);
             Path working = workspace.outputStagingRoot().resolve("attempt-"
@@ -187,7 +221,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 args.add(rate);
                 args.add(raster.width() + "x" + raster.height());
                 args.addAll(placements);
-                args.addAll(subtitleBlocks);
+                for (int index = 0; index < subtitles.size(); index++) {
+                    int mount = mounts.indexOf(subtitlePaths.get(index));
+                    args.add(subtitles.get(index).timing() + ",/sandbox-inputs/input-" + mount);
+                }
             } else {
                 Path inputPath = byToken.get(inputTokens.getFirst())
                         .materializedArtifact().path().toAbsolutePath().normalize();
@@ -220,8 +257,8 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     SecretExposure.none(), PrivilegePolicy.unprivileged(),
                     ResourceEnforcementLimits.captureOnly(captureBytes), DeviceExposurePolicy.none());
             return SandboxExecutionResolver.resolve(requirement, capabilities);
-        } catch (IllegalArgumentException failure) {
-            return rejected("BMF sandbox policy is invalid");
+        } catch (IOException | IllegalArgumentException failure) {
+            return rejected("BMF sandbox input preparation or policy is invalid");
         }
     }
 
@@ -327,15 +364,20 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private static boolean validSubtitleBlock(String block) {
-        if (block.length() > 100_000) return false;
-        String[] values = block.split(",", 6);
+    private record RasterRecipe(String text, int width, int size) {}
+    private record SubtitleInput(String timing, RasterRecipe recipe) {}
+
+    private static SubtitleInput parseSubtitle(String block) {
+        if (block.length() > 3_600) return null;
+        String[] values = block.split(",", 8);
         String timeShape = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
-        if (values.length != 6 || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
+        if (values.length != 8 || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
                 || Long.parseLong(values[0]) >= Long.parseLong(values[1])
-                || !values[2].matches(timeShape) || !values[3].matches(timeShape) || values[5].length() > 96_000) return false;
+                || !values[2].matches(timeShape) || !values[3].matches(timeShape)
+                || !values[5].matches("[1-9][0-9]{1,2}") || !values[6].matches("[1-9][0-9]")
+                || values[7].length() > 1_536) return null;
         String sample = timeShape + ";-?[0-9]{1,8};-?[0-9]{1,8};[0-9]{1,7}";
-        if (!values[4].matches(sample + "(?:\\|" + sample + "){0,15}")) return false;
+        if (!values[4].matches(sample + "(?:\\|" + sample + "){0,15}")) return null;
         try {
             com.example.platform.shared.time.MediaTime.parse(values[2]);
             com.example.platform.shared.time.MediaTime.parse(values[3]);
@@ -343,19 +385,58 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             for (String entry : values[4].split("\\|")) {
                 var fields = entry.split(";");
                 var time = com.example.platform.shared.time.MediaTime.parse(fields[0]);
-                if (previous != null && !previous.isLessThan(time)) return false;
+                if (previous != null && !previous.isLessThan(time)) return null;
                 if (Math.abs(Integer.parseInt(fields[1])) > 16_000_000 || Math.abs(Integer.parseInt(fields[2])) > 16_000_000
-                        || Integer.parseInt(fields[3]) > 1_000_000) return false;
+                        || Integer.parseInt(fields[3]) > 1_000_000) return null;
                 previous = time;
             }
-            byte[] png = java.util.Base64.getDecoder().decode(values[5]);
-            if (png.length < 33 || png.length > 72_000) return false;
-            var header = java.nio.ByteBuffer.wrap(png);
-            if (header.getLong() != 0x89504E470D0A1A0AL || header.getInt() != 13 || header.getInt() != 0x49484452) return false;
-            int width = header.getInt(), height = header.getInt();
-            return width >= 40 && width <= 304 && height > 0 && height <= 388;
-        } catch (ArithmeticException | IllegalArgumentException malformed) {
-            return false;
+            byte[] decoded = Base64.getUrlDecoder().decode(values[7]);
+            String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(decoded)).toString();
+            int width = Integer.parseInt(values[5]);
+            int size = Integer.parseInt(values[6]);
+            SubtitleBlockLayout.validateShape(text, width, size);
+            return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
+                    new RasterRecipe(text, width, size));
+        } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
+            return null;
+        }
+    }
+
+    /** One private input set per launch. Names are generated here, never supplied by a cue. */
+    private static final class SubtitleInputs implements Closeable {
+        private final Map<RasterRecipe, Path> files = new LinkedHashMap<>();
+        private final List<Path> allocated = new ArrayList<>();
+        private Path directory;
+
+        Path raster(RasterRecipe recipe, int destinationWidth) throws IOException {
+            Path existing = files.get(recipe);
+            if (existing != null) return existing;
+            byte[] png = SubtitleBlockLayout.png(recipe.text(), recipe.width(), recipe.size(), destinationWidth);
+            if (directory == null) directory = Files.createTempDirectory("bmf-subtitle-inputs-");
+            Path target = directory.resolve("block-" + files.size() + ".png");
+            allocated.add(target);
+            Files.write(target, png, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            files.put(recipe, target);
+            return target;
+        }
+
+        @Override public void close() throws IOException {
+            IOException failure = null;
+            for (Path file : allocated) {
+                try { Files.deleteIfExists(file); }
+                catch (IOException cleanup) {
+                    if (failure == null) failure = cleanup;
+                    else failure.addSuppressed(cleanup);
+                }
+            }
+            if (directory != null) {
+                try { Files.deleteIfExists(directory); }
+                catch (IOException cleanup) {
+                    if (failure == null) failure = cleanup;
+                    else failure.addSuppressed(cleanup);
+                }
+            }
+            if (failure != null) throw failure;
         }
     }
 

@@ -103,12 +103,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
     /** Builds a native BMF graph from typed, extent-relative placements. */
     static final String MULTITRACK_GRAPH_PROGRAM = """
             from fractions import Fraction
-            import base64
             import importlib
             import os
-            import struct
             import sys
-            import tempfile
             import bmf
 
             ff = importlib.import_module('bmf.builder.ff_filter')
@@ -255,13 +252,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     clip, px, py = position_layer(clip, placement[17], start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
-            cue_files = tempfile.TemporaryDirectory(dir='.') if subtitles else None
-            for index, (onset, end, start, elapsed, samples, encoded) in enumerate(subtitles):
-                payload = base64.b64decode(encoded, validate=True)
-                width, height = struct.unpack('>II', payload[16:24])
-                path = os.path.join(cue_files.name, 'cue-' + str(index) + '.png')
-                with open(path, 'wb') as cue:
-                    cue.write(payload)
+            if subtitles:
+                raster_paths = set(fields[-1] for fields in subtitles)
+                print('BMF_SUBTITLE_RASTERS unique=' + str(len(raster_paths)) + ' layers=' + str(len(subtitles))
+                      + ' bytes=' + str(sum(os.path.getsize(path) for path in raster_paths)), flush=True)
+            for onset, end, start, elapsed, samples, path in subtitles:
                 block = graph.decode({'input_path': path})['video']
                 # Duplicate pixels first. The still decoder's clock is unrelated to the output
                 # clock, so assign one exact output-frame tick to each duplicate before geq.
@@ -273,9 +268,10 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 block = ff.setpts(block, 'N')
                 size = str(max(1, round(width * canvas_width / 320))) + 'x' + str(max(1, round(height * canvas_width / 320)))
                 block = ff.ff_filter(block, 'scale', size)
-                alpha = motion_expression(samples, 3, start, elapsed, 'T')
-                block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
-                                     a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
+                if any(point.split(';')[3] != '1000000' for point in samples.split('|')):
+                    alpha = motion_expression(samples, 3, start, elapsed, 'T')
+                    block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
+                                         a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
                 block, px, py = position_layer(block, samples, start, elapsed)
                 frame_number = 'floor(t*(' + rate + ')+0.5)'
                 visible = '(1+sgn(' + frame_number + '-' + onset + '+0.5))*(1-sgn(' + frame_number + '-' + end + '+0.5))'
@@ -396,7 +392,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         }
         for (var cue : plan.subtitles()) {
             arguments.add(cue.firstFrame() + "," + cue.endFrame() + "," + cue.start() + "," + cue.elapsed() + ","
-                    + cue.samples() + "," + cue.pngBase64());
+                    + cue.samples() + "," + cue.width() + "," + cue.fontSize() + ","
+                    + java.util.Base64.getUrlEncoder().withoutPadding()
+                            .encodeToString(cue.text().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
     }

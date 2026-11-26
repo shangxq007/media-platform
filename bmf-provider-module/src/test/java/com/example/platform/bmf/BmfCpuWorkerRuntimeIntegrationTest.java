@@ -91,6 +91,42 @@ class BmfCpuWorkerRuntimeIntegrationTest {
     }
 
     @Test
+    void dense_identical_rasters_share_one_scoped_mount_and_leave_no_file_on_close() throws Exception {
+        Path runtime = configuredRuntime();
+        Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("native-subtitle.mp4"));
+        Path python = runtime.resolve("host-bundle/usr/bin/python3.9");
+        var launcher = BubblewrapSandboxCapabilityDetector.detect().launcher().orElseThrow();
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, runtime,
+                BmfSandboxWorkspace.under(temp.resolve("subtitle-workspace")), Duration.ofSeconds(30),
+                2_000_000, launcher.capabilities());
+        var seconds = MediaTime.ofMillis(3500);
+        String text = String.join("\n", java.util.Collections.nCopies(6, "鬱永🌻🦋🦚🍉"));
+        var cue = new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.CueRaster(
+                0, 84, MediaTime.ZERO, MediaTime.ZERO, "0;100000;550000;1000000", text, 304, 44);
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
+                INPUT_ID, OUTPUT_ID, Optional.empty(),
+                List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, seconds)),
+                Optional.of(seconds), Optional.of(FrameRate.of(24, 1)), new RenderRaster(1600, 1200),
+                List.of(cue, cue));
+        var command = new BmfCpuRuntimeAdapter(python).adapt(plan, context("native-subtitle")).commands().getFirst();
+        Path attachment;
+        try (var prepared = resolver.prepare(command, List.of(materialized(source)))) {
+            var ready = (com.example.platform.sandbox.SandboxResolution.Resolved) prepared.resolution();
+            var mounts = ready.specification().filesystem().readOnlyInputs().stream()
+                    .filter(file -> file.getFileName().toString().equals("block-0.png")).toList();
+            assertThat(mounts).hasSize(1);
+            attachment = mounts.getFirst();
+            assertThat(Files.size(attachment)).isGreaterThan(131072);
+            assertThat(ready.specification().process().arguments().getLast()).contains(",/sandbox-inputs/input-");
+            var image = javax.imageio.ImageIO.read(attachment.toFile());
+            assertThat(image.getWidth()).isEqualTo(1520);
+            assertThat(image.getHeight()).isEqualTo(1940);
+        }
+        assertThat(Files.exists(attachment)).isFalse();
+        assertThat(Files.exists(attachment.getParent())).isFalse();
+    }
+
+    @Test
     void repeated_materialized_source_keeps_each_input_and_sandbox_runtime_addressable() throws Exception {
         Path runtime = configuredRuntime();
         Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("a-shared.mp4"));

@@ -70,47 +70,49 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                             SandboxFailureCode.SANDBOX_POLICY_UNSATISFIABLE,
                             "only typed process invocation is supported", java.util.Set.of()));
                 }
-                SandboxResolution resolution = specifications.resolve(command, inputs);
-                if (resolution instanceof SandboxResolution.Rejected rejected) {
-                    throw mapped(rejected.failure());
-                }
-                var resolved = ((SandboxResolution.Resolved) resolution).specification();
-                if (providerOutputDirectory != null) {
-                    Path working = resolved.filesystem().workingDirectory();
-                    if (working == null) working = providerOutputDirectory;
-                    if (!working.startsWith(providerOutputDirectory)) {
-                        throw new IllegalArgumentException("provider output directory escapes its configured root");
+                try (var prepared = specifications.prepare(command, inputs)) {
+                    SandboxResolution resolution = prepared.resolution();
+                    if (resolution instanceof SandboxResolution.Rejected rejected) {
+                        throw mapped(rejected.failure());
                     }
-                    candidateOutputFile = ProviderNativeOutputFiles.renderOutput(working);
-                    Files.deleteIfExists(candidateOutputFile);
+                    var resolved = ((SandboxResolution.Resolved) resolution).specification();
+                    if (providerOutputDirectory != null) {
+                        Path working = resolved.filesystem().workingDirectory();
+                        if (working == null) working = providerOutputDirectory;
+                        if (!working.startsWith(providerOutputDirectory)) {
+                            throw new IllegalArgumentException("provider output directory escapes its configured root");
+                        }
+                        candidateOutputFile = ProviderNativeOutputFiles.renderOutput(working);
+                        Files.deleteIfExists(candidateOutputFile);
+                    }
+                    LOG.info("PROCESS_SPEC task={} attempt={} executable={} argv={} cwd={}",
+                            bundle.executableTaskId().sha256Hex(),
+                            bundle.platformExecutionAttemptId().value(),
+                            resolved.process().executable(),
+                            resolved.process().arguments(),
+                            resolved.filesystem().workingDirectory());
+                    SandboxExecutionResult result = launcher.launch(resolved, cancellation);
+                    LOG.info("PROCESS_OUTPUT task={} attempt={} exit={} stdoutBytes={} stdoutSha256={} stdoutTruncated={} stderrBytes={}",
+                            bundle.executableTaskId().sha256Hex(),
+                            bundle.platformExecutionAttemptId().value(),
+                            result.exitCode().isPresent() ? Integer.toString(result.exitCode().getAsInt()) : "NOT_AVAILABLE",
+                            result.stdout().bytes().length, sha256(result.stdout().bytes()),
+                            result.stdout().truncated(), result.stderr().bytes().length);
+                    if (result.observation()==null || result.observation().cleanup()==null
+                            || !result.observation().cleanup().completed()) {
+                        throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED,
+                                "sandbox process cleanup is not proven complete");
+                    }
+                    if (result.failure().isPresent()) {
+                        throw mapped(result);
+                    }
+                    if (result.stdout().truncated() && providerOutputDirectory == null) {
+                        throw new ProviderNativeExecutionFailure(
+                                ProviderNativeFailureCode.PROCESS_OUTPUT_TRUNCATED,
+                                "process stdout exceeded bounded capture limit");
+                    }
+                    candidateOutput = result.stdout().bytes();
                 }
-                LOG.info("PROCESS_SPEC task={} attempt={} executable={} argv={} cwd={}",
-                        bundle.executableTaskId().sha256Hex(),
-                        bundle.platformExecutionAttemptId().value(),
-                        resolved.process().executable(),
-                        resolved.process().arguments(),
-                        resolved.filesystem().workingDirectory());
-                SandboxExecutionResult result = launcher.launch(resolved, cancellation);
-                LOG.info("PROCESS_OUTPUT task={} attempt={} exit={} stdoutBytes={} stdoutSha256={} stdoutTruncated={} stderrBytes={}",
-                        bundle.executableTaskId().sha256Hex(),
-                        bundle.platformExecutionAttemptId().value(),
-                        result.exitCode().isPresent() ? Integer.toString(result.exitCode().getAsInt()) : "NOT_AVAILABLE",
-                        result.stdout().bytes().length, sha256(result.stdout().bytes()),
-                        result.stdout().truncated(), result.stderr().bytes().length);
-                if (result.observation()==null || result.observation().cleanup()==null
-                        || !result.observation().cleanup().completed()) {
-                    throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED,
-                            "sandbox process cleanup is not proven complete");
-                }
-                if (result.failure().isPresent()) {
-                    throw mapped(result);
-                }
-                if (result.stdout().truncated() && providerOutputDirectory == null) {
-                    throw new ProviderNativeExecutionFailure(
-                            ProviderNativeFailureCode.PROCESS_OUTPUT_TRUNCATED,
-                            "process stdout exceeded bounded capture limit");
-                }
-                candidateOutput = result.stdout().bytes();
             }
             if (providerOutputDirectory != null) {
                 Path outputFile = candidateOutputFile;

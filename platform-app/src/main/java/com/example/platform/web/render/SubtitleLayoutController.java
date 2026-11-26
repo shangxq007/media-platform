@@ -16,7 +16,7 @@ public final class SubtitleLayoutController {
         this.authorization = authorization;
     }
 
-    public record Layout(String text, int width, int fontSize, String fontProfile) {}
+    public record Layout(String text, int width, int fontSize, String fontProfile, Integer destinationWidth) {}
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> layout(@PathVariable String tenantId, @PathVariable String projectId,
@@ -24,6 +24,7 @@ public final class SubtitleLayoutController {
         authorization.requireRead(tenantId, projectId);
         if (!SubtitleBlockLayout.PROFILE.equals(input.fontProfile())) throw new IllegalArgumentException("Unsupported subtitle font profile");
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.IMAGE_PNG)
-                .body(SubtitleBlockLayout.png(input.text(), input.width(), input.fontSize()));
+                    .body(SubtitleBlockLayout.png(input.text(), input.width(), input.fontSize(),
+                        input.destinationWidth() == null ? SubtitleBlockLayout.REFERENCE_WIDTH : input.destinationWidth()));
     }
 }

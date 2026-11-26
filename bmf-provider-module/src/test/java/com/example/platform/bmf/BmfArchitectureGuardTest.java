@@ -153,13 +153,13 @@ class BmfArchitectureGuardTest {
                         "inputId", "outputId", "sourceWindow",
                         "compositeInputs", "compositeDuration", "compositeFrameRate", "raster", "subtitles");
 
-        // N15 permits only the bounded, provider-facing raster projection, never authored text
-        // or Timeline state, to enter the native plan for a composite.
+        // Only the bounded raster recipe and timing enter this provider-facing
+        // plan. The canonical Timeline or text style model never crosses this seam.
         var rasterComponents = com.example.platform.render.domain.renderplan
                 .TimedTextMaterializationRequirement.CueRaster.class.getRecordComponents();
         assertThat(Arrays.stream(rasterComponents).map(c -> c.getName() + ":" + c.getType().getSimpleName()))
                 .containsExactly("firstFrame:long", "endFrame:long", "start:MediaTime",
-                        "elapsed:MediaTime", "samples:String", "pngBase64:String");
+                        "elapsed:MediaTime", "samples:String", "text:String", "width:int", "fontSize:int");
         assertThat(BmfCpuTranscodePlan.class.getRecordComponents())
                 .filteredOn(c -> c.getName().equals("subtitles"))
                 .singleElement().satisfies(c -> assertThat(c.getGenericType().getTypeName())

@@ -28,6 +28,10 @@ public final class SubtitleBlockLayout {
     public static final String PROFILE = "noto-sc-color-emoji-v1";
     public static final int REFERENCE_WIDTH = 320;
     public static final int MAX_PNG_BYTES = 72_000;
+    public static final int MAX_DESTINATION_WIDTH = 1920;
+    // Maximum authored raster is 304×388 logical pixels. Even at 6×, an
+    // uncompressible RGBA PNG with scanline/filter overhead fits this bound.
+    public static final int MAX_NATIVE_PNG_BYTES = 18 * 1024 * 1024;
     private static final String ROOT = "/subtitle-cue-v1/";
     private static final Pattern GRAPHEME = Pattern.compile("\\X");
 
@@ -44,7 +48,16 @@ public final class SubtitleBlockLayout {
     }
 
     public static byte[] png(String text, int width, int size) {
+        return png(text, width, size, REFERENCE_WIDTH);
+    }
+
+    /** Layout is always decided in the original 320-unit space, before painting. */
+    public static byte[] png(String text, int width, int size, int destinationWidth) {
         validateShape(text, width, size);
+        if (destinationWidth < 1 || destinationWidth > MAX_DESTINATION_WIDTH) {
+            throw new IllegalArgumentException("Subtitle destination width is outside the raster budget");
+        }
+        double scale = destinationWidth / (double) REFERENCE_WIDTH;
         Font font = Resources.FONT.deriveFont((float) size);
         var frc = new java.awt.font.FontRenderContext(null, true, true);
         var lines = new ArrayList<TextLayout>();
@@ -68,13 +81,19 @@ public final class SubtitleBlockLayout {
         }
         int lineHeight = (int) Math.ceil(size * 1.45);
         int baseline = (int) Math.ceil(size * 1.10);
-        BufferedImage block = new BufferedImage(width, lines.size() * lineHeight + 4, BufferedImage.TYPE_INT_ARGB);
+        // Keep line wrapping, baseline spacing, and emoji placement in logical units.
+        // Scale the paint transform before drawing TextLayout so the outline is
+        // sampled at destination resolution. Emoji draw from the pinned native strike.
+        int rasterWidth = Math.max(1, (int) Math.round(width * scale));
+        int rasterHeight = Math.max(1, (int) Math.round((lines.size() * lineHeight + 4) * scale));
+        BufferedImage block = new BufferedImage(rasterWidth, rasterHeight, BufferedImage.TYPE_INT_ARGB);
         var graphics = block.createGraphics();
         try {
             graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             graphics.setColor(Color.WHITE);
+            graphics.scale(scale, scale);
             for (int row = 0; row < lines.size(); row++) {
                 TextLayout line = lines.get(row);
                 if (line != null) line.draw(graphics, 2, 2 + baseline + row * lineHeight);
@@ -85,7 +104,8 @@ public final class SubtitleBlockLayout {
         try {
             var bytes = new ByteArrayOutputStream();
             if (!ImageIO.write(block, "png", bytes)) throw new IllegalStateException("PNG encoder unavailable");
-            if (bytes.size() > MAX_PNG_BYTES) throw new IllegalArgumentException("Subtitle raster exceeds the supported block budget");
+            int budget = destinationWidth <= REFERENCE_WIDTH ? MAX_PNG_BYTES : MAX_NATIVE_PNG_BYTES;
+            if (bytes.size() > budget) throw new IllegalArgumentException("Subtitle raster exceeds the supported block budget");
             return bytes.toByteArray();
         } catch (IOException failure) {
             throw new IllegalStateException("Subtitle raster could not be encoded", failure);
