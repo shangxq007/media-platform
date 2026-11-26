@@ -277,9 +277,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             var top = new java.math.BigDecimal(parts[13]);
             var bottom = new java.math.BigDecimal(parts[14]);
             String[] fx = parts[16].split(";", -1);
-            if (fx.length != 10 || !isNonNegativeSeconds(fx[7])
+            if ((fx.length != 10 && fx.length != 14) || !isNonNegativeSeconds(fx[7])
                     || !isNonNegativeSeconds(fx[8]) || !isNonNegativeSeconds(fx[9])
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
+            if (fx.length == 14 && (!parts[0].equals("V") || !validOpacityRamp(fx))) return false;
             var brightness = new java.math.BigDecimal(fx[0]);
             var contrast = new java.math.BigDecimal(fx[1]);
             var saturation = new java.math.BigDecimal(fx[2]);
@@ -315,6 +316,28 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         } catch (NumberFormatException invalid) {
             return false;
         }
+    }
+
+    private static boolean validOpacityRamp(String[] fx) {
+        String exactTime = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        if (!fx[10].matches(exactTime) || !fx[12].matches(exactTime)) return false;
+        try {
+            var start = com.example.platform.shared.time.MediaTime.parse(fx[10]);
+            var span = com.example.platform.shared.time.MediaTime.parse(fx[12]);
+            var end = start.add(span);
+            var endSeconds = BigDecimal.valueOf(end.ticks()).divide(BigDecimal.valueOf(end.timeScale()),
+                    9, java.math.RoundingMode.HALF_UP);
+            return span.ticks() > 0 && endSeconds.compareTo(new BigDecimal(fx[8])) <= 0
+                    && validOpacityValue(fx[11]) && validOpacityValue(fx[13]);
+        } catch (ArithmeticException | IllegalArgumentException invalid) {
+            return false;
+        }
+    }
+
+    private static boolean validOpacityValue(String token) {
+        if (token.length() > 24 || !token.matches("[0-9]+(?:\\.[0-9]+)?(?:E-?[0-9]{1,3})?")) return false;
+        BigDecimal value = new BigDecimal(token);
+        return value.signum() >= 0 && value.compareTo(BigDecimal.ONE) <= 0;
     }
 
     private static boolean isNonNegativeSeconds(String value) {
