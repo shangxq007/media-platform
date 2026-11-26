@@ -11,6 +11,7 @@ const dissolve = mode === '--dissolve'
 const position = mode === '--position'
 const correction = ['--subtitle-correction','--reviewed-subtitle-parent'].includes(mode)
 const motion = ['--n16-clip','--n16-subtitle','--n16-hd'].includes(mode)
+const fonts = mode === '--n18-fonts'
 const raster = ['--n17-raster','--n17-dense'].includes(mode)
 const subtitle = mode === '--subtitle'
 assert(appRoot && outputRoot)
@@ -36,7 +37,7 @@ await context.addInitScript(({ access, profile }) => {
 
 async function run() {
   const created = await page.request.post(`${base}/api/identity/tenants/${tenant}/projects`, {
-    headers, data: { name: raster ? 'N17 raster witness '+mode : motion ? 'N16 motion witness '+mode : correction ? 'N15 correction witness' : subtitle ? 'N15 editable subtitles' : position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
+    headers, data: { name: fonts ? 'N18 font profiles' : raster ? 'N17 raster witness '+mode : motion ? 'N16 motion witness '+mode : correction ? 'N15 correction witness' : subtitle ? 'N15 editable subtitles' : position ? 'N14 position keys' : dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
   })
   assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
@@ -113,8 +114,9 @@ async function run() {
   const endpoint = base + scope + '/timeline-operations/batch/v2'
   const post = async (method, body, digest) => page.request.post(endpoint+'/'+method,{
     headers: digest ? { ...headers, 'If-Match': '"'+digest+'"' } : headers, data: body })
-  if (dissolve || position || subtitle || correction || motion || raster) {
-    const runEdit = raster ? (await import('./n17-raster-browser.mjs')).runRasterQuality
+  if (dissolve || position || subtitle || correction || motion || raster || fonts) {
+    const runEdit = fonts ? (await import('./n18-font-profiles-browser.mjs')).runFontProfiles
+      : raster ? (await import('./n17-raster-browser.mjs')).runRasterQuality
       : motion ? (await import('./n16-motion-browser.mjs')).runMotion
       : correction ? (await import('./n15-subtitle-correction-browser.mjs')).runSubtitleCorrection
       : subtitle ? (await import('./n15-subtitle-browser.mjs')).runSubtitle

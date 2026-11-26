@@ -470,7 +470,8 @@ public final class TimelineBatchCommandMapper {
         }
         return new OperationParameters.SubtitleCueParameters(requiredText(p,"cueId"), MediaTime.parse(start), MediaTime.parse(end),
                 requiredText(p,"text"), cueInteger(p,"width"),cueInteger(p,"fontSize"),
-                new com.example.platform.timeline.canonical.SubtitleCueMotion(requiredText(p,"fontProfile"),frames));
+                new com.example.platform.timeline.canonical.SubtitleCueMotion(
+                        p.containsKey("fontProfile") ? requiredText(p, "fontProfile") : null, frames));
     }
 
     private static int cueInteger(Map<?, ?> map, String key) {

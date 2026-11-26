@@ -8,7 +8,7 @@ import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAs
  * from the same snapshot bytes at any time.
  */
 import { add, compare, formatRational, parseRational, type Rational } from './trim'
-import type { SubtitleCue } from './subtitle-cues'
+import { resolveSubtitleFont, type SubtitleCue } from './subtitle-cues'
 
 export interface ProjectedVideoEffect {
   readonly brightness: number
@@ -230,7 +230,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
   const element = object(raw, 'TextElement')
   if (!element.subtitleCue) throw new Error('Unsupported Timeline preview semantics: textElements')
   const motion = object(element.subtitleCue, 'subtitle motion')
-  if (motion.fontProfile !== 'noto-sc-color-emoji-v1') throw new Error('Unsupported subtitle font profile')
+  const fontProfile = resolveSubtitleFont(motion.fontProfile)
   const fontRational = (raw: unknown) => {
     const value = object(raw, 'exact subtitle time or dimension')
     if (!Number.isSafeInteger(value.numerator) || !Number.isSafeInteger(value.denominator)) throw new Error('Invalid subtitle rational')
@@ -260,7 +260,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     throw new Error('Invalid subtitle motion')
   return { cueId: text(element.id, 'subtitle identity'), text: text(styled.content, 'subtitle text'),
     start: formatRational(start), end: formatRational(add(start, duration)), width: Number(width.numerator),
-    fontSize: Number(size.numerator), fontProfile: motion.fontProfile, keys }
+    fontSize: Number(size.numerator), fontProfile, keys }
 }
 
 /** Reject unsupported semantics at the read-only projection boundary. */

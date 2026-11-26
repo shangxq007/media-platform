@@ -56,7 +56,7 @@ public final class TimelineOperationWireContract {
             case "timeline.subtitle.cue.set" -> {
                 fields(fields, "string", "cueId", "text");
                 fields(fields, "cue-time", "start", "end");
-                fields(fields, "cue-font", "fontProfile");
+                fields.put("fontProfile", new Field("cue-font", false));
                 fields(fields, "cue-width", "width");
                 fields(fields, "cue-font-size", "fontSize");
                 fields(fields, "cue-key-array", "keys");

@@ -43,6 +43,26 @@ class SubtitleBlockLayoutTest {
     }
 
     @Test
+    void wholeCueProfilesKeepPinnedFallbackAndDefaultBytes() throws Exception {
+        String text = "春㐀秋 🌻\nLatin Aa";
+        var defaultBytes = SubtitleBlockLayout.png(text, 200, 24);
+        assertArrayEquals(defaultBytes, SubtitleBlockLayout.png(text, 200, 24, null, 320));
+        var serif = SubtitleBlockLayout.png(text, 200, 24, SubtitleBlockLayout.SERIF_PROFILE, 320);
+        assertFalse(java.util.Arrays.equals(defaultBytes, serif));
+        assertArrayEquals(serif, SubtitleBlockLayout.png(text, 200, 24, SubtitleBlockLayout.SERIF_PROFILE, 320));
+        assertArrayEquals(SubtitleBlockLayout.png("㐀", 100, 24),
+                SubtitleBlockLayout.png("㐀", 100, 24, SubtitleBlockLayout.SERIF_PROFILE, 320));
+        assertArrayEquals(SubtitleBlockLayout.png("🌻", 100, 24),
+                SubtitleBlockLayout.png("🌻", 100, 24, SubtitleBlockLayout.SERIF_PROFILE, 320));
+        var hd = ImageIO.read(new ByteArrayInputStream(
+                SubtitleBlockLayout.png(text, 200, 24, SubtitleBlockLayout.SERIF_PROFILE, 1600)));
+        assertEquals(1000, hd.getWidth());
+        assertEquals(370, hd.getHeight());
+        assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.png(text, 200, 24, "unregistered", 320));
+        assertThrows(IllegalArgumentException.class, () -> SubtitleBlockLayout.png("\u0378", 100, 24, SubtitleBlockLayout.SERIF_PROFILE, 320));
+    }
+
+    @Test
     void pinnedEmojiSequencesRenderAndUnsupportedGlyphsAreRejected() {
         assertArrayEquals(SubtitleBlockLayout.png("🌻", 100, 24), SubtitleBlockLayout.png("🌻\uFE0F", 100, 24));
         assertTrue(SubtitleBlockLayout.png("👩‍💻", 100, 24).length > 100);

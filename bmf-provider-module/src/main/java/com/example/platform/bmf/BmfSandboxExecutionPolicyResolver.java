@@ -368,13 +368,13 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     private static SubtitleInput parseSubtitle(String block) {
         if (block.length() > 3_600) return null;
-        String[] values = block.split(",", 8);
+        String[] values = block.split(",", 10);
         String timeShape = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
-        if (values.length != 8 || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
+        if ((values.length != 8 && values.length != 9) || !values[0].matches("[0-9]{1,10}") || !values[1].matches("[0-9]{1,10}")
                 || Long.parseLong(values[0]) >= Long.parseLong(values[1])
                 || !values[2].matches(timeShape) || !values[3].matches(timeShape)
                 || !values[5].matches("[1-9][0-9]{1,2}") || !values[6].matches("[1-9][0-9]")
-                || values[7].length() > 1_536) return null;
+                || values[7].length() > 1_536 || (values.length == 9 && !values[8].matches("[a-z0-9-]{1,40}"))) return null;
         String sample = timeShape + ";-?[0-9]{1,8};-?[0-9]{1,8};[0-9]{1,7}";
         if (!values[4].matches(sample + "(?:\\|" + sample + "){0,15}")) return null;
         try {
@@ -394,7 +394,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             int width = Integer.parseInt(values[5]);
             int size = Integer.parseInt(values[6]);
             return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
-                    new BlockRasterRecipe(text, width, size));
+                    new BlockRasterRecipe(text, width, size, values.length == 9 ? values[8] : null));
         } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
             return null;
         }
@@ -402,19 +402,21 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     /** One private input set per launch. Names are generated here, never supplied by a cue. */
     private static final class SubtitleInputs implements Closeable {
-        private final Map<BlockRasterRecipe, Path> files = new LinkedHashMap<>();
+        private record RasterKey(BlockRasterRecipe recipe, int width) {}
+        private final Map<RasterKey, Path> files = new LinkedHashMap<>();
         private final List<Path> allocated = new ArrayList<>();
         private Path directory;
 
         Path raster(BlockRasterRecipe recipe, int destinationWidth) throws IOException {
-            Path existing = files.get(recipe);
+            var key = new RasterKey(recipe, destinationWidth);
+            Path existing = files.get(key);
             if (existing != null) return existing;
             byte[] png = recipe.png(destinationWidth);
             if (directory == null) directory = Files.createTempDirectory("bmf-subtitle-inputs-");
             Path target = directory.resolve("block-" + files.size() + ".png");
             allocated.add(target);
             Files.write(target, png, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-            files.put(recipe, target);
+            files.put(key, target);
             return target;
         }
 

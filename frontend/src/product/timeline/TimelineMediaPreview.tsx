@@ -1,4 +1,4 @@
-import { subtitlePose, type SubtitleCue } from './subtitle-cues'
+import { resolveSubtitleFont, subtitlePose, type SubtitleCue } from './subtitle-cues'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { DEFAULT_COMPOSITION_ASPECT } from '../../contracts/app/composition-aspect'
 import { previewRaster } from './composition-raster'
@@ -191,7 +191,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
 
   async function loadSubtitle(tenant: string, cue: SubtitleCue, destinationWidth: number, signal: AbortSignal) {
     const { text, width, fontSize, fontProfile } = cue
-    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile, destinationWidth }, signal)
+    const png = await FormalRenderAPI.subtitleLayout(tenant, projectId, { text, width, fontSize, fontProfile: resolveSubtitleFont(fontProfile), destinationWidth }, signal)
     return createImageBitmap(png)
   }
 

@@ -82,13 +82,14 @@ public record TimedTextMaterializationRequirement(
     }
 
     /** Render-owned raster request. The worker never receives the canonical text/style model. */
-    public record BlockRasterRecipe(String text, int width, int fontSize) {
+    public record BlockRasterRecipe(String text, int width, int fontSize, String fontProfile) {
         public BlockRasterRecipe {
             SubtitleBlockLayout.validateShape(text, width, fontSize);
+            fontProfile = SubtitleBlockLayout.resolveProfile(fontProfile);
         }
 
         public byte[] png(int destinationWidth) {
-            return SubtitleBlockLayout.png(text, width, fontSize, destinationWidth);
+            return SubtitleBlockLayout.png(text, width, fontSize, fontProfile, destinationWidth);
         }
     }
 
@@ -122,7 +123,7 @@ public record TimedTextMaterializationRequirement(
         }
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
                 visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
-                        width.numerator().intValueExact(), size.numerator().intValueExact())));
+                        width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.fontProfile())));
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

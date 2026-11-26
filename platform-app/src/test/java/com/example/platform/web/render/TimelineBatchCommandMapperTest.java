@@ -70,6 +70,26 @@ class TimelineBatchCommandMapperTest {
     }
 
     @Test
+    void wholeCueFontsNormalizeMissingAndRejectUnknownOrNullProfiles() {
+        var parameters = new java.util.HashMap<String, Object>(Map.of("cueId", "mixed", "start", "0", "end", "4/1",
+                "text", "春㐀🌻", "width", 200, "fontSize", 24, "keys", List.of()));
+        String operation = "timeline.subtitle.cue.set";
+        var missing = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
+                map(new TimelineOperationStep(operation, null, parameters)).parameters());
+        assertEquals("noto-sc-color-emoji-v1", missing.motion().fontProfile());
+        parameters.put("fontProfile", "noto-sc-color-emoji-v1");
+        assertEquals(missing, map(new TimelineOperationStep(operation, null, parameters)).parameters());
+        parameters.put("fontProfile", "noto-serif-sc-color-emoji-v1");
+        var alternative = assertInstanceOf(OperationParameters.SubtitleCueParameters.class,
+                map(new TimelineOperationStep(operation, null, parameters)).parameters());
+        assertEquals("noto-serif-sc-color-emoji-v1", alternative.motion().fontProfile());
+        parameters.put("fontProfile", "unregistered");
+        assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(operation, null, parameters)));
+        parameters.put("fontProfile", null);
+        assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(operation, null, parameters)));
+    }
+
+    @Test
     void positionKeysCarryPairedExactCoordinatesAndSupportExplicitClear() {
         var target = new TimelineBatchCommand.Target("clip-a", null, null, null, null);
         var first = Map.of("time", "91/30", "xMicros", -16000000, "yMicros", 0);

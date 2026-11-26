@@ -26,17 +26,18 @@ branches = sys.argv[1:] == ['--branches']
 opacity = sys.argv[1:] == ['--opacity']
 dissolve = sys.argv[1:] == ['--dissolve']
 position = sys.argv[1:] == ['--position']
+fonts = sys.argv[1:] == ['--n18-fonts']
 raster = len(sys.argv)==2 and sys.argv[1] in ('--n17-raster','--n17-dense')
 motion = len(sys.argv)==2 and sys.argv[1] in ('--n16-clip','--n16-subtitle','--n16-hd')
 correction = sys.argv[1:] in (['--subtitle-correction'], ['--reviewed-subtitle-parent'])
 subtitle = sys.argv[1:] == ['--subtitle']
-assert correction or motion or raster or subtitle or position or dissolve or opacity or branches or not sys.argv[1:]
-out = root / '04-tests' / (sys.argv[1][2:] if motion or raster else 'n15-subtitle-correction' if correction else 'n15-subtitle' if subtitle else 'n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
+assert correction or motion or raster or fonts or subtitle or position or dissolve or opacity or branches or not sys.argv[1:]
+out = root / '04-tests' / (sys.argv[1][2:] if motion or raster or fonts else 'n15-subtitle-correction' if correction else 'n15-subtitle' if subtitle else 'n14-position' if position else 'n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
 assert deps.is_dir() and not deps.is_symlink() and not target.is_symlink()
-target.mkdir(exist_ok=branches or dissolve or position or subtitle or correction or motion or raster)
+target.mkdir(exist_ok=branches or dissolve or position or subtitle or correction or motion or raster or fonts)
 assert not any(target.iterdir())
 prefix = sandbox_prefix(app / 'binding.json')
 prefix[-1:-1] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
@@ -93,12 +94,15 @@ if branches:
     checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
-if dissolve or opacity or position or subtitle or correction or motion or raster:
+if dissolve or opacity or position or subtitle or correction or motion or raster or fonts:
     browser_script = 'n12-opacity-browser-e2e.mjs'
     checkpoints = ('base','draft','accepted','recovery','edited','undo','redo','stale','noop')
 
 if motion or raster:
     checkpoints = ('base','preview','accepted','reopened')
+
+if fonts:
+    checkpoints = ('base','legacy','cancel','denied','invalid','lost','recovered','undo','redo','stale','reopened')
 
 if correction:
     checkpoints = ('short','new-preview','new-cancel','existing-base','existing-applied',
@@ -118,7 +122,7 @@ if dissolve:
 
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
-                                str(app), str(out), *([sys.argv[1]] if position or dissolve or subtitle or correction or motion or raster else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
+                                str(app), str(out), *([sys.argv[1]] if position or dissolve or subtitle or correction or motion or raster or fonts else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
     deadline = time.monotonic() + 600
     facts = {}
     try:
@@ -127,7 +131,7 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
                 raise RuntimeError('N01 browser deadline reached')
             for name in checkpoints:
                 if name not in facts and (out / ('checkpoint-' + name)).is_file():
-                    if opacity or dissolve or position or subtitle or correction or motion or raster:
+                    if opacity or dissolve or position or subtitle or correction or motion or raster or fonts:
                         project = (out / 'project-id').read_text()
                         assert re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', project)
                         scope = f"tenant_id='tenant-fr-e2e' and project_id='{project}'"
@@ -147,7 +151,7 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
-if opacity or dissolve or position or subtitle or correction or motion or raster:
+if opacity or dissolve or position or subtitle or correction or motion or raster or fonts:
     rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (select rev.id,rev.parent_revision_id,rev.content_hash,
         doc.payload_json::json as snapshot,ctx.payload_json::json as semantics
         from timeline.timeline_revision rev join timeline.timeline_snapshot doc on doc.id=rev.snapshot_id and doc.project_id=rev.project_id and doc.tenant_id=rev.tenant_id
@@ -159,6 +163,23 @@ if opacity or dissolve or position or subtitle or correction or motion or raster
         assert facts['accepted']['commands']==facts['base']['commands']+1
         (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
         print(json.dumps({'status':'PASS','scenario':sys.argv[1][2:]}))
+        sys.exit(0)
+    if fonts:
+        legacy, accepted, undo, redo = (facts[n] for n in ('legacy','lost','undo','redo'))
+        assert facts['cancel'] == facts['denied'] == facts['invalid'] == legacy
+        assert facts['recovered'] == accepted
+        assert facts['stale'] == facts['reopened'] == redo
+        for previous, next in ((facts['base'], legacy), (legacy, accepted), (accepted, undo), (undo, redo)):
+            assert next['rows'] == previous['rows'] + 1 and next['commands'] == previous['commands'] + 1
+            assert rows[next['head']]['parent_revision_id'] == previous['head']
+        def profiles(stage):
+            return {c['id']: c['subtitleCue']['fontProfile'] for c in rows[stage['head']]['snapshot']['textElements']}
+        sans, serif = 'noto-sc-color-emoji-v1', 'noto-serif-sc-color-emoji-v1'
+        result = json.loads((out/'font-result.json').read_text())
+        assert profiles(legacy) == profiles(undo) == {'legacy-cue': sans, result['serifCueId']: sans}
+        assert profiles(accepted) == profiles(redo) == {'legacy-cue': sans, result['serifCueId']: serif}
+        (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
+        print(json.dumps({'status':'PASS','scenario':'n18-fonts'}))
         sys.exit(0)
     if correction:
         for unchanged, original in (('new-preview','short'),('new-cancel','short'),

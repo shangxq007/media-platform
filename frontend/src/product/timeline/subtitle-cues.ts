@@ -3,6 +3,19 @@ import { compare, parseRational, subtract, toSeconds, type Rational } from './tr
 
 export type SubtitleCue = Extract<SemanticStep, { definitionId: 'timeline.subtitle.cue.set' }>['parameters']
 
+export type SubtitleFontProfile = NonNullable<SubtitleCue['fontProfile']>
+export const DEFAULT_SUBTITLE_FONT = 'noto-sc-color-emoji-v1'
+export const SUBTITLE_FONTS: Readonly<Record<SubtitleFontProfile, string>> = {
+  [DEFAULT_SUBTITLE_FONT]: 'Noto Sans SC + Color Emoji',
+  'noto-serif-sc-color-emoji-v1': 'Noto Serif SC + Color Emoji',
+}
+
+export function resolveSubtitleFont(value: unknown): SubtitleFontProfile {
+  if (value == null) return DEFAULT_SUBTITLE_FONT
+  if (typeof value === 'string' && Object.prototype.hasOwnProperty.call(SUBTITLE_FONTS, value)) return value as SubtitleFontProfile
+  throw new Error('Unsupported subtitle font profile')
+}
+
 export function subtitlePose(cue: SubtitleCue, time: Rational) {
   const start = parseRational(cue.start)!, end = parseRational(cue.end)!
   if (compare(time, start) < 0 || compare(time, end) >= 0) return null

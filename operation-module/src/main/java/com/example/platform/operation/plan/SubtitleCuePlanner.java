@@ -34,7 +34,8 @@ final class SubtitleCuePlanner {
                 throw new PlanException(PlanErrorCode.INVALID_PLAN, "A timeline can contain at most sixteen editable subtitles");
             }
             try {
-                SubtitleBlockLayout.png(set.text(), set.width(), set.fontSize());
+                SubtitleBlockLayout.png(set.text(), set.width(), set.fontSize(), set.motion().fontProfile(),
+                        SubtitleBlockLayout.REFERENCE_WIDTH);
             } catch (IllegalArgumentException invalid) {
                 throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
             }
@@ -53,9 +54,9 @@ final class SubtitleCuePlanner {
     }
 
     private static TextElement element(TextElementId id, OperationParameters.SubtitleCueParameters cue) {
-        var family = new FontFamilyName("MP Cue Sans");
+        var families = SubtitleBlockLayout.fontFamilies(cue.motion().fontProfile());
         var text = new TextContent(cue.text());
-        var style = new TextStyle(new FontSelectionIntent(List.of(family), FontSelectionIntent.WeightIntent.NORMAL,
+        var style = new TextStyle(new FontSelectionIntent(List.of(families.getFirst()), FontSelectionIntent.WeightIntent.NORMAL,
                 FontSelectionIntent.StretchIntent.NORMAL, FontSelectionIntent.SlantIntent.NORMAL,
                 OpticalSizingIntent.disabled(), List.of()), new FontSize(FontRational.whole(cue.fontSize())),
                 FontRational.whole(0), OpenTypeFeatureIntent.empty());
@@ -66,7 +67,7 @@ final class SubtitleCuePlanner {
                 List.of(new TextStyleRun(TextRange.of(0, text.scalarCount()), style)), paragraph);
         var frame = new TextFrame(FontRational.whole(cue.width()), null, TextFrame.HorizontalAlignment.START,
                 TextFrame.VerticalAlignment.TOP, ParagraphStyle.WrapPolicy.WRAP, TextFrame.OverflowBehavior.CLIP);
-        var fallback = new FontFallbackPolicy(List.of(family), List.of(), List.of(), List.of(new FontFamilyName("Noto Color Emoji")));
+        var fallback = new FontFallbackPolicy(families, List.of(), List.of(), List.of(new FontFamilyName("Noto Color Emoji")));
         var duration = cue.end().subtract(cue.start());
         return new TextElement(id, FontRational.of(cue.start().ticks(), cue.start().timeScale()),
                 FontRational.of(duration.ticks(), duration.timeScale()), styled, frame, fallback, List.of(), cue.motion());

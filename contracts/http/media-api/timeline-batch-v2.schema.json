@@ -2593,7 +2593,8 @@
                   "type" : "string"
                 },
                 "fontProfile" : {
-                  "enum" : [ "noto-sc-color-emoji-v1" ],
+                  "default" : "noto-sc-color-emoji-v1",
+                  "enum" : [ "noto-sc-color-emoji-v1", "noto-serif-sc-color-emoji-v1" ],
                   "type" : "string"
                 },
                 "fontSize" : {
@@ -2648,7 +2649,7 @@
                   "type" : "integer"
                 }
               },
-              "required" : [ "cueId", "end", "fontProfile", "fontSize", "keys", "start", "text", "width" ],
+              "required" : [ "cueId", "end", "fontSize", "keys", "start", "text", "width" ],
               "type" : "object"
             },
             "version" : {

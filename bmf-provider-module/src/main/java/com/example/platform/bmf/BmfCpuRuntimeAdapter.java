@@ -392,7 +392,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             arguments.add(cue.firstFrame() + "," + cue.endFrame() + "," + cue.start() + "," + cue.elapsed() + ","
                     + cue.samples() + "," + cue.recipe().width() + "," + cue.recipe().fontSize() + ","
                     + java.util.Base64.getUrlEncoder().withoutPadding()
-                            .encodeToString(cue.recipe().text().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            .encodeToString(cue.recipe().text().getBytes(java.nio.charset.StandardCharsets.UTF_8)) + "," + cue.recipe().fontProfile());
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
     }

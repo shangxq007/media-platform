@@ -22,8 +22,9 @@ public record SubtitleCueMotion(String fontProfile, List<Key> keys) {
     }
 
     public SubtitleCueMotion {
-        if (!SubtitleBlockLayout.PROFILE.equals(fontProfile) || keys == null || keys.size() == 1 || keys.size() > MAX_KEYS) {
-            throw new IllegalArgumentException("Choose the supported font and either zero or two to sixteen motion keys");
+        fontProfile = SubtitleBlockLayout.resolveProfile(fontProfile);
+        if (keys == null || keys.size() == 1 || keys.size() > MAX_KEYS) {
+            throw new IllegalArgumentException("Choose either zero or two to sixteen subtitle motion keys");
         }
         keys = List.copyOf(keys);
         try {

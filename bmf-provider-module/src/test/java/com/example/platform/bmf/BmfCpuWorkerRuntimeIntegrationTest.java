@@ -91,7 +91,7 @@ class BmfCpuWorkerRuntimeIntegrationTest {
     }
 
     @Test
-    void dense_identical_rasters_share_one_scoped_mount_and_leave_no_file_on_close() throws Exception {
+    void native_rasters_share_one_scoped_mount_per_profile_and_leave_no_file_on_close() throws Exception {
         Path runtime = configuredRuntime();
         Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("native-subtitle.mp4"));
         Path python = runtime.resolve("host-bundle/usr/bin/python3.9");
@@ -103,20 +103,30 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         String text = String.join("\n", java.util.Collections.nCopies(6, "鬱永🌻🦋🦚🍉"));
         var cue = new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.CueRaster(
                 0, 84, MediaTime.ZERO, MediaTime.ZERO, "0;100000;550000;1000000",
-                new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe(text, 304, 44));
+                new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe(text, 304, 44, null));
+        var serif = new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.CueRaster(
+                0, 84, MediaTime.ZERO, MediaTime.ZERO, cue.samples(),
+                new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe(
+                        text, 304, 44, "noto-serif-sc-color-emoji-v1"));
         var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
                 INPUT_ID, OUTPUT_ID, Optional.empty(),
                 List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, seconds)),
                 Optional.of(seconds), Optional.of(FrameRate.of(24, 1)), new RenderRaster(1600, 1200),
-                List.of(cue, cue));
+                List.of(cue, serif, cue));
         var command = new BmfCpuRuntimeAdapter(python).adapt(plan, context("native-subtitle")).commands().getFirst();
         Path attachment;
+        Path alternate;
         try (var prepared = resolver.prepare(command, List.of(materialized(source)))) {
             var ready = (com.example.platform.sandbox.SandboxResolution.Resolved) prepared.resolution();
             var mounts = ready.specification().filesystem().readOnlyInputs().stream()
-                    .filter(file -> file.getFileName().toString().equals("block-0.png")).toList();
-            assertThat(mounts).hasSize(1);
-            attachment = mounts.getFirst();
+                    .filter(file -> file.getFileName().toString().matches("block-[0-9]+\\.png")).toList();
+            assertThat(mounts).hasSize(2);
+            attachment = mounts.stream().filter(p -> p.endsWith("block-0.png")).findFirst().orElseThrow();
+            alternate = mounts.stream().filter(p -> p.endsWith("block-1.png")).findFirst().orElseThrow();
+            assertThat(Files.mismatch(attachment, alternate)).isNotEqualTo(-1L);
+            var args = ready.specification().process().arguments();
+            assertThat(args.getLast()).isEqualTo(args.get(args.size() - 3));
+            assertThat(args.getLast()).isNotEqualTo(args.get(args.size() - 2));
             assertThat(Files.size(attachment)).isGreaterThan(131072);
             assertThat(ready.specification().process().arguments().getLast()).contains(",/sandbox-inputs/input-");
             var image = javax.imageio.ImageIO.read(attachment.toFile());
@@ -124,6 +134,7 @@ class BmfCpuWorkerRuntimeIntegrationTest {
             assertThat(image.getHeight()).isEqualTo(1940);
         }
         assertThat(Files.exists(attachment)).isFalse();
+        assertThat(Files.exists(alternate)).isFalse();
         assertThat(Files.exists(attachment.getParent())).isFalse();
     }
 

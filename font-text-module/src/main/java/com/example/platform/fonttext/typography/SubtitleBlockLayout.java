@@ -17,6 +17,7 @@ import java.text.AttributedString;
 import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -26,6 +27,8 @@ import javax.imageio.ImageIO;
 /** Deterministic layout profile for authored subtitles. Reference raster width is 320. */
 public final class SubtitleBlockLayout {
     public static final String PROFILE = "noto-sc-color-emoji-v1";
+    public static final String SERIF_PROFILE = "noto-serif-sc-color-emoji-v1";
+    public static final List<String> PROFILES = List.of(PROFILE, SERIF_PROFILE);
     public static final int REFERENCE_WIDTH = 320;
     public static final int MAX_PNG_BYTES = 72_000;
     public static final int MAX_DESTINATION_WIDTH = 1920;
@@ -36,6 +39,18 @@ public final class SubtitleBlockLayout {
     private static final Pattern GRAPHEME = Pattern.compile("\\X");
 
     private SubtitleBlockLayout() {}
+
+    /** An absent profile resolves to the exact N15–N17 design. Unknown IDs fail closed. */
+    public static String resolveProfile(String profile) {
+        if (profile == null) return PROFILE;
+        if (!PROFILES.contains(profile)) throw new IllegalArgumentException("Unsupported subtitle font profile");
+        return profile;
+    }
+
+    public static List<FontFamilyName> fontFamilies(String profile) {
+        var sans = new FontFamilyName("MP Cue Sans");
+        return PROFILE.equals(resolveProfile(profile)) ? List.of(sans) : List.of(new FontFamilyName("MP Cue Serif"), sans);
+    }
 
     public static void validateShape(String text, int width, int size) {
         if (text == null || text.length() > 384 || text.isBlank() || width < 40 || width > 304 || size < 12 || size > 44) {
@@ -51,21 +66,26 @@ public final class SubtitleBlockLayout {
         return png(text, width, size, REFERENCE_WIDTH);
     }
 
-    /** Layout is always decided in the original 320-unit space, before painting. */
     public static byte[] png(String text, int width, int size, int destinationWidth) {
+        return png(text, width, size, PROFILE, destinationWidth);
+    }
+
+    /** Layout is always decided in the original 320-unit space, before painting. */
+    public static byte[] png(String text, int width, int size, String profile, int destinationWidth) {
         validateShape(text, width, size);
         if (destinationWidth < 1 || destinationWidth > MAX_DESTINATION_WIDTH) {
             throw new IllegalArgumentException("Subtitle destination width is outside the raster budget");
         }
         double scale = destinationWidth / (double) REFERENCE_WIDTH;
-        Font font = Resources.FONT.deriveFont((float) size);
+        Font fallback = Resources.FONT.deriveFont((float) size);
+        Font font = PROFILE.equals(resolveProfile(profile)) ? fallback : Serif.FONT.deriveFont((float) size);
         var frc = new java.awt.font.FontRenderContext(null, true, true);
         var lines = new ArrayList<TextLayout>();
         for (String paragraph : text.split("\\R", -1)) {
             if (paragraph.isEmpty()) {
                 lines.add(null);
             } else {
-                var content = paragraph(paragraph, font, size);
+                var content = paragraph(paragraph, font, fallback, size);
                 var lineMeasurer = new LineBreakMeasurer(content.getIterator(), BreakIterator.getLineInstance(Locale.ROOT), frc);
                 int last = content.getIterator().getEndIndex();
                 while (lineMeasurer.getPosition() < last) {
@@ -112,9 +132,12 @@ public final class SubtitleBlockLayout {
         }
     }
 
-    private static AttributedString paragraph(String paragraph, Font font, int size) {
+    private record FallbackRange(int start, int end) {}
+
+    private static AttributedString paragraph(String paragraph, Font font, Font fallback, int size) {
         var display = new StringBuilder();
         var inline = new HashMap<Integer, String>();
+        var fallbackRanges = new ArrayList<FallbackRange>();
         var matcher = GRAPHEME.matcher(paragraph);
         while (matcher.find()) {
             String grapheme = matcher.group();
@@ -124,16 +147,20 @@ public final class SubtitleBlockLayout {
                 inline.put(display.length(), candidate);
                 display.append('\ufffc');
             } else {
-                if (font.canDisplayUpTo(grapheme) != -1 || grapheme.codePoints().anyMatch(
-                        cp -> cp == 0x200d || cp == 0xfe0f || cp >= 0x1f000 && cp <= 0x1faff)) {
+                // An entire grapheme uses one face. No platform-installed font participates.
+                boolean missingInPrimary = font.canDisplayUpTo(grapheme) != -1;
+                if ((missingInPrimary && (font == fallback || fallback.canDisplayUpTo(grapheme) != -1))
+                        || grapheme.codePoints().anyMatch(cp -> cp == 0x200d || cp == 0xfe0f || cp >= 0x1f000 && cp <= 0x1faff)) {
                     throw new IllegalArgumentException("Subtitle font profile does not cover the sequence U+"
                             + grapheme.codePoints().mapToObj(Integer::toHexString).collect(java.util.stream.Collectors.joining("+")));
                 }
+                if (missingInPrimary) fallbackRanges.add(new FallbackRange(display.length(), display.length() + grapheme.length()));
                 display.append(grapheme);
             }
         }
         var styled = new AttributedString(display.toString());
         styled.addAttribute(TextAttribute.FONT, font);
+        for (var range : fallbackRanges) styled.addAttribute(TextAttribute.FONT, fallback, range.start(), range.end());
         for (var graphic : inline.entrySet()) {
             try {
                 BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(Resources.EMOJI.get(graphic.getValue())));
@@ -166,8 +193,12 @@ public final class SubtitleBlockLayout {
         }
     }
 
+    private static final class Serif {
+        private static final Font FONT = Resources.loadFont("MP-Cue-Serif.otf", "e7ac917b98d2d8dba2deb23e7e61b1da6be01957754f44a620df8a1da20c5664");
+    }
+
     private static final class Resources {
-        private static final Font FONT = loadFont();
+        private static final Font FONT = loadFont("MP-Cue-Sans.otf", "65d9d8466d9d74d1a365f2e57b15a644c6af7da37899d7e643dcf15936ce8cfa");
         private static final Map<String, byte[]> EMOJI = loadEmoji();
 
         private static InputStream resource(String name, String expectedDigest) throws IOException {
@@ -184,8 +215,8 @@ public final class SubtitleBlockLayout {
             }
         }
 
-        private static Font loadFont() {
-            try (var bytes = resource("MP-Cue-Sans.otf", "65d9d8466d9d74d1a365f2e57b15a644c6af7da37899d7e643dcf15936ce8cfa")) {
+        private static Font loadFont(String name, String digest) {
+            try (var bytes = resource(name, digest)) {
                 return Font.createFont(Font.TRUETYPE_FONT, bytes);
             } catch (IOException | java.awt.FontFormatException failure) {
                 throw new IllegalStateException("Bundled subtitle font could not be loaded", failure);

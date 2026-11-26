@@ -22,9 +22,8 @@ public final class SubtitleLayoutController {
     public ResponseEntity<byte[]> layout(@PathVariable String tenantId, @PathVariable String projectId,
             @RequestBody Layout input) {
         authorization.requireRead(tenantId, projectId);
-        if (!SubtitleBlockLayout.PROFILE.equals(input.fontProfile())) throw new IllegalArgumentException("Unsupported subtitle font profile");
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.IMAGE_PNG)
-                    .body(SubtitleBlockLayout.png(input.text(), input.width(), input.fontSize(),
+                    .body(SubtitleBlockLayout.png(input.text(), input.width(), input.fontSize(), input.fontProfile(),
                         input.destinationWidth() == null ? SubtitleBlockLayout.REFERENCE_WIDTH : input.destinationWidth()));
     }
 }
