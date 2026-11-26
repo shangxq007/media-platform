@@ -6,7 +6,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 
-const [appRoot, outputRoot] = process.argv.slice(2)
+const [appRoot, outputRoot, mode] = process.argv.slice(2)
+const dissolve = mode === '--dissolve'
 assert(appRoot && outputRoot)
 const base = 'http://127.0.0.1:18080'
 const tenant = 'tenant-fr-e2e'
@@ -28,9 +29,9 @@ await context.addInitScript(({ access, profile }) => {
   }
 }, { access: token, profile })
 
-try {
+async function run() {
   const created = await page.request.post(`${base}/api/identity/tenants/${tenant}/projects`, {
-    headers, data: { name: 'N12 opacity keys', workspaceId: workspace },
+    headers, data: { name: dissolve ? 'N13 shared cut' : 'N12 opacity keys', workspaceId: workspace },
   })
   assert.equal(created.status(), 200, await created.text())
   const { id: project } = await created.json()
@@ -90,6 +91,30 @@ try {
     return clipId
   }
   writeFileSync(join(outputRoot, 'project-id'), project)
+  const cp = async name => {
+    writeFileSync(join(outputRoot,'checkpoint-'+name),'')
+    for (let i=0;i<300;i++) {
+      const path=join(outputRoot,'database-'+name+'.json')
+      if(existsSync(path)) return JSON.parse(readFileSync(path))
+      await new Promise(resolve=>setTimeout(resolve,100))
+    }
+    throw Error('Missing PostgreSQL checkpoint '+name)
+  }
+  const waitRevision = async id => page.waitForFunction(id => {
+    const view=document.querySelector('[data-preview-revision]')
+    return view?.dataset.previewRevision===id && ['READY','PAUSED'].includes(view.dataset.previewStatus)
+  },id)
+  const url=base+'/w/'+workspace+'/projects/'+project+'/edit'
+  const endpoint = base + scope + '/timeline-operations/batch/v2'
+  const post = async (method, body, digest) => page.request.post(endpoint+'/'+method,{
+    headers: digest ? { ...headers, 'If-Match': '"'+digest+'"' } : headers, data: body })
+  if (dissolve) {
+    const { runDissolve } = await import('./n13-cross-dissolve-browser.mjs')
+    const context = { page, base, scope, project, headers, outputRoot, url, endpoint, post, cp, waitRevision, addTrack, addClip,
+      head: () => current, upload: async file => { sources[file] = await upload(file) } }
+    await runDissolve(context)
+    return
+  }
   await addTrack('VIDEO','top','n12-top')
   for (const [color, duration] of [['blue',7],['red',4]]) {
     const file = color + '.mp4'
@@ -100,9 +125,6 @@ try {
   await addClip('blue.mp4','track-1','0','7','7')
   const clipId = await addClip('red.mp4','top','2','6','4')
   report.foreground = clipId
-  const endpoint = base + scope + '/timeline-operations/batch/v2'
-  const post = async (method, body, digest) => page.request.post(endpoint+'/'+method,{
-    headers: digest ? { ...headers, 'If-Match': '"'+digest+'"' } : headers, data: body })
   const setup = { batchId:'n12-static', baseRevisionId:current.revisionId, baseContentHash:current.contentHash,operations:[
     { definitionId:'timeline.clip.transform.set',target:{clipId},parameters:{format:'composition-transform-micro-v1',
       positionXMicros:0,positionYMicros:0,scaleXMicros:1000000,scaleYMicros:1000000,rotationMicroDegrees:0,
@@ -114,21 +136,7 @@ try {
   const receipt = await post('apply',setup,(await plan.json()).batchDigest)
   assert.equal(receipt.status(),201,await receipt.text())
   const root = (await receipt.json()).newRevisionId
-  const cp = async name => {
-    writeFileSync(join(outputRoot,'checkpoint-'+name),'')
-    for (let i=0;i<300;i++) {
-      const path=join(outputRoot,'database-'+name+'.json')
-      if(existsSync(path)) return JSON.parse(readFileSync(path))
-      await new Promise(resolve=>setTimeout(resolve,100))
-    }
-    throw Error('Missing PostgreSQL checkpoint '+name)
-  }
   const before = await cp('base')
-  const waitRevision = async id => page.waitForFunction(id => {
-    const view=document.querySelector('[data-preview-revision]')
-    return view?.dataset.previewRevision===id && ['READY','PAUSED'].includes(view.dataset.previewStatus)
-  },id)
-  const url=base+'/w/'+workspace+'/projects/'+project+'/edit'
   await page.goto(url)
   await waitRevision(root)
   const section=page.getByRole('region',{name:'Opacity edit',exact:true})
@@ -243,4 +251,5 @@ try {
   await cp('noop')
   report.status='PASS'
   writeFileSync(join(outputRoot,'opacity-result.json'),JSON.stringify(report,null,2))
-} finally { await browser.close() }
+}
+try { await run() } finally { await browser.close() }

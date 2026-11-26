@@ -257,6 +257,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
     private static boolean preservesParentEffects(OperationBatchRequest batch) {
         return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
                 instanceof OperationParameters.TrimParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.TransitionCreateParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.TransitionUpdateParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.TransitionDeleteParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlideParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.OpacityParameters
@@ -285,6 +288,12 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
 
     private void validateMediaRanges(OperationBatchRequest batch, TimelineDocument candidate, String trackId,
                                      List<TimelineClipId> ids, String operation, boolean checkEmbeddedAudio) {
+        validateMediaRanges(batch, candidate, trackId, ids, operation, checkEmbeddedAudio, null);
+    }
+
+    private void validateMediaRanges(OperationBatchRequest batch, TimelineDocument candidate, String trackId,
+            List<TimelineClipId> ids, String operation, boolean checkEmbeddedAudio,
+            com.example.platform.timeline.canonicalmodel.CanonicalTransition transition) {
         var target = batch.target();
         try {
             var track = candidate.getTracks().stream().filter(t -> t.trackId().equals(trackId)).findFirst()
@@ -302,7 +311,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         com.example.platform.media.domain.stream.MediaStreamId.of(clip.getMediaStreamId()),
                         new com.example.platform.shared.identity.ArtifactId(clip.getArtifactId()),
                         com.example.platform.shared.digest.ContentDigest.sha256(clip.getContentDigest()),
-                        new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(clip.getTrimStart(), clip.getTrimEnd()));
+                        new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(clip.getTrimStart(),
+                                transition != null && transition.outgoingClipId().equals(id.value())
+                                        ? clip.getTrimEnd().add(transition.duration()) : clip.getTrimEnd()));
                 boolean routedEmbeddedAudio = checkEmbeddedAudio && track.type() == com.example.platform.timeline.canonical.TrackType.VIDEO
                         && candidate.getAudioMix().routes().stream().anyMatch(route -> route.input().trackId().equals(trackId)
                                 && route.input().clipId().equals(id.value()));
@@ -325,6 +336,15 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         if (result.hasFatalErrors()) {
             throw new BatchException(BatchErrorCode.FINAL_VALIDATION_FAILED, null,
                     "final candidate rejected: " + diagnostics(result));
+        }
+        for (var transition : candidate.getTransitions()) {
+            if (!transition.usesOutgoingHandle()) continue;
+            var outgoing = TimelineClipId.of(transition.outgoingClipId());
+            var incoming = TimelineClipId.of(transition.incomingClipId());
+            var track = candidate.getTracks().stream().filter(t -> t.clips().stream()
+                    .anyMatch(c -> c.getClipId().equals(outgoing))).findFirst().orElseThrow();
+            validateMediaRanges(batch, candidate, track.trackId(), List.of(outgoing, incoming),
+                    "Cross dissolve", false, transition);
         }
         if (!RevisionRef.MAIN_REF.equals(batch.target().refId()) || preservesParentEffects(batch)) {
             try {

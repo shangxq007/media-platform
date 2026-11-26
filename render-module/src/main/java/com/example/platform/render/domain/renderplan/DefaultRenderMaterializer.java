@@ -60,7 +60,24 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         List<RenderDependencyEdge> edges = new ArrayList<>();
         List<RenderPlanningDiagnostic> diagnostics = new ArrayList<>();
 
-        List<MediaClip> clips = input.verifiedRevision().clips();
+        var revision = input.verifiedRevision();
+        var handles = revision.transitions().stream().filter(t -> t.usesOutgoingHandle())
+                .collect(java.util.stream.Collectors.toMap(t -> t.outgoingClipId(), t -> t.duration()));
+        List<MediaClip> clips = revision.clips().stream().map(clip -> {
+            var handle = handles.get(clip.clipId());
+            if (handle == null) return clip;
+            var source = new MediaClip.TimeRange(clip.sourceRange().start(), clip.sourceRange().end().add(handle));
+            var pin = clip.sourceBinding();
+            var extended = new MediaStreamSourceBinding(pin.mediaAssetId(), pin.mediaStreamId(), pin.artifactId(), pin.contentDigest(), source);
+            return new MediaClip(clip.clipId(), clip.trackId(), new MediaClip.TimeRange(clip.timelineRange().start(),
+                    clip.timelineRange().end().add(handle)), source, clip.temporalMapping(), extended, clip.transform(), clip.effect());
+        }).toList();
+        // Preserve track order and composite the incoming picture over its outgoing handle.
+        var handleLayers = new java.util.HashMap<String, Integer>();
+        if (!handles.isEmpty()) {
+            revision.clips().stream().sorted(java.util.Comparator.comparingInt((MediaClip c) -> revision.layer(c.trackId()))
+                    .thenComparing(c -> c.timelineRange().start())).forEach(c -> handleLayers.put(c.clipId(), handleLayers.size()));
+        }
         RenderRequest request = input.request();
 
         if (clips.size() > 1 && request.extent() != null) {
@@ -79,7 +96,6 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             return new RenderMaterializationResult(nodes, edges, diagnostics);
         }
 
-        var revision = input.verifiedRevision();
         var raster = request.extent().raster();
         if (!RenderRaster.supportsAspect(revision.aspectRatio())) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
@@ -411,7 +427,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                             } else {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         RenderDependency.TimedTrackInput.video(start, end,
-                                                revision.layer(clip.trackId()),
+                                                handleLayers.getOrDefault(clip.clipId(), revision.layer(clip.trackId())),
                                                 clip.transform(),
                                                 VideoEffectSpec.from(clip.effect()),
                                                 clip.timelineRange().start(), clip.timelineRange().end(),

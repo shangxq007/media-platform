@@ -1285,7 +1285,10 @@ public final class OperationPlanner {
         }
         TimelineClip outgoing = clipOf(base, scope.get(0));
         TimelineClip incoming = clipOf(base, TimelineClipId.of(params.incomingClipId()));
-        CanonicalTransition transition = CanonicalTransition.crossDissolve(
+        boolean sameTrack = base.getTracks().stream().anyMatch(t -> t.clips().contains(outgoing) && t.clips().contains(incoming));
+        CanonicalTransition transition = sameTrack
+                ? CanonicalTransition.cutDissolve(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
+                : CanonicalTransition.crossDissolve(
                 params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration());
         List<CanonicalTransition> transitions = new ArrayList<>(base.getTransitions());
         transitions.add(transition);

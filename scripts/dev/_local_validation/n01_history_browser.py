@@ -24,13 +24,14 @@ from local_runtime import sandbox_prefix
 
 branches = sys.argv[1:] == ['--branches']
 opacity = sys.argv[1:] == ['--opacity']
-assert opacity or branches or not sys.argv[1:]
-out = root / '04-tests' / ('n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
+dissolve = sys.argv[1:] == ['--dissolve']
+assert dissolve or opacity or branches or not sys.argv[1:]
+out = root / '04-tests' / ('n13-dissolve' if dissolve else 'n12-opacity' if opacity else 'n02-branches' if branches else 'n01-history')
 out.mkdir()
 deps = Path(run['source']) / 'frontend/node_modules'
 target = source / 'frontend/node_modules'
 assert deps.is_dir() and not deps.is_symlink() and not target.is_symlink()
-target.mkdir(exist_ok=branches)
+target.mkdir(exist_ok=branches or dissolve)
 assert not any(target.iterdir())
 prefix = sandbox_prefix(app / 'binding.json')
 prefix[-1:-1] = ['--dir', '/opt', '--dir', '/opt/google', '--ro-bind', '/opt/google/chrome', '/opt/google/chrome',
@@ -87,13 +88,17 @@ if branches:
     checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
-if opacity:
+if dissolve or opacity:
     browser_script = 'n12-opacity-browser-e2e.mjs'
     checkpoints = ('base','draft','accepted','recovery','edited','undo','redo','stale','noop')
 
+if dissolve:
+    checkpoints = ('base','draft','invalid','accepted','recovery','bound','edited','undo','redo','stale','noop',
+                   'removed','recreated','undo-create','redo-create','removed-again','undo-remove','redo-remove','restored','combo')
+
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
-                                str(app), str(out)], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
+                                str(app), str(out), *(['--dissolve'] if dissolve else [])], stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as browser):
     deadline = time.monotonic() + 600
     facts = {}
     try:
@@ -102,7 +107,7 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
                 raise RuntimeError('N01 browser deadline reached')
             for name in checkpoints:
                 if name not in facts and (out / ('checkpoint-' + name)).is_file():
-                    if opacity:
+                    if opacity or dissolve:
                         project = (out / 'project-id').read_text()
                         assert re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', project)
                         scope = f"tenant_id='tenant-fr-e2e' and project_id='{project}'"
@@ -122,12 +127,42 @@ with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').ope
     assert browser.returncode == 0, 'N01 browser failed; see owned browser.stderr'
 
 assert set(facts) == set(checkpoints)
-if opacity:
+if opacity or dissolve:
     rows = psql(f"""select json_object_agg(id,row_to_json(r)) from (select rev.id,rev.parent_revision_id,rev.content_hash,
         doc.payload_json::json as snapshot,ctx.payload_json::json as semantics
         from timeline.timeline_revision rev join timeline.timeline_snapshot doc on doc.id=rev.snapshot_id and doc.project_id=rev.project_id and doc.tenant_id=rev.tenant_id
         join timeline.timeline_snapshot ctx on ctx.id='revctx_'||rev.id and ctx.tenant_id=rev.tenant_id and ctx.project_id=rev.project_id
         where rev.tenant_id='tenant-fr-e2e' and rev.project_id='{project}') r;""")
+    if dissolve:
+        run_result = json.loads((out/'dissolve-result.json').read_text())
+        assert run_result['status']=='PASS'
+        def revision(stage):
+            return rows[facts[stage]['head']]
+        def saved(stage):
+            return revision(stage)['snapshot'].get('transitions',[])
+        base = revision('base')['snapshot']
+        assert facts['base']==facts['draft']==facts['invalid']
+        assert facts['accepted']==facts['recovery'] and facts['stale']==facts['redo']
+        assert facts['noop']['rows']==facts['redo']['rows'] and facts['noop']['head']==facts['redo']['head']
+        for a,b in [('base','accepted'),('recovery','edited'),('edited','undo'),('undo','redo'),('noop','removed'),
+                    ('removed','recreated'),('recreated','undo-create'),('undo-create','redo-create'),('redo-create','removed-again'),('removed-again','undo-remove'),
+                    ('undo-remove','redo-remove'),('redo-remove','restored'),('restored','combo')]:
+            assert facts[b]['rows']==facts[a]['rows']+1 and facts[b]['commands']==facts[a]['commands']+1
+            assert revision(b)['parent_revision_id']==facts[a]['head']
+        for stage,duration in [('accepted','2/1'),('edited','1/1')]:
+            t,=saved(stage)
+            assert (t['outgoingClipId'],t['incomingClipId'],t['duration'],t['temporalPolicy'],t['alignment'])==(
+                'red','blue',duration,'USE_SOURCE_HANDLES','START_AT_CUT')
+            assert t['transitionId']==saved('accepted')[0]['transitionId']
+        for a,b in [('accepted','undo'),('edited','redo'),('base','removed'),('removed','undo-create'),('recreated','redo-create'),('recreated','undo-remove'),('removed','redo-remove')]:
+            assert revision(a)['semantics']==revision(b)['semantics'] and revision(a)['snapshot']==revision(b)['snapshot']
+        for stage in ('accepted','edited','undo','redo','removed'):
+            assert revision(stage)['snapshot']['tracks']==base['tracks'] and revision(stage)['snapshot']['audioMix']==base['audioMix']
+        for stage,artifact in [('accepted','n13-dissolve'),('edited','n13-shorter'),('removed','n13-removed'),('combo','n13-with-opacity')]:
+            assert run_result[artifact]['revisionId']==facts[stage]['head']
+        (out/'postgres-result.json').write_text(json.dumps(dict(checkpoints=facts,revisions=rows),indent=2))
+        print('N13_SHARED_CUT_CHROME_EXPORT_POSTGRES=PASS')
+        sys.exit(0)
     assert facts['base']==facts['draft'] and facts['accepted']==facts['recovery'] and facts['redo']==facts['stale']
     for a,b in [('base','accepted'),('accepted','edited'),('edited','undo'),('undo','redo')]:
         assert facts[b]['rows']==facts[a]['rows']+1 and facts[b]['commands']==facts[a]['commands']+1

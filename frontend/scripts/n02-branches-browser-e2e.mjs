@@ -1963,6 +1963,13 @@ try {
       parameters: { firstTime: '5', firstValue: 0, lastTime: '7', lastValue: 1 } }] }
   const opacityDigest = (await preview(opacityBody, 200, reader)).batchDigest
   const deniedOpacity = await apply(opacityBody, opacityDigest, 403, reader)
+  const cutBody = { ...opacityBody, batchId: 'n13-reader', operations: [
+    { definitionId: 'timeline.transition.cross-dissolve.create', target: { clipId: 'clip-left' },
+      parameters: { transitionId: 'n13-reader-cut', incomingClipId: 'clip-middle', duration: '1/24' } }] }
+  const cutDigest = (await preview(cutBody, 200, reader)).batchDigest
+  const deniedCut = await apply(cutBody, cutDigest, 403, reader)
+  assert.equal((await branch()).headRevisionId, readerHead.headRevisionId)
+  result.http.n13Reader = { status: 403, errorCode: deniedCut.errorCode, revision: readerHead.headRevisionId }
   result.http.n12Reader = { status: 403, errorCode: deniedOpacity.errorCode, revision: readerHead.headRevisionId }
   result.status = 'PASS'
   save('N11 single-track slide, two shifted cuts, clip-relative picture and fixed control, exact handles, recovery and undo/redo')

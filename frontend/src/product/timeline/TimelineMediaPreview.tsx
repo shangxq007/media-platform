@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
-import { compare, subtract, toSeconds } from './trim'
+import { parseRational, compare, subtract, toSeconds } from './trim'
 import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
@@ -86,19 +86,22 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
+  dissolvePlan?: import('../../contracts/semantic-batch.generated').SemanticBatch | null
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   onTime?: (time: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const host = useRef<HTMLElement>(null)
   const current = useRef<PreviewSession | null>(null)
+  const dissolve = useRef(dissolvePlan)
+  dissolve.current = dissolvePlan
   const transient = useRef(opacityPreview)
   transient.current = opacityPreview
-  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview])
+  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan])
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
@@ -132,7 +135,23 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const context = target.getContext('2d')
     if (!context) return
     const time = rationalTime(session.cursor)
-    const clips = session.projection ? activeClipsAt(session.projection, time) : []
+    let projection = session.projection
+    const plan = dissolve.current
+    const step = plan?.operations[0]
+    if (projection && plan?.baseRevisionId === revisionId && step) {
+      let transitions = projection.transitions
+      if (step.definitionId === 'timeline.transition.cross-dissolve.create' && 'clipId' in step.target) {
+        transitions = [...transitions, { ...step.parameters, outgoingClipId: step.target.clipId,
+          outgoingHandle: true, duration: parseRational(step.parameters.duration)! }]
+      } else if (step.definitionId === 'timeline.transition.cross-dissolve.update') {
+        transitions = transitions.map(t => t.transitionId === step.target.transitionId
+          ? { ...t, duration: parseRational(step.parameters.duration)! } : t)
+      } else if (step.definitionId === 'timeline.transition.cross-dissolve.delete') {
+        transitions = transitions.filter(t => t.transitionId !== step.target.transitionId)
+      }
+      projection = { ...projection, transitions }
+    }
+    const clips = projection ? activeClipsAt(projection, time) : []
     const top = clips.length ? clips[clips.length - 1] : null
     if (host.current) host.current.dataset.activeClip = top?.clipId ?? ''
     const activeIds = new Set(clips.map(clip => clip.clipId))
@@ -164,8 +183,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         ? Math.min(1, Math.max(0, (now - clipStart) / effect.fadeInSeconds)) : 1
       const fadeOut = effect && effect.fadeOutSeconds > 0
         ? Math.min(1, Math.max(0, (clipEnd - now) / effect.fadeOutSeconds)) : 1
-      const transition = session.projection
-        ? transitionForIncoming(session.projection, clip.clipId) : null
+      const transition = projection
+        ? transitionForIncoming(projection, clip.clipId) : null
       const transitionAlpha = transition
         ? Math.min(1, Math.max(0, (now - clipStart) / toSeconds(transition.duration))) : 1
       const t = clip.transform

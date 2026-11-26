@@ -351,6 +351,31 @@ describe('default branch clipboard', () => {
   })
 })
 
+describe('N13 shared-cut dissolve', () => {
+  afterEach(() => vi.restoreAllMocks())
+  it.each(['duration', 'cut'])('withdraws the old plan when the %s changes away and back', async field => {
+    renderBranchWorkspace('main', '7', true, head, true)
+    const first = await screen.findByRole<HTMLOptionElement>('option', { name: /clip-0 → clip-1/ })
+    const region = within(screen.getByRole('region', { name: 'Dissolve edit' }))
+    const second = region.getByRole<HTMLOptionElement>('option', { name: /clip-1 → clip-2/ })
+    const cut = (value: string) => fireEvent.change(region.getByLabelText('Shared video cut'), { target: { value } })
+    const duration = (value: string) => fireEvent.change(region.getByLabelText('Dissolve duration (seconds)'), { target: { value } })
+    const held = deferred<{batchDigest: string; steps: never[]}>()
+    const read = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue({batchDigest: HASH_C, steps: []})
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+    cut(first.value)
+    fireEvent.click(region.getByRole('button', {name: 'Preview dissolve'}))
+    if (field === 'duration') { duration('1/2'); duration('1/1') }
+    else { cut(second.value); cut(first.value) }
+    await act(async () => held.resolve({batchDigest: HASH_C, steps: []}))
+    expect(region.queryByRole('button', {name: 'Confirm dissolve'})).toBeNull()
+    fireEvent.click(region.getByRole('button', {name: 'Preview dissolve'}))
+    await region.findByText('Blend [7/1, 8/1) s · duration 1/1 s')
+    expect(read).toHaveBeenCalledTimes(2)
+    expect(write).not.toHaveBeenCalled()
+  })
+})
+
 describe('N12 opacity keys', () => {
   afterEach(() => vi.restoreAllMocks())
   it.each(['clip', 'key'])('withdraws a delayed preview when the %s changes away and back', async field => {

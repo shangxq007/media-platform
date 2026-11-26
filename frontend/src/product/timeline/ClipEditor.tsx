@@ -593,12 +593,17 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
     finally { setBusy(false) }
   }
 
+  const layeredIncoming = tracks.slice(activeTrack ? tracks.indexOf(activeTrack) + 1 : tracks.length)
+    .filter(t => t.type === 'VIDEO').flatMap(t => t.clips)
+  const selectedCutTransition = transitions.some(t => t.transitionId === transitionId.trim() && t.outgoingHandle)
+
   async function createTransition() {
     if (!head || !project.tenantId || !active || !canEdit() || !incomingClipId) return
     if (!transitionId.trim() || !transitionDuration.trim()) {
       setActionFailed(true); setMessage('Transition id and exact duration are required.')
       return
     }
+    if (!layeredIncoming.some(c => c.clipId === incomingClipId)) return
     const fingerprint = JSON.stringify([project.projectId, active.clipId, 'CREATE_TRANSITION',
       transitionId, incomingClipId, transitionDuration, head.revisionId])
     keys.current[fingerprint] ??= crypto.randomUUID()
@@ -619,7 +624,7 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
   }
 
   async function deleteTransition() {
-    if (!head || !project.tenantId || !active || !canEdit() || !transitionId.trim()) return
+    if (!head || !project.tenantId || !active || !canEdit() || !transitionId.trim() || selectedCutTransition) return
     const fingerprint = JSON.stringify([project.projectId, active.clipId, 'DELETE_TRANSITION', transitionId, head.revisionId])
     keys.current[fingerprint] ??= crypto.randomUUID()
     setBusy(true); setMessage(''); setActionFailed(false)
@@ -1185,14 +1190,13 @@ export function ClipEditor({ head, historicalRevisionId, onRevisionChanged, onTr
         <label>Transition id <Input aria-label="Transition id" value={transitionId} onChange={event => setTransitionId(event.target.value)} /></label>
         <label>Incoming clip <select aria-label="Transition incoming clip" value={incomingClipId} onChange={event => setIncomingClipId(event.target.value)}>
           <option value="">Select video clip</option>
-          {tracks.filter(track => track.type === 'VIDEO').flatMap(track => track.clips)
-            .filter(clip => clip.clipId !== active.clipId)
+          {layeredIncoming
             .map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} · {clip.trackId}</option>)}
         </select></label>
         <label>Duration <Input aria-label="Transition duration" value={transitionDuration} onChange={event => setTransitionDuration(event.target.value)} /></label>
       </div>
-      <Button type="button" disabled={!head || editsDisabled || !incomingClipId} onClick={() => void createTransition()}>Create cross dissolve</Button>
-      <Button type="button" disabled={editsDisabled} onClick={() => void deleteTransition()}>Delete cross dissolve</Button>
+      <Button type="button" disabled={!head || editsDisabled || !layeredIncoming.some(c => c.clipId === incomingClipId)} onClick={() => void createTransition()}>Create cross dissolve</Button>
+      <Button type="button" disabled={editsDisabled || selectedCutTransition} onClick={() => void deleteTransition()}>Delete cross dissolve</Button>
       <ul aria-label="Canonical transitions">
         {transitions.map(transition => <li key={transition.transitionId}>{transition.transitionId}: {transition.outgoingClipId} → {transition.incomingClipId} ({formatRational(transition.duration)}s)</li>)}
       </ul>

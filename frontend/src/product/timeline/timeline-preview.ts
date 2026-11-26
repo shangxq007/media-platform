@@ -2,7 +2,7 @@
  * Read-only Timeline media-preview helpers. Preview is a derived view of the canonical snapshot;
  * this module never mutates the Timeline or performs a write.
  */
-import { compare, multiply, subtract, type Rational } from './trim'
+import { add, compare, multiply, subtract, type Rational } from './trim'
 import type { ProjectedClip, ProjectedTransition, ProjectedVideoTransform, TimelineProjection } from './timeline-projection'
 
 export function timelineDuration(projection: TimelineProjection): Rational {
@@ -18,7 +18,14 @@ export function activeClipsAt(projection: TimelineProjection, timelineTime: Rati
     if (track.type !== 'VIDEO') continue
     const clip = track.clips.find(item =>
       compare(timelineTime, item.start) >= 0 && compare(timelineTime, item.end) < 0)
-    if (clip) active.push(clip)
+    if (clip) {
+      const blend = transitionForIncoming(projection, clip.clipId)
+      if (blend?.outgoingHandle && compare(timelineTime, add(clip.start, blend.duration)) < 0) {
+        const outgoing = track.clips.find(c => c.clipId === blend.outgoingClipId)
+        if (outgoing) active.push(outgoing)
+      }
+      active.push(clip)
+    }
   }
   return active
 }

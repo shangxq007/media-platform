@@ -25,6 +25,7 @@ export const IDENTITY_VIDEO_EFFECT: ProjectedVideoEffect = {
 }
 
 export interface ProjectedTransition {
+  readonly outgoingHandle?: boolean
   readonly transitionId: string
   readonly outgoingClipId: string
   readonly incomingClipId: string
@@ -279,15 +280,16 @@ export function projectTimeline(document: unknown): TimelineProjection {
     const outgoingClipId = text(t.outgoingClipId, 'outgoing clip')
     const incomingClipId = text(t.incomingClipId, 'incoming clip')
     const duration = exactTime(t.duration, 'transition duration')
+    const outgoingHandle = t.alignment === 'START_AT_CUT' && t.temporalPolicy === 'USE_SOURCE_HANDLES'
     if (outgoingClipId === incomingClipId || duration.numerator <= 0n || incoming.has(incomingClipId)
         || !clips.some(clip => clip.clipId === incomingClipId) || !clips.some(clip => clip.clipId === outgoingClipId)
         || t.transitionDefinitionId !== 'video.cross-dissolve' || t.transitionDefinitionVersion !== '1.0'
-        || t.mediaType !== 'VIDEO' || t.alignment !== 'START_AT_INCOMING' || t.temporalPolicy !== 'OVERLAP_TIMELINE'
+        || t.mediaType !== 'VIDEO' || (!outgoingHandle && (t.alignment !== 'START_AT_INCOMING' || t.temporalPolicy !== 'OVERLAP_TIMELINE'))
         || object(t.parameters, 'transition parameters').curve !== 'LINEAR') {
       throw new Error('Unsupported Timeline transition')
     }
     incoming.add(incomingClipId)
-    return { transitionId, outgoingClipId, incomingClipId, duration }
+    return { transitionId, outgoingClipId, incomingClipId, duration, ...(outgoingHandle ? { outgoingHandle } : {}) }
   })
   return { compositionAspectRatio: aspect, tracks, clips, audioRoutes, transitions }
 }

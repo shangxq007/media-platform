@@ -37,14 +37,23 @@ public record CanonicalTransition(
                 outgoing, incoming, "VIDEO", duration, "START_AT_INCOMING", "OVERLAP_TIMELINE", LINEAR_CURVE);
     }
 
+    public static CanonicalTransition cutDissolve(String id, String outgoing, String incoming, MediaTime duration) {
+        return new CanonicalTransition(id, CROSS_DISSOLVE, CROSS_DISSOLVE_VERSION,
+                outgoing, incoming, "VIDEO", duration, "START_AT_CUT", "USE_SOURCE_HANDLES", LINEAR_CURVE);
+    }
+
+    public boolean usesOutgoingHandle() {
+        return isCrossDissolve() && "START_AT_CUT".equals(alignment) && "USE_SOURCE_HANDLES".equals(temporalPolicy);
+    }
+
     public boolean isCrossDissolve() {
         return CROSS_DISSOLVE.equals(transitionDefinitionId);
     }
 
     public boolean supportsCrossDissolve() {
         return isCrossDissolve() && CROSS_DISSOLVE_VERSION.equals(transitionDefinitionVersion)
-                && "VIDEO".equals(mediaType) && "START_AT_INCOMING".equals(alignment)
-                && "OVERLAP_TIMELINE".equals(temporalPolicy) && LINEAR_CURVE.equals(parameters);
+                && "VIDEO".equals(mediaType) && LINEAR_CURVE.equals(parameters)
+                && (usesOutgoingHandle() || ("START_AT_INCOMING".equals(alignment) && "OVERLAP_TIMELINE".equals(temporalPolicy)));
     }
 
     public CanonicalTransition withDuration(MediaTime duration) {

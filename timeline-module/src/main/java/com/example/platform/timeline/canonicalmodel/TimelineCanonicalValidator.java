@@ -227,7 +227,8 @@ public final class TimelineCanonicalValidator {
         String id = transition.transitionId();
         int lower = layers.get(outgoing.clipId());
         int upper = layers.get(incoming.clipId());
-        if (!transition.supportsCrossDissolve() || lower >= upper
+        boolean handle = transition.usesOutgoingHandle();
+        if (!transition.supportsCrossDissolve() || (handle ? lower != upper : lower >= upper)
                 || candidate.tracks().get(lower).type() != TimelineCandidate.TrackType.VIDEO
                 || candidate.tracks().get(upper).type() != TimelineCandidate.TrackType.VIDEO) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_PROFILE_UNSUPPORTED,
@@ -247,8 +248,27 @@ public final class TimelineCanonicalValidator {
                 || incoming.duration() == null || outgoing.duration() == null) return;
         MediaTime start = incoming.timelineStart();
         MediaTime end = start.add(transition.duration());
+        MediaTime cut = outgoing.timelineStart().add(outgoing.duration());
+        if (handle && (!start.isEqualTo(cut)
+                || !(outgoing.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding)
+                || !(incoming.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding))) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID, path, id,
+                    "A shared-cut dissolve requires two adjacent pinned video clips"));
+            return;
+        }
+        if (handle && candidate.audioMix().routes().stream().anyMatch(r -> r.input().clipId().equals(outgoing.clipId()))) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_PROFILE_UNSUPPORTED, path, id,
+                    "The outgoing handle cannot extend a routed embedded audio clip"));
+            return;
+        }
+        if (handle && outgoing.effects().stream().filter(e -> BasicVideoEffect.EFFECT_KEY.equals(e.effectKey()))
+                .map(e -> BasicVideoEffect.fromParameters(e.parameters())).anyMatch(e -> e.enabled() && e.fadeOutSeconds() > 0)) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_PROFILE_UNSUPPORTED, path, id,
+                    "Remove the outgoing fade-out before extending its video handle"));
+            return;
+        }
         if (start.isLessThan(outgoing.timelineStart())
-                || end.isGreaterThan(outgoing.timelineStart().add(outgoing.duration()))
+                || (!handle && end.isGreaterThan(cut))
                 || end.isGreaterThan(start.add(incoming.duration()))) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID,
                     path, id, "Cross dissolve interval must fit within both clips"));
