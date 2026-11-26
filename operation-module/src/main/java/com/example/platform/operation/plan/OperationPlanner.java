@@ -66,6 +66,7 @@ public final class OperationPlanner {
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
             case "timeline.track.add" -> planAddTrack(instance, base, changes);
+            case "timeline.clip.slide" -> planSlide(instance, base, changes);
             case "timeline.clip.slip" -> planSlip(instance, base, changes);
             case "timeline.clip.roll" -> planRollCut(instance, base, changes);
             case "timeline.clip.paste" -> planPasteClips(instance, base, changes, false);
@@ -864,6 +865,59 @@ public final class OperationPlanner {
             throw new PlanException(PlanErrorCode.UNSUPPORTED_TEMPORAL_STATE,
                     operation + " requires pinned forward 1x media with matching source and timeline durations on " + clip.getClipId().value());
         }
+    }
+
+    private TimelineDocument planSlide(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var slide = (OperationParameters.SlideParameters) instance.parameters();
+        var track = base.getTracks().stream().filter(t -> t.trackId().equals(slide.trackId())).findFirst()
+                .orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING, "Slide track not found"));
+        var middle = track.clips().stream().filter(c -> c.getClipId().equals(slide.middleClipId())).findFirst()
+                .orElseThrow(() -> new PlanException(PlanErrorCode.TARGET_MISSING, "Slide middle clip not found on the selected track"));
+        var left = slideNeighbor(track, middle, slide.leftClipId(), true);
+        var right = slideNeighbor(track, middle, slide.rightClipId(), false);
+        var triple = List.of(left, middle, right);
+        var offset = slide.offset();
+        try {
+            if (track.clips().stream().anyMatch(c -> !triple.contains(c) && c.getStartTime().isLessThan(right.getEndTime())
+                    && c.getEndTime().isGreaterThan(left.getStartTime()))) {
+                throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT, "Resolve the overlap on the slide triple before editing");
+            }
+            for (var clip : triple) {
+                requireForwardUnitMedia(clip, "Slide");
+                rejectEditBinding(base, clip, "Slide");
+            }
+            if (offset.magnitude().equals(MediaTime.ZERO)) return base;
+            var shrinking = offset.backward() ? left : right;
+            if (!offset.magnitude().isLessThan(shrinking.getEndTime().subtract(shrinking.getStartTime()))) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Slide must leave positive duration on " + shrinking.getClipId().value());
+            }
+            if (offset.backward() && offset.magnitude().isGreaterThan(right.getTrimStart())) {
+                throw new PlanException(PlanErrorCode.INVALID_PLAN, "Slide exceeds the source handle before " + right.getClipId().value());
+            }
+            var firstCut = offset.shift(middle.getStartTime());
+            var secondCut = offset.shift(middle.getEndTime());
+            var newLeft = withRanges(left, left.getStartTime(), firstCut, left.getTrimStart(), offset.shift(left.getTrimEnd()));
+            var newMiddle = withPlacement(middle, firstCut, secondCut);
+            var newRight = withRanges(right, secondCut, right.getEndTime(), offset.shift(right.getTrimStart()), right.getTrimEnd());
+            var candidate = base;
+            for (var updated : List.of(newLeft, newMiddle, newRight)) {
+                changes.add(new PlannedChange.ClipReplaced(updated.getClipId(), updated));
+                candidate = replaceClip(candidate, updated.getClipId(), updated);
+            }
+            return candidate;
+        } catch (ArithmeticException overflow) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Slide exceeds the exact time range");
+        }
+    }
+
+    private static TimelineClip slideNeighbor(TimelineTrack track, TimelineClip middle, TimelineClipId expected, boolean left) {
+        var neighbors = track.clips().stream().filter(c -> left
+                ? c.getEndTime().equals(middle.getStartTime()) : c.getStartTime().equals(middle.getEndTime())).toList();
+        if (neighbors.size() != 1 || !neighbors.getFirst().getClipId().equals(expected)) {
+            throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT,
+                    "Slide requires exactly one matching touching " + (left ? "left" : "right") + " neighbor on this track");
+        }
+        return neighbors.getFirst();
     }
 
     private TimelineDocument planSlip(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {

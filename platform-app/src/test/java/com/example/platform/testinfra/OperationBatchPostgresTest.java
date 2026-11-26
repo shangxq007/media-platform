@@ -969,7 +969,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(pins, count("artifacts.artifact_pin"));
     }
 
-    private TimelineRevision slipFixture() {
+    private TimelineRevision rangeFixture(boolean slide) {
         String pin = "a".repeat(64);
         jdbc.update("""
                 insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
@@ -978,7 +978,15 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 """, TENANT, PROJECT, pin);
         var clip = new TimelineClip("clip-a", "slip-source", "video-stream", "slip-source", pin, time("5/1"),
                 time("8/1"), time("2/1"), time("5/1"), "MEDIA_STREAM", ConstantRateTemporalMapping.identity());
-        var track = new TimelineTrack("video-main", "Video", TrackType.VIDEO, List.of(clip));
+        var clips = new java.util.ArrayList<TimelineClip>();
+        clips.add(clip);
+        if (slide) {
+            clips.add(new TimelineClip("left", "slip-source", "video-stream", "slip-source", pin, time("2/1"),
+                    time("5/1"), time("1/1"), time("4/1"), "MEDIA_STREAM", ConstantRateTemporalMapping.identity()));
+            clips.add(new TimelineClip("right", "slip-source", "video-stream", "slip-source", pin, time("8/1"),
+                    time("12/1"), time("2/1"), time("6/1"), "MEDIA_STREAM", ConstantRateTemporalMapping.identity()));
+        }
+        var track = new TimelineTrack("video-main", "Video", TrackType.VIDEO, clips);
         return saveWithEffects(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 TimelineMetadata.empty()), null, List.of(blur("z-first", "4"), blur("a-second", "13")));
     }
@@ -995,7 +1003,7 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
     @Test
     void slipRetainsOrderedBoundEffectsAndRestoresFullSemantics() {
-        var base = slipFixture();
+        var base = rangeFixture(false);
         var accepted = saveService.findById(TENANT, applyPrepared(slipRequest(base)).newRevisionId());
         assertEquals(base.revisionId(), accepted.parentRevisionId());
         assertEquals(base.semanticContext().effectReference(), accepted.semanticContext().effectReference());
@@ -1014,10 +1022,46 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
 
     @Test
     void slipRollsBackSourceRangePinsHeadLedgerAndEventsAfterWriteFailure() {
-        var source = slipFixture();
+        var source = rangeFixture(false);
         var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
         var pins = jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id");
         assertRippleRollsBack(source, slipRequest(source));
+        assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
+        assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
+    }
+
+    private OperationBatchRequest slideRequest(TimelineRevision base) {
+        var def = OperationDefinition.V3.SLIDE_CLIP;
+        var params = new OperationParameters.SlideParameters("video-main", TimelineClipId.of("left"),
+                TimelineClipId.of("clip-a"), TimelineClipId.of("right"), OperationParameters.SignedTimeOffset.parse("+1"));
+        var op = new OperationRequest(def.definitionId(), def.version(), new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                params, base.revisionId(), hash(base), null);
+        return new OperationBatchRequest("slide-one", new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(op), null);
+    }
+
+    @Test
+    void slidePreservesBoundEffectsAndWholeTripleUndoRedo() {
+        var base = rangeFixture(true);
+        var accepted = saveService.findById(TENANT, applyPrepared(slideRequest(base)).newRevisionId());
+        assertEquals(base.revisionId(), accepted.parentRevisionId());
+        assertEquals(base.semanticContext().effectReference(), accepted.semanticContext().effectReference());
+        var effects = new JdbcEffectSemanticSnapshotStore(dsl).findById(PROJECT, TENANT,
+                accepted.semanticContext().effectReference().snapshotId()).orElseThrow();
+        assertEquals(List.of("z-first", "a-second"), effects.entries().stream().map(e -> e.effectInstanceId()).toList());
+        assertEquals(List.of("4", "13"), effects.entries().stream().map(e -> e.parameters().getFirst().value()).toList());
+        var undone = saveService.findById(TENANT, applyPrepared(restoreRequest("undo-slide", accepted, base)).newRevisionId());
+        var redone = saveService.findById(TENANT, applyPrepared(restoreRequest("redo-slide", undone, accepted)).newRevisionId());
+        assertEquals(base.semanticContext(), undone.semanticContext());
+        assertEquals(accepted.semanticContext(), redone.semanticContext());
+    }
+
+    @Test
+    void slideRollsBackAllRangesSnapshotsPinsHeadCommandAndOutbox() {
+        var base = rangeFixture(true);
+        var snapshots = jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id");
+        var pins = jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id");
+        assertRippleRollsBack(base, slideRequest(base));
         assertEquals(snapshots, jdbc.queryForList("select id, payload_json::text from timeline.timeline_snapshot order by id"));
         assertEquals(pins, jdbc.queryForList("select * from artifacts.artifact_pin order by revision_id, artifact_id"));
     }

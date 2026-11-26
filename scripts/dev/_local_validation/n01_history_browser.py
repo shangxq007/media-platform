@@ -83,6 +83,8 @@ if branches:
         'reopened','zero','left','fraction','competitor','stale'))
     checkpoints += tuple('n10-' + stage for stage in ('zero-before','before','readonly','committed','recovered','undo','redo',
         'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
+    checkpoints += tuple('n11-' + stage for stage in ('zero-before','before','right-overrun','left-overrun','readonly','committed','recovered','undo','redo',
+        'reopened','left','fraction','source-start','source-end','competitor','stale','bound','rejected'))
 browser_script = 'n02-branches-browser-e2e.mjs' if branches else 'n01-history-browser-e2e.mjs'
 with ((out / 'browser.stdout').open('w') as stdout, (out / 'browser.stderr').open('w') as stderr,
       subprocess.Popen(prefix + ['/usr/bin/node', str(source / 'frontend/scripts' / browser_script),
@@ -503,6 +505,45 @@ if branches:
     assert pins10 == slip_pins(row10('before'))
     assert all({'artifact':c['artifactId'], 'digest':c['contentDigest']} in pins10 for c in clip_rows(row10('before')).values())
     (out / 'n10-postgres.json').write_text(json.dumps(dict(browser=slip, persisted=rows10, pins=pins10, checkpoints=counts10), indent=2))
+    counts11 = {k.removeprefix('n11-'): v for k, v in facts.items() if k.startswith('n11-')}
+    slide = browser_result['http']['n11']
+    rows11 = persisted_revisions({state['refs']['main'] for state in counts11.values()} | {e['base'] for e in slide['edges']})
+    def row11(stage):
+        return rows11[counts11[stage]['refs']['main']]
+    assert counts11['before'] == counts11['right-overrun'] == counts11['left-overrun']
+    assert counts11['before'] == counts11['readonly'] and counts11['committed'] == counts11['recovered']
+    assert counts11['redo'] == counts11['reopened'] and counts11['stale'] == counts11['competitor']
+    assert counts11['bound'] == counts11['rejected'] and counts11['zero-before']['rows'] == counts11['before']['rows']
+    for first, second in [('before','committed'),('committed','undo'),('undo','redo')]:
+        assert row11(second)['parent_revision_id'] == row11(first)['id']
+        for field in ('commands','rows'):
+            assert counts11[second][field] == counts11[first][field] + 1
+    for field in ('snapshot','semantics'):
+        assert row11('before')[field] == row11('undo')[field] and row11('committed')[field] == row11('redo')[field]
+    def check_slide(before, after, delta):
+        import copy
+        expected = copy.deepcopy(before['snapshot'])
+        old = clip_rows({'snapshot':expected})
+        actual = clip_rows(after)
+        assert set(old) == set(actual) == {'clip-left','clip-middle','clip-right','clip-red'}
+        assert placement(old['clip-red']) == (13,14)
+        fields = ('startTime','endTime','trimStart','trimEnd')
+        for key, original, result in [
+                ('clip-left', (2,5,1,4), (2,5+delta,1,4+delta)),
+                ('clip-middle', (5,8,2,5), (5+delta,8+delta,2,5)),
+                ('clip-right', (8,12,2,6), (8+delta,12,2+delta,6))]:
+            assert tuple(Fraction(old[key][field]) for field in fields) == original
+            assert tuple(Fraction(actual[key][field]) for field in fields) == result
+            for field in fields:
+                old[key][field] = actual[key][field]
+        assert after['snapshot'] == expected and after['parent_revision_id'] == before['id']
+    check_slide(row11('before'), row11('committed'), 1)
+    for edge in slide['edges']:
+        check_slide(rows11[edge['base']], row11(edge['stage']), Fraction(edge['offset']))
+    pins11 = slip_pins(row11('committed'))
+    assert pins11 == slip_pins(row11('before'))
+    assert all({'artifact':c['artifactId'], 'digest':c['contentDigest']} in pins11 for c in clip_rows(row11('before')).values())
+    (out / 'n11-postgres.json').write_text(json.dumps(dict(browser=slide, persisted=rows11, pins=pins11, checkpoints=counts11), indent=2))
     (out / 'postgres-result.json').write_text(json.dumps({'checkpoints': facts, **proof}, indent=2))
     print('N02_BRANCH_BROWSER_AND_POSTGRES=PASS')
     raise SystemExit(0)

@@ -1543,8 +1543,8 @@ try {
     unsupported: invalidRequests8, alternate: 'REF_NOT_SUPPORTED', inside: invalid8.payload.detail, relationship: relation8.payload.detail, reader: denied8.errorCode, stale: stale8.payload.errorCode }
   save('N08 single-track ripple insert, read-only recovery, exact replay, whole edit Undo/Redo and reopened playback')
   const c9 = stage => checkpoint('n09-' + stage)
-  async function rollMedia(colour, seconds) {
-    const name = 'n09-' + colour + '.mp4'
+  async function rollMedia(colour, seconds, fixture = 'n09') {
+    const name = fixture + '-' + colour + '.mp4'
     const path = join(out, name)
     execFileSync('/usr/bin/ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-f',
       'lavfi', '-i', 'color=c=' + colour + ':s=320x240:r=24', '-t', String(seconds), '-c:v', 'libopenh264',
@@ -1815,8 +1815,150 @@ try {
   assert.deepEqual(await c10('rejected'), bound10)
   result.http.n10 = { probe: probe10, base: seed10.newRevisionId, plan: planned10, attempts: attempts10, frames: frames10,
     edges: edges10, rejected: rejected10, readOnly: 403, alternate: 409, stale: stale10.payload, sync: relation10.payload.detail }
-  result.status = 'PASS'
   save('N10 single-clip slip, fixed timeline picture, routed audio, exact media handles, replay, readback and undo/redo')
+  const c11 = stage => checkpoint('n11-' + stage)
+  const blue11 = await rollMedia('blue', 5, 'n11'), red11 = await rollMedia('red', 6, 'n11')
+  await restore6('slide-seed', seed10.newRevisionId)
+  const seed11 = await revise6('slide-fixture', [
+    ...['clip-red','clip-blue','clip-later'].map(clipId => ({ definitionId: 'timeline.delete', target: { clipId } })),
+    rollSource('clip-left', blue11, '2','5','1','4'), rollSource('clip-middle', mixed10, '5','8','2','5'),
+    rollSource('clip-right', red11, '8','12','2','6'), rollSource('clip-red', red9, '13','14','0','1'),
+    { definitionId: 'audio.gain.set', target: { audioTrackId: 'track-1', clipId: 'clip-middle' }, parameters: { linear: 0.5 } },
+  ])
+  await view6(seed11.newRevisionId)
+  const slide = page.getByRole('region', { name: 'Slide edit', exact: true })
+  const prepare11 = async offset => {
+    await slide.getByLabel('Middle clip').selectOption({ label: 'clip-middle between clip-left and clip-right' })
+    await slide.getByLabel('Timeline offset (seconds)').fill(offset)
+    const next = wire6('/preview')
+    await slide.getByRole('button', { name: 'Preview slide' }).click()
+    return trace6(await next)
+  }
+  const confirm11 = slide.getByRole('button', { name: 'Confirm slide', exact: true })
+  const frame11 = async (stage, shifted) => {
+    const samples = {}
+    for (const [point, time, colour] of [
+      ['left-cut','5.5',shifted ? 'blue' : 'red'], ['right-cut','8.5',shifted ? 'blue' : 'red'],
+      ['middle-early',shifted ? '6.5' : '5.5','red'], ['middle-late',shifted ? '7.5' : '6.5','blue'],
+      ['control','13.5','red'],
+    ]) samples[point] = await samples6('n11-' + stage + '-' + point, [[time,colour]])
+    return samples
+  }
+  const frames11 = { before: await frame11('before', false) }
+  const zeroBefore11 = await c11('zero-before')
+  const zero11 = await prepare11('0')
+  assert.equal(zero11.payload.noOp, true)
+  const zeroWrite11 = wire6('/apply')
+  await confirm11.click()
+  assert.equal((await trace6(await zeroWrite11)).payload.status, 'NO_OP')
+  await slide.getByText(/Slide created no revision/).waitFor()
+  assert.equal(await page.getByRole('button', { name: 'Undo slide' }).count(), 0)
+  const before11 = await c11('before')
+  assert.deepEqual(before11.refs, zeroBefore11.refs)
+  assert.equal(before11.rows, zeroBefore11.rows)
+  await prepare11('+1')
+  await slide.getByRole('button', { name: 'Cancel slide' }).click()
+  const rejected11 = []
+  for (const [offset, reason, checkpoint] of [
+    ['-49/24', /source handle before clip-right/, 'right-overrun'],
+    ['25/24', /source clip-left is invalid.*duration/i, 'left-overrun'],
+    ['-3', /positive duration on clip-left/],
+    ['4', /positive duration on clip-right/],
+  ]) {
+    const rejected = await prepare11(offset)
+    assert.equal(rejected.status, 422)
+    await apply(rejected.body, '0'.repeat(64), 422)
+    assert.match(rejected.payload.detail, reason)
+    if (checkpoint) assert.deepEqual(await c11(checkpoint), before11)
+    rejected11.push({ offset, preview: rejected.payload.detail, applyStatus: 422 })
+  }
+  const planned11 = await prepare11('+1')
+  for (const line of ['Cuts 5/1s → 6/1s and 8/1s → 9/1s', 'clip-left timeline [2/1, 6/1), source [1/1, 5/1)',
+    'clip-middle timeline [6/1, 9/1), source [2/1, 5/1)', 'clip-right timeline [9/1, 12/1), source [3/1, 6/1)']) {
+    await slide.getByText(line, { exact: true }).waitFor()
+  }
+  await apply(planned11.body, planned11.payload.batchDigest, 403, reader)
+  const alt11 = await branch('alternate')
+  const alternate11 = { ...planned11.body, refId: 'alternate', baseRevisionId: alt11.headRevisionId, baseContentHash: alt11.contentHash,
+    operations: planned11.body.operations }
+  assert.equal((await preview(alternate11, 409)).errorCode, 'REF_NOT_SUPPORTED')
+  await apply(alternate11, planned11.payload.batchDigest, 409)
+  assert.deepEqual(await c11('readonly'), before11)
+  const attempts11 = []
+  await page.route(applyRoute8, async route => {
+    const req = route.request(), res = await route.fetch()
+    attempts11.push({ target: req.url(), raw: req.postData(), body: req.postDataJSON(),
+      ifMatch: req.headers()['if-match'], status: res.status(), payload: await res.json() })
+    if (attempts11.length === 1) await route.abort('failed')
+    else await route.fulfill({ response: res })
+  })
+  try {
+    await confirm11.click()
+    const retry = slide.getByRole('button', { name: 'Retry confirmed slide' })
+    await retry.waitFor()
+    const committed = await c11('committed')
+    assert.equal(committed.rows, before11.rows + 1)
+    assert.equal(await deleteClip.isDisabled(), true)
+    await page.route(readRoute7, route => route.abort('failed'), { times: 1 })
+    await retry.click()
+    await slide.getByText('Slide accepted at revision ' + committed.refs.main + '. Reload HEAD to refresh the editor.').waitFor()
+    await page.getByRole('button', { name: 'Reload HEAD', exact: true }).click()
+    await waitView('main', committed.refs.main)
+    assert.deepEqual(await c11('recovered'), committed)
+  } finally { await page.unroute(applyRoute8) }
+  confirmed6(planned11, attempts11[0])
+  for (const field of ['target', 'raw', 'ifMatch']) assert.equal(attempts11[0][field], attempts11[1][field])
+  assert.equal(attempts11[1].status, 200)
+  assert.equal(attempts11[0].payload.newRevisionId, attempts11[1].payload.newRevisionId)
+  frames11.after = await frame11('after', true)
+  for (const direction of ['Undo', 'Redo']) {
+    const response = wire6('/apply')
+    await page.getByRole('button', { name: direction + ' slide', exact: true }).click()
+    await waitView('main', (await trace6(await response)).payload.newRevisionId)
+    await c11(direction.toLowerCase())
+  }
+  await view6((await branch()).headRevisionId)
+  frames11.reopened = await frame11('reopened', true)
+  await c11('reopened')
+  const edges11 = []
+  for (const [stage, offset] of [['left','-1'], ['fraction','1/30'], ['source-start','-2'], ['source-end','+1']]) {
+    const base = (await restore6('slide-' + stage, seed11.newRevisionId)).newRevisionId
+    await view6(base)
+    const plan = await prepare11(offset)
+    const pending = wire6('/apply')
+    await confirm11.click()
+    const accepted = await trace6(await pending)
+    confirmed6(plan, accepted)
+    await waitView('main', accepted.payload.newRevisionId)
+    edges11.push({ stage, offset, base, accepted: accepted.payload.newRevisionId })
+    await c11(stage)
+  }
+  const staleBase11 = (await restore6('slide-stale', seed11.newRevisionId)).newRevisionId
+  await view6(staleBase11)
+  const stalePlan11 = await prepare11('+1')
+  await revise6('slide-competitor', [makeMove({ clipId: 'clip-red' }, '14', true)])
+  const competitor11 = await c11('competitor')
+  const staleResponse11 = wire6('/apply')
+  await confirm11.click()
+  const stale11 = await trace6(await staleResponse11)
+  assert.deepEqual(stale11.body, stalePlan11.body)
+  assert.equal(stale11.status, 409)
+  assert.equal(stale11.payload.errorCode, 'STALE_BASE_REVISION')
+  assert.deepEqual(await c11('stale'), competitor11)
+  const linked11 = await revise6('slide-sync', [{ definitionId: 'timeline.sync.create',
+    target: { syncIdentityKey: 'SYNC(clip-red,clip-right)' },
+    parameters: { endpointA: 'clip-red', localAnchorA: '1', endpointB: 'clip-right', localAnchorB: '1/2' } }])
+  await view6(linked11.newRevisionId)
+  const bound11 = await c11('bound')
+  const relation11 = await prepare11('+1')
+  assert.equal(relation11.status, 422)
+  assert.match(relation11.payload.detail, /relationship.*clip-right/)
+  await apply(relation11.body, '0'.repeat(64), 422)
+  assert.deepEqual(await c11('rejected'), bound11)
+  result.http.n11 = { base: seed11.newRevisionId, plan: planned11, attempts: attempts11, frames: frames11,
+    edges: edges11, rejected: rejected11, readOnly: 403, alternate: 409, stale: stale11.payload, sync: relation11.payload.detail }
+  result.status = 'PASS'
+  save('N11 single-track slide, two shifted cuts, clip-relative picture and fixed control, exact handles, recovery and undo/redo')
 } finally {
   await browser.close()
 }

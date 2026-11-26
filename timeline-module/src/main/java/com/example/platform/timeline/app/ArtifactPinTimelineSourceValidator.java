@@ -116,10 +116,10 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
         if (routedEmbeddedAudio) {
             var audio = facts.get().streams().stream().filter(item -> item.kind() == ArtifactSourceFacts.Kind.AUDIO).toList();
             if (trackType != TrackType.VIDEO || facts.get().counts() == null || facts.get().counts().audio() != 1 || audio.size() != 1) {
-                return invalid("Slip requires one verified embedded audio stream for this routed clip");
+                return invalid("Routed video requires one verified embedded audio stream");
             }
             if (binding.sourceRange().end().isGreaterThan(audio.getFirst().duration())) {
-                return invalid("Slip exceeds the routed embedded audio stream duration");
+                return invalid("Source range exceeds the routed embedded audio stream duration");
             }
         }
         return valid();

@@ -233,7 +233,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'slip' | 'multi-move'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'slip' | 'slide' | 'multi-move'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -310,7 +310,7 @@ export function NleWorkspace({
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
-      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip') && reason === 'RANGE_READBACK')
+      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide') && reason === 'RANGE_READBACK')
       || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
       || (issuedCommand.current === 'multi-move' && reason === 'MULTI_MOVE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
@@ -634,7 +634,7 @@ export function NleWorkspace({
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
-          {defaultBranch && !historyRevision && (['roll', 'slip'] as const).map(edit => <SourceRangeEdit edit={edit} key={JSON.stringify([edit, project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+          {defaultBranch && !historyRevision && (['roll', 'slip', 'slide'] as const).map(edit => <SourceRangeEdit edit={edit} key={JSON.stringify([edit, project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection === requestedProjection && loadedProjection ? tracks : []}
             disabled={loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess(edit)} readback={() => loadHead('RANGE_READBACK')}

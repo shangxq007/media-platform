@@ -164,6 +164,10 @@ public final class TimelineBatchCommandMapper {
                                            String projectId, String baseRevisionId,
                                            String baseContentHash, int index) {
         return switch (definitionId) {
+            case "timeline.clip.slide" -> new OperationParameters.SlideParameters(requiredText(parameters, "trackId"),
+                    TimelineClipId.of(requiredText(parameters, "leftClipId")), TimelineClipId.of(requiredText(parameters, "middleClipId")),
+                    TimelineClipId.of(requiredText(parameters, "rightClipId")),
+                    OperationParameters.SignedTimeOffset.parse(requiredText(parameters, "offset").strip()));
             case "timeline.clip.slip" -> OperationParameters.SlipParameters.parse(requiredText(parameters, "offset").strip());
             case "timeline.clip.roll" -> new OperationParameters.RollCutParameters(requiredText(parameters, "trackId"),
                     TimelineClipId.of(requiredText(parameters, "leftClipId")), TimelineClipId.of(requiredText(parameters, "rightClipId")),

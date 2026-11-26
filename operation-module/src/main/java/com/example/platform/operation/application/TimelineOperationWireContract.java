@@ -23,6 +23,10 @@ public final class TimelineOperationWireContract {
         var fields = new LinkedHashMap<String, Field>();
         boolean batch = true;
         switch (id) {
+            case "timeline.clip.slide" -> {
+                fields(fields, "revision-id", "trackId", "leftClipId", "middleClipId", "rightClipId");
+                fields(fields, "string", "offset");
+            }
             case "timeline.clip.slip" -> fields(fields, "string", "offset");
             case "timeline.clip.roll" -> {
                 fields(fields, "revision-id", "trackId", "leftClipId", "rightClipId");

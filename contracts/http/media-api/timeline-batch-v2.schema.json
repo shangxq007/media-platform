@@ -2091,6 +2091,46 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.slide" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "leftClipId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                },
+                "middleClipId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                },
+                "offset" : {
+                  "type" : "string"
+                },
+                "rightClipId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                },
+                "trackId" : {
+                  "pattern" : "^[A-Za-z0-9._:-]{1,64}$",
+                  "type" : "string"
+                }
+              },
+              "required" : [ "leftClipId", "middleClipId", "offset", "rightClipId", "trackId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.slip" ],
               "type" : "string"
             },

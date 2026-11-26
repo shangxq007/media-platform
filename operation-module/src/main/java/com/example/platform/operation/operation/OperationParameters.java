@@ -31,6 +31,7 @@ public sealed interface OperationParameters permits
         OperationParameters.MoveParameters,
         OperationParameters.RelocateClipParameters,
         OperationParameters.TrimParameters,
+        OperationParameters.SlideParameters,
         OperationParameters.SlipParameters,
         OperationParameters.RollCutParameters,
         OperationParameters.SplitParameters,
@@ -63,6 +64,40 @@ public sealed interface OperationParameters permits
         OperationParameters.CreateAlignmentParameters {
 
     @org.springframework.modulith.NamedInterface("invocation")
+    record SignedTimeOffset(MediaTime magnitude, boolean backward) {
+        public SignedTimeOffset {
+            java.util.Objects.requireNonNull(magnitude, "offset required");
+            if (magnitude.equals(MediaTime.ZERO)) backward = false;
+        }
+
+        public static SignedTimeOffset parse(String value) {
+            if (!value.matches("[+-]?[0-9]+(/[1-9][0-9]*)?")) {
+                throw new IllegalArgumentException("Offset must be an exact signed integer or fraction");
+            }
+            boolean negative = value.startsWith("-");
+            String unsigned = negative || value.startsWith("+") ? value.substring(1) : value;
+            return new SignedTimeOffset(MediaTime.parse(unsigned.contains("/") ? unsigned : unsigned + "/1"), negative);
+        }
+
+        public MediaTime shift(MediaTime endpoint) {
+            return backward ? endpoint.subtract(magnitude) : endpoint.add(magnitude);
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record SlideParameters(String trackId, TimelineClipId leftClipId, TimelineClipId middleClipId,
+                           TimelineClipId rightClipId, SignedTimeOffset offset) implements OperationParameters {
+        public SlideParameters {
+            if (trackId == null || !trackId.matches("[A-Za-z0-9._:-]{1,64}") || offset == null
+                    || leftClipId == null || middleClipId == null || rightClipId == null
+                    || List.of(leftClipId, middleClipId, rightClipId).stream().distinct().count() != 3
+                    || List.of(leftClipId, middleClipId, rightClipId).stream().anyMatch(id -> !id.value().matches("[A-Za-z0-9._:-]{1,64}"))) {
+                throw new IllegalArgumentException("Slide requires a track, three distinct clip identities and an exact offset");
+            }
+        }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
     record SlipParameters(MediaTime magnitude, boolean backward) implements OperationParameters {
         public SlipParameters {
             java.util.Objects.requireNonNull(magnitude, "source offset required");
@@ -70,12 +105,8 @@ public sealed interface OperationParameters permits
         }
 
         public static SlipParameters parse(String value) {
-            if (!value.matches("[+-]?[0-9]+(/[1-9][0-9]*)?")) {
-                throw new IllegalArgumentException("Slip offset must be an exact signed integer or fraction");
-            }
-            boolean negative = value.startsWith("-");
-            String unsigned = negative || value.startsWith("+") ? value.substring(1) : value;
-            return new SlipParameters(MediaTime.parse(unsigned.contains("/") ? unsigned : unsigned + "/1"), negative);
+            var offset = SignedTimeOffset.parse(value);
+            return new SlipParameters(offset.magnitude(), offset.backward());
         }
 
         public MediaTime shift(MediaTime endpoint) {

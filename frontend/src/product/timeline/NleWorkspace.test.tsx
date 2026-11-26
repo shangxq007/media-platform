@@ -81,7 +81,7 @@ async function prepareConfirmedPreview() {
   fireEvent.click(screen.getByLabelText(/I confirm this exact frozen draft/i))
 }
 
-function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = false, initialHead = head) {
+function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = false, initialHead = head, withSlideNeighbors = false) {
   const queries = new ScriptedTimelineQueryGateway({
     head: { ok: true, value: head }, history: { ok: true, value: [revision, olderRevision] },
     detail: { ok: true, value: olderDetail }, comparison: { ok: true, value: comparison },
@@ -106,7 +106,11 @@ function renderBranchWorkspace(initial: string, clipEnd = '6', withSecondClip = 
         clipId: 'clip-1', sourceKind: 'MEDIA_STREAM', artifactId: 'other', mediaStreamId: 'stream',
         contentDigest: 'b'.repeat(64), startTime: '7', endTime: '8', trimStart: '0', trimEnd: '1',
         temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
-      }] : [])] },
+      }] : []), ...(withSlideNeighbors ? ['clip-2', 'clip-3'].map((clipId, i) => ({
+        clipId, sourceKind: 'MEDIA_STREAM', artifactId: 'neighbor', mediaStreamId: 'stream', contentDigest: 'c'.repeat(64),
+        startTime: String(8+i*3), endTime: String(11+i*3), trimStart: '2', trimEnd: '5',
+        temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
+      })) : [])] },
     ] }),
   }))
   function Workspace() {
@@ -344,6 +348,42 @@ describe('default branch clipboard', () => {
     fireEvent.change(branchPicker(), { target: { value: 'alt' } })
     await screen.findByText('Viewing editing head · alt')
     expect(screen.queryByRole('region', { name: 'Clip clipboard' })).toBeNull()
+  })
+})
+
+describe('N11 slide edit', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each(['selection','offset'])('rejects a late preview when the %s changes away and back', async field => {
+    const { readRef } = renderBranchWorkspace('main', '7', true, head, true)
+    const first = await screen.findByRole<HTMLOptionElement>('option', { name: 'clip-1 between clip-0 and clip-2' })
+    const section = within(screen.getByRole('region', { name: 'Slide edit' }))
+    const second = section.getByRole<HTMLOptionElement>('option', { name: 'clip-2 between clip-1 and clip-3' })
+    const select = (value: string) => fireEvent.change(section.getByLabelText('Middle clip'), { target: { value } })
+    const offset = (value: string) => fireEvent.change(section.getByLabelText('Timeline offset (seconds)'), { target: { value } })
+    const result = { batchDigest: HASH_C, steps: [] }
+    const held = deferred<typeof result>()
+    const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockReturnValueOnce(held.promise).mockResolvedValue(result)
+    const write = vi.spyOn(FormalRenderAPI, 'commitBatch').mockResolvedValue(appliedHead)
+    select(first.value); offset('+1/30')
+    const prepare = section.getByRole('button', { name: 'Preview slide' })
+    fireEvent.click(prepare)
+    if (field === 'selection') { select(second.value); select(first.value) }
+    else offset('-1/30')
+    offset('+1/30')
+    await act(async () => held.resolve(result))
+    expect(section.queryByRole('button', { name: 'Confirm slide' })).toBeNull()
+    expect(write).not.toHaveBeenCalled()
+    fireEvent.click(prepare)
+    await section.findByText('Cuts 7/1s → 211/30s and 8/1s → 241/30s')
+    expect(preview.mock.lastCall?.[2].operations).toEqual([{ definitionId: 'timeline.clip.slide', version: '1.0',
+      parameters: { trackId: 'track-1', leftClipId: 'clip-0', middleClipId: 'clip-1', rightClipId: 'clip-2', offset: '1/30' } }])
+    const next = { ...head, revisionId: revisionId('revision-R2'), contentHash: contentHash(TIMELINE_C) }
+    readRef.mockResolvedValue({ ok: true, value: { head: next, history: [olderRevision] } })
+    fireEvent.click(section.getByRole('button', { name: 'Confirm slide' }))
+    await section.findByText('Slide accepted at revision revision-R1. Current HEAD is revision-R2.')
+    expect(write).toHaveBeenCalledOnce()
+    expect(section.queryByRole('button', { name: 'Retry confirmed slide' })).toBeNull()
   })
 })
 

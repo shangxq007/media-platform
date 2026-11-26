@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { Button } from '../../components/design-system'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
@@ -54,8 +54,43 @@ function slipChoices(tracks: readonly ProjectedTrack[]): Choice[] {
   })))
 }
 
+function slideChoices(tracks: readonly ProjectedTrack[]): Choice[] {
+  return tracks.flatMap(track => {
+    const ordered = [...track.clips].sort((a, b) => compare(a.start, b.start))
+    const choices: Choice[] = []
+    let earlierEnd: Rational | undefined
+    for (let i = 0; i + 2 < ordered.length; i++) {
+      const left = ordered[i], middle = ordered[i + 1], right = ordered[i + 2]
+      const overlapsEarlier = earlierEnd && compare(earlierEnd, left.start) > 0
+      if (!earlierEnd || compare(left.end, earlierEnd) > 0) earlierEnd = left.end
+      if (overlapsEarlier || compare(left.end, middle.start) !== 0 || compare(middle.end, right.start) !== 0
+          || (ordered[i + 3] && compare(ordered[i + 3].start, right.end) < 0)) continue
+      const ids = { trackId: track.trackId, leftClipId: left.clipId, middleClipId: middle.clipId, rightClipId: right.clipId }
+      choices.push({
+        key: JSON.stringify([track.trackId, left.clipId, middle.clipId, right.clipId]),
+        label: middle.clipId + ' between ' + left.clipId + ' and ' + right.clipId,
+        draft(offset) {
+          const first = f(add(middle.start, offset)), second = f(add(middle.end, offset))
+          return { step: { definitionId: 'timeline.clip.slide', version: '1.0', parameters: { ...ids, offset: f(offset) } },
+            ranges: ['Cuts ' + f(middle.start) + 's → ' + first + 's and ' + f(middle.end) + 's → ' + second + 's',
+              left.clipId + ' timeline [' + f(left.start) + ', ' + first + '), source [' + f(left.sourceStart) + ', ' + f(add(left.sourceEnd, offset)) + ')',
+              middle.clipId + ' timeline [' + first + ', ' + second + '), source [' + f(middle.sourceStart) + ', ' + f(middle.sourceEnd) + ')',
+              right.clipId + ' timeline [' + second + ', ' + f(right.end) + '), source [' + f(add(right.sourceStart, offset)) + ', ' + f(right.sourceEnd) + ')'] }
+        },
+      })
+    }
+    return choices
+  })
+}
+
+const rangeEdits = {
+  roll: { label: 'Roll', selectLabel: 'Shared cut', placeholder: 'Choose adjacent clips', timeLabel: 'New cut time (seconds)', choices: rollChoices },
+  slip: { label: 'Slip', selectLabel: 'Slip clip', placeholder: 'Choose a clip', timeLabel: 'Source offset (seconds)', choices: slipChoices },
+  slide: { label: 'Slide', selectLabel: 'Middle clip', placeholder: 'Choose a middle clip', timeLabel: 'Timeline offset (seconds)', choices: slideChoices },
+}
+
 export function SourceRangeEdit({ edit, head, tenant, tracks, disabled, access, readback, onAccepted }: {
-  edit: 'roll' | 'slip'
+  edit: keyof typeof rangeEdits
   head: CanonicalHeadReference | null
   tenant: string | null
   tracks: readonly ProjectedTrack[]
@@ -64,9 +99,9 @@ export function SourceRangeEdit({ edit, head, tenant, tracks, disabled, access, 
   readback: () => Promise<CanonicalHeadReference | undefined>
   onAccepted: (base: string, hash: string, receipt: { revisionId: string; contentHash: string }) => void
 }) {
-  const slip = edit === 'slip'
-  const label = slip ? 'Slip' : 'Roll'
-  const choices = slip ? slipChoices(tracks) : rollChoices(tracks)
+  const { label, selectLabel, placeholder, timeLabel } = rangeEdits[edit]
+  const signed = edit !== 'roll'
+  const choices = useMemo(() => rangeEdits[edit].choices(tracks), [edit, tracks])
   const [selected, select] = useState('')
   const [input, setInput] = useState('')
   const [plan, setPlan] = useState<RangePlan | null>(null)
@@ -79,7 +114,7 @@ export function SourceRangeEdit({ edit, head, tenant, tracks, disabled, access, 
   const choice = choices.find(p => p.key === selected)
   const value = parseRational(input)
   const locked = disabled || access.blocked
-  const context = !locked && tenant && head && choice && value && (slip || value.numerator >= 0n)
+  const context = !locked && tenant && head && choice && value && (signed || value.numerator >= 0n)
     ? JSON.stringify([tenant, head.projectId, head.revisionId, head.contentHash, selected, input]) : null
   useLayoutEffect(() => {
     setPlan(null)
@@ -151,12 +186,12 @@ export function SourceRangeEdit({ edit, head, tenant, tracks, disabled, access, 
   return <section aria-label={label + ' edit'}>
     <fieldset disabled={locked || !!retry || !!writing.current}>
       <legend>{label} edit</legend>
-      <label>{slip ? 'Slip clip' : 'Shared cut'} <select value={choice?.key ?? ''} onChange={e => { select(e.target.value); setInput('') }}>
-        <option value="">{slip ? 'Choose a clip' : 'Choose adjacent clips'}</option>
+      <label>{selectLabel} <select value={choice?.key ?? ''} onChange={e => { select(e.target.value); setInput('') }}>
+        <option value="">{placeholder}</option>
         {choices.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
       </select></label>
-      <label>{slip ? 'Source offset (seconds)' : 'New cut time (seconds)'} <input value={input} onChange={e => setInput(e.target.value)} /></label>
-      {input && (!value || (!slip && value.numerator < 0n)) && <p role="alert">{slip ? 'Enter a signed integer or fraction.' : 'Enter a nonnegative integer or fraction.'}</p>}
+      <label>{timeLabel} <input value={input} onChange={e => setInput(e.target.value)} /></label>
+      {input && (!value || (!signed && value.numerator < 0n)) && <p role="alert">{signed ? 'Enter a signed integer or fraction.' : 'Enter a nonnegative integer or fraction.'}</p>}
       <Button disabled={busy || !context} onClick={() => void preview()}>Preview {edit}</Button>
       {visible && <div aria-label={label + ' preview'}>{visible.ranges.map(line => <p key={line}>{line}</p>)}
         <Button disabled={busy} onClick={() => void confirm()}>Confirm {edit}</Button>

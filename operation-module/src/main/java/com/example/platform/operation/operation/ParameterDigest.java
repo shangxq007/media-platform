@@ -76,6 +76,10 @@ public final class ParameterDigest {
                     + ",placement=" + a.placement().start() + ".." + a.placement().end()
                     + ",mapping=" + temporalMapping(a.temporalMapping()) + ")";
         }
+        if (p instanceof OperationParameters.SlideParameters slide) {
+            return framed("slide-v1", slide.trackId(), slide.leftClipId().value(), slide.middleClipId().value(),
+                    slide.rightClipId().value(), slide.offset().backward() ? "-" : "+", slide.offset().magnitude().toString());
+        }
         if (p instanceof OperationParameters.SlipParameters slip) {
             return framed("slip-v1", slip.backward() ? "-" : "+", slip.magnitude().toString());
         }

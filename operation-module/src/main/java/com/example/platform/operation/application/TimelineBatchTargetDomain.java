@@ -143,12 +143,14 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         if (instance.parameters() instanceof OperationParameters.PasteClipsParameters paste) {
             validatePaste(batch, paste, currentCandidate);
         }
-        if (instance.parameters() instanceof OperationParameters.RollCutParameters) {
+        if (instance.parameters() instanceof OperationParameters.RollCutParameters
+                || instance.parameters() instanceof OperationParameters.SlideParameters) {
+            String edit = instance.parameters() instanceof OperationParameters.SlideParameters ? "Slide" : "Roll";
             if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
-                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, "Roll requires the default editing branch");
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, edit + " requires the default editing branch");
             }
             if (batch.operations().size() != 1) {
-                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Roll must be the only operation in the batch");
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, edit + " must be the only operation in the batch");
             }
         }
         if (rippleDelete(operation) || instance.parameters() instanceof OperationParameters.SlipParameters) {
@@ -200,6 +202,10 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.STEP_PLAN_FAILED, null,
                     failure.getMessage(), failure);
         }
+        if (instance.parameters() instanceof OperationParameters.SlideParameters slide) {
+            validateMediaRanges(batch, plan.candidateTimeline(), slide.trackId(),
+                    List.of(slide.leftClipId(), slide.middleClipId(), slide.rightClipId()), "Slide", true);
+        }
         if (instance.parameters() instanceof OperationParameters.RollCutParameters roll) {
             validateMediaRanges(batch, plan.candidateTimeline(), roll.trackId(), List.of(roll.leftClipId(), roll.rightClipId()), "Roll", false);
         }
@@ -209,9 +215,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             var track = plan.candidateTimeline().getTracks().stream()
                     .filter(t -> t.clips().stream().anyMatch(c -> c.getClipId().equals(ids.getFirst())))
                     .findFirst().orElseThrow();
-            validateMediaRanges(batch, plan.candidateTimeline(), track.trackId(), ids, "Slip", track.type() == com.example.platform.timeline.canonical.TrackType.VIDEO
-                    && plan.candidateTimeline().getAudioMix().routes().stream().anyMatch(route ->
-                        route.input().clipId().equals(ids.getFirst().value()) && route.input().trackId().equals(track.trackId())));
+            validateMediaRanges(batch, plan.candidateTimeline(), track.trackId(), ids, "Slip", true);
         }
         return new StepPlan<>(plan.candidateTimeline(), instance.parameterDigest(),
                 targetIdentity(plan.sourceInstance().target()), plan.planDigest(), plan.plannedChanges().stream()
@@ -253,6 +257,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         return batch.operations().size() == 1 && (batch.operations().getFirst().parameters()
                 instanceof OperationParameters.TrimParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PasteClipsParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.SlideParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));
@@ -277,7 +282,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
     }
 
     private void validateMediaRanges(OperationBatchRequest batch, TimelineDocument candidate, String trackId,
-                                     List<TimelineClipId> ids, String operation, boolean routedEmbeddedAudio) {
+                                     List<TimelineClipId> ids, String operation, boolean checkEmbeddedAudio) {
         var target = batch.target();
         try {
             var track = candidate.getTracks().stream().filter(t -> t.trackId().equals(trackId)).findFirst()
@@ -296,6 +301,9 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         new com.example.platform.shared.identity.ArtifactId(clip.getArtifactId()),
                         com.example.platform.shared.digest.ContentDigest.sha256(clip.getContentDigest()),
                         new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(clip.getTrimStart(), clip.getTrimEnd()));
+                boolean routedEmbeddedAudio = checkEmbeddedAudio && track.type() == com.example.platform.timeline.canonical.TrackType.VIDEO
+                        && candidate.getAudioMix().routes().stream().anyMatch(route -> route.input().trackId().equals(trackId)
+                                && route.input().clipId().equals(id.value()));
                 var validation = routedEmbeddedAudio
                         ? sourceValidator.validateRoutedVideo(binding, target.tenantId(), target.projectId())
                         : sourceValidator.validate(binding, target.tenantId(), target.projectId(), track.type());
