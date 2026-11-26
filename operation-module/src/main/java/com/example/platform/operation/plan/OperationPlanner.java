@@ -1180,7 +1180,10 @@ public final class OperationPlanner {
                     || basic.isPresent() && basic.get().id() == null) {
                 throw new IllegalArgumentException("The existing effect or opacity channel cannot be edited here");
             }
-            if (!existing.isEmpty()) com.example.platform.timeline.semantics.effect.OpacityKeys.from(existing.getFirst());
+            if (!existing.isEmpty()) {
+                com.example.platform.timeline.semantics.effect.OpacityKeys.from(existing.getFirst())
+                        .requireInside(clip.getStartTime(), clip.getEndTime());
+            }
         } catch (IllegalArgumentException invalid) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
         }
@@ -1192,16 +1195,19 @@ public final class OperationPlanner {
         var curve = keys.curve(curveId, target, previous == null ? curveId + "-1" : previous.keyframes().getFirst().keyframeId(),
                 previous == null ? curveId + "-2" : previous.keyframes().getLast().keyframeId());
         if (curve.equals(previous)) return base;
-        var effects = new ArrayList<>(clip.getEffects());
-        if (basic.isEmpty()) effects.add(new TimelineClipEffect(target, BasicVideoEffect.EFFECT_KEY, BasicVideoEffect.IDENTITY.toParameters()));
-        var updated = new TimelineClip(id.value(), clip.getMediaAssetId(), clip.getMediaStreamId(), clip.getArtifactId(),
-                clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
-                clip.getSourceKind(), clip.getTemporalMapping(), effects, clip.getTransform());
-        var doc = replaceClip(base, id, updated);
+        var doc = base;
+        if (basic.isEmpty()) {
+            var effects = new ArrayList<>(clip.getEffects());
+            effects.add(new TimelineClipEffect(target, BasicVideoEffect.EFFECT_KEY, BasicVideoEffect.IDENTITY.toParameters()));
+            var updated = new TimelineClip(id.value(), clip.getMediaAssetId(), clip.getMediaStreamId(), clip.getArtifactId(),
+                    clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
+                    clip.getSourceKind(), clip.getTemporalMapping(), effects, clip.getTransform());
+            doc = replaceClip(base, id, updated);
+        }
         var curves = new ArrayList<>(doc.getAutomations());
         curves.remove(previous);
         curves.add(curve);
-        changes.add(new PlannedChange.ClipReplaced(id, updated));
+        changes.add(new PlannedChange.OpacityKeysSet(id, curveId));
         return new TimelineDocument(doc.getSchemaVersion(), doc.getTracks(), doc.getMetadata(), doc.getAudioMix(),
                 doc.getSemanticRelationships(), doc.getTextElements(), doc.getTransitions(), curves);
     }

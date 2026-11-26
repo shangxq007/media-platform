@@ -26,12 +26,16 @@ public sealed interface PlannedChange permits
         PlannedChange.CompositionAspectChanged,
         PlannedChange.TextElementAdded,
         PlannedChange.TextElementRemoved,
-        PlannedChange.TextElementReplaced, PlannedChange.TransitionChanged {
+        PlannedChange.TextElementReplaced, PlannedChange.OpacityKeysSet, PlannedChange.TransitionChanged {
 
     boolean primary();
 
     record TransitionChanged(String transitionId, Action action) implements PlannedChange {
         public enum Action { CREATED, UPDATED, REMOVED }
+        public boolean primary() { return true; }
+    }
+
+    record OpacityKeysSet(TimelineClipId clipId, String automationId) implements PlannedChange {
         public boolean primary() { return true; }
     }
 
