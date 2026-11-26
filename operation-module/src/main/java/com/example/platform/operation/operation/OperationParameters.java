@@ -71,6 +71,7 @@ public sealed interface OperationParameters permits
     record SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
             com.example.platform.timeline.canonical.SubtitleCueMotion motion, boolean useDefault,
             boolean legacyReceipt, boolean fontRunsSupplied, FadeIntent fadeIntent) implements OperationParameters {
+        @org.springframework.modulith.NamedInterface("invocation")
         public enum FadeIntent { PRESERVE, SET, CLEAR, REPLAY_OMISSION }
 
         public SubtitleCueParameters(String cueId, MediaTime start, MediaTime end, String text, int width, int fontSize,
