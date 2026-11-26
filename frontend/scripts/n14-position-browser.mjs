@@ -64,7 +64,17 @@ export async function runPosition(ctx) {
       input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))
     },at)
   }
-  function measure(bytes,width,height,stride,combo) {
+  function measure({bytes,at,x,y,combo}) {
+    const width=320,height=240
+    const inBrowser=!bytes
+    if(inBrowser){
+      const view=document.querySelector('[data-preview-revision]')
+      if(Number(view.dataset.previewTime)!==at)return false
+      const canvas=view.querySelector('canvas')
+      if(canvas.width!==width||canvas.height!==height)return false
+      bytes=canvas.getContext('2d').getImageData(0,0,width,height).data
+    }
+    const stride=inBrowser?4:3
     let xmin=width,xmax=-1,ymin=height,ymax=-1,count=0
     for(let y=0;y<height;y++)for(let x=0;x<width;x++){
       const i=(y*width+x)*stride
@@ -75,7 +85,9 @@ export async function runPosition(ctx) {
     }
     if(count<120)return null
     const pixel=(x,y)=>Array.from(bytes.slice((y*width+x)*stride,(y*width+x)*stride+3))
-    return {x:(xmin+xmax+1)/2,y:(ymin+ymax+1)/2,count,
+    const center={x:(xmin+xmax+1)/2,y:(ymin+ymax+1)/2}
+    if(inBrowser&&(Math.abs(center.x-x)>1||Math.abs(center.y-y)>1))return false
+    return {...center,count,
       marker:pixel(Math.floor((xmin+xmax+1)/2),Math.floor((ymin+ymax+1)/2)),
       control:pixel(10,10),inside:pixel(200,170)}
   }
@@ -88,17 +100,10 @@ export async function runPosition(ctx) {
         const bytes=execFileSync('/usr/bin/ffmpeg',['-v','error','-i',artifact,'-vf','select=eq(n\\,'+frame+'),format=rgb24',
           '-frames:v','1','-f','rawvideo','-'])
         assert.equal(bytes.length,320*240*3)
-        observed=measure(bytes,320,240,3,combo)
+        observed=measure({bytes,combo})
       }else{
         await seek(at)
-        const handle=await page.waitForFunction(({at,x,y,combo,source})=>{
-          const view=document.querySelector('[data-preview-revision]')
-          if(Number(view.dataset.previewTime)!==at)return false
-          const c=view.querySelector('canvas')
-          if(c.width!==320||c.height!==240)return false
-          const metrics=(new Function('return ('+source+')')())(c.getContext('2d').getImageData(0,0,c.width,c.height).data,c.width,c.height,4,combo)
-          return metrics&&Math.abs(metrics.x-x)<=1&&Math.abs(metrics.y-y)<=1&&metrics
-        },{at,x,y,combo,source:measure.toString()})
+        const handle=await page.waitForFunction(measure,{at,x,y,combo})
         observed=await handle.jsonValue()
         await page.getByLabel('Timeline preview canvas').screenshot({path:join(outputRoot,stage+'-'+frame+'.png')})
       }
