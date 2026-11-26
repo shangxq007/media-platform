@@ -231,11 +231,14 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 with open(path, 'wb') as cue:
                     cue.write(payload)
                 block = graph.decode({'input_path': path})['video']
-                # Hold the completed RGBA block for the composition, then apply one alpha envelope.
+                # Duplicate pixels first. The still decoder's clock is unrelated to the output
+                # clock, so assign one exact output-frame tick to each duplicate before geq.
                 block = ff.ff_filter(block, 'format', 'rgba')
-                frames = -(-Fraction(duration) * Fraction(rate) // 1)
-                block = ff.loop(block, loop=frames, size=1, start=0)
-                block = ff.ff_filter(block, 'fps', rate)
+                output_rate = Fraction(rate)
+                frames = -(-Fraction(duration) * output_rate // 1)
+                block = ff.loop(block, loop=frames - 1, size=1, start=0)
+                block = ff.ff_filter(block, 'settb', 'expr=' + str(1 / output_rate))
+                block = ff.setpts(block, 'N')
                 size = str(max(1, round(width * canvas_width / 320))) + 'x' + str(max(1, round(height * canvas_width / 320)))
                 block = ff.ff_filter(block, 'scale', size)
                 alpha = motion_expression(samples, 3, start, elapsed, 'T')

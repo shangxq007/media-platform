@@ -222,7 +222,9 @@ try:
     command('n12-opacity-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--opacity'],timeout=700)
     if a.n13_dissolve:command('n13-dissolve-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--dissolve'],timeout=700)
     if a.n14_position:command('n14-position-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--position'],timeout=700)
-    if a.n15_subtitle:command('n15-subtitle-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--subtitle'],timeout=700)
+    if a.n15_subtitle:
+     command('n15-subtitle-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--subtitle'],timeout=700)
+     command('n15-subtitle-correction-browser',['python3','-B',str(HELP/'n01_history_browser.py'),'--subtitle-correction'],timeout=700)
    else:
     command('nle-multitrack-browser',['python3','-B',str(HELP/'nle_workflow_browser.py')],timeout=1500)
     command('verify-multitrack-bmf',['python3','-B',str(HELP/'check_nle_multitrack.py')],timeout=120)

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
-import { parseRational, compare, subtract, toSeconds } from './trim'
+import { parseRational, compare, subtract, toSeconds, type Rational } from './trim'
 import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
@@ -14,6 +14,7 @@ import { projectId as validateProjectId } from './types'
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
 interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mute: boolean; pan: number }
 interface PreviewSession {
+  revisionId: string | undefined
   controller: AbortController
   urls: string[]
   videos: Map<string, HTMLVideoElement>
@@ -26,6 +27,7 @@ interface PreviewSession {
   projection?: TimelineProjection
   colorSurface?: HTMLCanvasElement
   duration: number
+  end: Rational
   seekInputEnd: number
   cursor: number
   origin: number
@@ -37,6 +39,15 @@ interface PreviewSession {
 const clock = (session: PreviewSession) => session.audio?.currentTime ?? performance.now() / 1000
 const rationalTime = (seconds: number) => ({ numerator: BigInt(Math.floor(seconds * 1_000_000)), denominator: 1_000_000n })
 const seekInputMax = (duration: number) => Math.max(0.01, duration)
+
+function effectiveSubtitleCues(projection: TimelineProjection, plan: SemanticBatch | null | undefined, revisionId: string | undefined) {
+  const edit = plan?.baseRevisionId === revisionId ? plan?.operations[0] : undefined
+  const replacement = edit?.definitionId === 'timeline.subtitle.cue.set' || edit?.definitionId === 'timeline.subtitle.cue.remove'
+    ? edit.parameters.cueId : null
+  const cues = (projection.subtitles ?? []).filter(cue => cue.cueId !== replacement)
+  if (edit?.definitionId === 'timeline.subtitle.cue.set') cues.push(edit.parameters)
+  return { cues, replacement }
+}
 
 function nativeSeekInputEnd(duration: number) {
   // A range control can serialize its maximum with fewer digits than its max attribute.
@@ -115,7 +126,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   useEffect(() => {
     const session = current.current
     const step = subtitlePlan?.baseRevisionId === revisionId ? subtitlePlan?.operations[0] : null
-    if (session?.projection) draw(session)
+    if (session?.projection) refreshComposition(session)
     if (!tenantId || !subtitlePlan || step?.definitionId !== 'timeline.subtitle.cue.set') return
     const controller = new AbortController()
     let bitmap: ImageBitmap | null = null
@@ -146,6 +157,29 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     timeCallback.current?.(seconds)
   }
 
+  function refreshComposition(session: PreviewSession) {
+    if (!session.projection) return
+    let end = timelineDuration(session.projection)
+    for (const cue of effectiveSubtitleCues(session.projection, currentSubtitlePlan.current, session.revisionId).cues) {
+      const cueEnd = parseRational(cue.end)!
+      if (compare(cueEnd, end) > 0) end = cueEnd
+    }
+    session.end = end
+    session.duration = toSeconds(end)
+    session.seekInputEnd = nativeSeekInputEnd(session.duration)
+    setDuration(session.duration)
+    const clamped = session.cursor > session.duration
+    if (session.playing && session.cursor >= session.duration) {
+      stopPlayback(session)
+      setStatus('PAUSED')
+    }
+    if (clamped) {
+      session.cursor = session.duration
+      publishTime(session.cursor)
+    }
+    draw(session, clamped)
+  }
+
   function fail(session: PreviewSession, error: unknown) {
     if (current.current !== session) return
     stopPlayback(session)
@@ -171,7 +205,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     }
     const context = target.getContext('2d')
     if (!context) return
-    const time = rationalTime(session.cursor)
+    const time = session.cursor === session.duration ? session.end : rationalTime(session.cursor)
     let projection = session.projection
     const plan = dissolve.current
     const step = plan?.operations[0]
@@ -285,11 +319,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       context.restore()
     }
     const cuePlan = currentSubtitlePlan.current
-    const cueEdit = cuePlan?.baseRevisionId === revisionId ? cuePlan?.operations[0] : null
-    const replacement = cueEdit?.definitionId === 'timeline.subtitle.cue.set' || cueEdit?.definitionId === 'timeline.subtitle.cue.remove'
-      ? cueEdit.parameters.cueId : null
-    const cues = (projection?.subtitles ?? []).filter(cue => cue.cueId !== replacement)
-    if (cueEdit?.definitionId === 'timeline.subtitle.cue.set') cues.push(cueEdit.parameters)
+    const { cues, replacement } = projection ? effectiveSubtitleCues(projection, cuePlan, session.revisionId)
+      : { cues: [], replacement: null }
     const visibleCues: string[] = []
     for (const cue of cues.sort((a,b) => a.cueId < b.cueId ? -1 : a.cueId === b.cueId ? 0 : 1)) {
       const pose = subtitlePose(cue, time)
@@ -309,8 +340,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
 
   useEffect(() => {
     const session: PreviewSession = {
-      controller: new AbortController(), urls: [], videos: new Map(), subtitleBlocks: new Map(), audioClips: [], scheduled: [],
-      duration: 0, seekInputEnd: 0, cursor: 0, origin: 0, playing: false, starting: false,
+      revisionId, controller: new AbortController(), urls: [], videos: new Map(), subtitleBlocks: new Map(), audioClips: [], scheduled: [],
+      duration: 0, end: rationalTime(0), seekInputEnd: 0, cursor: 0, origin: 0, playing: false, starting: false,
     }
     current.current = session
     const signal = session.controller.signal
@@ -423,12 +454,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
           }
         }
         session.projection = projection
-        session.duration = Math.max(toSeconds(timelineDuration(projection)),
-          ...(projection.subtitles ?? []).map(cue => toSeconds(parseRational(cue.end)!)))
-        session.seekInputEnd = nativeSeekInputEnd(session.duration)
-        setDuration(session.duration)
+        refreshComposition(session)
         setStatus('READY')
-        draw(session, true)
       } catch (error) {
         if (!signal.aborted) fail(session, error)
       }
@@ -517,7 +544,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     session.starting = true
     try {
       if (session.audio) await session.audio.resume()
-      if (current.current !== session) return
+      if (current.current !== session || !session.duration) return
       if (session.cursor >= session.duration) session.cursor = 0
       start(session)
     } catch (error) {

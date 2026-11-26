@@ -3,10 +3,10 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 
-export async function exportRevision ({ page, base, scope, project, headers, outputRoot }, revisionId, startMillis, endMillis, label, width = 320, height = 240, submitOrigin = base, rate = 24) {
+export async function exportRevision ({ page, base, scope, project, headers, outputRoot }, revisionId, startMillis, endMillis, label, width = 320, height = 240, submitOrigin = base, rate = 24, rateDenominator = 1) {
   const submitted = await page.request.post(submitOrigin + '/api/render-jobs', {
     headers: { ...headers, 'Idempotency-Key': label },
-    data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: rate, frameRateDenominator: 1, width, height },
+    data: { revisionId, extent: { startMillis, endMillis, frameRateNumerator: rate, frameRateDenominator: rateDenominator, width, height },
       profile: 'default', outputFormat: 'MP4' },
   })
   assert.equal(submitted.status(), 201, await submitted.text())
