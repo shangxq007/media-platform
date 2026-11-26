@@ -1,6 +1,6 @@
 package com.example.platform.bmf;
 
-import com.example.platform.fonttext.typography.SubtitleBlockLayout;
+import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.sandbox.DeviceExposurePolicy;
@@ -364,8 +364,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private record RasterRecipe(String text, int width, int size) {}
-    private record SubtitleInput(String timing, RasterRecipe recipe) {}
+    private record SubtitleInput(String timing, BlockRasterRecipe recipe) {}
 
     private static SubtitleInput parseSubtitle(String block) {
         if (block.length() > 3_600) return null;
@@ -394,9 +393,8 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(decoded)).toString();
             int width = Integer.parseInt(values[5]);
             int size = Integer.parseInt(values[6]);
-            SubtitleBlockLayout.validateShape(text, width, size);
             return new SubtitleInput(String.join(",", java.util.Arrays.copyOf(values, 5)),
-                    new RasterRecipe(text, width, size));
+                    new BlockRasterRecipe(text, width, size));
         } catch (ArithmeticException | IllegalArgumentException | java.nio.charset.CharacterCodingException malformed) {
             return null;
         }
@@ -404,14 +402,14 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     /** One private input set per launch. Names are generated here, never supplied by a cue. */
     private static final class SubtitleInputs implements Closeable {
-        private final Map<RasterRecipe, Path> files = new LinkedHashMap<>();
+        private final Map<BlockRasterRecipe, Path> files = new LinkedHashMap<>();
         private final List<Path> allocated = new ArrayList<>();
         private Path directory;
 
-        Path raster(RasterRecipe recipe, int destinationWidth) throws IOException {
+        Path raster(BlockRasterRecipe recipe, int destinationWidth) throws IOException {
             Path existing = files.get(recipe);
             if (existing != null) return existing;
-            byte[] png = SubtitleBlockLayout.png(recipe.text(), recipe.width(), recipe.size(), destinationWidth);
+            byte[] png = recipe.png(destinationWidth);
             if (directory == null) directory = Files.createTempDirectory("bmf-subtitle-inputs-");
             Path target = directory.resolve("block-" + files.size() + ".png");
             allocated.add(target);

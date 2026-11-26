@@ -102,7 +102,8 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         var seconds = MediaTime.ofMillis(3500);
         String text = String.join("\n", java.util.Collections.nCopies(6, "鬱永🌻🦋🦚🍉"));
         var cue = new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.CueRaster(
-                0, 84, MediaTime.ZERO, MediaTime.ZERO, "0;100000;550000;1000000", text, 304, 44);
+                0, 84, MediaTime.ZERO, MediaTime.ZERO, "0;100000;550000;1000000",
+                new com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.BlockRasterRecipe(text, 304, 44));
         var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
                 INPUT_ID, OUTPUT_ID, Optional.empty(),
                 List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, seconds)),

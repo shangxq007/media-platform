@@ -159,7 +159,7 @@ class BmfArchitectureGuardTest {
                 .TimedTextMaterializationRequirement.CueRaster.class.getRecordComponents();
         assertThat(Arrays.stream(rasterComponents).map(c -> c.getName() + ":" + c.getType().getSimpleName()))
                 .containsExactly("firstFrame:long", "endFrame:long", "start:MediaTime",
-                        "elapsed:MediaTime", "samples:String", "text:String", "width:int", "fontSize:int");
+                        "elapsed:MediaTime", "samples:String", "recipe:BlockRasterRecipe");
         assertThat(BmfCpuTranscodePlan.class.getRecordComponents())
                 .filteredOn(c -> c.getName().equals("subtitles"))
                 .singleElement().satisfies(c -> assertThat(c.getGenericType().getTypeName())

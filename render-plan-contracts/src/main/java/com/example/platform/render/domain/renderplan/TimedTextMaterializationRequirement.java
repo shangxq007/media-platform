@@ -81,13 +81,20 @@ public record TimedTextMaterializationRequirement(
         return subtitleCue != null;
     }
 
-    /** Provider-facing bounded raster recipe and placement. The covered time is relative to the render extent. */
-    public record CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed, String samples,
-                            String text, int width, int fontSize) {
-        public CueRaster {
+    /** Render-owned raster request. The worker never receives the canonical text/style model. */
+    public record BlockRasterRecipe(String text, int width, int fontSize) {
+        public BlockRasterRecipe {
             SubtitleBlockLayout.validateShape(text, width, fontSize);
         }
+
+        public byte[] png(int destinationWidth) {
+            return SubtitleBlockLayout.png(text, width, fontSize, destinationWidth);
+        }
     }
+
+    /** Provider-facing bounded raster recipe and placement. The time is relative to the render extent. */
+    public record CueRaster(long firstFrame, long endFrame, MediaTime start, MediaTime elapsed,
+                            String samples, BlockRasterRecipe recipe) {}
 
     public java.util.Optional<CueRaster> cueRaster(RenderExtent extent) {
         if (!editableCue()) throw new IllegalArgumentException("Only a pinned subtitle profile can prepare a block raster");
@@ -114,8 +121,8 @@ public record TimedTextMaterializationRequirement(
             throw new IllegalArgumentException("Subtitle design width and size must be integral");
         }
         return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
-                visibleStart.subtract(begin.mediaTime()), cueSamples(), styledText.content().value(),
-                width.numerator().intValueExact(), size.numerator().intValueExact()));
+                visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
+                        width.numerator().intValueExact(), size.numerator().intValueExact())));
     }
 
     static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {

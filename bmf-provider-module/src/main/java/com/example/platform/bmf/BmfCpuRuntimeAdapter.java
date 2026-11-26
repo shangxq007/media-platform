@@ -266,8 +266,6 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 block = ff.loop(block, loop=frames - 1, size=1, start=0)
                 block = ff.ff_filter(block, 'settb', 'expr=' + str(1 / output_rate))
                 block = ff.setpts(block, 'N')
-                size = str(max(1, round(width * canvas_width / 320))) + 'x' + str(max(1, round(height * canvas_width / 320)))
-                block = ff.ff_filter(block, 'scale', size)
                 if any(point.split(';')[3] != '1000000' for point in samples.split('|')):
                     alpha = motion_expression(samples, 3, start, elapsed, 'T')
                     block = ff.ff_filter(block, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
@@ -392,9 +390,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         }
         for (var cue : plan.subtitles()) {
             arguments.add(cue.firstFrame() + "," + cue.endFrame() + "," + cue.start() + "," + cue.elapsed() + ","
-                    + cue.samples() + "," + cue.width() + "," + cue.fontSize() + ","
+                    + cue.samples() + "," + cue.recipe().width() + "," + cue.recipe().fontSize() + ","
                     + java.util.Base64.getUrlEncoder().withoutPadding()
-                            .encodeToString(cue.text().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            .encodeToString(cue.recipe().text().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
     }
