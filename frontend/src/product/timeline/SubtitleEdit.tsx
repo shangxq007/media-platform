@@ -66,7 +66,7 @@ export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps &
       {([['start', 'Subtitle start (timeline seconds)'], ['end', 'Subtitle end (timeline seconds)'],
         ['width', 'Subtitle width (at 320 px)'], ['fontSize', 'Subtitle font size (at 320 px)']] as const)
         .map(([key,label]) => <label key={key}>{label} <input value={form[key]} onChange={e => change({ [key]: e.target.value })} /></label>)}
-      <label>Subtitle font <select value={form.fontProfile} onChange={e => change({ fontProfile: resolveSubtitleFont(e.target.value) })}>
+      <label>Subtitle font <select aria-label="Subtitle font" value={form.fontProfile} onChange={e => change({ fontProfile: resolveSubtitleFont(e.target.value) })}>
         {Object.entries(SUBTITLE_FONTS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </select></label>
       <label><input type="checkbox" checked={form.keys.length > 0}
