@@ -173,7 +173,7 @@ export async function runFontProfiles(ctx) {
     return { body: result.request().postDataJSON(), digest: (await result.json()).batchDigest }
   }
 
-  async function chooseRange(value) {
+  async function chooseRange(value, selectedText = word) {
     const area = input('Subtitle text')
     await area.focus()
     await area.evaluate((element, word) => {
@@ -181,7 +181,7 @@ export async function runFontProfiles(ctx) {
       element.setSelectionRange(start, start + word.length)
       element.dispatchEvent(new Event('select', { bubbles: true }))
       document.dispatchEvent(new Event('selectionchange'))
-    }, word)
+    }, selectedText)
     await input('Font for selected text').selectOption(value)
   }
   if (inline) {
@@ -189,7 +189,11 @@ export async function runFontProfiles(ctx) {
     const area = input('Subtitle text')
     const prefix = 'e\u0301👩‍🚀'
     await area.fill(prefix + text)
-    assert.equal((await preview()).body.operations[0].parameters.fontRuns[0].start, runs[0].start + Array.from(prefix).length)
+    // The pinned Serif face covers the decomposed mark, while Sans does not.
+    await chooseRange(serif, 'e\u0301')
+    const edited = (await preview()).body.operations[0].parameters.fontRuns
+    assert.deepEqual(edited, [{ start: 0, end: 2, fontProfile: serif },
+      { start: runs[0].start + Array.from(prefix).length, end: runs[0].end + Array.from(prefix).length, fontProfile: serif }])
     await button('Cancel subtitle').click()
     await area.fill(text)
   } else await input('Subtitle font').selectOption(serif)
