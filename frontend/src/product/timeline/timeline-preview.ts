@@ -2,8 +2,8 @@
  * Read-only Timeline media-preview helpers. Preview is a derived view of the canonical snapshot;
  * this module never mutates the Timeline or performs a write.
  */
-import { add, compare, multiply, rational, subtract, ZERO, type Rational } from './trim'
-import type { ProjectedClip, ProjectedTransition, ProjectedVideoTransform, TimelineProjection } from './timeline-projection'
+import { add, compare, multiply, rational, subtract, toSeconds, ZERO, type Rational } from './trim'
+import type { ProjectedClip, ProjectedTransition, ProjectedVideoTransform, ScaleKey, TimelineProjection } from './timeline-projection'
 
 export function timelineDuration(projection: TimelineProjection): Rational {
   let end: Rational = { numerator: 0n, denominator: 1n }
@@ -85,4 +85,14 @@ export function clockCursor(seconds: number): Rational {
   const exponent = (encodedExponent || 1) - 1075
   return exponent < 0 ? rational(significand, 1n << BigInt(-exponent))
     : { numerator: significand << BigInt(exponent), denominator: 1n }
+}
+
+/** Evaluate the uniform multiplier at the same exact cursor used by the clip. */
+export function scaleAt(keys: readonly ScaleKey[] | undefined, time: Rational): number {
+  if (!keys?.length) return 1
+  const index = keys.findIndex(key => compare(time, key.time) <= 0)
+  const right = index < 0 ? keys[keys.length - 1] : keys[index]
+  const left = index <= 0 ? right : keys[index - 1]
+  const fraction = left === right ? 0 : toSeconds(subtract(time, left.time)) / toSeconds(subtract(right.time, left.time))
+  return (left.multiplierMicros + fraction * (right.multiplierMicros - left.multiplierMicros)) / 1_000_000
 }

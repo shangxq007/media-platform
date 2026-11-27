@@ -122,7 +122,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         boolean hasBasicEffects = clips.stream().anyMatch(clip -> clip.effect().enabled() && !clip.effect().identity());
         boolean hasTransform = clips.stream().anyMatch(clip -> !clip.transform().equals(
                 com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));
-        boolean animated = clips.stream().anyMatch(clip -> revision.opacity(clip.clipId()).isPresent() || revision.position(clip.clipId()).isPresent());
+        boolean animated = clips.stream().anyMatch(clip -> revision.opacity(clip.clipId()).isPresent() || revision.position(clip.clipId()).isPresent() || revision.scale(clip.clipId()).isPresent());
         boolean timedTracks = revision.textElements().stream().anyMatch(text -> text.subtitleCue() != null) || animated || hasAudioTracks || hasAudioRoutes || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty()
                 || clips.stream().map(MediaClip::trackId).distinct().count() > 1;
         boolean partialCoverage = clips.size() == 1 && request.extent() != null
@@ -439,7 +439,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                                 clip.timelineRange().start(), clip.timelineRange().end(),
                                                 Optional.ofNullable(dissolvesByIncoming.get(clip.clipId())), revision.opacity(clip.clipId()).map(k ->
                                                         new RenderDependency.OpacityRamp(k.firstTime(), k.firstValue(), k.lastTime(), k.lastValue())),
-                                                revision.position(clip.clipId()).map(RenderDependency.PositionRamp::new))));
+                                                revision.position(clip.clipId()).map(RenderDependency.PositionRamp::new), revision.scale(clip.clipId()))));
                                 RenderNodeId embedded = getEntry(embeddedAudioKeys, embeddedAudioValues, clip.clipId());
                                 if (embedded != null) {
                                     edges.add(new RenderDependencyEdge(embedded, compositeId,

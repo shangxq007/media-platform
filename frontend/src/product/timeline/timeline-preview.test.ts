@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor } from './timeline-preview'
+import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
 import { decorationVisible, type SubtitleCue } from './subtitle-cues'
 import { projectTimeline } from './timeline-projection'
 import { compare, formatRational, parseRational } from './trim'
@@ -73,4 +73,12 @@ describe('exact preview cursor for a fractional decoration interval', () => {
     expect([0.0416666, 0.0416668, 0.0833332, 0.0833334]
       .map(position => decorationVisible(cue, clockCursor(position)))).toEqual([false, true, true, false])
   })
+})
+
+it('interpolates a uniform scale curve exactly at its rational keys and holds its ends', () => {
+  const keys = [['3/2', 1_000_000], ['73/24', 1_500_000], ['9/2', 1_000_000]] as const
+  const scale = keys.map(([time, multiplierMicros]) => ({ time: parseRational(time)!, multiplierMicros }))
+  expect(['1/1','3/2','109/48','73/24','9/2','11/2'].map(t => scaleAt(scale, parseRational(t)!)))
+    .toEqual([1,1,1.25,1.5,1,1])
+  expect(scaleAt([], parseRational('73/24')!)).toBe(1)
 })

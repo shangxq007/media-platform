@@ -155,6 +155,9 @@ public record OperationDefinition(
         public static final OperationDefinition REMOVE_SUBTITLE_CUE = new OperationDefinition(
                 OperationDefinitionId.of("timeline.subtitle.cue.remove"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.RemoveSubtitleCueParameters.class);
+        public static final OperationDefinition SET_SCALE_KEYS = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.scale.keyframes.set"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.ScaleParameters.class);
         public static final OperationDefinition SET_POSITION_KEYS = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.position.keyframes.set"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.PositionParameters.class);
@@ -206,7 +209,7 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE, RESTORE_REVISION,
-                                SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_OPACITY_KEYS, SET_POSITION_KEYS, SET_SUBTITLE_CUE, REMOVE_SUBTITLE_CUE, SET_VIDEO_TRANSFORM,
+                                SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_OPACITY_KEYS, SET_POSITION_KEYS, SET_SCALE_KEYS, SET_SUBTITLE_CUE, REMOVE_SUBTITLE_CUE, SET_VIDEO_TRANSFORM,
                                 SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
                                 UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE)).toList();
         private V3() {}

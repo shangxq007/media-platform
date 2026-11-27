@@ -44,6 +44,7 @@ public sealed interface OperationParameters permits
         OperationParameters.StereoBalanceParameters,
         OperationParameters.OpacityParameters,
         OperationParameters.PositionParameters,
+        OperationParameters.ScaleParameters,
         OperationParameters.SubtitleCueParameters,
         OperationParameters.RemoveSubtitleCueParameters,
         OperationParameters.VideoTransformParameters,
@@ -139,6 +140,10 @@ public sealed interface OperationParameters permits
     }
 
     @org.springframework.modulith.NamedInterface("invocation")
+    record ScaleParameters(com.example.platform.timeline.semantics.effect.ScaleKeys keys) implements OperationParameters {
+        public ScaleParameters { java.util.Objects.requireNonNull(keys); }
+    }
+
     record PositionParameters(com.example.platform.timeline.semantics.effect.PositionKeys keys) implements OperationParameters {
         public PositionParameters { java.util.Objects.requireNonNull(keys); }
     }

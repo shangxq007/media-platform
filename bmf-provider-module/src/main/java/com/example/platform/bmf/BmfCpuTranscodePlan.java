@@ -53,13 +53,14 @@ public record BmfCpuTranscodePlan(
                              com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
                              Optional<RenderDependency.OpacityRamp> opacityKeys,
-                             Optional<RenderDependency.PositionRamp> positionKeys) {
+                             Optional<RenderDependency.PositionRamp> positionKeys,
+                             Optional<com.example.platform.timeline.semantics.effect.ScaleKeys> scaleKeys) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
                              VideoPlacement transform,
                              com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration) {
-            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration, dissolveDuration, Optional.empty(), Optional.empty());
+            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration, dissolveDuration, Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end) {

@@ -4,7 +4,7 @@ import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import type { CanonicalHeadReference, EditorCommandAccess } from './gateways'
 
 type Direction = 'Undo' | 'Redo'
-type EditKind = 'trim' | 'ripple delete' | 'ripple insert' | 'roll' | 'slip' | 'slide' | 'opacity' | 'position' | 'subtitle' | 'dissolve'
+type EditKind = 'trim' | 'ripple delete' | 'ripple insert' | 'roll' | 'slip' | 'slide' | 'opacity' | 'position' | 'scale' | 'subtitle' | 'dissolve'
 interface History {
   scope: string
   head: string

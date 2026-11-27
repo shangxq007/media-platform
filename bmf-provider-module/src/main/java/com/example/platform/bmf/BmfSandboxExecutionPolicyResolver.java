@@ -317,7 +317,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
 
     private static boolean validPlacement(String placement, String duration, RenderRaster raster) {
         String[] parts = placement.split(",", -1);
-        if ((parts.length != 17 && parts.length != 18) || !List.of("V", "A").contains(parts[0])
+        if ((parts.length < 17 || parts.length > 19) || !List.of("V", "A").contains(parts[0])
                 || !isNonNegativeSeconds(parts[1]) || !isNonNegativeSeconds(parts[2])) {
             return false;
         }
@@ -351,7 +351,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || !isNonNegativeSeconds(fx[8]) || !isNonNegativeSeconds(fx[9])
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
             if (fx.length == 14 && (!parts[0].equals("V") || !validOpacityRamp(fx))) return false;
-            if (parts.length == 18 && (!parts[0].equals("V") || !validPositionRamp(parts[17], fx[8]))) return false;
+            if (parts.length > 17 && (!parts[0].equals("V")
+                    || !(parts.length == 19 && parts[17].isEmpty()) && !validPositionRamp(parts[17], fx[8]))) return false;
+            if (parts.length == 19 && !validScaleRamp(parts[18], scaleX, scaleY, degrees, raster)) return false;
             var brightness = new java.math.BigDecimal(fx[0]);
             var contrast = new java.math.BigDecimal(fx[1]);
             var saturation = new java.math.BigDecimal(fx[2]);
@@ -482,6 +484,30 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 }
             }
             if (failure != null) throw failure;
+        }
+    }
+
+    private static boolean validScaleRamp(String token, BigDecimal sx, BigDecimal sy, BigDecimal degrees, RenderRaster raster) {
+        String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        String pair = time + ";[1-9][0-9]{0,13}";
+        if (token.length() > 1200 || !token.matches(time + "~" + time + "~" + time + "~"
+                + pair + "(?:\\|" + pair + "){1,15}")) return false;
+        try {
+            var fields = token.split("~");
+            var clock = com.example.platform.shared.time.MediaTime.parse(fields[0]);
+            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[1]);
+            var duration = com.example.platform.shared.time.MediaTime.parse(fields[2]);
+            if (elapsed.compareTo(duration) >= 0 || clock.ticks() < 0) return false;
+            var keys = com.example.platform.timeline.semantics.effect.ScaleKeys.parseSamples(fields[3]);
+            keys.requireInside(com.example.platform.shared.time.MediaTime.ZERO, duration);
+            keys.requireBounds(new com.example.platform.timeline.semantics.effect.VideoTransform(0, 0,
+                    sx.movePointRight(6).intValueExact(), sy.movePointRight(6).intValueExact(), 0,
+                    0, 1_000_000, 0, 1_000_000, 1_000_000));
+            return keys.keys().stream().allMatch(k -> k.multiplierMicros() == 1_000_000)
+                    || com.example.platform.execution.compatibility.MediaLoweringEnvelope.fitsAnimatedScaleRaster(
+                            raster, sx.doubleValue(), sy.doubleValue(), degrees.doubleValue());
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
+            return false;
         }
     }
 

@@ -203,6 +203,7 @@ public final class TimelineBatchCommandMapper {
                     CompositionAspectRatio.fromParameters(parameters));
             case "timeline.subtitle.cue.set" -> subtitleCue(parameters);
             case "timeline.subtitle.cue.remove" -> new OperationParameters.RemoveSubtitleCueParameters(requiredText(parameters, "cueId"));
+            case "timeline.clip.scale.keyframes.set" -> scaleKeys(parameters);
             case "timeline.clip.position.keyframes.set" -> positionKeys(parameters);
             case "timeline.clip.opacity.keyframes.set" -> new OperationParameters.OpacityParameters(
                     new com.example.platform.timeline.semantics.effect.OpacityKeys(time(parameters, "firstTime"),
@@ -514,6 +515,22 @@ public final class TimelineBatchCommandMapper {
         long value = requiredLong(map,key);
         if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) throw new IllegalArgumentException("Subtitle integer out of range");
         return (int)value;
+    }
+
+    private static OperationParameters.ScaleParameters scaleKeys(Map<String, Object> parameters) {
+        if (!(parameters.get("keys") instanceof List<?> raw)
+                || raw.size() > com.example.platform.timeline.semantics.effect.ScaleKeys.MAX_KEYS) {
+            throw new IllegalArgumentException("Scale keys must be a bounded array");
+        }
+        var keys = new java.util.ArrayList<com.example.platform.timeline.semantics.effect.ScaleKeys.Key>();
+        for (Object item : raw) {
+            if (!(item instanceof Map<?, ?> key) || !key.keySet().equals(java.util.Set.of("time", "multiplierMicros"))
+                    || !(key.get("time") instanceof String time) || !time.matches("[0-9]{1,19}/[1-9][0-9]{0,18}")) {
+                throw new IllegalArgumentException("Each scale key requires a nonnegative rational time and multiplierMicros");
+            }
+            keys.add(new com.example.platform.timeline.semantics.effect.ScaleKeys.Key(MediaTime.parse(time), requiredLong(key, "multiplierMicros")));
+        }
+        return new OperationParameters.ScaleParameters(new com.example.platform.timeline.semantics.effect.ScaleKeys(keys));
     }
 
     private static OperationParameters.PositionParameters positionKeys(Map<String, Object> parameters) {

@@ -65,6 +65,7 @@ public final class TimelineOperationWireContract {
                 fields(fields, "cue-key-array", "keys");
             }
             case "timeline.subtitle.cue.remove" -> fields(fields, "string", "cueId");
+            case "timeline.clip.scale.keyframes.set" -> fields(fields, "scale-key-array", "keys");
             case "timeline.clip.position.keyframes.set" -> fields(fields, "position-key-array", "keys");
             case "timeline.clip.opacity.keyframes.set" -> {
                 fields(fields, "string", "firstTime", "lastTime");

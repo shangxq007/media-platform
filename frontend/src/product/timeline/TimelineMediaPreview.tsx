@@ -7,7 +7,7 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
-import { activeClipsAt, decimalCursor, clockCursor, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
+import { activeClipsAt, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
@@ -113,7 +113,7 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, subtitlePlan }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, subtitlePlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
@@ -121,6 +121,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   dissolvePlan?: import('../../contracts/semantic-batch.generated').SemanticBatch | null
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
+  scalePreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').ScaleKey[] } | null
   onTime?: (time: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -132,7 +133,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   transient.current = opacityPreview
   const positionDraft = useRef(positionPreview)
   positionDraft.current = positionPreview
-  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview])
+  const scaleDraft = useRef(scalePreview)
+  scaleDraft.current = scalePreview
+  useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview, scalePreview])
   const currentSubtitlePlan = useRef(subtitlePlan)
   currentSubtitlePlan.current = subtitlePlan
   const pendingSubtitle = useRef<{ plan: SemanticBatch; image: SubtitleBitmaps } | null>(null)
@@ -308,8 +311,10 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       const sy = sourceHeight * t.cropTop
       const sw = Math.max(1, sourceWidth * (t.cropRight - t.cropLeft))
       const sh = Math.max(1, sourceHeight * (t.cropBottom - t.cropTop))
-      const dw = target.width * t.scaleX
-      const dh = target.height * t.scaleY
+      const zoom = scaleDraft.current
+      const scale = scaleAt(zoom && zoom.revisionId === revisionId && zoom.clipId === clip.clipId ? zoom.keys : clip.scaleKeys, time)
+      const dw = target.width * t.scaleX * scale
+      const dh = target.height * t.scaleY * scale
       const radians = t.rotationDegrees * Math.PI / 180
       const rotatedWidth = Math.abs(dw * Math.cos(radians)) + Math.abs(dh * Math.sin(radians))
       const rotatedHeight = Math.abs(dw * Math.sin(radians)) + Math.abs(dh * Math.cos(radians))

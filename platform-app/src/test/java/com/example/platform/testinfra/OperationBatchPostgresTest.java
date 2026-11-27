@@ -1296,6 +1296,44 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(baseline, clearedDocument);
     }
 
+    private OperationBatchRequest scaleRequest(TimelineRevision base, String batchId, String samples) {
+        var def = OperationDefinition.V3.SET_SCALE_KEYS;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))), SelectionSpec.ExpansionPolicy.EXACT);
+        var keys = samples.isEmpty() ? new com.example.platform.timeline.semantics.effect.ScaleKeys(List.of())
+                : com.example.platform.timeline.semantics.effect.ScaleKeys.parseSamples(samples);
+        var op = new OperationRequest(def.definitionId(), def.version(), target, new OperationParameters.ScaleParameters(keys),
+                base.revisionId(), hash(base), null);
+        return new OperationBatchRequest(batchId, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+                base.revisionId(), List.of(op), null);
+    }
+
+    @Test
+    void scaleKeysAndClearPreserveStaticTransformPositionAndSeparateEffects() {
+        var base = rangeFixture(false);
+        var withPosition = saveService.findById(TENANT, applyPrepared(positionRequest(base, "scale-existing-position",
+                "6/1;100000;-80000|7/1;250000;50000")).newRevisionId());
+        var set = scaleRequest(withPosition, "scale-set", "6/1;1000000|13/2;1500000|7/1;1000000");
+        var animated = saveService.findById(TENANT, applyPrepared(set).newRevisionId());
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var before = json.valueToTree(saveService.findPayloadDocument(TENANT, withPosition.revisionId()).orElseThrow());
+        var after = json.valueToTree(saveService.findPayloadDocument(TENANT, animated.revisionId()).orElseThrow());
+        assertEquals(withPosition.revisionId(), animated.parentRevisionId());
+        assertEquals(withPosition.semanticContext().effectReference(), animated.semanticContext().effectReference());
+        assertEquals(before.path("tracks"), after.path("tracks"));
+        assertEquals(3, after.path("automations").size());
+        var cleared = saveService.findById(TENANT, applyPrepared(scaleRequest(animated, "scale-clear", "")).newRevisionId());
+        assertEquals(animated.revisionId(), cleared.parentRevisionId());
+        assertEquals(withPosition.semanticContext(), cleared.semanticContext());
+        assertEquals(before, json.valueToTree(saveService.findPayloadDocument(TENANT, cleared.revisionId()).orElseThrow()));
+    }
+
+    @Test
+    void scaleKeysRollBackAtomicallyAfterOutboxFailure() {
+        var base = rangeFixture(false);
+        assertRippleRollsBack(base, scaleRequest(base, "scale-rolls-back", "6/1;1000000|7/1;1250000"));
+    }
+
     private OperationBatchRequest opacityRequest(TimelineRevision base) {
         var def = OperationDefinition.V3.SET_OPACITY_KEYS;
         var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,

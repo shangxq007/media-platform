@@ -112,7 +112,20 @@ public final class VerifiedTimelineRevisionFactory {
                 .map(track -> new VerifiedTimelineRevision.Track(track.trackId(), track.type())).toList();
         var opacity = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.OpacityKeys>();
         var position = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.PositionKeys>();
+        var scale = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.ScaleKeys>();
         for (var curve : document.getAutomations()) {
+            if (com.example.platform.timeline.semantics.effect.ScaleKeys.isScale(curve)) {
+                var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
+                        .flatMap(t -> t.clips().stream()).filter(c -> c.getClipId().value().equals(curve.targetEntityId())
+                                && "MEDIA_STREAM".equals(c.getSourceKind()))
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException("Unsupported scale target"));
+                var keys = com.example.platform.timeline.semantics.effect.ScaleKeys.forClip(document.getAutomations(),
+                        curve.targetEntityId()).orElseThrow();
+                keys.requireInside(owner.getStartTime(), owner.getEndTime());
+                keys.requireBounds(owner.getTransform());
+                scale.put(curve.targetEntityId(), keys);
+                continue;
+            }
             if (com.example.platform.timeline.semantics.effect.PositionKeys.isPosition(curve)) {
                 if (position.containsKey(curve.targetEntityId())) continue;
                 var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
@@ -134,7 +147,7 @@ public final class VerifiedTimelineRevisionFactory {
             if (opacity.put(owner.getClipId().value(), envelope) != null) throw new IllegalArgumentException("Ambiguous opacity curve");
         }
         return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
-                document.getTransitions(), opacity, position, document.getMetadata().effectiveCompositionAspectRatio());
+                document.getTransitions(), opacity, position, scale, document.getMetadata().effectiveCompositionAspectRatio());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

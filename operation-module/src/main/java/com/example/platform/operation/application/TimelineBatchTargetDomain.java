@@ -155,9 +155,11 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         }
         if (rippleDelete(operation) || instance.parameters() instanceof OperationParameters.OpacityParameters
                 || instance.parameters() instanceof OperationParameters.PositionParameters
+                || instance.parameters() instanceof OperationParameters.ScaleParameters
                 || instance.parameters() instanceof OperationParameters.SlipParameters) {
             String edit = switch (instance.parameters()) {
                 case OperationParameters.PositionParameters ignored -> "Position";
+                case OperationParameters.ScaleParameters ignored -> "Scale";
                 case OperationParameters.OpacityParameters ignored -> "Opacity";
                 default -> rippleDelete(operation) ? "Ripple Delete" : "Slip";
             };
@@ -288,6 +290,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SubtitleCueParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RemoveSubtitleCueParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.PositionParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.ScaleParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));

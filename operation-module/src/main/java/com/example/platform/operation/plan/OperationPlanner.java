@@ -4,6 +4,7 @@ import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.timeline.semantics.effect.PositionKeys;
+import com.example.platform.timeline.semantics.effect.ScaleKeys;
 import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
@@ -77,6 +78,7 @@ public final class OperationPlanner {
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.composition.aspect.set" -> planCompositionAspect(instance, base, changes);
             case "timeline.subtitle.cue.set", "timeline.subtitle.cue.remove" -> SubtitleCuePlanner.plan(instance, base, changes);
+            case "timeline.clip.scale.keyframes.set" -> planScale(instance, base, changes);
             case "timeline.clip.position.keyframes.set" -> planPosition(instance, base, changes);
             case "timeline.clip.opacity.keyframes.set" -> planOpacity(instance, base, changes);
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
@@ -109,12 +111,14 @@ public final class OperationPlanner {
             for (var track : base.getTracks()) for (var clip : track.clips()) {
                 boolean position = base.getAutomations().stream().anyMatch(c -> PositionKeys.isPosition(c)
                         && clip.getClipId().value().equals(c.targetEntityId()));
-                if (!position && clip.getEffects().stream().noneMatch(e -> targets.contains(e.id()))) continue;
+                boolean scale = base.getAutomations().stream().anyMatch(c -> ScaleKeys.isScale(c)
+                        && clip.getClipId().value().equals(c.targetEntityId()));
+                if (!position && !scale && clip.getEffects().stream().noneMatch(e -> targets.contains(e.id()))) continue;
                 var samePlacement = candidate.getTracks().stream().filter(t -> t.trackId().equals(track.trackId()))
                         .flatMap(t -> t.clips().stream()).anyMatch(c -> c.getClipId().equals(clip.getClipId())
                                 && c.getStartTime().equals(clip.getStartTime()) && c.getEndTime().equals(clip.getEndTime()));
                 if (!samePlacement) throw new PlanException(PlanErrorCode.INVALID_PLAN,
-                        "This edit would move or remove a clip with absolute " + (position ? "position" : "opacity")
+                        "This edit would move or remove a clip with absolute " + (scale ? "scale" : position ? "position" : "opacity")
                                 + " keys: " + clip.getClipId().value());
             }
         }
@@ -1168,6 +1172,37 @@ public final class OperationPlanner {
                 base.getTransitions(), base.getAutomations());
     }
 
+    private TimelineDocument planScale(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var id = scopeOf(instance).getFirst();
+        var clip = clipOf(base, id);
+        if (!"MEDIA_STREAM".equals(clip.getSourceKind()) || base.getTracks().stream().noneMatch(t ->
+                t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO && t.clips().contains(clip))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Scale keys require a video media clip");
+        }
+        var keys = ((OperationParameters.ScaleParameters) instance.parameters()).keys();
+        var curves = new ArrayList<>(base.getAutomations());
+        try {
+            keys.requireInside(clip.getStartTime(), clip.getEndTime());
+            keys.requireBounds(clip.getTransform());
+            var previous = ScaleKeys.forClip(curves, id.value());
+            if (previous.map(keys::equals).orElseGet(() -> keys.keys().isEmpty())) return base;
+            var old = curves.stream().filter(c -> ScaleKeys.isScale(c) && id.value().equals(c.targetEntityId())).findFirst();
+            old.ifPresent(curves::remove);
+            if (!keys.keys().isEmpty()) {
+                var curve = keys.curve(id.value(), old.orElse(null));
+                if (curves.stream().anyMatch(c -> c.automationId().equals(curve.automationId()))) {
+                    throw new IllegalArgumentException("Scale channel identity already in use");
+                }
+                curves.add(curve);
+            }
+        } catch (IllegalArgumentException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
+        changes.add(new PlannedChange.ScaleKeysSet(id));
+        return new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(), base.getAudioMix(),
+                base.getSemanticRelationships(), base.getTextElements(), base.getTransitions(), curves);
+    }
+
     private TimelineDocument planPosition(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
         var id = scopeOf(instance).getFirst();
         var clip = clipOf(base, id);
@@ -1267,6 +1302,11 @@ public final class OperationPlanner {
                 clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                 clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(),
                 clip.getSourceKind(), clip.getTemporalMapping(), clip.getEffects(), params.transform());
+        try {
+            ScaleKeys.forClip(base.getAutomations(), clip.getClipId().value()).ifPresent(k -> k.requireBounds(params.transform()));
+        } catch (IllegalArgumentException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
         changes.add(new PlannedChange.ClipReplaced(scope.get(0), updated));
         return replaceClip(base, scope.get(0), updated);
     }

@@ -226,6 +226,41 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 layer = ff.ff_filter(layer, 'unpremultiply', inplace=1, enable=shifted)
                 return layer, 'floor(' + x + ')-1', 'floor(' + y + ')-1'
 
+            def scaled_viewport(layer, scale_token, positions, static_x, static_y):
+                start, elapsed, _, scales = scale_token.split('~')
+                points = [sample.split(';') for sample in positions.split('|')] if positions else []
+                moving = points and any(point[1:3] != points[0][1:3] for point in points[1:])
+                if points and not moving:
+                    static_x = (int(points[0][1]) * canvas_width + 500000) // 1000000
+                    static_y = (int(points[0][2]) * canvas_height + 500000) // 1000000
+
+                def mapping(clock):
+                    grid = '(floor(' + clock + '*(' + rate + ')+0.5)/(' + rate + '))'
+                    factor = '((' + motion_expression(scales, 1, start, elapsed, grid) + ')/1000000)'
+                    def coordinate(axis, size, static):
+                        if not moving:
+                            return str(static)
+                        value = motion_expression(positions, axis, start, elapsed, grid)
+                        return 'floor((' + value + ')*' + str(size) + '*256/1000000+0.5)/256'
+                    return factor, coordinate(1, canvas_width, static_x), coordinate(2, canvas_height, static_y)
+
+                multiplier, x, y = mapping('T')
+                m_t, x_t, y_t = mapping('t')
+                fractional = 'gt(neq(' + m_t + ',1)+mod(' + x_t + ',1)+mod(' + y_t + ',1),0)'
+                # Sample the authored cropped, scaled and rotated texture about its
+                # top-left placement. Uniform scaling commutes with rotation. Work
+                # on a fixed viewport rather than reconfiguring graph sizes per frame.
+                layer = ff.ff_filter(layer, 'format', 'gbrap')
+                layer = ff.ff_filter(layer, 'pad', 'w=max(iw,' + str(canvas_width) + ')+2:h=max(ih,'
+                                     + str(canvas_height) + ')+2:x=1:y=1:color=black@0')
+                layer = ff.ff_filter(layer, 'premultiply', inplace=1, enable=fractional)
+                phase = 'if(eq(X,0),st(0,' + multiplier + ')+st(1,' + x + ')+st(2,' + y + '),0);'
+                sample_at = '((X+0.5-ld(1))/ld(0)+0.5,(Y+0.5-ld(2))/ld(0)+0.5)'
+                layer = ff.ff_filter(layer, 'geq', r=phase + 'r' + sample_at, g=phase + 'g' + sample_at,
+                                     b=phase + 'b' + sample_at, a=phase + 'alpha' + sample_at, interpolation='bilinear')
+                layer = ff.ff_filter(layer, 'unpremultiply', inplace=1, enable=fractional)
+                return ff.ff_filter(layer, 'crop', 'w=' + str(canvas_width) + ':h=' + str(canvas_height) + ':x=0:y=0:exact=1')
+
             video_inputs = [(path, placement) for path, placement in zip(paths, placements)
                             if placement[0] == 'V']
             if video_inputs:
@@ -248,7 +283,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 clip, px, py = transformed(clip, placement, fx)
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
                 visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
-                if len(placement) > 17:
+                if len(placement) == 19 and any(int(k.split(';')[1]) != 1000000
+                                                 for k in placement[18].split('~')[3].split('|')):
+                    clip = scaled_viewport(clip, placement[18], placement[17], px, py)
+                    px, py = 0, 0
+                elif len(placement) > 17 and placement[17]:
                     clip, px, py = position_layer(clip, placement[17], start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
@@ -407,7 +446,10 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         + t.scaleY() + "," + t.degrees() + "," + t.left() + ","
                         + t.right() + "," + t.top() + "," + t.bottom() + ","
                         + t.opacity() + "," + fxToken(input)
-                        + input.positionKeys().map(p -> "," + p.canonicalSamples()).orElse(""));
+                        + input.positionKeys().map(p -> "," + p.canonicalSamples())
+                                .orElse(input.scaleKeys().isPresent() ? "," : "")
+                        + input.scaleKeys().map(k -> "," + input.start() + "~" + input.elapsed()
+                                + "~" + input.authoredDuration() + "~" + k.canonicalSamples()).orElse(""));
             }
         }
         for (var cue : plan.subtitles()) {

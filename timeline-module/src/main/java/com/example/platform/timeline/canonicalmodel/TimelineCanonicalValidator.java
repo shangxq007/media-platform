@@ -396,10 +396,24 @@ public final class TimelineCanonicalValidator {
                         TimelineModelPath.root().field("automations"), id, invalid.getMessage()));
             }
         }
+        var scales = candidate.automations().stream().filter(
+                com.example.platform.timeline.semantics.effect.ScaleKeys::isScale).toList();
+        for (String id : scales.stream().map(CanonicalAutomationCurve::targetEntityId).distinct().toList()) {
+            var clip = clipsById.get(id);
+            try {
+                if (clip == null || !videoIds.contains(id)) throw new IllegalArgumentException("Scale keys require a video clip target");
+                com.example.platform.timeline.semantics.effect.ScaleKeys.forClip(scales, id).orElseThrow()
+                        .requireInside(clip.timelineStart(), clip.timelineStart().add(clip.duration()));
+            } catch (IllegalArgumentException | ArithmeticException invalid) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
+                        TimelineModelPath.root().field("automations"), id, invalid.getMessage()));
+            }
+        }
         for (int i = 0; i < candidate.automations().size(); i++) {
             CanonicalAutomationCurve a = candidate.automations().get(i);
             String target = a.targetEntityId();
-            if (com.example.platform.timeline.semantics.effect.PositionKeys.isPosition(a)) continue;
+            if (com.example.platform.timeline.semantics.effect.PositionKeys.isPosition(a)
+                    || com.example.platform.timeline.semantics.effect.ScaleKeys.isScale(a)) continue;
             if (target == null || target.isBlank() || !effectIds.contains(target)) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
                         TimelineModelPath.root().field("automations").index(i).field("targetEntityId"),

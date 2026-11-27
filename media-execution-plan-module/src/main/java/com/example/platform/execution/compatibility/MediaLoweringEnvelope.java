@@ -146,6 +146,8 @@ public enum MediaLoweringEnvelope {
             var transform = clip.placement();
             if (!clip.audio() && !fitsIntermediateRaster(extent.raster(), transform.scaleX(),
                     transform.scaleY(), transform.degrees())) return false;
+            if (clip.scaleKeys().filter(keys -> keys.keys().stream().anyMatch(k -> k.multiplierMicros() != 1_000_000)).isPresent()
+                    && !fitsAnimatedScaleRaster(extent.raster(), transform.scaleX(), transform.scaleY(), transform.degrees())) return false;
             lanes.computeIfAbsent(new Lane(clip.layer(), clip.audio()), ignored -> new ArrayList<>()).add(clip);
         }
         for (var clips : lanes.values()) {
@@ -155,6 +157,17 @@ public enum MediaLoweringEnvelope {
             }
         }
         return true;
+    }
+
+    /** The scale sampler uses a canvas-sized plane or the static texture, whichever is larger per axis. */
+    public static boolean fitsAnimatedScaleRaster(RenderRaster raster, double scaleX, double scaleY, double degrees) {
+        double w = Math.ceil(raster.width() * scaleX);
+        double h = Math.ceil(raster.height() * scaleY);
+        double angle = Math.toRadians(degrees);
+        double cos = Math.abs(Math.cos(angle)), sin = Math.abs(Math.sin(angle));
+        double rw = Math.max(Math.ceil(w * cos + h * sin), raster.width());
+        double rh = Math.max(Math.ceil(w * sin + h * cos), raster.height());
+        return rw * rh <= 8_294_400L;
     }
 
     public static boolean fitsIntermediateRaster(RenderRaster raster, double scaleX, double scaleY, double degrees) {

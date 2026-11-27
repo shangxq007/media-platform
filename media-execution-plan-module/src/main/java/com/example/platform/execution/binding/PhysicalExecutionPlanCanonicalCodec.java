@@ -555,7 +555,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
         }
         if (dependency instanceof RenderDependency.TimedTrackInput timed) {
-            writer.field("variant", timed.positionKeys().isPresent() ? "TIMED_TRACK_POSITION_V1"
+            writer.field("variant", timed.scaleKeys().isPresent() ? "TIMED_TRACK_SCALE_V1"
+                    : timed.positionKeys().isPresent() ? "TIMED_TRACK_POSITION_V1"
                     : timed.opacityKeys().isPresent() ? "TIMED_TRACK_OPACITY_V1" : "TIMED_TRACK_INPUT")
                     .field("start", timed.start().toString()).field("end", timed.end().toString())
                     .field("layer", Integer.toString(timed.layer())).field("audio", Boolean.toString(timed.audio()))
@@ -586,8 +587,15 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                                     .field("outgoingClipId", dissolve.outgoingClipId())
                                     .field("incomingClipId", dissolve.incomingClipId())
                                     .field("duration", dissolve.duration().toString()).build()).orElse(null));
-            timed.positionKeys().ifPresent(p -> writer.field("positions", p.canonicalSamples())
-                    .field("hasOpacity", Boolean.toString(timed.opacityKeys().isPresent())));
+            if (timed.scaleKeys().isPresent()) {
+                writer.field("scales", timed.scaleKeys().get().canonicalSamples())
+                        .field("hasPosition", Boolean.toString(timed.positionKeys().isPresent()));
+                timed.positionKeys().ifPresent(p -> writer.field("positions", p.canonicalSamples()));
+                writer.field("hasOpacity", Boolean.toString(timed.opacityKeys().isPresent()));
+            } else {
+                timed.positionKeys().ifPresent(p -> writer.field("positions", p.canonicalSamples())
+                        .field("hasOpacity", Boolean.toString(timed.opacityKeys().isPresent())));
+            }
             timed.opacityKeys().ifPresent(k -> writer.field("firstTime", k.firstTime().toString()).field("firstValue", Double.toString(k.firstValue()))
                     .field("lastTime", k.lastTime().toString()).field("lastValue", Double.toString(k.lastValue())));
             return writer.build();
@@ -608,7 +616,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
             case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
-            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1" -> readTimedTrack(reader, variant);
+            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1", "TIMED_TRACK_SCALE_V1" -> readTimedTrack(reader, variant);
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }
@@ -637,22 +645,25 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         var dissolve = dissolve(reader.optionalNested());
         var animation = timedAutomation(reader, variant);
         return new RenderDependency.TimedTrackInput(start, end, layer, audio, gain, mute, balance, transform,
-                effect, authoredStart, authoredEnd, dissolve, animation.opacity(), animation.positions());
+                effect, authoredStart, authoredEnd, dissolve, animation.opacity(), animation.positions(), animation.scales());
     }
 
     private static TimedAutomation timedAutomation(FrameReader reader, String variant) {
-        boolean positioned = variant.equals("TIMED_TRACK_POSITION_V1");
+        boolean scaled = variant.equals("TIMED_TRACK_SCALE_V1");
+        var scales = scaled ? Optional.of(com.example.platform.timeline.semantics.effect.ScaleKeys.parseSamples(reader.field("scales")))
+                : Optional.<com.example.platform.timeline.semantics.effect.ScaleKeys>empty();
+        boolean positioned = variant.equals("TIMED_TRACK_POSITION_V1") || (scaled && reader.fieldBoolean("hasPosition"));
         var positions = positioned ? Optional.of(RenderDependency.PositionRamp.parseSamples(reader.field("positions")))
                 : Optional.<RenderDependency.PositionRamp>empty();
-        boolean opaque = variant.equals("TIMED_TRACK_OPACITY_V1") || (positioned && reader.fieldBoolean("hasOpacity"));
+        boolean opaque = variant.equals("TIMED_TRACK_OPACITY_V1") || ((scaled || positioned) && reader.fieldBoolean("hasOpacity"));
         var opacity = opaque ? Optional.of(new RenderDependency.OpacityRamp(
                 MediaTime.parse(reader.field("firstTime")), Double.parseDouble(reader.field("firstValue")),
                 MediaTime.parse(reader.field("lastTime")), Double.parseDouble(reader.field("lastValue")))) : Optional.<RenderDependency.OpacityRamp>empty();
-        return new TimedAutomation(opacity, positions);
+        return new TimedAutomation(opacity, positions, scales);
     }
 
     private record TimedAutomation(Optional<RenderDependency.OpacityRamp> opacity,
-            Optional<RenderDependency.PositionRamp> positions) {}
+            Optional<RenderDependency.PositionRamp> positions, Optional<com.example.platform.timeline.semantics.effect.ScaleKeys> scales) {}
 
     private static Optional<RenderDependency.Dissolve> dissolve(FrameReader reader) {
         if (reader == null) return Optional.empty();

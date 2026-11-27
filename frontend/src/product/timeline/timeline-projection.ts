@@ -145,6 +145,17 @@ export interface PositionKey {
   readonly yMicros: number
 }
 
+export interface ScaleKey {
+  readonly time: Rational
+  readonly multiplierMicros: number
+}
+
+export function scaleMultiplierBounds(transform: ProjectedVideoTransform) {
+  const x = Math.round(transform.scaleX * 1_000_000)
+  const y = Math.round(transform.scaleY * 1_000_000)
+  return { min: Math.ceil(1_000_000 / Math.min(x, y)), max: Math.floor(10_000_000_000_000 / Math.max(x, y)) }
+}
+
 export interface OpacityKeys {
   firstTime: Rational
   firstValue: number
@@ -155,6 +166,7 @@ export interface OpacityKeys {
 export interface ProjectedClip {
   readonly opacityKeys?: OpacityKeys
   readonly positionKeys?: readonly PositionKey[]
+  readonly scaleKeys?: readonly ScaleKey[]
   readonly clipId: string
   readonly trackId: string
   readonly artifactId: string
@@ -340,6 +352,28 @@ export function projectTimeline(document: unknown): TimelineProjection {
             throw new Error('Position key times must strictly increase')
           channels.forEach(c => consumed.add(c))
           clip = { ...clip, positionKeys }
+        }
+        const scales = curves.filter(c => c.targetEntityId === clip.clipId && c.parameterPath === 'transform.scaleMultiplierMicros')
+        if (scales.length) {
+          const channel = scales[0]
+          const keys = entries(channel.keyframes, 'scale keys')
+          if (track.type !== 'video' || scales.length !== 1 || channel.valueType !== 'float'
+            || channel.extrapolation !== 'HOLD' || keys.length < 2 || keys.length > 16) {
+            throw new Error('Invalid scale channel')
+          }
+          const limits = scaleMultiplierBounds(clip.transform)
+          const scaleKeys = keys.map(raw => {
+            const key = object(raw, 'scale key')
+            const time = exactTime(key.time, 'scale time')
+            const multiplierMicros = projectedNumber(key.value, 'scale multiplier', limits.min, limits.max)
+            if (key.interpolation !== 'LINEAR' || !Number.isSafeInteger(multiplierMicros)
+              || compare(time, clip.start) < 0 || compare(time, clip.end) >= 0) throw new Error('Invalid scale key')
+            return { time, multiplierMicros }
+          })
+          if (scaleKeys.some((key, i) => i > 0 && compare(scaleKeys[i - 1].time, key.time) >= 0))
+            throw new Error('Scale key times must strictly increase')
+          consumed.add(channel)
+          clip = { ...clip, scaleKeys }
         }
         const effects = entries(object(rawClip, 'clip').effects ?? [], 'effects').map(e => object(e, 'effect'))
         const bound = curves.filter(c => !consumed.has(c) && effects.some(e => e.id != null && e.id === c.targetEntityId))

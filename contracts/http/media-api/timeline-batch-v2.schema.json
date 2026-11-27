@@ -2579,6 +2579,80 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.scale.keyframes.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "keys" : {
+                  "items" : {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "multiplierMicros" : {
+                        "maximum" : 10000000000000,
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "time" : {
+                        "pattern" : "^[0-9]{1,19}/[1-9][0-9]{0,18}$",
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "multiplierMicros", "time" ],
+                    "type" : "object"
+                  },
+                  "maxItems" : 16,
+                  "not" : {
+                    "maxItems" : 1,
+                    "minItems" : 1
+                  },
+                  "type" : "array"
+                }
+              },
+              "required" : [ "keys" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.subtitle.cue.set" ],
               "type" : "string"
             },
