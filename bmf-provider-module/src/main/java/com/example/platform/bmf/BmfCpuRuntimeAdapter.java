@@ -594,7 +594,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
     private static String coveredAudioDuration(MediaTime time) {
         var rate = BigDecimal.valueOf(48_000);
         // Audio intermediates supply whole samples through the fractional end.
-        // The composite stage still selects which samples land inside the extent.
+        // The composite stage still limits output to samples inside the extent.
         return BigDecimal.valueOf(time.ticks()).multiply(rate)
                 .divide(BigDecimal.valueOf(time.timeScale()), 0, RoundingMode.CEILING)
                 .divide(rate, 9, RoundingMode.HALF_UP)
