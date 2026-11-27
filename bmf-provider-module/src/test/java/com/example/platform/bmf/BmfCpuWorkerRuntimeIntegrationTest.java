@@ -204,6 +204,100 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         }
     }
 
+    @Test
+    void animated_effective_unity_retains_native_stripe_contrast() throws Exception {
+        Path runtime = configuredRuntime();
+        var source = scaleSource("stripes", List.of("-vf", "drawgrid=w=8:h=0:t=4:c=black"));
+        var reference = renderScale(runtime, source, "reference", 1, null);
+        var animated = renderScale(runtime, source, "effective-unity", .1, "1/2;1000000|3/2;10000000");
+
+        // Full crop, zero rotation, and an integer-aligned anchor. Sample stripe centers
+        // away from the codec edge, not the envelope of the clip.
+        int dark = 60 * 320 * 240 + 80 * 320 + 10;
+        int light = dark + 4;
+        assertThat(Byte.toUnsignedInt(reference[light]) - Byte.toUnsignedInt(reference[dark]))
+                .isGreaterThanOrEqualTo(235);
+        for (int pixel : new int[]{dark, light}) {
+            assertThat(Math.abs(Byte.toUnsignedInt(animated[pixel]) - Byte.toUnsignedInt(reference[pixel])))
+                    .isLessThanOrEqualTo(12);
+        }
+    }
+
+    @Test
+    void animated_scale_keeps_the_authored_side_of_an_exact_output_frame() throws Exception {
+        Path runtime = configuredRuntime();
+        var source = scaleSource("solid", List.of());
+        var equal = renderScale(runtime, source, "at-frame", .5,
+                "99999999999999999/100000000000000000;1000000|1/1;1500000");
+        var later = renderScale(runtime, source, "after-frame", .5,
+                "1/1;1000000|100000000000000001/100000000000000000;1500000");
+
+        assertThat(widthsAtCut(equal)).containsExactly(160, 240, 240);
+        assertThat(widthsAtCut(later)).containsExactly(160, 160, 240);
+    }
+
+    private static List<Integer> widthsAtCut(byte[] frames) {
+        return java.util.stream.IntStream.rangeClosed(23, 25).map(frame -> {
+            int offset = frame * 320 * 240 + 20 * 320;
+            int right = 0;
+            while (right < 320 && Byte.toUnsignedInt(frames[offset + right]) >= 205) right++;
+            return right;
+        }).boxed().toList();
+    }
+
+    private Path scaleSource(String tag, List<String> filters) throws Exception {
+        Path input = temp.resolve(tag + ".mkv");
+        var args = new java.util.ArrayList<>(List.of("-f", "lavfi", "-i", "color=white:s=320x240:r=24:d=3"));
+        args.addAll(filters);
+        args.addAll(List.of("-c:v", "ffv1", input.toString()));
+        runFfmpeg(args, temp.resolve(tag + "-source.log"));
+        return input;
+    }
+
+    private byte[] renderScale(Path runtime, Path source, String tag, double axes, String samples) throws Exception {
+        Path python = runtime.resolve("host-bundle/usr/bin/python3.9");
+        var launcher = BubblewrapSandboxCapabilityDetector.detect().launcher().orElseThrow();
+        var workspace = BmfSandboxWorkspace.under(temp.resolve(tag + "-workspace"));
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, runtime, workspace,
+                Duration.ofSeconds(45), 2_000_000, launcher.capabilities());
+        var executor = new SandboxRuntimeCommandExecutor(launcher, resolver, SandboxCancellation.never(),
+                workspace.outputStagingRoot());
+        var duration = MediaTime.parse("3/1");
+        var transform = new BmfCpuTranscodePlan.VideoPlacement(0, 0, axes, axes, 0, 0, 1, 0, 1, 1);
+        var ramp = Optional.ofNullable(samples)
+                .map(com.example.platform.render.domain.renderplan.RenderDependency.ScaleRamp::parseSamples);
+        var input = new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, duration, 0, false, 1,
+                false, 0, transform, com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                MediaTime.ZERO, duration, MediaTime.ZERO, Optional.empty(), Optional.empty(), ramp);
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
+                INPUT_ID, OUTPUT_ID, Optional.empty(), List.of(input), Optional.of(duration),
+                Optional.of(FrameRate.of(24, 1)), new RenderRaster(320, 240), List.of());
+        Path encoded = temp.resolve(tag + ".mp4");
+        try (var output = executor.execute(new BmfCpuRuntimeAdapter(python).adapt(plan, context(tag)),
+                List.of(materialized(source)))) {
+            Files.copy(output.content(), encoded);
+        }
+        Path decoded = temp.resolve(tag + ".gray");
+        runFfmpeg(List.of("-i", encoded.toString(), "-f", "rawvideo", "-pix_fmt", "gray", decoded.toString()),
+                temp.resolve(tag + "-decode.log"));
+        var frames = Files.readAllBytes(decoded);
+        assertThat(frames.length).isEqualTo(72 * 320 * 240);
+        return frames;
+    }
+
+    private static void runFfmpeg(List<String> args, Path log) throws Exception {
+        Path ffmpeg = Path.of("/usr/bin/ffmpeg");
+        Assumptions.assumeTrue(Files.isExecutable(ffmpeg), "host FFmpeg is required to generate/score pixel fixtures");
+        var command = new java.util.ArrayList<>(List.of(ffmpeg.toString(), "-v", "error", "-nostdin"));
+        command.addAll(args);
+        var child = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
+        if (!child.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)) {
+            child.destroyForcibly();
+            throw new AssertionError("fixture FFmpeg timed out");
+        }
+        assertThat(child.exitValue()).as(Files.readString(log)).isZero();
+    }
+
     private static Path configuredRuntime() {
         String root = System.getenv("BMF_TEST_RUNTIME_ROOT");
         String source = System.getenv("BMF_TEST_SOURCE");

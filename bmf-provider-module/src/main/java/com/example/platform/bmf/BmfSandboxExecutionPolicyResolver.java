@@ -490,15 +490,16 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     private static boolean validScaleRamp(String token, BigDecimal sx, BigDecimal sy, BigDecimal degrees, RenderRaster raster) {
         String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
         String pair = time + ";[1-9][0-9]{0,13}";
-        if (token.length() > 1200 || !token.matches(time + "~" + time + "~" + time + "~"
+        if (token.length() > 1240 || !token.matches(time + "~" + time + "~" + time + "~" + time + "~"
                 + pair + "(?:\\|" + pair + "){1,15}")) return false;
         try {
             var fields = token.split("~");
-            var clock = com.example.platform.shared.time.MediaTime.parse(fields[0]);
-            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[1]);
-            var duration = com.example.platform.shared.time.MediaTime.parse(fields[2]);
-            if (elapsed.compareTo(duration) >= 0 || clock.ticks() < 0) return false;
-            var ramp = RenderDependency.ScaleRamp.parseSamples(fields[3]);
+            var start = com.example.platform.shared.time.MediaTime.parse(fields[0]);
+            var end = com.example.platform.shared.time.MediaTime.parse(fields[1]);
+            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[2]);
+            var duration = com.example.platform.shared.time.MediaTime.parse(fields[3]);
+            if (elapsed.compareTo(duration) >= 0 || start.compareTo(end) >= 0) return false;
+            var ramp = RenderDependency.ScaleRamp.parseSamples(fields[4]);
             ramp.validateRelative(duration, sx.movePointRight(6).intValueExact(), sy.movePointRight(6).intValueExact());
             return !ramp.changesScale()
                     || com.example.platform.execution.compatibility.MediaLoweringEnvelope.fitsAnimatedScaleRaster(

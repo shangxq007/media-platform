@@ -104,6 +104,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
     static final String MULTITRACK_GRAPH_PROGRAM = """
             from fractions import Fraction
             import importlib
+            import math
             import os
             import sys
             import bmf
@@ -118,7 +119,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             graph = bmf.graph()
             print('BMF_GRAPH_START multitrack-composite inputs=' + str(count), flush=True)
 
-            def transformed(video, placement, fx):
+            def transformed(video, placement, fx, animated_scale):
                 # kind,start,end,gain,mute,pan,posx,posy,scalex,scaley,rot,cropl,cropr,cropt,cropb,opacity,fx
                 px = round(float(placement[6]) * canvas_width)
                 py = round(float(placement[7]) * canvas_height)
@@ -152,11 +153,12 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 video = ff.ff_filter(video, 'crop', 'w=max(1,round(iw*' + str(cr - cl)
                                      + ')):h=max(1,round(ih*' + str(cb - ct) + ')):x=round(iw*' + str(cl)
                                      + '):y=round(ih*' + str(ct) + '):exact=1')
-                width = max(1, int(round(canvas_width * sx)))
-                height = max(1, int(round(canvas_height * sy)))
-                video = ff.ff_filter(video, 'scale', str(width) + 'x' + str(height))
+                if not animated_scale:
+                    width = max(1, int(round(canvas_width * sx)))
+                    height = max(1, int(round(canvas_height * sy)))
+                    video = ff.ff_filter(video, 'scale', str(width) + 'x' + str(height))
                 video = ff.ff_filter(video, 'setsar', '1')
-                if rot != 0:
+                if rot != 0 and not animated_scale:
                     angle = str(rot) + '*PI/180'
                     video = ff.ff_filter(video, 'rotate', 'angle=' + angle
                                          + ':ow=rotw(' + angle + '):oh=roth(' + angle
@@ -226,40 +228,86 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 layer = ff.ff_filter(layer, 'unpremultiply', inplace=1, enable=shifted)
                 return layer, 'floor(' + x + ')-1', 'floor(' + y + ')-1'
 
-            def scaled_viewport(layer, scale_token, positions, static_x, static_y):
-                start, elapsed, _, scales = scale_token.split('~')
-                points = [sample.split(';') for sample in positions.split('|')] if positions else []
-                moving = points and any(point[1:3] != points[0][1:3] for point in points[1:])
-                if points and not moving:
-                    static_x = (int(points[0][1]) * canvas_width + 500000) // 1000000
-                    static_y = (int(points[0][2]) * canvas_height + 500000) // 1000000
+            output_rate = Fraction(rate)
 
-                def mapping(clock):
-                    grid = '(floor(' + clock + '*(' + rate + ')+0.5)/(' + rate + '))'
-                    factor = '((' + motion_expression(scales, 1, start, elapsed, grid) + ')/1000000)'
-                    def coordinate(axis, size, static):
-                        if not moving:
-                            return str(static)
-                        value = motion_expression(positions, axis, start, elapsed, grid)
-                        return 'floor((' + value + ')*' + str(size) + '*256/1000000+0.5)/256'
-                    return factor, coordinate(1, canvas_width, static_x), coordinate(2, canvas_height, static_y)
+            def frame_curve(points, axis, origin, first_frame):
+                # Resolve every threshold and the first sample in each interval before
+                # conversion to AVExpr doubles. GEQ's N is local to the aligned clip.
+                knots = [(Fraction(p[0]) + origin) * output_rate for p in points]
+                cuts = [math.ceil(k) - first_frame for k in knots]
+                expression = points[-1][axis]
+                for i in range(len(points) - 2, -1, -1):
+                    first, end = cuts[i:i+2]
+                    if first == end:
+                        continue  # No output sample in this exact half-open interval.
+                    left, right = int(points[i][axis]), int(points[i+1][axis])
+                    step = Fraction(right - left) / (knots[i+1] - knots[i])
+                    value = left + step * (first + first_frame - knots[i])
+                    line = str(value)
+                    if end - first > 1 and step:
+                        line += '+(N-(' + str(first) + '))*(' + str(step) + ')'
+                    expression = 'if(lt(N,' + str(end) + '),' + line + ',' + expression + ')'
+                return 'if(lt(N,' + str(cuts[0]) + '),' + points[0][axis] + ',' + expression + ')'
 
-                multiplier, x, y = mapping('T')
-                m_t, x_t, y_t = mapping('t')
-                fractional = 'gt(abs(' + m_t + '-1)+mod(' + x_t + ',1)+mod(' + y_t + ',1),0)'
-                # Sample the authored cropped, scaled and rotated texture about its
-                # top-left placement. Uniform scaling commutes with rotation. Work
-                # on a fixed viewport rather than reconfiguring graph sizes per frame.
+            def scaled_viewport(layer, placement, origin, first_frame, scales, static_x, static_y):
+                positions = [sample.split(';') for sample in placement[17].split('|')] if placement[17] else []
+                moving = positions and any(p[1:3] != positions[0][1:3] for p in positions[1:])
+                if positions and not moving:
+                    static_x = (int(positions[0][1]) * canvas_width + 500000) // 1000000
+                    static_y = (int(positions[0][2]) * canvas_height + 500000) // 1000000
+
+                def coordinate(axis, size, static):
+                    if not moving:
+                        return str(static)
+                    value = frame_curve(positions, axis, origin, first_frame)
+                    return 'floor((' + value + ')*' + str(size) + '*256/1000000+0.5)/256'
+
+                width = canvas_width * Fraction(placement[8])
+                height = canvas_height * Fraction(placement[9])
+                largest = Fraction(max(int(p[1]) for p in scales), 1000000)
+                # Keep detail for the largest effective size, not the authored static
+                # footprint. Backing dimensions stay fixed and within the original
+                # intermediate pixel budget. The final viewport is always canvas-sized.
+                tw = max(canvas_width, math.ceil(width * largest))
+                th = max(canvas_height, math.ceil(height * largest))
+                budget = 8294400
+                if tw * th > budget:
+                    fit = math.sqrt(budget / (tw * th))
+                    tw = min(max(canvas_width, int(tw * fit)), budget // canvas_height)
+                    th = min(th, budget // tw)
                 layer = ff.ff_filter(layer, 'format', 'gbrap')
-                layer = ff.ff_filter(layer, 'pad', 'w=max(iw,' + str(canvas_width) + ')+2:h=max(ih,'
-                                     + str(canvas_height) + ')+2:x=1:y=1:color=black@0')
-                layer = ff.ff_filter(layer, 'premultiply', inplace=1, enable=fractional)
-                phase = 'if(eq(X,0),st(0,' + multiplier + ')+st(1,' + x + ')+st(2,' + y + '),0);'
-                sample_at = '((X+0.5-ld(1))/ld(0)+0.5,(Y+0.5-ld(2))/ld(0)+0.5)'
+                layer = ff.ff_filter(layer, 'scale', str(tw) + 'x' + str(th))
+                # GEQ bilinear clamps its sample origin to the penultimate texel.
+                # The right/bottom padding therefore needs two transparent texels.
+                layer = ff.ff_filter(layer, 'pad', 'w=iw+3:h=ih+3:x=1:y=1:color=black@0')
+                layer = ff.ff_filter(layer, 'premultiply', inplace=1)
+
+                radians = math.radians(float(placement[10]))
+                cos, sin = math.cos(radians), math.sin(radians)
+                # Ignore trig residue at quadrantal rotations, where the exact basis is integral.
+                if float(placement[10]) % 90 == 0:
+                    cos, sin = round(cos), round(sin)
+                rw = abs(cos) * float(width) + abs(sin) * float(height)
+                rh = abs(sin) * float(width) + abs(cos) * float(height)
+                multiplier = '((' + frame_curve(scales, 1, origin, first_frame) + ')/1000000)'
+                x, y = coordinate(1, canvas_width, static_x), coordinate(2, canvas_height, static_y)
+                phase = ('if(eq(X,0),st(0,' + multiplier + ')+st(1,' + x + ')+st(2,' + y
+                         + ')+st(3,' + str(rw / 2) + '*ld(0))+st(4,' + str(rh / 2) + '*ld(0)),0);')
+                dx, dy = '(X+0.5-ld(1)-ld(3))', '(Y+0.5-ld(2)-ld(4))'
+                # Undo the rotation about the scaled bounds' center, then both
+                # effective axes. Convert normalized edge positions to texel centers
+                # with the one-pixel transparent halo included.
+                u = '((' + str(cos) + '*' + dx + '+' + str(sin) + '*' + dy + ')/((' + str(width) + ')*ld(0))+0.5)'
+                v = '((' + str(-sin) + '*' + dx + '+' + str(cos) + '*' + dy + ')/((' + str(height) + ')*ld(0))+0.5)'
+                sample_at = '(' + u + '*' + str(tw) + '+0.5,' + v + '*' + str(th) + '+0.5)'
                 layer = ff.ff_filter(layer, 'geq', r=phase + 'r' + sample_at, g=phase + 'g' + sample_at,
                                      b=phase + 'b' + sample_at, a=phase + 'alpha' + sample_at, interpolation='bilinear')
-                layer = ff.ff_filter(layer, 'unpremultiply', inplace=1, enable=fractional)
+                layer = ff.ff_filter(layer, 'unpremultiply', inplace=1)
                 return ff.ff_filter(layer, 'crop', 'w=' + str(canvas_width) + ':h=' + str(canvas_height) + ':x=0:y=0:exact=1')
+
+            def frames_visible(onset, end):
+                number = 'floor(t*(' + rate + ')+0.5)'
+                return '(1+sgn(' + number + '-' + str(onset) + '+0.5))*(1-sgn(' + number + '-' + str(end) + '+0.5))'
 
             video_inputs = [(path, placement) for path, placement in zip(paths, placements)
                             if placement[0] == 'V']
@@ -274,28 +322,40 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             canvas = ff.trim(canvas, duration=duration)
             for path, placement in video_inputs:
                 start, end = placement[1], placement[2]
+                scales = ([p.split(';') for p in placement[18].split('~')[4].split('|')]
+                          if len(placement) == 19 else [])
+                animated_scale = any(int(p[1]) != 1000000 for p in scales)
+                if animated_scale:
+                    exact_start, exact_end, elapsed, _, _ = placement[18].split('~')
+                    first_frame = math.ceil(Fraction(exact_start) * output_rate)
+                    end_frame = math.ceil(Fraction(exact_end) * output_rate)
+                    if first_frame >= end_frame:
+                        continue
                 clip = graph.decode({'input_path': path})['video']
                 clip = ff.ff_filter(clip, 'fps', rate)
                 clip = ff.ff_filter(clip, 'tpad', stop='1', stop_mode='clone')
                 fx = placement[16].split(';')
                 # Evaluate using timestamps relative to the authored clip, then place on output.
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + fx[7] + '/TB')
-                clip, px, py = transformed(clip, placement, fx)
-                clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
-                visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
-                if len(placement) == 19 and any(int(k.split(';')[1]) != 1000000
-                                                 for k in placement[18].split('~')[3].split('|')):
-                    clip = scaled_viewport(clip, placement[18], placement[17], px, py)
+                clip, px, py = transformed(clip, placement, fx, animated_scale)
+                if animated_scale:
+                    origin = Fraction(exact_start) - Fraction(elapsed)
+                    clip = ff.ff_filter(clip, 'settb', 'expr=' + str(1 / output_rate))
+                    clip = ff.setpts(clip, 'N+' + str(first_frame))
+                    clip = scaled_viewport(clip, placement, origin, first_frame, scales, px, py)
                     px, py = 0, 0
-                elif len(placement) > 17 and placement[17]:
-                    clip, px, py = position_layer(clip, placement[17], start, fx[7])
+                    visible = frames_visible(first_frame, end_frame)
+                else:
+                    clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
+                    visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
+                    if len(placement) > 17 and placement[17]:
+                        clip, px, py = position_layer(clip, placement[17], start, fx[7])
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
             def still_at_output_rate(path):
                 block = graph.decode({'input_path': path})['video']
                 # Duplicate pixels first, then assign one exact output-frame tick to each duplicate.
                 block = ff.ff_filter(block, 'format', 'rgba')
-                output_rate = Fraction(rate)
                 frames = -(-Fraction(duration) * output_rate // 1)
                 block = ff.loop(block, loop=frames - 1, size=1, start=0)
                 block = ff.ff_filter(block, 'settb', 'expr=' + str(1 / output_rate))
@@ -311,10 +371,6 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 alpha = motion_expression(samples, 3, start, elapsed, 'T')
                 return ff.ff_filter(layer, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
                                     a='alpha(X,Y)*(' + alpha + ')/1000000', interpolation='nearest')
-
-            def frames_visible(onset, end):
-                number = 'floor(t*(' + rate + ')+0.5)'
-                return '(1+sgn(' + number + '-' + onset + '+0.5))*(1-sgn(' + number + '-' + end + '+0.5))'
 
             for onset, end, start, elapsed, samples, path, *style in subtitles:
                 block = still_at_output_rate(path)
@@ -448,7 +504,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         + t.opacity() + "," + fxToken(input)
                         + input.positionKeys().map(p -> "," + p.canonicalSamples())
                                 .orElse(input.scaleKeys().isPresent() ? "," : "")
-                        + input.scaleKeys().map(k -> "," + input.start() + "~" + input.elapsed()
+                        + input.scaleKeys().map(k -> "," + input.start() + "~" + input.end() + "~" + input.elapsed()
                                 + "~" + input.authoredDuration() + "~" + k.canonicalSamples()).orElse(""));
             }
         }
