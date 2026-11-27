@@ -122,12 +122,12 @@ public record BmfCpuTranscodePlan(
             }
             if (effect == null) effect = com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY;
             Objects.requireNonNull(elapsed, "elapsed");
-            if (gainKeys.isPresent()) {
-                if (!audio) throw new IllegalArgumentException("Gain envelope requires audio");
-                gainKeys.get().validateRelative(authoredDuration);
-            }
             Objects.requireNonNull(authoredDuration, "authoredDuration");
             Objects.requireNonNull(fades, "fades");
+            if (gainKeys.isPresent()) {
+                if (!audio) throw new IllegalArgumentException("Gain envelope requires audio");
+                gainKeys.get().validateRelative(authoredDuration.subtract(fades.crossfadeOut()));
+            }
             if (fades.active()) {
                 if (!audio) throw new IllegalArgumentException("Audio fades require audio");
                 fades.requireFits(authoredDuration);

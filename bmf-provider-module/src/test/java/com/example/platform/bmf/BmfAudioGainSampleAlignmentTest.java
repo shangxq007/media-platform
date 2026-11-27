@@ -172,6 +172,39 @@ class BmfAudioGainSampleAlignmentTest {
         }
     }
 
+    @Test
+    void independentCrossfadeAndAuthoredReleaseMultiplyOnTheSampleClock() throws Exception {
+        var python = Path.of("/usr/bin/python3");
+        var probe = copyProbe(python);
+        var output = resultDirectory();
+        var start = MediaTime.ofMillis(4000);
+        var end = MediaTime.ofMillis(7000);
+        var fade = new RenderDependency.AudioFades(MediaTime.ZERO, MediaTime.ofMillis(2500),
+                MediaTime.ofMillis(1000), MediaTime.ZERO);
+        for (var extent : List.of("full", "crop")) {
+            var crop = extent.equals("crop") ? MediaTime.ofMillis(4500) : MediaTime.ZERO;
+            long shift = extent.equals("crop") ? 216_000 : 0;
+            for (boolean keyed : List.of(false, true)) {
+                var manual = keyed ? Optional.of(RenderDependency.GainRamp.parseSamples("0;500000|1/1;1000000"))
+                        : Optional.<RenderDependency.GainRamp>empty();
+                var dir = Files.createDirectory(output.resolve("n25-f1-" + extent + (keyed ? "-manual" : "-unity")));
+                renderInterval(python, probe, dir, start, end, crop, MediaTime.ofMillis(8000), manual, fade, true);
+                var precise = ByteBuffer.wrap(Files.readAllBytes(dir.resolve("before-s16.f64le")))
+                        .order(ByteOrder.LITTLE_ENDIAN);
+                int[] samples = {216_000, 228_000, 234_000, 240_000};
+                double[] expected = {.5, .675, .74375, .8};
+                for (int i = 0; i < samples.length; i++) {
+                    double weight = expected[i] * (keyed ? .5 + (samples[i] - 192_000) / 96_000.0 : 1);
+                    int offset = Math.toIntExact(16 * (samples[i] - shift));
+                    // FFmpeg's mix stage uses float before the precision capture.
+                    double oneFloatUlp = Math.ulp((float) weight);
+                    assertEquals(weight, precise.getDouble(offset) * 32, oneFloatUlp);
+                    assertEquals(weight, precise.getDouble(offset + 8) * 64, oneFloatUlp);
+                }
+            }
+        }
+    }
+
     private static int onset(ByteBuffer pcm) {
         for (int i = 0; i < pcm.capacity() / 4; i++) {
             if (pcm.getShort(4 * i) != 0 || pcm.getShort(4 * i + 2) != 0) return i;

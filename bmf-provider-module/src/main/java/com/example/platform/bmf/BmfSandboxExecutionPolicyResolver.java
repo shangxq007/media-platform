@@ -492,10 +492,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     private static boolean validAudioEnvelope(String token, BigDecimal placementStart) {
         String time = RenderDependency.AudioFades.TIME_PATTERN;
         String pair = time + ";[0-9]{1,7}";
-        if (token.length() > 1100) return false;
+        if (token.length() > 1200) return false;
         try {
             var fields = token.split("~", -1);
-            if (fields.length != 4 && fields.length != 6) return false;
+            if (fields.length != 4 && fields.length != 6 && fields.length != 8) return false;
             for (int index = 0; index < 3; index++) {
                 if (!fields[index].matches(time)) return false;
             }
@@ -506,15 +506,18 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[1]);
             var duration = com.example.platform.shared.time.MediaTime.parse(fields[2]);
             if (elapsed.compareTo(duration) >= 0) return false;
-            if (!fields[3].isEmpty()) {
-                if (!fields[3].matches(pair + "(?:\\|" + pair + "){1,15}")) return false;
-                RenderDependency.GainRamp.parseSamples(fields[3]).validateRelative(duration);
-            } else if (fields.length == 4) return false;
-            if (fields.length == 6) {
-                var fades = RenderDependency.AudioFades.parse(fields[4], fields[5]);
-                if (!fades.active()) return false;
+            var fades = RenderDependency.AudioFades.NONE;
+            if (fields.length >= 6) {
+                fades = fields.length == 8
+                        ? RenderDependency.AudioFades.parse(fields[4], fields[5], fields[6], fields[7])
+                        : RenderDependency.AudioFades.parse(fields[4], fields[5]);
+                if (!fades.active() || (fields.length == 8) != fades.hasCrossfade()) return false;
                 fades.requireFits(duration);
             }
+            if (!fields[3].isEmpty()) {
+                if (!fields[3].matches(pair + "(?:\\|" + pair + "){1,15}")) return false;
+                RenderDependency.GainRamp.parseSamples(fields[3]).validateRelative(duration.subtract(fades.crossfadeOut()));
+            } else if (fields.length == 4) return false;
             return true;
         } catch (IllegalArgumentException | ArithmeticException invalid) {
             return false;

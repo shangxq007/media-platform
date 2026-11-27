@@ -7,7 +7,7 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
-import { activeClipsAt, audioCrossfadeClip, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
+import { activeClipsAt, audioCrossfadePlacement, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedAudioFades, type ProjectedVideoEffect, type ProjectedClip, type ProjectedTransition, type ScaleKey, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
@@ -28,7 +28,10 @@ interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mu
 interface ScheduledAudio {
   source: AudioBufferSourceNode
   param: AudioParam
-  fade: AudioParam
+  authoredFade: AudioParam
+  transitionGain: AudioParam
+  transitionFades: ProjectedAudioFades
+  playbackEnd: Rational
   clip: ProjectedClip
   gain: number
 }
@@ -161,7 +164,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const keys = draft && draft.revisionId === session.revisionId && draft.clipId === item.clip.clipId
       ? draft.keys : item.clip.gainKeys
     const first = compare(cursor, item.clip.start) < 0 ? item.clip.start : cursor
-    if (compare(first, item.clip.end) >= 0) return
+    if (compare(first, item.playbackEnd) >= 0) return
     const when = session.origin + toSeconds(first)
     item.param.cancelScheduledValues(when)
     item.param.setValueAtTime(item.gain * scaleAt(keys, first), when)
@@ -175,14 +178,20 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const edgeDraft = requested?.revisionId === session.revisionId && requested?.clipId === item.clip.clipId ? requested : undefined
     const fades = { fadeIn: edgeDraft?.fadeIn ?? item.clip.audioFades?.fadeIn ?? ZERO,
       fadeOut: edgeDraft?.fadeOut ?? item.clip.audioFades?.fadeOut ?? ZERO }
-    const edge = audioFadeEnvelope(fades, item.clip.start, item.clip.end, first)
+    // Multiplying two independent AudioParams gives the quadratic overlap,
+    // including when a seek starts with both ramps already in progress.
     const at = (time: Rational) => session.origin + toSeconds(time)
-    item.fade.cancelScheduledValues(when)
-    item.fade.setValueAtTime(edge.value, when)
-    if (edge.attackEnd) item.fade.linearRampToValueAtTime(1, at(edge.attackEnd))
-    if (edge.releaseStart && (!edge.attackEnd || compare(edge.releaseStart, edge.attackEnd) > 0))
-      item.fade.setValueAtTime(1, at(edge.releaseStart))
-    if (edge.releaseEnd) item.fade.linearRampToValueAtTime(0, at(edge.releaseEnd))
+    const schedule = (param: AudioParam, durations: ProjectedAudioFades, end: Rational) => {
+      const edge = audioFadeEnvelope(durations, item.clip.start, end, first)
+      param.cancelScheduledValues(when)
+      param.setValueAtTime(edge.value, when)
+      if (edge.attackEnd) param.linearRampToValueAtTime(1, at(edge.attackEnd))
+      if (edge.releaseStart && (!edge.attackEnd || compare(edge.releaseStart, edge.attackEnd) > 0))
+        param.setValueAtTime(1, at(edge.releaseStart))
+      if (edge.releaseEnd) param.linearRampToValueAtTime(0, at(edge.releaseEnd))
+    }
+    schedule(item.authoredFade, fades, item.clip.end)
+    schedule(item.transitionGain, item.transitionFades, item.playbackEnd)
   }
   // A changing audition changes source coverage as well as gain. Preserve
   // transport time and rebuild the scheduled sources on the same audio clock.
@@ -637,19 +646,21 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const audio = session.audio
     if (audio && session.mixer) {
       const transitions = activeAudioTransitions(session)
-      for (const { clip: authored, buffer, gain, mute, pan } of session.audioClips) {
+      for (const { clip, buffer, gain, mute, pan } of session.audioClips) {
         if (mute) continue
-        const clip = audioCrossfadeClip(authored, transitions)
+        const { end: playbackEnd, transitionFades } = audioCrossfadePlacement(clip, transitions)
         const clipStart = toSeconds(clip.start)
         const start = Math.max(session.cursor, clipStart)
-        const duration = toSeconds(clip.end) - start
+        const duration = toSeconds(playbackEnd) - start
         if (duration <= 0) continue
         const source = audio.createBufferSource()
         source.buffer = buffer
         const level = audio.createGain()
         level.gain.value = gain
-        const fade = audio.createGain()
-        const scheduled = { source, param: level.gain, fade: fade.gain, clip, gain }
+        const authoredFade = audio.createGain()
+        const transitionGain = audio.createGain()
+        const scheduled = { source, param: level.gain, authoredFade: authoredFade.gain,
+          transitionGain: transitionGain.gain, transitionFades, playbackEnd, clip, gain }
         applyGainEnvelope(session, scheduled, session.cursorExact)
         const splitter = audio.createChannelSplitter(2)
         const merger = audio.createChannelMerger(2)
@@ -657,7 +668,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         const right = audio.createGain()
         left.gain.value = (1 - pan) / 2
         right.gain.value = (1 + pan) / 2
-        source.connect(level).connect(fade).connect(splitter)
+        source.connect(level).connect(authoredFade).connect(transitionGain).connect(splitter)
         // Mono sources feed both sides; stereo sources preserve their channels.
         splitter.connect(left, 0)
         splitter.connect(right, Math.min(1, buffer.numberOfChannels - 1))

@@ -421,12 +421,14 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 delay_samples = round(Fraction(start) * sample_rate)
                 envelope_spec = placement[17].split('~') if len(placement) == 18 else None
                 if envelope_spec is not None:
-                    exact_start, elapsed, authored_duration, samples, *fades = envelope_spec
+                    exact_start, elapsed, rendered_duration, samples, *edges = envelope_spec
                     origin = Fraction(exact_start) - Fraction(elapsed)
-                if envelope_spec is not None and fades and Fraction(fades[1]):
+                    fade_in, fade_out, crossfade_in, crossfade_out = map(Fraction, (edges + ['0'] * 4)[:4])
+                    rendered_end = Fraction(rendered_duration)
+                if envelope_spec is not None and (fade_out or crossfade_out):
                     # Keep every output sample strictly before the exact outgoing edge.
                     # FFmpeg duration trimming can round a fractional end down.
-                    exact_end = min(origin + Fraction(authored_duration), Fraction(duration))
+                    exact_end = min(origin + rendered_end, Fraction(duration))
                     length = max(0, math.ceil(exact_end * sample_rate) - delay_samples)
                     audio = ff.atrim(audio, end_sample=str(length))
                 else:
@@ -445,13 +447,15 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         points = [key.split(';') for key in samples.split('|')]
                         if any(int(p[1]) != 1000000 for p in points):
                             factors.append(envelope(points))
-                    if fades:
-                        fade_in, fade_out = map(Fraction, fades)
-                        if fade_in:
-                            factors.append(envelope([('0', '0'), (str(fade_in), '1000000')]))
-                        if fade_out:
-                            end_time = Fraction(authored_duration)
-                            factors.append(envelope([(str(end_time - fade_out), '1000000'), (str(end_time), '0')]))
+                    # Keep the authored edge on the clip clock. Only the shared
+                    # cut can extend the outgoing end beyond that clock.
+                    clip_end = rendered_end - crossfade_out
+                    for attack in (fade_in, crossfade_in):
+                        if attack:
+                            factors.append(envelope([('0', '0'), (str(attack), '1000000')]))
+                    for release, edge_end in ((fade_out, clip_end), (crossfade_out, rendered_end)):
+                        if release:
+                            factors.append(envelope([(str(edge_end - release), '1000000'), (str(edge_end), '0')]))
                     if factors:
                         audio = ff.ff_filter(audio, 'aresample', '48000')
                         audio = ff.ff_filter(audio, 'aformat', channel_layouts='stereo')
@@ -580,7 +584,8 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         if (input.gainKeys().isEmpty() && !input.fades().active()) return "";
         return "," + input.start() + "~" + input.elapsed() + "~" + input.authoredDuration() + "~"
                 + input.gainKeys().map(RenderDependency.GainRamp::canonicalSamples).orElse("")
-                + (input.fades().active() ? "~" + input.fades().in() + "~" + input.fades().out() : "");
+                + (input.fades().active() ? "~" + input.fades().in() + "~" + input.fades().out() : "")
+                + (input.fades().hasCrossfade() ? "~" + input.fades().crossfadeIn() + "~" + input.fades().crossfadeOut() : "");
     }
 
     private static String rasterToken(BmfCpuTranscodePlan plan) {

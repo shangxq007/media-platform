@@ -17,6 +17,7 @@ import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPla
 import com.example.platform.execution.planning.PhysicalExecutionPlanDigest;
 import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.render.domain.renderplan.RenderArtifactReference;
+import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderExecutionCoverage;
 import com.example.platform.render.domain.renderplan.RenderExecutionRequirement;
 import com.example.platform.render.domain.renderplan.RenderExtent;
@@ -104,6 +105,30 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                 PhysicalExecutionPlanCanonicalCodec.decode(oldTag.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .isInstanceOf(UnsupportedPersistedConstructException.class);
+    }
+
+    @Test
+    void independentAudioEnvelopesRoundTripWithoutRelaxingAuthoredPairValidation() {
+        var start = MediaTime.ofMillis(4000);
+        var end = MediaTime.ofMillis(7000);
+        var release = MediaTime.ofMillis(2500);
+        var one = MediaTime.ofMillis(1000);
+        var fades = new RenderDependency.AudioFades(ZERO, release, one, ZERO);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                new RenderDependency.AudioFades(one, release).requireFits(end.subtract(start)))
+                .hasMessageContaining("Fade-in plus fade-out");
+        var dependency = RenderDependency.TimedTrackInput.envelopedAudio(
+                MediaTime.ofMillis(4500), end, 1, null, null, null, start, end,
+                java.util.Optional.empty(), fades);
+        var input = new InputBinding(new ExecutionInputId("input-audio"), "composite",
+                new ExecutionStepId("composite"), new RenderNodeId("render-composite"),
+                "clip", new ExecutionStepId("clip"), new RenderNodeId("render-clip"), dependency, null, null);
+        var plan = plan(List.of(unit("multitrack-composite", "composite", null, null, null, List.of(input),
+                List.of(outputDeclaration("composite")))), null);
+        byte[] bytes = PhysicalExecutionPlanCanonicalCodec.encode(plan);
+        var decoded = PhysicalExecutionPlanCanonicalCodec.decode(bytes);
+        assertThat(decoded).isEqualTo(plan);
+        assertThat(PhysicalExecutionPlanCanonicalCodec.encode(decoded)).isEqualTo(bytes);
     }
 
     @Test

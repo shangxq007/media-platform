@@ -441,12 +441,11 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                             if (audio) {
                                 var gainKeys = revision.gain(clip.clipId()).map(RenderDependency.GainRamp::new);
                                 var authoredFades = revision.fades(clip.clipId());
-                                // An outgoing input's range ends at cut + duration in the render plan.
-                                // The crossfade release therefore starts precisely at the original cut.
-                                // Conflicting authored edge fades were rejected by Timeline validation.
-                                var fades = new RenderDependency.AudioFades(
-                                        attackByClip.getOrDefault(clip.clipId(), authoredFades.in()),
-                                        releaseByClip.getOrDefault(clip.clipId(), authoredFades.out()));
+                                // A transition may extend the render placement, but its gain
+                                // envelope does not replace the clip's authored edge fades.
+                                var fades = new RenderDependency.AudioFades(authoredFades.in(), authoredFades.out(),
+                                        attackByClip.getOrDefault(clip.clipId(), MediaTime.ZERO),
+                                        releaseByClip.getOrDefault(clip.clipId(), MediaTime.ZERO));
                                 var gain = route != null ? route.gain() : null;
                                 var mute = route != null ? route.mute() : null;
                                 var balance = route != null ? route.balance() : null;

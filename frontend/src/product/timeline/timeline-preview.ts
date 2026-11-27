@@ -113,11 +113,11 @@ export function audioFadeEnvelope(fades: ProjectedAudioFades, start: Rational, e
 /** Playback-only projection. Shared-cut audio fades extend A's pinned source,
  * without modifying any canonical range, route or manual key.
  */
-export function audioCrossfadeClip(clip: ProjectedClip, transitions: readonly ProjectedTransition[]): ProjectedClip {
+export function audioCrossfadePlacement(clip: ProjectedClip, transitions: readonly ProjectedTransition[]) {
   const incoming = transitions.find(t => t.audioCrossfade && t.incomingClipId === clip.clipId)
   const outgoing = transitions.find(t => t.audioCrossfade && t.outgoingClipId === clip.clipId)
-  if (!incoming && !outgoing) return clip
-  return { ...clip, end: outgoing ? add(clip.end, outgoing.duration) : clip.end,
-    audioFades: { fadeIn: incoming?.duration ?? clip.audioFades?.fadeIn ?? ZERO,
-      fadeOut: outgoing?.duration ?? clip.audioFades?.fadeOut ?? ZERO } }
+  return {
+    end: outgoing ? add(clip.end, outgoing.duration) : clip.end,
+    transitionFades: { fadeIn: incoming?.duration ?? ZERO, fadeOut: outgoing?.duration ?? ZERO },
+  }
 }

@@ -198,25 +198,43 @@ public sealed interface RenderDependency permits
     record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
             double left, double right, double top, double bottom, double opacity) {}
 
-    /** Exact edge durations on the provider-neutral timed audio input. */
-    record AudioFades(MediaTime in, MediaTime out) {
+    /** Independent authored-edge and shared-cut envelopes on a timed audio input. */
+    record AudioFades(MediaTime in, MediaTime out, MediaTime crossfadeIn, MediaTime crossfadeOut) {
         public static final AudioFades NONE = new AudioFades(MediaTime.ZERO, MediaTime.ZERO);
         public static final String TIME_PATTERN = ClipAudioFades.TIME_PATTERN;
 
-        public AudioFades {
-            // The render projection shares canonical validation, not canonical
-            // clip effect instances or their ownership.
-            new ClipAudioFades(in, out);
+        public AudioFades(MediaTime in, MediaTime out) {
+            this(in, out, MediaTime.ZERO, MediaTime.ZERO);
         }
 
-        public boolean active() { return in.ticks() > 0 || out.ticks() > 0; }
+        public AudioFades {
+            new ClipAudioFades(in, out);
+            new ClipAudioFades(crossfadeIn, crossfadeOut);
+            if ((in.ticks() > 0 && crossfadeIn.ticks() > 0) || (out.ticks() > 0 && crossfadeOut.ticks() > 0)) {
+                throw new IllegalArgumentException("Authored edge fade conflicts with a shared-cut transition");
+            }
+        }
 
-        public void requireFits(MediaTime authoredDuration) {
-            new ClipAudioFades(in, out).requireFits(authoredDuration);
+        public boolean active() { return in.ticks() > 0 || out.ticks() > 0 || hasCrossfade(); }
+
+        public boolean hasCrossfade() { return crossfadeIn.ticks() > 0 || crossfadeOut.ticks() > 0; }
+
+        public void requireFits(MediaTime renderedDuration) {
+            // Only the crossfade owns the outgoing source tail beyond the authored clip.
+            MediaTime clipDuration = renderedDuration.subtract(crossfadeOut);
+            new ClipAudioFades(in, out).requireFits(clipDuration);
+            if (crossfadeIn.isGreaterThan(clipDuration)) {
+                throw new IllegalArgumentException("Crossfade attack exceeds the authored clip duration");
+            }
         }
 
         public static AudioFades parse(String fadeIn, String fadeOut) {
-            return new AudioFades(ClipAudioFades.parseDuration(fadeIn), ClipAudioFades.parseDuration(fadeOut));
+            return parse(fadeIn, fadeOut, "0", "0");
+        }
+
+        public static AudioFades parse(String fadeIn, String fadeOut, String crossfadeIn, String crossfadeOut) {
+            return new AudioFades(ClipAudioFades.parseDuration(fadeIn), ClipAudioFades.parseDuration(fadeOut),
+                    ClipAudioFades.parseDuration(crossfadeIn), ClipAudioFades.parseDuration(crossfadeOut));
         }
     }
 
@@ -334,11 +352,11 @@ public sealed interface RenderDependency permits
                 ramp.keys().requireInside(authoredStart, authoredEnd);
                 ramp.keys().requireBounds(transform);
             });
+            java.util.Objects.requireNonNull(fades, "fades");
             gainKeys.ifPresent(ramp -> {
                 if (!audio) throw new IllegalArgumentException("Gain channels require audio");
-                ramp.keys().requireInside(authoredStart, authoredEnd);
+                ramp.keys().requireInside(authoredStart, authoredEnd.subtract(fades.crossfadeOut()));
             });
-            java.util.Objects.requireNonNull(fades, "fades");
             if (fades.active()) {
                 if (!audio) throw new IllegalArgumentException("Audio fades require audio");
                 fades.requireFits(authoredEnd.subtract(authoredStart));
@@ -447,7 +465,9 @@ public sealed interface RenderDependency permits
                             + ":" + d.duration()).orElse("")
                     + opacityKeys.map(k -> ":opacity:" + k.firstTime() + ":" + k.firstValue() + ":" + k.lastTime() + ":" + k.lastValue()).orElse("")
                     + positionKeys.map(p -> ":position:" + p.canonicalSamples()).orElse("")
-                    + scaleKeys.map(k -> ":scale:" + k.canonicalSamples()).orElse("");
+                    + scaleKeys.map(k -> ":scale:" + k.canonicalSamples()).orElse("")
+                    + (fades.hasCrossfade() ? ":audio-crossfade:" + fades.in() + ":" + fades.out()
+                            + ":" + fades.crossfadeIn() + ":" + fades.crossfadeOut() : "");
         }
     }
 }

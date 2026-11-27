@@ -555,7 +555,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
         }
         if (dependency instanceof RenderDependency.TimedTrackInput timed) {
-            writer.field("variant", timed.fades().active() ? "TIMED_TRACK_AUDIO_FADES_V1"
+            writer.field("variant", timed.fades().hasCrossfade() ? "TIMED_TRACK_AUDIO_CROSSFADE_V1"
+                    : timed.fades().active() ? "TIMED_TRACK_AUDIO_FADES_V1"
                     : timed.gainKeys().isPresent() ? "TIMED_TRACK_GAIN_V1"
                     : timed.scaleKeys().isPresent() ? "TIMED_TRACK_SCALE_V1"
                     : timed.positionKeys().isPresent() ? "TIMED_TRACK_POSITION_V1"
@@ -591,8 +592,12 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                                     .field("duration", dissolve.duration().toString()).build()).orElse(null));
             if (timed.fades().active()) {
                 writer.field("audioFadeIn", timed.fades().in().toString())
-                        .field("audioFadeOut", timed.fades().out().toString())
-                        .field("gainEnvelope", timed.gainKeys().map(RenderDependency.GainRamp::canonicalSamples).orElse(""));
+                        .field("audioFadeOut", timed.fades().out().toString());
+                if (timed.fades().hasCrossfade()) {
+                    writer.field("crossfadeIn", timed.fades().crossfadeIn().toString())
+                            .field("crossfadeOut", timed.fades().crossfadeOut().toString());
+                }
+                writer.field("gainEnvelope", timed.gainKeys().map(RenderDependency.GainRamp::canonicalSamples).orElse(""));
             } else {
                 timed.gainKeys().ifPresent(g -> writer.field("gainEnvelope", g.canonicalSamples()));
             }
@@ -625,7 +630,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
             case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
-            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1", "TIMED_TRACK_SCALE_V1", "TIMED_TRACK_GAIN_V1", "TIMED_TRACK_AUDIO_FADES_V1" -> readTimedTrack(reader, variant);
+            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1", "TIMED_TRACK_SCALE_V1", "TIMED_TRACK_GAIN_V1", "TIMED_TRACK_AUDIO_FADES_V1",
+                    "TIMED_TRACK_AUDIO_CROSSFADE_V1" -> readTimedTrack(reader, variant);
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }
@@ -653,10 +659,16 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         var authoredEnd = MediaTime.parse(reader.field("authoredEnd"));
         var dissolve = dissolve(reader.optionalNested());
         var fades = RenderDependency.AudioFades.NONE;
-        boolean faded = variant.equals("TIMED_TRACK_AUDIO_FADES_V1");
+        boolean crossfaded = variant.equals("TIMED_TRACK_AUDIO_CROSSFADE_V1");
+        boolean faded = crossfaded || variant.equals("TIMED_TRACK_AUDIO_FADES_V1");
         if (faded) {
-            fades = RenderDependency.AudioFades.parse(reader.field("audioFadeIn"), reader.field("audioFadeOut"));
-            if (!fades.active()) throw new IllegalArgumentException("Fade dependency must have an active edge");
+            String in = reader.field("audioFadeIn");
+            String out = reader.field("audioFadeOut");
+            fades = crossfaded ? RenderDependency.AudioFades.parse(in, out, reader.field("crossfadeIn"), reader.field("crossfadeOut"))
+                    : RenderDependency.AudioFades.parse(in, out);
+            if (!fades.active() || crossfaded != fades.hasCrossfade()) {
+                throw new IllegalArgumentException("Audio envelope dependency must have the declared active edges");
+            }
         }
         String samples = faded || variant.equals("TIMED_TRACK_GAIN_V1") ? reader.field("gainEnvelope") : "";
         if (samples.isEmpty() && variant.equals("TIMED_TRACK_GAIN_V1")) {

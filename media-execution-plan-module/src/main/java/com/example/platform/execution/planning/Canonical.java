@@ -273,7 +273,9 @@ public final class Canonical {
                     + timed.scaleKeys().map(k -> "|scale|" + framed(k.canonicalSamples())).orElse("")
                     + timed.gainKeys().map(k -> "|gain-envelope|" + framed(k.canonicalSamples())).orElse("")
                     + (timed.fades().active() ? "|audio-fades|" + framed(timed.fades().in().toString())
-                            + "|" + framed(timed.fades().out().toString()) : "");
+                            + "|" + framed(timed.fades().out().toString()) : "")
+                    + (timed.fades().hasCrossfade() ? "|audio-crossfade|" + framed(timed.fades().crossfadeIn().toString())
+                            + "|" + framed(timed.fades().crossfadeOut().toString()) : "");
         }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
     }

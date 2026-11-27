@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeClipAt, audioCrossfadeClip, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
+import { activeClipAt, audioCrossfadePlacement, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
 import { decorationVisible, type SubtitleCue } from './subtitle-cues'
 import { projectTimeline } from './timeline-projection'
 import { compare, formatRational, parseRational } from './trim'
@@ -125,12 +125,30 @@ it('previews independent audio weights on a shared cut and never moves either au
   const right = { ...projection.clips[1], start: left.end }
   const blend = { transitionId: 'blend', outgoingClipId: left.clipId, incomingClipId: right.clipId,
     duration: t('1'), outgoingHandle: true, audioCrossfade: true as const }
-  const a = audioCrossfadeClip(left, [blend]), b = audioCrossfadeClip(right, [blend])
+  const a = audioCrossfadePlacement(left, [blend]), b = audioCrossfadePlacement(right, [blend])
   expect(formatRational(left.end)).toBe('2/1')
   expect(formatRational(a.end)).toBe('3/1')
-  expect(a.sourceEnd).toBe(left.sourceEnd)
-  expect(b.sourceStart).toBe(right.sourceStart)
-  const ratio = (c: typeof a, time: string) => audioFadeEnvelope(c.audioFades!, c.start, c.end, t(time)).value
-  expect(['2','9/4','5/2','11/4','3'].map(x => ratio(a,x))).toEqual([1,.75,.5,.25,0])
-  expect(['2','9/4','5/2','11/4','3'].map(x => ratio(b,x))).toEqual([0,.25,.5,.75,1])
+  expect(b.end).toBe(right.end)
+  const ratio = (c: typeof a, start: ReturnType<typeof t>, time: string) =>
+    audioFadeEnvelope(c.transitionFades, start, c.end, t(time)).value
+  expect(['2','9/4','5/2','11/4','3'].map(x => ratio(a,left.start,x))).toEqual([1,.75,.5,.25,0])
+  expect(['2','9/4','5/2','11/4','3'].map(x => ratio(b,right.start,x))).toEqual([0,.25,.5,.75,1])
+})
+
+
+it('initializes each overlapping ramp on an exact seek without flattening their product', () => {
+  const incoming = { ...projection.clips[1], start: t('4'), end: t('7'),
+    audioFades: { fadeIn: t('0'), fadeOut: t('5/2') } }
+  const placement = audioCrossfadePlacement(incoming, [{ transitionId: 'blend', outgoingClipId: 'previous',
+    incomingClipId: incoming.clipId, duration: t('1'), outgoingHandle: true, audioCrossfade: true }])
+  for (const [time, weight] of [['9/2', .5], ['19/4', .675], ['39/8', .74375], ['5', .8]] as const) {
+    const cut = audioFadeEnvelope(placement.transitionFades, incoming.start, placement.end, t(time))
+    const edge = audioFadeEnvelope(incoming.audioFades, incoming.start, incoming.end, t(time))
+    expect(cut.value * edge.value).toBeCloseTo(weight, 14)
+    if (time === '19/4') {
+      expect(cut.attackEnd).toEqual(t('5'))
+      expect(edge.releaseEnd).toEqual(t('7'))
+      expect(edge.releaseStart).toBeNull()
+    }
+  }
 })
