@@ -279,24 +279,22 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     return 'max(1,min(' + str(limit) + ',floor((' + str(axis) + ')*' + factor + '+0.5)))'
 
                 # Low-pass from the cropped source at the current effective dimensions.
+                # Swscale widens its triangle kernel during reduction, without the
+                # ringing of a cubic kernel as fine detail crosses the output lattice.
                 # The scaler and GEQ use the same exact aligned frame index (n and N).
                 # Padding fixes the downstream raster, so neither geometry nor the
                 # frame counter restarts when swscale changes its internal footprint.
                 scale_n = '((' + frame_curve(scales, 1, origin, first_frame, 'n') + ')/1000000)'
                 layer = ff.ff_filter(layer, 'format', 'gbrap')
                 layer = ff.ff_filter(layer, 'premultiply', inplace=1)
-                # Share the packed-RGB scale path with unanimated transforms.
-                layer = ff.ff_filter(layer, 'format', 'rgba')
                 layer = ff.ff_filter(layer, 'scale', 'w=' + texture_dimension(width, tw, scale_n)
                                      + ':h=' + texture_dimension(height, th, scale_n)
-                                     + ':eval=frame:flags=bicubic')
-                layer = ff.ff_filter(layer, 'format', 'rgba')
+                                     + ':eval=frame:flags=bilinear')
                 layer = ff.ff_filter(layer, 'setsar', '1')
                 # GEQ clamps its sample origin to the penultimate texel. Retain
                 # two transparent texels at the right/bottom even at peak zoom.
                 layer = ff.ff_filter(layer, 'pad', 'w=' + str(tw + 3) + ':h=' + str(th + 3)
                                      + ':x=1:y=1:color=black@0:eval=frame')
-                layer = ff.ff_filter(layer, 'format', 'gbrap')
 
                 radians = math.radians(float(placement[10]))
                 cos, sin = math.cos(radians), math.sin(radians)
