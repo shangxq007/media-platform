@@ -4,7 +4,13 @@ import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
 import { SourceBrowser } from './SourceBrowser'
 import type { AssetSourcePin } from './gateways'
 import type { ProjectedTrack, ProjectedTransition } from './timeline-projection'
-import { add, compare, formatRational, parseRational, subtract, ZERO } from './trim'
+import { add, compare, formatRational, parseRational, subtract, ZERO, type Rational } from './trim'
+
+function missingDuration(required: Rational, available: Rational): string {
+  const missing = subtract(required, available)
+  const amount = missing.denominator === 1n ? String(missing.numerator) : formatRational(missing)
+  return amount + (compare(missing, { numerator: 1n, denominator: 1n }) === 0 ? ' second' : ' seconds')
+}
 
 export function ReplaceVoiceoverEdit({ project, tracks, transitions, onPreview, ...props }: ConfirmedEditProps & {
   project: string
@@ -29,9 +35,11 @@ export function ReplaceVoiceoverEdit({ project, tracks, transitions, onPreview, 
     ? 'Replace voiceover requires forward playback at normal speed.'
     : source && streams.length !== 1 ? 'This editor and renderer require a source with one supported audio stream.'
     : !start || compare(start, ZERO) < 0 ? 'Enter a nonnegative exact source start.'
-    : available && required && end && compare(required, available) > 0
-      ? compare(end, available) > 0 ? 'The replacement is too short for the clip range.'
-        : 'The replacement covers the clip but is too short for its outgoing crossfade handle.' : null
+    : available && end && compare(end, available) > 0
+      ? `The replacement is missing ${missingDuration(end, available)} for the visible clip range.`
+    : available && required && compare(required, available) > 0
+      ? `The replacement covers the visible clip range but is missing ${missingDuration(required, available)} for its outgoing crossfade handle.`
+    : null
   return <ConfirmedClipEdit {...props} edit="replace voiceover" onPreview={onPreview}
     inputIdentity={JSON.stringify([targetId, source?.artifactId, streamId, sourceIn])}
     draft={target && source && stream && start && end && required && available && !reason ? () => ({
