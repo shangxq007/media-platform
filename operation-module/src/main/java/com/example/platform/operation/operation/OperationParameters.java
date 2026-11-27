@@ -141,8 +141,8 @@ public sealed interface OperationParameters permits
         }
     }
 
+    /** An omitted field preserves the edge. An exact zero clears it. */
     @org.springframework.modulith.NamedInterface("invocation")
-    /** A null field was omitted; an exact zero explicitly clears that edge. */
     record AudioFadeParameters(MediaTime fadeIn, MediaTime fadeOut) implements OperationParameters {
         public AudioFadeParameters {
             if (fadeIn != null && fadeIn.ticks() < 0 || fadeOut != null && fadeOut.ticks() < 0) {
@@ -151,6 +151,7 @@ public sealed interface OperationParameters permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record GainParameters(com.example.platform.timeline.semantics.effect.GainKeys keys) implements OperationParameters {
         public GainParameters { java.util.Objects.requireNonNull(keys); }
     }
