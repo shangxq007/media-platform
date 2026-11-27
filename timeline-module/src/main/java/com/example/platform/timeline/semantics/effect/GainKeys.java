@@ -11,7 +11,7 @@ import java.util.Optional;
 public record GainKeys(List<Key> keys) {
     public static final String PATH = "audio.gainMultiplierMicros";
     public static final int MAX_KEYS = PositionKeys.MAX_KEYS;
-    public static final long MAX_MULTIPLIER = 1_000_000;
+    public static final int MAX_MULTIPLIER = 1_000_000;
 
     public record Key(MediaTime time, long multiplierMicros) {
         public Key {
