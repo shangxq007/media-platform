@@ -82,3 +82,23 @@ it('interpolates a uniform scale curve exactly at its rational keys and holds it
     .toEqual([1,1,1.25,1.5,1,1])
   expect(scaleAt([], parseRational('73/24')!)).toBe(1)
 })
+
+it('reopens the saved scale channel without replacing the authored transform', () => {
+  const media = { clipId: 'markers', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream',
+    contentDigest: 'a'.repeat(64), startTime: '1/1', endTime: '6/1', trimStart: '0/1', trimEnd: '5/1',
+    temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' },
+    transform: { format: 'composition-transform-micro-v1', positionXMicros: 62500, positionYMicros: 50000,
+      scaleXMicros: 500000, scaleYMicros: 400000, rotationMicroDegrees: 0, cropLeftMicros: 0, cropRightMicros: 1000000,
+      cropTopMicros: 0, cropBottomMicros: 1000000, opacityMicros: 1000000 } }
+  const animation = { automationId: 'scale-markers', targetEntityId: 'markers', parameterPath: 'transform.scaleMultiplierMicros',
+    valueType: 'float', extrapolation: 'HOLD', keyframes: [
+      { keyframeId: 'p1', time: '3/2', value: 1000000, interpolation: 'LINEAR' },
+      { keyframeId: 'p2', time: '73/24', value: 1500000, interpolation: 'LINEAR' },
+    ] }
+  const [clip] = projectTimeline({ schemaVersion: 'timeline-1.0', automations: [animation],
+    tracks: [{ trackId: 'trace', type: 'video', clips: [media] }] }).clips
+  expect(clip.transform.scaleX).toBe(.5)
+  expect(clip.transform.scaleY).toBe(.4)
+  expect(clip.scaleKeys?.map(k => [formatRational(k.time), k.multiplierMicros]))
+    .toEqual([['3/2', 1000000], ['73/24', 1500000]])
+})

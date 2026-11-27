@@ -146,7 +146,7 @@ public enum MediaLoweringEnvelope {
             var transform = clip.placement();
             if (!clip.audio() && !fitsIntermediateRaster(extent.raster(), transform.scaleX(),
                     transform.scaleY(), transform.degrees())) return false;
-            if (clip.scaleKeys().filter(keys -> keys.keys().stream().anyMatch(k -> k.multiplierMicros() != 1_000_000)).isPresent()
+            if (clip.scaleKeys().filter(RenderDependency.ScaleRamp::changesScale).isPresent()
                     && !fitsAnimatedScaleRaster(extent.raster(), transform.scaleX(), transform.scaleY(), transform.degrees())) return false;
             lanes.computeIfAbsent(new Lane(clip.layer(), clip.audio()), ignored -> new ArrayList<>()).add(clip);
         }

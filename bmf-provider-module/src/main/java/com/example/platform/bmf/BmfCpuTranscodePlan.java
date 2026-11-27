@@ -54,7 +54,7 @@ public record BmfCpuTranscodePlan(
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
                              Optional<RenderDependency.OpacityRamp> opacityKeys,
                              Optional<RenderDependency.PositionRamp> positionKeys,
-                             Optional<com.example.platform.timeline.semantics.effect.ScaleKeys> scaleKeys) {
+                             Optional<RenderDependency.ScaleRamp> scaleKeys) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
                              VideoPlacement transform,

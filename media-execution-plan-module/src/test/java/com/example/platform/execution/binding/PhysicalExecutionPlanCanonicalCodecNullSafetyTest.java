@@ -141,7 +141,7 @@ class PhysicalExecutionPlanCanonicalCodecNullSafetyTest {
                         "transition", "outgoing", "incoming", TWO)),
                 java.util.Optional.of(new com.example.platform.render.domain.renderplan.RenderDependency.OpacityRamp(
                         TWO, 0.2, MediaTime.ofMillis(4000), 0.9)), java.util.Optional.of(position),
-                java.util.Optional.of(com.example.platform.timeline.semantics.effect.ScaleKeys.parseSamples(
+                java.util.Optional.of(com.example.platform.render.domain.renderplan.RenderDependency.ScaleRamp.parseSamples(
                         "73/24;1000000|7/2;1500000|4/1;1000000")));
         var input = new InputBinding(new ExecutionInputId("input-clip"), "composite",
                 new ExecutionStepId("composite"), new RenderNodeId("render-composite"),

@@ -44,8 +44,13 @@ public record ScaleKeys(List<Key> keys) {
     }
 
     public void requireBounds(VideoTransform transform) {
-        long min = Math.min(transform.scaleXMicros(), transform.scaleYMicros());
-        long max = Math.max(transform.scaleXMicros(), transform.scaleYMicros());
+        requireBounds(transform.scaleXMicros(), transform.scaleYMicros());
+    }
+
+    public void requireBounds(int scaleXMicros, int scaleYMicros) {
+        long min = Math.min(scaleXMicros, scaleYMicros);
+        long max = Math.max(scaleXMicros, scaleYMicros);
+        if (min < 1 || max > 10 * UNIT) throw new IllegalArgumentException("Invalid static scale axes");
         long lower = (UNIT + min - 1) / min;
         long upper = MAX_MULTIPLIER / max;
         // The linear curve cannot overshoot its endpoints.

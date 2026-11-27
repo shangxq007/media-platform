@@ -144,6 +144,7 @@ public sealed interface OperationParameters permits
         public ScaleParameters { java.util.Objects.requireNonNull(keys); }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record PositionParameters(com.example.platform.timeline.semantics.effect.PositionKeys keys) implements OperationParameters {
         public PositionParameters { java.util.Objects.requireNonNull(keys); }
     }

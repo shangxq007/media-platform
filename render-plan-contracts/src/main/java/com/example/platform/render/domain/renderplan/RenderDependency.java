@@ -149,6 +149,30 @@ public sealed interface RenderDependency permits
         }
     }
 
+    /** Typed graph-side copy of the uniform scale channel. Providers do not depend on Timeline authoring. */
+    record ScaleRamp(ScaleKeys keys) {
+        public ScaleRamp {
+            if (keys.keys().isEmpty()) throw new IllegalArgumentException("Scale ramp cannot be empty");
+        }
+
+        public ScaleRamp relativeTo(com.example.platform.shared.time.MediaTime origin) {
+            return new ScaleRamp(keys.relativeTo(origin));
+        }
+
+        public String canonicalSamples() { return keys.canonicalSamples(); }
+
+        public boolean changesScale() {
+            return keys.keys().stream().anyMatch(k -> k.multiplierMicros() != 1_000_000);
+        }
+
+        public void validateRelative(com.example.platform.shared.time.MediaTime duration, int sx, int sy) {
+            keys.requireInside(com.example.platform.shared.time.MediaTime.ZERO, duration);
+            keys.requireBounds(sx, sy);
+        }
+
+        public static ScaleRamp parseSamples(String samples) { return new ScaleRamp(ScaleKeys.parseSamples(samples)); }
+    }
+
     record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
             double left, double right, double top, double bottom, double opacity) {}
 
@@ -162,7 +186,7 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
                            java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys,
-                           Optional<PositionRamp> positionKeys, Optional<ScaleKeys> scaleKeys)
+                           Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys)
             implements RenderDependency {
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
@@ -216,10 +240,10 @@ public sealed interface RenderDependency permits
                 if (audio) throw new IllegalArgumentException("Position keys require a video placement");
                 p.keys().requireInside(authoredStart, authoredEnd);
             });
-            scaleKeys.ifPresent(keys -> {
-                if (audio || keys.keys().isEmpty()) throw new IllegalArgumentException("Scale channels require nonempty video keys");
-                keys.requireInside(authoredStart, authoredEnd);
-                keys.requireBounds(transform);
+            scaleKeys.ifPresent(ramp -> {
+                if (audio) throw new IllegalArgumentException("Scale channels require video");
+                ramp.keys().requireInside(authoredStart, authoredEnd);
+                ramp.keys().requireBounds(transform);
             });
             if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
@@ -257,7 +281,7 @@ public sealed interface RenderDependency permits
                 com.example.platform.shared.time.MediaTime end, int layer, com.example.platform.timeline.semantics.effect.VideoTransform transform,
                 VideoEffectSpec effect, com.example.platform.shared.time.MediaTime authoredStart,
                 com.example.platform.shared.time.MediaTime authoredEnd, Optional<Dissolve> dissolve,
-                Optional<OpacityRamp> opacityKeys, Optional<PositionRamp> positionKeys, Optional<ScaleKeys> scaleKeys) {
+                Optional<OpacityRamp> opacityKeys, Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys) {
             return new TimedTrackInput(start, end, layer, false,
                     com.example.platform.audio.domain.mix.AudioGain.defaultGain(),
                     com.example.platform.audio.domain.mix.AudioMute.defaultMute(),

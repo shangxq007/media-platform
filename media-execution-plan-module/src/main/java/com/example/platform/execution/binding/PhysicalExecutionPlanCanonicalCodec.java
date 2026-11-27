@@ -650,8 +650,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
 
     private static TimedAutomation timedAutomation(FrameReader reader, String variant) {
         boolean scaled = variant.equals("TIMED_TRACK_SCALE_V1");
-        var scales = scaled ? Optional.of(com.example.platform.timeline.semantics.effect.ScaleKeys.parseSamples(reader.field("scales")))
-                : Optional.<com.example.platform.timeline.semantics.effect.ScaleKeys>empty();
+        var scales = scaled ? Optional.of(RenderDependency.ScaleRamp.parseSamples(reader.field("scales")))
+                : Optional.<RenderDependency.ScaleRamp>empty();
         boolean positioned = variant.equals("TIMED_TRACK_POSITION_V1") || (scaled && reader.fieldBoolean("hasPosition"));
         var positions = positioned ? Optional.of(RenderDependency.PositionRamp.parseSamples(reader.field("positions")))
                 : Optional.<RenderDependency.PositionRamp>empty();
@@ -663,7 +663,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
     }
 
     private record TimedAutomation(Optional<RenderDependency.OpacityRamp> opacity,
-            Optional<RenderDependency.PositionRamp> positions, Optional<com.example.platform.timeline.semantics.effect.ScaleKeys> scales) {}
+            Optional<RenderDependency.PositionRamp> positions, Optional<RenderDependency.ScaleRamp> scales) {}
 
     private static Optional<RenderDependency.Dissolve> dissolve(FrameReader reader) {
         if (reader == null) return Optional.empty();

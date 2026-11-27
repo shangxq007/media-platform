@@ -498,12 +498,9 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[1]);
             var duration = com.example.platform.shared.time.MediaTime.parse(fields[2]);
             if (elapsed.compareTo(duration) >= 0 || clock.ticks() < 0) return false;
-            var keys = com.example.platform.timeline.semantics.effect.ScaleKeys.parseSamples(fields[3]);
-            keys.requireInside(com.example.platform.shared.time.MediaTime.ZERO, duration);
-            keys.requireBounds(new com.example.platform.timeline.semantics.effect.VideoTransform(0, 0,
-                    sx.movePointRight(6).intValueExact(), sy.movePointRight(6).intValueExact(), 0,
-                    0, 1_000_000, 0, 1_000_000, 1_000_000));
-            return keys.keys().stream().allMatch(k -> k.multiplierMicros() == 1_000_000)
+            var ramp = RenderDependency.ScaleRamp.parseSamples(fields[3]);
+            ramp.validateRelative(duration, sx.movePointRight(6).intValueExact(), sy.movePointRight(6).intValueExact());
+            return !ramp.changesScale()
                     || com.example.platform.execution.compatibility.MediaLoweringEnvelope.fitsAnimatedScaleRaster(
                             raster, sx.doubleValue(), sy.doubleValue(), degrees.doubleValue());
         } catch (IllegalArgumentException | ArithmeticException invalid) {
