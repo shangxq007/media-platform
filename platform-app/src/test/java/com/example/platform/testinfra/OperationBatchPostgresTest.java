@@ -1364,8 +1364,17 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     void fadeConfirmationPreservesManualKeysAndReplaysWithoutAnotherRevision() {
         var manual = com.example.platform.timeline.semantics.effect.GainKeys.parseSamples(
                 "3/2;500000|2/1;1000000").curve("clip-a", null);
+        String pin = "a".repeat(64);
+        jdbc.update("""
+                insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
+                    media_type,artifact_kind,state,schema_version,created_at)
+                values ('audio-fade-source',?,?,?,1024,'AUDIO','SOURCE_MEDIA','AVAILABLE',1,now())
+                """, TENANT, PROJECT, pin);
+        var pinned = new TimelineClip("clip-a", "audio-asset", "audio-stream", "audio-fade-source", pin,
+                time("1/1"), time("5/1"), MediaTime.ZERO, time("4/1"), "MEDIA_STREAM",
+                ConstantRateTemporalMapping.identity());
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelineTrack("audio-main", "Audio", TrackType.AUDIO, List.of(clip("clip-a", 1, 5)))),
+                List.of(new TimelineTrack("audio-main", "Audio", TrackType.AUDIO, List.of(pinned))),
                 new TimelineMetadata("fades", "exact", Map.of()), null, List.of(), List.of(), List.of(), List.of(manual));
         var base = saveRevision(doc);
         var request = fadeRequest(base, "fade-both", time("1/1"), time("1/2"));

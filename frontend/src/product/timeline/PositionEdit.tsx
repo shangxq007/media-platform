@@ -213,7 +213,7 @@ export function AudioFadeEdit({ tracks, onPreview, ...props }: ConfirmedEditProp
       } },
       ranges: ['Fade-in: ' + wire(a) + ' s', 'Fade-out: ' + wire(b) + ' s'],
     }) : null}>
-    <label>Fade clip <select value={clip?.clipId ?? ''} onChange={e => { select(e.target.value); update(null) }}>
+    <label>Fade clip <select aria-label="Fade clip" value={clip?.clipId ?? ''} onChange={e => { select(e.target.value); update(null) }}>
       <option value="">Choose an audio clip</option>{clips.map(c => <option key={c.clipId}>{c.clipId}</option>)}
     </select></label>
     {clip && <>
