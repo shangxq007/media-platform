@@ -3,6 +3,10 @@ package com.example.platform.render.domain.renderplan;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.example.platform.operation.operation.OperationRequest;
+import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.operation.operation.OperationRequestResolver;
+import com.example.platform.operation.operation.OperationResolutionException;
 import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationInstance;
 import com.example.platform.operation.operation.OperationParameters;
@@ -122,7 +126,7 @@ class TransitionEffectOperationPlanningTest {
     }
 
     @Test
-    void audioCrossfadeIsAnIndependentTransitionAtTheSameCut() {
+    void audioCrossfadeIsAnIndependentTransitionAtTheSameCut() throws Exception {
         var a = clip("a", MediaTime.ZERO, MediaTime.ofRational(4, 1));
         var b = clip("b", MediaTime.ofRational(4, 1), MediaTime.ofRational(7, 1));
         var pictureA = clip("picture-a", MediaTime.ZERO, MediaTime.ofRational(4, 1));
@@ -144,9 +148,33 @@ class TransitionEffectOperationPlanningTest {
         assertThat(validate(allowed)).isEmpty();
         assertThatThrownBy(() -> plan(both, OperationDefinition.V3.DELETE_AUDIO_CROSSFADE,
                 "a", new OperationParameters.TransitionDeleteParameters("video"))).isInstanceOf(PlanException.class);
-        var cleared = plan(both, OperationDefinition.V3.DELETE_AUDIO_CROSSFADE, "a",
-                new OperationParameters.TransitionDeleteParameters("audio")).candidateTimeline();
+        var update = OperationDefinition.V3.UPDATE_AUDIO_CROSSFADE;
+        var delete = OperationDefinition.V3.DELETE_AUDIO_CROSSFADE;
+        var half = MediaTime.ofRational(1, 2);
+        var retimed = resolveTransition(both, update, "audio",
+                new OperationParameters.TransitionUpdateParameters("audio", half));
+        assertThat(retimed.getTransitions()).contains(video.getTransitions().getFirst())
+                .anySatisfy(t -> {
+                    assertThat(t.isAudioCrossfade()).isTrue();
+                    assertThat(t.duration()).isEqualTo(half);
+                });
+        assertThatThrownBy(() -> resolveTransition(both, delete, "video",
+                new OperationParameters.TransitionDeleteParameters("video")))
+                .isInstanceOf(OperationResolutionException.class);
+        var cleared = resolveTransition(retimed, delete, "audio",
+                new OperationParameters.TransitionDeleteParameters("audio"));
         assertThat(DIGESTER.digest(cleared)).isEqualTo(DIGESTER.digest(video));
+    }
+
+    private static TimelineDocument resolveTransition(TimelineDocument base, OperationDefinition definition,
+            String id, OperationParameters parameters) throws Exception {
+        String hash = DIGESTER.digest(base);
+        var request = new OperationRequest(definition.definitionId(),
+                definition.version(), new OperationTargetRequest.TransitionTargetRequest(id),
+                parameters, REV, hash, null);
+        var resolved = OperationRequestResolver.resolve(request,
+                new OperationRequestResolver.OperationBaseContext(REV, hash, base));
+        return new OperationPlanner().plan(resolved, REV, base).candidateTimeline();
     }
 
     private static TimelineDocument dissolve(TimelineDocument base, String id, String outgoing,

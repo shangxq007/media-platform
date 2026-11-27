@@ -160,9 +160,11 @@ public final class OperationRequestResolver {
                 return new OperationTarget.AudioTarget(audioReq.audioMixInput());
             }
             case TRANSITION -> {
+                boolean audio = def.equals(OperationDefinition.V3.UPDATE_AUDIO_CROSSFADE)
+                        || def.equals(OperationDefinition.V3.DELETE_AUDIO_CROSSFADE);
                 if (!(target instanceof OperationTargetRequest.TransitionTargetRequest t)
                         || base.timeline().getTransitions().stream().filter(x -> x.transitionId().equals(t.transitionId())
-                            && x.isCrossDissolve()).count() != 1) {
+                            && (audio ? x.isAudioCrossfade() : x.isCrossDissolve())).count() != 1) {
                     throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE, "Transition unavailable");
                 }
                 return new OperationTarget.TransitionTarget(t.transitionId());

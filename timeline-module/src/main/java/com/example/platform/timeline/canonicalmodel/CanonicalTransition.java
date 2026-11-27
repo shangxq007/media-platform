@@ -2,6 +2,7 @@ package com.example.platform.timeline.canonicalmodel;
 
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.MediaTimeJsonCodec;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Map;
@@ -48,6 +49,7 @@ public record CanonicalTransition(
                 outgoing, incoming, "AUDIO", duration, "START_AT_CUT", "USE_SOURCE_HANDLES", LINEAR_CURVE);
     }
 
+    @JsonIgnore
     public boolean isAudioCrossfade() {
         return AUDIO_CROSSFADE.equals(transitionDefinitionId);
     }
