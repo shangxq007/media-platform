@@ -352,7 +352,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
             if (fx.length == 14 && (!parts[0].equals("V") || !validOpacityRamp(fx))) return false;
             if (parts[0].equals("A") && parts.length > 17
-                    && !(parts.length == 18 && validGainRamp(parts[17]))) return false;
+                    && !(parts.length == 18 && validGainRamp(parts[17], start))) return false;
             if (parts[0].equals("V") && parts.length > 17 && (
                     !(parts.length == 19 && parts[17].isEmpty()) && !validPositionRamp(parts[17], fx[8]))) return false;
             if (parts.length == 19 && !validScaleRamp(parts[18], scaleX, scaleY, degrees, raster)) return false;
@@ -489,15 +489,20 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private static boolean validGainRamp(String token) {
+    private static boolean validGainRamp(String token, BigDecimal placementStart) {
         String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
         String pair = time + ";[0-9]{1,7}";
-        if (token.length() > 1000 || !token.matches(time + "~" + time + "~" + pair + "(?:\\|" + pair + "){1,15}")) return false;
+        if (token.length() > 1000 || !token.matches(time + "~" + time + "~" + time + "~"
+                + pair + "(?:\\|" + pair + "){1,15}")) return false;
         try {
             var fields = token.split("~");
-            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[0]);
-            var duration = com.example.platform.shared.time.MediaTime.parse(fields[1]);
-            var ramp = RenderDependency.GainRamp.parseSamples(fields[2]);
+            var exactStart = com.example.platform.shared.time.MediaTime.parse(fields[0]);
+            var startSeconds = BigDecimal.valueOf(exactStart.ticks()).divide(BigDecimal.valueOf(exactStart.timeScale()),
+                    9, java.math.RoundingMode.HALF_UP);
+            if (startSeconds.compareTo(placementStart) != 0) return false;
+            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[1]);
+            var duration = com.example.platform.shared.time.MediaTime.parse(fields[2]);
+            var ramp = RenderDependency.GainRamp.parseSamples(fields[3]);
             ramp.validateRelative(duration);
             return elapsed.compareTo(duration) < 0;
         } catch (IllegalArgumentException | ArithmeticException invalid) {
