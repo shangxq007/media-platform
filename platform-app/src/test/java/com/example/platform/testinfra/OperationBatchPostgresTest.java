@@ -1400,7 +1400,8 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals("audio.fade_out", clip.getEffects().getFirst().effectKey());
         assertEquals("1/2", clip.getEffects().getFirst().parameters().get("duration"));
         var cleared = applyPrepared(fadeRequest(released, "release-removed", null, MediaTime.ZERO));
-        assertEquals(json.valueToTree(doc), json.valueToTree(saveService.findPayloadDocument(TENANT, cleared.newRevisionId()).orElseThrow()));
+        assertEquals(digester.digest(doc), digester.digest(
+                saveService.findPayloadDocument(TENANT, cleared.newRevisionId()).orElseThrow()));
     }
 
     private OperationBatchRequest fadeRequest(TimelineRevision base, String id, MediaTime in, MediaTime out) {
