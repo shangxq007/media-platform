@@ -200,6 +200,7 @@ frontend/src/product/timeline/NleWorkspace.test.tsx	REUSE	NLE_OPERATION_AND_ACCE
 frontend/src/product/timeline/NleWorkspace.tsx	REUSE	RUNTIME_CANONICAL_TIMELINE_OPERATION_WORKSPACE
 frontend/src/product/timeline/SemanticDiff.test.tsx	REUSE	SERVER_SEMANTIC_DIFF_PRESENTATION_EVIDENCE
 frontend/src/product/timeline/SemanticDiff.tsx	REUSE	READ_ONLY_SERVER_SEMANTIC_DIFF_PRESENTATION
+frontend/src/product/timeline/ReplaceVoiceoverEdit.tsx	REUSE	CANONICAL_VOICEOVER_SOURCE_SELECTION_AND_CONFIRMATION
 frontend/src/product/timeline/SourceBrowser.tsx	REUSE	SOURCE_ARTIFACT_BROWSER_AND_UPLOAD_UI
 frontend/src/product/timeline/TimelineNavigation.tsx	REUSE	BOUNDED_NLE_NAVIGATION_AND_METADATA_WITH_EXPLICIT_VERIFICATION_SOURCE
 frontend/src/product/timeline/TimelineMediaPreview.tsx	REUSE	READ_ONLY_TIMELINE_MEDIA_PREVIEW_SEQUENCER

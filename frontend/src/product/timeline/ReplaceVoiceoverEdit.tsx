@@ -44,14 +44,14 @@ export function ReplaceVoiceoverEdit({ project, tracks, transitions, onPreview, 
         ...(tail.numerator > 0n ? [`The outgoing transition uses the source through ${formatRational(required)} seconds.`] : []),
       ],
     }) : null}>
-    <label>Voiceover clip <select value={targetId} onChange={event => selectTarget(event.target.value)}>
+    <label>Voiceover clip <select aria-label="Voiceover clip" value={targetId} onChange={event => selectTarget(event.target.value)}>
       <option value="">Choose an audio clip</option>
       {clips.map(clip => <option key={clip.clipId} value={clip.clipId}>{clip.clipId} · {clip.trackId}</option>)}
     </select></label>
     {target && <SourceBrowser tenantId={props.tenant} project={project} existingAudioOnly
       onSelect={pin => { selectSource(pin); selectStream('') }} />}
     {target && source && <>
-      <label>Replacement audio stream <select value={streamId} onChange={event => selectStream(event.target.value)}>
+      <label>Replacement audio stream <select aria-label="Replacement audio stream" value={streamId} onChange={event => selectStream(event.target.value)}>
         <option value="">Choose an audio stream</option>
         {streams.map(candidate => <option key={candidate.streamId} value={candidate.streamId}>{candidate.streamId} · {candidate.duration} s</option>)}
       </select></label>

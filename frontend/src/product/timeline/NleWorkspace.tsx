@@ -353,7 +353,7 @@ export function NleWorkspace({
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
-      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide' || issuedCommand.current === 'opacity' || issuedCommand.current === 'position' || issuedCommand.current === 'scale' || issuedCommand.current === 'gain' || issuedCommand.current === 'audio fades' || issuedCommand.current === 'subtitle' || issuedCommand.current === 'dissolve' || issuedCommand.current === 'audio crossfade') && reason === 'RANGE_READBACK')
+      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide' || issuedCommand.current === 'opacity' || issuedCommand.current === 'position' || issuedCommand.current === 'scale' || issuedCommand.current === 'gain' || issuedCommand.current === 'audio fades' || issuedCommand.current === 'subtitle' || issuedCommand.current === 'dissolve' || issuedCommand.current === 'audio crossfade' || issuedCommand.current === 'replace voiceover') && reason === 'RANGE_READBACK')
       || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
       || (issuedCommand.current === 'multi-move' && reason === 'MULTI_MOVE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current

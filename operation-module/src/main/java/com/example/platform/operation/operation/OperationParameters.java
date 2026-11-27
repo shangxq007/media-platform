@@ -221,6 +221,7 @@ public sealed interface OperationParameters permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record SlipParameters(MediaTime magnitude, boolean backward) implements OperationParameters {
         public SlipParameters {
             java.util.Objects.requireNonNull(magnitude, "source offset required");
