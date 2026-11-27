@@ -71,6 +71,7 @@ public final class OperationPlanner {
         TimelineDocument candidate = switch (instance.definitionId().value()) {
             case "timeline.track.add" -> planAddTrack(instance, base, changes);
             case "timeline.clip.slide" -> planSlide(instance, base, changes);
+            case "timeline.clip.voiceover.replace" -> planVoiceoverReplacement(instance, base, changes);
             case "timeline.clip.slip" -> planSlip(instance, base, changes);
             case "timeline.clip.roll" -> planRollCut(instance, base, changes);
             case "timeline.clip.paste" -> planPasteClips(instance, base, changes, false);
@@ -814,8 +815,7 @@ public final class OperationPlanner {
                 + first.value() + " and " + second.value() + ". Remove the overlap before editing.");
     }
 
-    private static void rejectEditBinding(TimelineDocument base, TimelineClip clip, String operation) {
-        var id = clip.getClipId();
+    private static void rejectRelatedClip(TimelineDocument base, TimelineClipId id, String operation) {
         for (var relation : base.getSemanticRelationships()) {
             if ((relation instanceof GroupRelationship group && group.members().contains(id))
                     || (relation instanceof SyncRelationship sync && (sync.endpointA().equals(id) || sync.endpointB().equals(id)))
@@ -831,6 +831,11 @@ public final class OperationPlanner {
                         + key + " on clip " + id.value() + ". Resolve the relationship before editing.");
             }
         }
+    }
+
+    private static void rejectEditBinding(TimelineDocument base, TimelineClip clip, String operation) {
+        var id = clip.getClipId();
+        rejectRelatedClip(base, id, operation);
         rejectTransitionMutation(base, id, operation);
         if (base.getAutomations().stream().anyMatch(curve -> curve.targetEntityId().equals(id.value())
                 || clip.getEffects().stream().anyMatch(effect -> curve.targetEntityId().equals(effect.id())))) {
@@ -947,6 +952,37 @@ public final class OperationPlanner {
                     "Slide requires exactly one matching touching " + (left ? "left" : "right") + " neighbor on this track");
         }
         return neighbors.getFirst();
+    }
+
+    private TimelineDocument planVoiceoverReplacement(OperationInstance instance, TimelineDocument base,
+            List<PlannedChange> changes) {
+        var scope = scopeOf(instance);
+        if (scope.size() != 1) throw new PlanException(PlanErrorCode.INVALID_PLAN, "Select one independent voiceover clip");
+        var id = scope.getFirst();
+        var clip = clipOf(base, id);
+        if (base.getTracks().stream().noneMatch(track -> track.type() == com.example.platform.timeline.canonical.TrackType.AUDIO && track.clips().contains(clip))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Replace voiceover requires an independent audio track clip");
+        }
+        requireForwardUnitMedia(clip, "Replace voiceover");
+        rejectRelatedClip(base, id, "Replace voiceover");
+        var p = (OperationParameters.ReplaceVoiceoverParameters) instance.parameters();
+        try {
+            var end = p.sourceStart().add(clip.getEndTime().subtract(clip.getStartTime()));
+            if (p.artifactId().value().equals(clip.getArtifactId())
+                    && p.streamId().value().equals(clip.getMediaStreamId())
+                    && p.contentDigest().canonicalValue().equals(clip.getContentDigest())
+                    && p.sourceStart().equals(clip.getTrimStart()) && end.equals(clip.getTrimEnd())) {
+                return base;
+            }
+            var updated = new TimelineClip(id.value(), p.artifactId().value(), p.streamId().value(),
+                    p.artifactId().value(), p.contentDigest().canonicalValue(), clip.getStartTime(),
+                    clip.getEndTime(), p.sourceStart(), end, clip.getSourceKind(), clip.getTemporalMapping(),
+                    clip.getEffects(), clip.getTransform());
+            changes.add(new PlannedChange.ClipReplaced(id, updated));
+            return replaceClip(base, id, updated);
+        } catch (ArithmeticException overflow) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Replacement exceeds the exact source-time range");
+        }
     }
 
     private TimelineDocument planSlip(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {

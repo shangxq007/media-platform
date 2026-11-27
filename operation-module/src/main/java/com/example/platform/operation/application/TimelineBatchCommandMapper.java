@@ -168,6 +168,11 @@ public final class TimelineBatchCommandMapper {
                     TimelineClipId.of(requiredText(parameters, "leftClipId")), TimelineClipId.of(requiredText(parameters, "middleClipId")),
                     TimelineClipId.of(requiredText(parameters, "rightClipId")),
                     OperationParameters.SignedTimeOffset.parse(requiredText(parameters, "offset").strip()));
+            case "timeline.clip.voiceover.replace" -> new OperationParameters.ReplaceVoiceoverParameters(
+                    new com.example.platform.shared.identity.ArtifactId(requiredText(parameters, "artifactId")),
+                    com.example.platform.shared.digest.ContentDigest.sha256(requiredText(parameters, "contentDigest")),
+                    com.example.platform.media.domain.stream.MediaStreamId.of(requiredText(parameters, "mediaStreamId")),
+                    time(parameters, "sourceStart"));
             case "timeline.clip.slip" -> OperationParameters.SlipParameters.parse(requiredText(parameters, "offset").strip());
             case "timeline.clip.roll" -> new OperationParameters.RollCutParameters(requiredText(parameters, "trackId"),
                     TimelineClipId.of(requiredText(parameters, "leftClipId")), TimelineClipId.of(requiredText(parameters, "rightClipId")),

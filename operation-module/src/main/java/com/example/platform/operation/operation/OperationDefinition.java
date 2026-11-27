@@ -206,6 +206,9 @@ public record OperationDefinition(
         public static final OperationDefinition SLIDE_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.slide"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.TIMELINE, 1, 1, OperationParameters.SlideParameters.class);
+        public static final OperationDefinition REPLACE_VOICEOVER = new OperationDefinition(
+                OperationDefinitionId.of("timeline.clip.voiceover.replace"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.ReplaceVoiceoverParameters.class);
         public static final OperationDefinition SLIP_CLIP = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.slip"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.SlipParameters.class);
@@ -226,7 +229,7 @@ public record OperationDefinition(
         public static final java.util.List<OperationDefinition> ALL =
                 java.util.stream.Stream.concat(V2.ALL.stream(),
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE, RESTORE_REVISION,
-                                SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_OPACITY_KEYS, SET_POSITION_KEYS, SET_SCALE_KEYS, SET_GAIN_KEYS, SET_AUDIO_FADES, SET_SUBTITLE_CUE, REMOVE_SUBTITLE_CUE, SET_VIDEO_TRANSFORM,
+                                SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, REPLACE_VOICEOVER, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_OPACITY_KEYS, SET_POSITION_KEYS, SET_SCALE_KEYS, SET_GAIN_KEYS, SET_AUDIO_FADES, SET_SUBTITLE_CUE, REMOVE_SUBTITLE_CUE, SET_VIDEO_TRANSFORM,
                                 SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
                                 UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE, CREATE_AUDIO_CROSSFADE, UPDATE_AUDIO_CROSSFADE, DELETE_AUDIO_CROSSFADE)).toList();
         private V3() {}

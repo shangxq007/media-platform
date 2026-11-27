@@ -81,6 +81,10 @@ public final class ParameterDigest {
             return framed("slide-v1", slide.trackId(), slide.leftClipId().value(), slide.middleClipId().value(),
                     slide.rightClipId().value(), slide.offset().backward() ? "-" : "+", slide.offset().magnitude().toString());
         }
+        if (p instanceof OperationParameters.ReplaceVoiceoverParameters replacement) {
+            return framed(replacement.artifactId().value(), replacement.contentDigest().canonicalValue(),
+                    replacement.streamId().value(), replacement.sourceStart().toString());
+        }
         if (p instanceof OperationParameters.SlipParameters slip) {
             return framed("slip-v1", slip.backward() ? "-" : "+", slip.magnitude().toString());
         }

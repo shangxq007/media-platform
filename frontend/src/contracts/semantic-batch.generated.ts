@@ -31,6 +31,7 @@ export type SemanticStep =
   | { definitionId: "timeline.clip.paste"; parameters: { newClipIds: Array<string>; sourceClipIds: Array<string>; timelineStart: string; trackId: string }; version?: "1.0" }
   | { definitionId: "timeline.clip.slide"; parameters: { leftClipId: string; middleClipId: string; offset: string; rightClipId: string; trackId: string }; version?: "1.0" }
   | { definitionId: "timeline.clip.slip"; parameters: { offset: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
+  | { definitionId: "timeline.clip.voiceover.replace"; parameters: { artifactId: string; contentDigest: string; mediaStreamId: string; sourceStart: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.clip.roll"; parameters: { cutTime: string; leftClipId: string; rightClipId: string; trackId: string }; version?: "1.0" }
   | { definitionId: "timeline.clip.ripple-insert"; parameters: { newClipIds: Array<string>; sourceClipIds: Array<string>; timelineStart: string; trackId: string }; version?: "1.0" }
   | { definitionId: "timeline.clip.ripple-delete"; parameters?: {  }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }

@@ -215,6 +215,24 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         "Edit one audio crossfade per confirmation");
             }
         }
+        if (instance.parameters() instanceof OperationParameters.ReplaceVoiceoverParameters replacement) {
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                        "Replace voiceover is available on the default editing branch");
+            }
+            if (batch.operations().size() != 1) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
+                        "Replace one voiceover per confirmation");
+            }
+            var source = sourceFacts.find(batch.target().tenantId(), projectId, replacement.artifactId(), replacement.contentDigest());
+            var audio = source.stream().flatMap(facts -> facts.streams().stream())
+                    .filter(stream -> stream.kind() == com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.AUDIO)
+                    .toList();
+            if (audio.size() != 1 || !audio.getFirst().streamId().equals(replacement.streamId().value())) {
+                throw new BatchException(BatchErrorCode.STEP_RESOLUTION_FAILED, null,
+                        "Select the single supported audio stream from an authorized source version in this project");
+            }
+        }
         validateSource(instance, batch, currentCandidate, projectId);
         final OperationPlan plan;
         try {
@@ -251,6 +269,15 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                     .filter(t -> t.clips().stream().anyMatch(c -> c.getClipId().equals(ids.getFirst())))
                     .findFirst().orElseThrow();
             validateMediaRanges(batch, plan.candidateTimeline(), track.trackId(), ids, "Slip", true);
+        }
+        if (instance.parameters() instanceof OperationParameters.ReplaceVoiceoverParameters
+                && instance.target() instanceof OperationTarget.ResolvedClipScopeTarget scope) {
+            var ids = scope.resolvedScope().resolvedClipIds();
+            var track = plan.candidateTimeline().getTracks().stream()
+                    .filter(t -> t.clips().stream().anyMatch(c -> c.getClipId().equals(ids.getFirst())))
+                    .findFirst().orElseThrow();
+            validateMediaRanges(batch, plan.candidateTimeline(), track.trackId(), ids, "Replace voiceover", false);
+            // The final validator also checks the extended range of any existing outgoing crossfade.
         }
         return new StepPlan<>(plan.candidateTimeline(), instance.parameterDigest(),
                 targetIdentity(plan.sourceInstance().target()), plan.planDigest(), plan.plannedChanges().stream()
@@ -311,6 +338,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.GainParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.AudioFadeParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.ScaleParameters
+                || batch.operations().getFirst().parameters() instanceof OperationParameters.ReplaceVoiceoverParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.SlipParameters
                 || batch.operations().getFirst().parameters() instanceof OperationParameters.RollCutParameters
                 || multiMove(batch.operations().getFirst()) || rippleDelete(batch.operations().getFirst()));

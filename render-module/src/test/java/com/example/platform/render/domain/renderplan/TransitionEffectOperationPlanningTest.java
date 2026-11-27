@@ -126,6 +126,37 @@ class TransitionEffectOperationPlanningTest {
     }
 
     @Test
+    void replacingVoiceoverKeepsTheClipAndItsOutgoingTransition() {
+        var a = clip("a", MediaTime.ofRational(2, 1), MediaTime.ofRational(4, 1));
+        var b = clip("b", MediaTime.ofRational(4, 1), MediaTime.ofRational(7, 1));
+        var base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("sound", "Sound", TrackType.AUDIO, List.of(a, b))), TimelineMetadata.empty());
+        var faded = plan(base, OperationDefinition.V3.SET_AUDIO_FADES, "a",
+                new OperationParameters.AudioFadeParameters(MediaTime.ofRational(1, 2), null)).candidateTimeline();
+        var cross = plan(faded, OperationDefinition.V3.CREATE_AUDIO_CROSSFADE, "a",
+                new OperationParameters.TransitionCreateParameters("cut", "b", MediaTime.ofRational(1, 1))).candidateTimeline();
+        var input = new OperationParameters.ReplaceVoiceoverParameters(
+                new com.example.platform.shared.identity.ArtifactId("asset-replacement"),
+                com.example.platform.shared.digest.ContentDigest.sha256("a".repeat(64)),
+                com.example.platform.media.domain.stream.MediaStreamId.of("audio-stream"), MediaTime.ofRational(1, 1));
+        var replace = plan(cross, OperationDefinition.V3.REPLACE_VOICEOVER, "a", input);
+        var doc = replace.candidateTimeline();
+        var changed = doc.getTracks().getFirst().clips().getFirst();
+        assertThat(replace.plannedChanges()).hasSize(1);
+        assertThat(changed.getClipId()).isEqualTo(a.getClipId());
+        assertThat(changed.getStartTime()).isEqualTo(a.getStartTime());
+        assertThat(changed.getEndTime()).isEqualTo(a.getEndTime());
+        assertThat(changed.getTrimStart()).isEqualTo(MediaTime.ofRational(1, 1));
+        assertThat(changed.getTrimEnd()).isEqualTo(MediaTime.ofRational(3, 1));
+        assertThat(changed.getArtifactId()).isEqualTo("asset-replacement");
+        assertThat(changed.getEffects()).isEqualTo(faded.getTracks().getFirst().clips().getFirst().getEffects());
+        assertThat(doc.getTransitions()).isEqualTo(cross.getTransitions());
+        assertThat(validate(doc)).isEmpty();
+        assertThatThrownBy(() -> plan(timeline(), OperationDefinition.V3.REPLACE_VOICEOVER, "clip-a", input))
+                .isInstanceOf(PlanException.class).hasMessageContaining("independent audio");
+    }
+
+    @Test
     void audioCrossfadeIsAnIndependentTransitionAtTheSameCut() throws Exception {
         var a = clip("a", MediaTime.ZERO, MediaTime.ofRational(4, 1));
         var b = clip("b", MediaTime.ofRational(4, 1), MediaTime.ofRational(7, 1));

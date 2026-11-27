@@ -27,6 +27,7 @@ public final class TimelineOperationWireContract {
                 fields(fields, "revision-id", "trackId", "leftClipId", "middleClipId", "rightClipId");
                 fields(fields, "string", "offset");
             }
+            case "timeline.clip.voiceover.replace" -> fields(fields, "string", "artifactId", "contentDigest", "mediaStreamId", "sourceStart");
             case "timeline.clip.slip" -> fields(fields, "string", "offset");
             case "timeline.clip.roll" -> {
                 fields(fields, "revision-id", "trackId", "leftClipId", "rightClipId");

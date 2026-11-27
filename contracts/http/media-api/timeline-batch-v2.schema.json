@@ -2184,6 +2184,68 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.voiceover.replace" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "artifactId" : {
+                  "type" : "string"
+                },
+                "contentDigest" : {
+                  "type" : "string"
+                },
+                "mediaStreamId" : {
+                  "type" : "string"
+                },
+                "sourceStart" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "artifactId", "contentDigest", "mediaStreamId", "sourceStart" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.clip.roll" ],
               "type" : "string"
             },

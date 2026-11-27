@@ -3,9 +3,9 @@ import { assetGateway } from '../../api/app/asset.gateway'
 import type { AssetSourcePin } from './gateways'
 import { projectId } from './types'
 
-interface Props { tenantId: string | null; project: string; onSelect: (source: AssetSourcePin) => void }
+interface Props { tenantId: string | null; project: string; onSelect: (source: AssetSourcePin) => void; existingAudioOnly?: boolean }
 
-export function SourceBrowser({ tenantId, project, onSelect }: Props) {
+export function SourceBrowser({ tenantId, project, onSelect, existingAudioOnly = false }: Props) {
   const [sources, setSources] = useState<readonly AssetSourcePin[]>([])
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
@@ -42,15 +42,16 @@ export function SourceBrowser({ tenantId, project, onSelect }: Props) {
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Source upload failed.'); setUploadFailed(true) }
     finally { setBusy(false) }
   }
+  const choices = existingAudioOnly ? sources.filter(source => source.streams.some(stream => stream.kind === 'AUDIO')) : sources
   return <section aria-label="Source media">
     <h3>Source media</h3>
-    <label>Upload video or audio (64 MiB maximum) <input type="file" accept="video/mp4,video/webm,video/quicktime,audio/wav,audio/mpeg,audio/flac"
+    {!existingAudioOnly && <><label>Upload video or audio (64 MiB maximum) <input type="file" accept="video/mp4,video/webm,video/quicktime,audio/wav,audio/mpeg,audio/flac"
       onChange={event => { setFile(event.target.files?.[0] ?? null); key.current = null; setProgress(0); setMessage('') }} /></label>
     <button type="button" disabled={!file || !tenantId || busy} onClick={() => void upload()}>{busy ? 'Uploading…' : 'Upload source'}</button>
-    {busy && <progress aria-label="Upload progress" max={100} value={progress}>{progress}%</progress>}
+    {busy && <progress aria-label="Upload progress" max={100} value={progress}>{progress}%</progress>}</>}
     <button type="button" disabled={!tenantId || busy} onClick={() => void refresh()}>Refresh sources</button>
     {message && <p role={uploadFailed ? 'alert' : 'status'}>{message}</p>}
-    {sources.length === 0 ? <p>No accepted source media in this project.</p> : <ul>{sources.map(source =>
+    {choices.length === 0 ? <p>No accepted source media in this project.</p> : <ul>{choices.map(source =>
       <li key={source.artifactId}><button type="button" aria-pressed={selected === source.artifactId} onClick={() => { setSelected(source.artifactId); onSelect(source) }}>
         {source.name} · {source.streams.map(stream => stream.kind).join(', ')} · {source.duration} · {source.byteLength} bytes
       </button><small> Artifact {source.artifactId}</small></li>)}</ul>}

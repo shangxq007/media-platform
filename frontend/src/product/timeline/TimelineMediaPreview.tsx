@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
-import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
+import { parseRational, add, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
 import { activeClipsAt, audioCrossfadePlacement, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedAudioFades, type ProjectedVideoEffect, type ProjectedClip, type ProjectedTransition, type ScaleKey, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
@@ -43,6 +43,7 @@ interface PreviewSession {
   subtitleBlocks: Map<string, SubtitleBitmaps>
   subtitleSurface?: HTMLCanvasElement
   audioClips: AudioClip[]
+  voiceoverAudition?: AudioClip
   scheduled: ScheduledAudio[]
   audio?: AudioContext
   mixer?: GainNode
@@ -123,13 +124,14 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan, audioCrossfadePlan }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan, audioCrossfadePlan, voiceoverPlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
   subtitlePlan?: SemanticBatch | null
   dissolvePlan?: SemanticBatch | null
   audioCrossfadePlan?: SemanticBatch | null
+  voiceoverPlan?: SemanticBatch | null
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
   scalePreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').ScaleKey[] } | null
@@ -254,6 +256,60 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
+  const [audition, setAudition] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle')
+  const auditionTransportReady = status === 'READY' || status === 'PLAYING' || status === 'PAUSED'
+
+  useEffect(() => {
+    const session = current.current
+    if (!session?.audio || !auditionTransportReady) return
+    const step = voiceoverPlan?.baseRevisionId === session.revisionId ? voiceoverPlan?.operations[0] : undefined
+    const replacement = step?.definitionId === 'timeline.clip.voiceover.replace' && 'clipId' in step.target
+      ? step : null
+
+    const swap = (clip: AudioClip | undefined) => {
+      const resume = session.playing
+      if (resume) {
+        session.cursor = Math.min(session.duration, Math.max(0, clock(session) - session.origin))
+        session.cursorExact = clockCursor(session.cursor)
+        stopPlayback(session)
+      }
+      session.voiceoverAudition = clip
+      if (resume) start(session)
+    }
+    if (!replacement || !tenantId || !('clipId' in replacement.target)) {
+      if (session.voiceoverAudition) swap(undefined)
+      setAudition('idle')
+      return
+    }
+    const clipId = replacement.target.clipId
+    const saved = session.audioClips.find(item => item.clip.clipId === clipId)
+    const sourceStart = parseRational(replacement.parameters.sourceStart)
+    if (!saved || !sourceStart) return
+    const controller = new AbortController()
+    const audio = session.audio
+    // Keep the saved transport and picture. Swap only this source after
+    // decoding the server-previewed immutable pin.
+    setAudition('loading')
+    const prepare = async () => {
+      const pin = replacement.parameters
+      const media = await assetGateway.readSourceContent(tenantId, projectId, pin.artifactId, controller.signal)
+      if (!media.ok) throw new Error(media.message)
+      const buffer = await audio.decodeAudioData(await media.value.arrayBuffer())
+      if (controller.signal.aborted || current.current !== session) return
+      swap({ ...saved, buffer, clip: { ...saved.clip, artifactId: pin.artifactId, mediaStreamId: pin.mediaStreamId,
+        contentDigest: pin.contentDigest, sourceStart,
+        sourceEnd: add(sourceStart, subtract(saved.clip.end, saved.clip.start)) } })
+      setAudition('ready')
+    }
+    void prepare().catch(() => {
+      if (!controller.signal.aborted && current.current === session) {
+        if (session.voiceoverAudition) swap(undefined)
+        setAudition('failed')
+      }
+    })
+    return () => controller.abort()
+  }, [voiceoverPlan, auditionTransportReady, tenantId, projectId])
+
   const [duration, setDuration] = useState(0)
   const [time, setTime] = useState(0)
   const [exactSeek, setExactSeek] = useState('')
@@ -646,7 +702,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const audio = session.audio
     if (audio && session.mixer) {
       const transitions = activeAudioTransitions(session)
-      for (const { clip, buffer, gain, mute, pan } of session.audioClips) {
+      for (const saved of session.audioClips) {
+        const replacement = session.voiceoverAudition
+        const { clip, buffer, gain, mute, pan } = replacement?.clip.clipId === saved.clip.clipId ? replacement : saved
         if (mute) continue
         const { end: playbackEnd, transitionFades } = audioCrossfadePlacement(clip, transitions)
         const clipStart = toSeconds(clip.start)
@@ -746,17 +804,20 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   }
 
   return <section ref={host} aria-label="Timeline media preview" data-preview-status={status}
-    data-preview-revision={revisionId} data-preview-time={time.toFixed(3)} data-audio-rms="0">
+    data-preview-revision={revisionId} data-audition-status={audition} data-preview-time={time.toFixed(3)} data-audio-rms="0">
     <p role="status">{
       status === 'PREPARING' ? 'Preparing Timeline media preview…'
         : status === 'READY' ? 'Preview ready.'
           : status === 'PLAYING' ? 'Playing the current Timeline revision.'
             : status === 'PAUSED' ? 'Paused.' : status === 'FAILED' ? message : 'No preview is available.'
     }</p>
+    {audition !== 'idle' && <p role="status">{audition === 'loading' ? 'Loading replacement audio…'
+      : audition === 'ready' ? 'Auditioning replacement voiceover. Saved revision is unchanged.'
+        : 'Replacement audio cannot be auditioned. The preview is playing saved media.'}</p>}
     <canvas ref={canvas} width={320} height={240} hidden={status === 'FAILED'} aria-label="Timeline preview canvas"
       style={{ display: 'block', width: '100%', maxWidth: 480, background: '#000', borderRadius: 4 }} />
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-      <Button type="button" disabled={!duration || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
+      <Button type="button" disabled={!duration || (audition === 'loading' && status !== 'PLAYING') || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
         onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</Button>
       {/* The native input must be able to reach a canonical end that is off the centisecond grid. */}
       <input aria-label="Timeline preview seek" type="range" min={0} max={seekInputMax(duration)}

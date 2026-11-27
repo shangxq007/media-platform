@@ -33,6 +33,7 @@ public sealed interface OperationParameters permits
         OperationParameters.TrimParameters,
         OperationParameters.SlideParameters,
         OperationParameters.SlipParameters,
+        OperationParameters.ReplaceVoiceoverParameters,
         OperationParameters.RollCutParameters,
         OperationParameters.SplitParameters,
         OperationParameters.PasteClipsParameters,
@@ -206,6 +207,20 @@ public sealed interface OperationParameters permits
     }
 
     @org.springframework.modulith.NamedInterface("invocation")
+    record ReplaceVoiceoverParameters(com.example.platform.shared.identity.ArtifactId artifactId,
+            com.example.platform.shared.digest.ContentDigest contentDigest,
+            com.example.platform.media.domain.stream.MediaStreamId streamId, MediaTime sourceStart)
+            implements OperationParameters {
+        public ReplaceVoiceoverParameters {
+            java.util.Objects.requireNonNull(artifactId);
+            java.util.Objects.requireNonNull(contentDigest);
+            java.util.Objects.requireNonNull(streamId);
+            if (java.util.Objects.requireNonNull(sourceStart).isLessThan(MediaTime.ZERO)) {
+                throw new IllegalArgumentException("Voiceover source start cannot be negative");
+            }
+        }
+    }
+
     record SlipParameters(MediaTime magnitude, boolean backward) implements OperationParameters {
         public SlipParameters {
             java.util.Objects.requireNonNull(magnitude, "source offset required");
