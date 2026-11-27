@@ -153,6 +153,25 @@ class BmfAudioGainSampleAlignmentTest {
         }
     }
 
+    @Test
+    void outgoingFadeKeepsTheLastSampleBeforeAFractionalEdge() throws Exception {
+        var python = Path.of("/usr/bin/python3");
+        var probe = copyProbe(python);
+        var output = resultDirectory();
+        var end = MediaTime.ofRational(48_009, 96_000);
+        var fade = new RenderDependency.AudioFades(MediaTime.ZERO, MediaTime.ofRational(4, RATE));
+        for (var extent : List.of("full", "crop")) {
+            var crop = extent.equals("crop") ? MediaTime.ofRational(1, 4) : MediaTime.ZERO;
+            var dir = Files.createDirectory(output.resolve("n25-fractional-" + extent));
+            var pcm = renderInterval(python, probe, dir, MediaTime.ZERO, end, crop, END,
+                    Optional.empty(), fade, true);
+            int shift = extent.equals("crop") ? 12_000 : 0;
+            assertStereo(pcm, 24_000 - shift, 1024, 512);
+            assertStereo(pcm, 24_004 - shift, 128, 64);
+            assertStereo(pcm, 24_005 - shift, 0, 0);
+        }
+    }
+
     private static int onset(ByteBuffer pcm) {
         for (int i = 0; i < pcm.capacity() / 4; i++) {
             if (pcm.getShort(4 * i) != 0 || pcm.getShort(4 * i + 2) != 0) return i;

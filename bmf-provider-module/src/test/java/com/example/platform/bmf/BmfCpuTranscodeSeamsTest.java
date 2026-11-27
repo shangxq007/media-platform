@@ -142,6 +142,20 @@ class BmfCpuTranscodeSeamsTest {
     }
 
     @Test
+    void audio_decode_supplies_a_whole_sample_at_a_fractional_tail() {
+        var adapter = new BmfCpuRuntimeAdapter(Path.of("/usr/bin/python3.9"));
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.AUDIO_DECODE,
+                INPUT_ID, OUTPUT_ID, Optional.of(new BmfCpuTranscodePlan.SourceWindow(
+                        MediaTime.ofRational(1, 2), MediaTime.ofRational(128_003, 32_000))));
+        var invocation = (ProcessInvocationSpec) adapter.adapt(plan, runtimeContext(TASK_ID))
+                .commands().getFirst().invocationSpec();
+        assertThat(invocation.arguments()).containsExactly("-s", "-c",
+                BmfCpuRuntimeAdapter.GRAPH_PROGRAM,
+                BmfCpuRuntimeAdapter.materializedInputToken(INPUT_ID),
+                "platform-provider-output.bin", "audio-decode", "0.5", "4.000104167", "320x240");
+    }
+
+    @Test
     void sandbox_accepts_only_bounded_raster_arguments_and_intermediate_planes() {
         var python = Path.of("/usr/bin/python3.9");
         var resolver = new BmfSandboxExecutionPolicyResolver(python, Path.of("/runtime"),

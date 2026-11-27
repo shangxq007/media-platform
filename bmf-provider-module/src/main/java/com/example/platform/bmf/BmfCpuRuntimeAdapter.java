@@ -416,15 +416,24 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 start, end = placement[1], placement[2]
                 gain, mute, pan = placement[3], placement[4], placement[5]
                 audio = graph.decode({'input_path': path})['audio']
-                audio = ff.atrim(audio, duration=str(float(Fraction(end) - Fraction(start))))
-                audio = ff.asetpts(audio, 'PTS-STARTPTS')
                 sample_rate = Fraction(48000)
                 # Keep physical placement on the existing decimal clock for every gain state.
                 delay_samples = round(Fraction(start) * sample_rate)
-                level = 0.0 if mute == '1' else float(gain)
-                if len(placement) == 18 and level != 0:
-                    exact_start, elapsed, authored_duration, samples, *fades = placement[17].split('~')
+                envelope_spec = placement[17].split('~') if len(placement) == 18 else None
+                if envelope_spec is not None:
+                    exact_start, elapsed, authored_duration, samples, *fades = envelope_spec
                     origin = Fraction(exact_start) - Fraction(elapsed)
+                if envelope_spec is not None and fades and Fraction(fades[1]):
+                    # Keep every output sample strictly before the exact outgoing edge.
+                    # FFmpeg duration trimming can round a fractional end down.
+                    exact_end = min(origin + Fraction(authored_duration), Fraction(duration))
+                    length = max(0, math.ceil(exact_end * sample_rate) - delay_samples)
+                    audio = ff.atrim(audio, end_sample=str(length))
+                else:
+                    audio = ff.atrim(audio, duration=str(float(Fraction(end) - Fraction(start))))
+                audio = ff.asetpts(audio, 'PTS-STARTPTS')
+                level = 0.0 if mute == '1' else float(gain)
+                if envelope_spec is not None and level != 0:
 
                     def envelope(points):
                         # Local sample n lands at n + delay_samples, even when the authored
@@ -514,7 +523,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
         var arguments = new java.util.ArrayList<>(List.of("-s", "-c", GRAPH_PROGRAM,
                 materializedInputToken(plan.inputId()), ProviderNativeOutputFiles.RENDER_OUTPUT,
                 plan.operation().operationKey(), window.map(value -> seconds(value.start())).orElse("0"),
-                window.map(value -> seconds(value.duration())).orElse("0"), rasterToken(plan)));
+                window.map(value -> plan.operation() == BmfOperation.AUDIO_DECODE
+                        ? coveredAudioDuration(value.duration()) : seconds(value.duration())).orElse("0"),
+                rasterToken(plan)));
         if (plan.compositeFrameRate().isPresent()) {
             var rate = plan.compositeFrameRate().orElseThrow();
             arguments.add(rate.numerator() + "/" + rate.denominator());
@@ -578,6 +589,17 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
 
     public static String materializedInputToken(ExecutionInputId inputId) {
         return INPUT_PREFIX + Objects.requireNonNull(inputId, "inputId").value();
+    }
+
+    private static String coveredAudioDuration(MediaTime time) {
+        var rate = BigDecimal.valueOf(48_000);
+        // Audio intermediates supply whole samples through the fractional end.
+        // The composite stage still selects which samples land inside the extent.
+        return BigDecimal.valueOf(time.ticks()).multiply(rate)
+                .divide(BigDecimal.valueOf(time.timeScale()), 0, RoundingMode.CEILING)
+                .divide(rate, 9, RoundingMode.HALF_UP)
+                .stripTrailingZeros()
+                .toPlainString();
     }
 
     private static String seconds(MediaTime time) {
