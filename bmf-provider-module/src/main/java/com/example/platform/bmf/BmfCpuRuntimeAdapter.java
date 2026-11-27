@@ -246,7 +246,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
 
                 multiplier, x, y = mapping('T')
                 m_t, x_t, y_t = mapping('t')
-                fractional = 'gt(neq(' + m_t + ',1)+mod(' + x_t + ',1)+mod(' + y_t + ',1),0)'
+                fractional = 'gt(abs(' + m_t + '-1)+mod(' + x_t + ',1)+mod(' + y_t + ',1),0)'
                 # Sample the authored cropped, scaled and rotated texture about its
                 # top-left placement. Uniform scaling commutes with rotation. Work
                 # on a fixed viewport rather than reconfiguring graph sizes per frame.

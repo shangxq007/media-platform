@@ -173,6 +173,37 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         }
     }
 
+    @Test
+    void nonzero_placement_scale_curve_executes_in_the_pinned_native_graph() throws Exception {
+        Path runtime = configuredRuntime();
+        Path source = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("scale-source.mp4"));
+        Path python = runtime.resolve("host-bundle/usr/bin/python3.9");
+        var launcher = BubblewrapSandboxCapabilityDetector.detect().launcher().orElseThrow();
+        var workspace = BmfSandboxWorkspace.under(temp.resolve("scale-workspace"));
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, runtime, workspace,
+                Duration.ofSeconds(45), 2_000_000, launcher.capabilities());
+        var executor = new SandboxRuntimeCommandExecutor(launcher, resolver, SandboxCancellation.never(),
+                workspace.outputStagingRoot());
+        var duration = MediaTime.parse("3/1");
+        var axes = new BmfCpuTranscodePlan.VideoPlacement(.0625, .05, .5, .4, 0, 0, 1, 0, 1, 1);
+        var ramp = com.example.platform.render.domain.renderplan.RenderDependency.ScaleRamp.parseSamples(
+                "1/2;1000000|49/24;1500000|5/2;1000000");
+        var input = new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.parse("1/1"), MediaTime.parse("4/1"),
+                0, false, 1, false, 0, axes, com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                MediaTime.ZERO, duration, MediaTime.ZERO, Optional.empty(), Optional.empty(), Optional.of(ramp));
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
+                INPUT_ID, OUTPUT_ID, Optional.empty(), List.of(input), Optional.of(MediaTime.parse("4/1")),
+                Optional.of(FrameRate.of(24, 1)), new RenderRaster(320, 240), List.of());
+        var commands = new BmfCpuRuntimeAdapter(python).adapt(plan, context("animated-scale"));
+        try (var output = executor.execute(commands, List.of(materialized(source)))) {
+            byte[] bytes = output.content().readAllBytes();
+            assertThat(bytes.length).isGreaterThan(1000);
+            assertThat(new String(bytes, 4, 4, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("ftyp");
+        } catch (ProviderNativeExecutionFailure failure) {
+            throw new AssertionError(failure.diagnostics().getOrDefault("boundedStderr", failure.getMessage()), failure);
+        }
+    }
+
     private static Path configuredRuntime() {
         String root = System.getenv("BMF_TEST_RUNTIME_ROOT");
         String source = System.getenv("BMF_TEST_SOURCE");
