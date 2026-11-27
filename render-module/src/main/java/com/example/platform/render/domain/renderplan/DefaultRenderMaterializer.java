@@ -433,7 +433,8 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         gainKeys.isPresent() || fades.active()
                                                 ? RenderDependency.TimedTrackInput.envelopedAudio(start, end, layer, gain, mute,
-                                                        balance, clip.timelineRange().start(), clip.timelineRange().end(), gainKeys, fades)
+                                                        balance, clip.timelineRange().start(), clip.timelineRange().end(), gainKeys,
+                                                        new RenderDependency.AudioFades(fades.in(), fades.out()))
                                                 : new RenderDependency.TimedTrackInput(start, end, layer, true, gain, mute, balance)));
                             } else {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,

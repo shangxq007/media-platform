@@ -7,7 +7,6 @@ import com.example.platform.execution.domain.ExecutionOutputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionPlan;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,7 +55,7 @@ public record BmfCpuTranscodePlan(
                              Optional<RenderDependency.OpacityRamp> opacityKeys,
                              Optional<RenderDependency.PositionRamp> positionKeys,
                              Optional<RenderDependency.ScaleRamp> scaleKeys,
-                             Optional<RenderDependency.GainRamp> gainKeys, ClipAudioFades fades) {
+                             Optional<RenderDependency.GainRamp> gainKeys, RenderDependency.AudioFades fades) {
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                           double gain, boolean mute, double balance, VideoPlacement transform,
                           com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
@@ -64,7 +63,7 @@ public record BmfCpuTranscodePlan(
                           Optional<RenderDependency.OpacityRamp> opacityKeys, Optional<RenderDependency.PositionRamp> positionKeys,
                           Optional<RenderDependency.ScaleRamp> scaleKeys, Optional<RenderDependency.GainRamp> gainKeys) {
             this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration,
-                    dissolveDuration, opacityKeys, positionKeys, scaleKeys, gainKeys, ClipAudioFades.NONE);
+                    dissolveDuration, opacityKeys, positionKeys, scaleKeys, gainKeys, RenderDependency.AudioFades.NONE);
         }
 
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,

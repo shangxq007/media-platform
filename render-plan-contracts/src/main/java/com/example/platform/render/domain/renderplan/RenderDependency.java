@@ -198,6 +198,28 @@ public sealed interface RenderDependency permits
     record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
             double left, double right, double top, double bottom, double opacity) {}
 
+    /** Exact edge durations on the provider-neutral timed audio input. */
+    record AudioFades(MediaTime in, MediaTime out) {
+        public static final AudioFades NONE = new AudioFades(MediaTime.ZERO, MediaTime.ZERO);
+        public static final String TIME_PATTERN = ClipAudioFades.TIME_PATTERN;
+
+        public AudioFades {
+            // The render projection shares canonical validation, not canonical
+            // clip effect instances or their ownership.
+            new ClipAudioFades(in, out);
+        }
+
+        public boolean active() { return in.ticks() > 0 || out.ticks() > 0; }
+
+        public void requireFits(MediaTime authoredDuration) {
+            new ClipAudioFades(in, out).requireFits(authoredDuration);
+        }
+
+        public static AudioFades parse(String fadeIn, String fadeOut) {
+            return new AudioFades(ClipAudioFades.parseDuration(fadeIn), ClipAudioFades.parseDuration(fadeOut));
+        }
+    }
+
     record TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
                            com.example.platform.audio.domain.mix.AudioGain gain,
@@ -209,7 +231,7 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime authoredEnd,
                            java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys,
                            Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys, Optional<GainRamp> gainKeys,
-                           ClipAudioFades fades)
+                           AudioFades fades)
             implements RenderDependency {
         public TimedTrackInput(MediaTime start, MediaTime end, int layer, boolean audio,
                 com.example.platform.audio.domain.mix.AudioGain gain,
@@ -219,7 +241,7 @@ public sealed interface RenderDependency permits
                 MediaTime authoredStart, MediaTime authoredEnd, Optional<Dissolve> dissolve, Optional<OpacityRamp> opacityKeys,
                 Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys, Optional<GainRamp> gainKeys) {
             this(start, end, layer, audio, gain, mute, balance, transform, effect, authoredStart, authoredEnd,
-                    dissolve, opacityKeys, positionKeys, scaleKeys, gainKeys, ClipAudioFades.NONE);
+                    dissolve, opacityKeys, positionKeys, scaleKeys, gainKeys, AudioFades.NONE);
         }
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
@@ -283,7 +305,7 @@ public sealed interface RenderDependency permits
         public static TimedTrackInput envelopedAudio(MediaTime start, MediaTime end, int layer,
                 com.example.platform.audio.domain.mix.AudioGain gain, com.example.platform.audio.domain.mix.AudioMute mute,
                 com.example.platform.audio.domain.mix.StereoBalance balance, MediaTime authoredStart, MediaTime authoredEnd,
-                Optional<GainRamp> gainKeys, ClipAudioFades fades) {
+                Optional<GainRamp> gainKeys, AudioFades fades) {
             return new TimedTrackInput(start, end, layer, true, gain, mute, balance,
                     com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY, VideoEffectSpec.IDENTITY,
                     authoredStart, authoredEnd, Optional.empty(), Optional.empty(), Optional.empty(),

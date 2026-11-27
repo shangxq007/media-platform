@@ -12,7 +12,6 @@ import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.render.domain.renderplan.VideoEffectSpec;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
@@ -128,11 +127,11 @@ class BmfAudioGainSampleAlignmentTest {
         var end = MediaTime.ofRational(5, 1);
         var extentEnd = MediaTime.ofRational(6, 1);
         var manual = Optional.of(RenderDependency.GainRamp.parseSamples("0;0|1/1;1000000"));
-        var fade = new ClipAudioFades(start, MediaTime.ofRational(1, 2));
+        var fade = new RenderDependency.AudioFades(start, MediaTime.ofRational(1, 2));
         var baseline = renderInterval(python, probe, Files.createDirectory(output.resolve("n24-manual")),
-                start, end, MediaTime.ZERO, extentEnd, manual, ClipAudioFades.NONE, true);
+                start, end, MediaTime.ZERO, extentEnd, manual, RenderDependency.AudioFades.NONE, true);
         var cleared = renderInterval(python, probe, Files.createDirectory(output.resolve("n24-cleared")),
-                start, end, MediaTime.ZERO, extentEnd, manual, ClipAudioFades.NONE, true);
+                start, end, MediaTime.ZERO, extentEnd, manual, RenderDependency.AudioFades.NONE, true);
         assertArrayEquals(baseline.array(), cleared.array());
         for (var kind : List.of("edges-full", "edges-crop", "product-full", "product-crop")) {
             boolean cropped = kind.endsWith("crop");
@@ -185,12 +184,12 @@ class BmfAudioGainSampleAlignmentTest {
     private ByteBuffer render(Path python, Path probe, Path dir, MediaTime clipStart, MediaTime extentStart,
                               Optional<RenderDependency.GainRamp> gain, boolean usesEnvelope) throws Exception {
         return renderInterval(python, probe, dir, clipStart, END, extentStart, END,
-                gain, ClipAudioFades.NONE, usesEnvelope);
+                gain, RenderDependency.AudioFades.NONE, usesEnvelope);
     }
 
     private ByteBuffer renderInterval(Path python, Path probe, Path dir,
             MediaTime clipStart, MediaTime clipEnd, MediaTime extentStart, MediaTime extentEnd,
-            Optional<RenderDependency.GainRamp> gain, ClipAudioFades fades, boolean usesEnvelope) throws Exception {
+            Optional<RenderDependency.GainRamp> gain, RenderDependency.AudioFades fades, boolean usesEnvelope) throws Exception {
         boolean crop = extentStart.isGreaterThan(clipStart);
         var inputId = new ExecutionInputId("constant-audio");
         var input = new BmfCpuTranscodePlan.TimedInput(inputId,

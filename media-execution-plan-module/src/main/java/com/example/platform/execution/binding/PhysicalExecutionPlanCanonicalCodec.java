@@ -652,11 +652,10 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         var authoredStart = MediaTime.parse(reader.field("authoredStart"));
         var authoredEnd = MediaTime.parse(reader.field("authoredEnd"));
         var dissolve = dissolve(reader.optionalNested());
-        var fades = com.example.platform.timeline.semantics.effect.ClipAudioFades.NONE;
+        var fades = RenderDependency.AudioFades.NONE;
         boolean faded = variant.equals("TIMED_TRACK_AUDIO_FADES_V1");
         if (faded) {
-            fades = new com.example.platform.timeline.semantics.effect.ClipAudioFades(
-                    MediaTime.parse(reader.field("audioFadeIn")), MediaTime.parse(reader.field("audioFadeOut")));
+            fades = RenderDependency.AudioFades.parse(reader.field("audioFadeIn"), reader.field("audioFadeOut"));
             if (!fades.active()) throw new IllegalArgumentException("Fade dependency must have an active edge");
         }
         String samples = faded || variant.equals("TIMED_TRACK_GAIN_V1") ? reader.field("gainEnvelope") : "";

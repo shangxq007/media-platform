@@ -6,7 +6,6 @@ import com.example.platform.render.domain.renderplan.TimedTextMaterializationReq
 import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.RasterRange;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
-import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.sandbox.DeviceExposurePolicy;
 import com.example.platform.sandbox.EnvironmentPolicy;
 import com.example.platform.sandbox.FilesystemPolicy;
@@ -491,7 +490,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
     }
 
     private static boolean validAudioEnvelope(String token, BigDecimal placementStart) {
-        String time = ClipAudioFades.TIME_PATTERN;
+        String time = RenderDependency.AudioFades.TIME_PATTERN;
         String pair = time + ";[0-9]{1,7}";
         if (token.length() > 1100) return false;
         try {
@@ -512,7 +511,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 RenderDependency.GainRamp.parseSamples(fields[3]).validateRelative(duration);
             } else if (fields.length == 4) return false;
             if (fields.length == 6) {
-                var fades = new ClipAudioFades(ClipAudioFades.parseDuration(fields[4]), ClipAudioFades.parseDuration(fields[5]));
+                var fades = RenderDependency.AudioFades.parse(fields[4], fields[5]);
                 if (!fades.active()) return false;
                 fades.requireFits(duration);
             }
