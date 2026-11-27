@@ -289,6 +289,7 @@ class BmfArchitectureGuardTest {
                         root.resolve("bmf-provider-module/src/test/java"),
                         root.resolve("bmf-provider-module")))
                 .containsExactlyInAnyOrder(
+                        "src/test/java/com/example/platform/bmf/BmfAudioGainSampleAlignmentTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuProviderContractTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceAssessmentTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuTranscodeSeamsTest.java",
