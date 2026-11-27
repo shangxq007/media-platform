@@ -285,14 +285,18 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 scale_n = '((' + frame_curve(scales, 1, origin, first_frame, 'n') + ')/1000000)'
                 layer = ff.ff_filter(layer, 'format', 'gbrap')
                 layer = ff.ff_filter(layer, 'premultiply', inplace=1)
+                # Share the packed-RGB scale path with unanimated transforms.
+                layer = ff.ff_filter(layer, 'format', 'rgba')
                 layer = ff.ff_filter(layer, 'scale', 'w=' + texture_dimension(width, tw, scale_n)
                                      + ':h=' + texture_dimension(height, th, scale_n)
                                      + ':eval=frame:flags=bicubic')
+                layer = ff.ff_filter(layer, 'format', 'rgba')
                 layer = ff.ff_filter(layer, 'setsar', '1')
                 # GEQ clamps its sample origin to the penultimate texel. Retain
                 # two transparent texels at the right/bottom even at peak zoom.
                 layer = ff.ff_filter(layer, 'pad', 'w=' + str(tw + 3) + ':h=' + str(th + 3)
                                      + ':x=1:y=1:color=black@0:eval=frame')
+                layer = ff.ff_filter(layer, 'format', 'gbrap')
 
                 radians = math.radians(float(placement[10]))
                 cos, sin = math.cos(radians), math.sin(radians)
