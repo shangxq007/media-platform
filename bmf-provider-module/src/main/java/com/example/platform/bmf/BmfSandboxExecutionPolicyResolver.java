@@ -351,8 +351,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || !isNonNegativeSeconds(fx[8]) || !isNonNegativeSeconds(fx[9])
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
             if (fx.length == 14 && (!parts[0].equals("V") || !validOpacityRamp(fx))) return false;
-            if (parts.length > 17 && (!parts[0].equals("V")
-                    || !(parts.length == 19 && parts[17].isEmpty()) && !validPositionRamp(parts[17], fx[8]))) return false;
+            if (parts[0].equals("A") && parts.length > 17
+                    && !(parts.length == 18 && validGainRamp(parts[17]))) return false;
+            if (parts[0].equals("V") && parts.length > 17 && (
+                    !(parts.length == 19 && parts[17].isEmpty()) && !validPositionRamp(parts[17], fx[8]))) return false;
             if (parts.length == 19 && !validScaleRamp(parts[18], scaleX, scaleY, degrees, raster)) return false;
             var brightness = new java.math.BigDecimal(fx[0]);
             var contrast = new java.math.BigDecimal(fx[1]);
@@ -484,6 +486,22 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                 }
             }
             if (failure != null) throw failure;
+        }
+    }
+
+    private static boolean validGainRamp(String token) {
+        String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        String pair = time + ";[0-9]{1,7}";
+        if (token.length() > 1000 || !token.matches(time + "~" + time + "~" + pair + "(?:\\|" + pair + "){1,15}")) return false;
+        try {
+            var fields = token.split("~");
+            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[0]);
+            var duration = com.example.platform.shared.time.MediaTime.parse(fields[1]);
+            var ramp = RenderDependency.GainRamp.parseSamples(fields[2]);
+            ramp.validateRelative(duration);
+            return elapsed.compareTo(duration) < 0;
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
+            return false;
         }
     }
 

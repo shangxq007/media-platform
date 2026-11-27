@@ -45,6 +45,7 @@ public sealed interface OperationParameters permits
         OperationParameters.OpacityParameters,
         OperationParameters.PositionParameters,
         OperationParameters.ScaleParameters,
+        OperationParameters.GainParameters,
         OperationParameters.SubtitleCueParameters,
         OperationParameters.RemoveSubtitleCueParameters,
         OperationParameters.VideoTransformParameters,
@@ -137,6 +138,11 @@ public sealed interface OperationParameters permits
         public RemoveSubtitleCueParameters {
             if (cueId == null || !cueId.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("Invalid subtitle cue identity");
         }
+    }
+
+    @org.springframework.modulith.NamedInterface("invocation")
+    record GainParameters(com.example.platform.timeline.semantics.effect.GainKeys keys) implements OperationParameters {
+        public GainParameters { java.util.Objects.requireNonNull(keys); }
     }
 
     @org.springframework.modulith.NamedInterface("invocation")

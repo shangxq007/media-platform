@@ -203,6 +203,7 @@ public final class TimelineBatchCommandMapper {
                     CompositionAspectRatio.fromParameters(parameters));
             case "timeline.subtitle.cue.set" -> subtitleCue(parameters);
             case "timeline.subtitle.cue.remove" -> new OperationParameters.RemoveSubtitleCueParameters(requiredText(parameters, "cueId"));
+            case "timeline.clip.gain.keyframes.set" -> gainKeys(parameters);
             case "timeline.clip.scale.keyframes.set" -> scaleKeys(parameters);
             case "timeline.clip.position.keyframes.set" -> positionKeys(parameters);
             case "timeline.clip.opacity.keyframes.set" -> new OperationParameters.OpacityParameters(
@@ -517,6 +518,21 @@ public final class TimelineBatchCommandMapper {
         return (int)value;
     }
 
+    private static OperationParameters.GainParameters gainKeys(Map<String, Object> parameters) {
+        if (!(parameters.get("keys") instanceof List<?> raw)
+                || raw.size() > com.example.platform.timeline.semantics.effect.GainKeys.MAX_KEYS) {
+            throw new IllegalArgumentException("Gain keys must be a bounded array");
+        }
+        var keys = new java.util.ArrayList<com.example.platform.timeline.semantics.effect.GainKeys.Key>();
+        for (Object item : raw) {
+            if (!(item instanceof Map<?, ?> key) || !key.keySet().equals(java.util.Set.of("time", "multiplierMicros"))
+                    || !(key.get("time") instanceof String time) || !time.matches("[0-9]{1,19}/[1-9][0-9]{0,18}")) {
+                throw new IllegalArgumentException("Each gain key requires a nonnegative rational time and multiplierMicros");
+            }
+            keys.add(new com.example.platform.timeline.semantics.effect.GainKeys.Key(MediaTime.parse(time), requiredLong(key, "multiplierMicros")));
+        }
+        return new OperationParameters.GainParameters(new com.example.platform.timeline.semantics.effect.GainKeys(keys));
+    }
     private static OperationParameters.ScaleParameters scaleKeys(Map<String, Object> parameters) {
         if (!(parameters.get("keys") instanceof List<?> raw)
                 || raw.size() > com.example.platform.timeline.semantics.effect.ScaleKeys.MAX_KEYS) {

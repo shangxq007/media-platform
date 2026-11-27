@@ -3,6 +3,7 @@ package com.example.platform.render.domain.renderplan;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.timeline.semantics.effect.PositionKeys;
 import com.example.platform.timeline.semantics.effect.ScaleKeys;
+import com.example.platform.timeline.semantics.effect.GainKeys;
 import java.util.Optional;
 
 /**
@@ -173,6 +174,25 @@ public sealed interface RenderDependency permits
         public static ScaleRamp parseSamples(String samples) { return new ScaleRamp(ScaleKeys.parseSamples(samples)); }
     }
 
+    /** Graph-side projection of the audio clip multiplier, independent of route gain. */
+    record GainRamp(GainKeys keys) {
+        public GainRamp {
+            if (keys.keys().isEmpty()) throw new IllegalArgumentException("Gain ramp cannot be empty");
+        }
+
+        public GainRamp relativeTo(com.example.platform.shared.time.MediaTime origin) {
+            return new GainRamp(keys.relativeTo(origin));
+        }
+
+        public String canonicalSamples() { return keys.canonicalSamples(); }
+
+        public void validateRelative(com.example.platform.shared.time.MediaTime duration) {
+            keys.requireInside(com.example.platform.shared.time.MediaTime.ZERO, duration);
+        }
+
+        public static GainRamp parseSamples(String samples) { return new GainRamp(GainKeys.parseSamples(samples)); }
+    }
+
     record VideoPlacement(double x, double y, double scaleX, double scaleY, double degrees,
             double left, double right, double top, double bottom, double opacity) {}
 
@@ -186,7 +206,7 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
                            java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys,
-                           Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys)
+                           Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys, Optional<GainRamp> gainKeys)
             implements RenderDependency {
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
@@ -223,6 +243,30 @@ public sealed interface RenderDependency permits
                     dissolve, opacityKeys, positionKeys, Optional.empty());
         }
 
+        public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
+                com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
+                com.example.platform.audio.domain.mix.AudioGain gain, com.example.platform.audio.domain.mix.AudioMute mute,
+                com.example.platform.audio.domain.mix.StereoBalance balance,
+                com.example.platform.timeline.semantics.effect.VideoTransform transform, VideoEffectSpec effect,
+                com.example.platform.shared.time.MediaTime authoredStart, com.example.platform.shared.time.MediaTime authoredEnd,
+                Optional<Dissolve> dissolve, Optional<OpacityRamp> opacityKeys, Optional<PositionRamp> positionKeys,
+                Optional<ScaleRamp> scaleKeys) {
+            this(start, end, layer, audio, gain, mute, balance, transform, effect, authoredStart, authoredEnd,
+                    dissolve, opacityKeys, positionKeys, scaleKeys, Optional.empty());
+        }
+
+        public static TimedTrackInput animatedAudio(com.example.platform.shared.time.MediaTime start,
+                com.example.platform.shared.time.MediaTime end, int layer,
+                com.example.platform.audio.domain.mix.AudioGain gain, com.example.platform.audio.domain.mix.AudioMute mute,
+                com.example.platform.audio.domain.mix.StereoBalance balance,
+                com.example.platform.shared.time.MediaTime authoredStart, com.example.platform.shared.time.MediaTime authoredEnd,
+                GainRamp gainKeys) {
+            return new TimedTrackInput(start, end, layer, true, gain, mute, balance,
+                    com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY, VideoEffectSpec.IDENTITY,
+                    authoredStart, authoredEnd, Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.empty(), Optional.of(gainKeys));
+        }
+
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
             java.util.Objects.requireNonNull(end, "end");
@@ -244,6 +288,10 @@ public sealed interface RenderDependency permits
                 if (audio) throw new IllegalArgumentException("Scale channels require video");
                 ramp.keys().requireInside(authoredStart, authoredEnd);
                 ramp.keys().requireBounds(transform);
+            });
+            gainKeys.ifPresent(ramp -> {
+                if (!audio) throw new IllegalArgumentException("Gain channels require audio");
+                ramp.keys().requireInside(authoredStart, authoredEnd);
             });
             if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)

@@ -409,11 +409,28 @@ public final class TimelineCanonicalValidator {
                         TimelineModelPath.root().field("automations"), id, invalid.getMessage()));
             }
         }
+        var audioIds = new java.util.HashSet<String>();
+        candidate.tracks().stream().filter(t -> t.type() == TimelineCandidate.TrackType.AUDIO)
+                .flatMap(t -> t.clips().stream()).forEach(c -> audioIds.add(c.clipId()));
+        var gains = candidate.automations().stream().filter(
+                com.example.platform.timeline.semantics.effect.GainKeys::isGain).toList();
+        for (String id : gains.stream().map(CanonicalAutomationCurve::targetEntityId).distinct().toList()) {
+            var clip = clipsById.get(id);
+            try {
+                if (clip == null || !audioIds.contains(id)) throw new IllegalArgumentException("Gain keys require an audio track clip");
+                com.example.platform.timeline.semantics.effect.GainKeys.forClip(gains, id).orElseThrow()
+                        .requireInside(clip.timelineStart(), clip.timelineStart().add(clip.duration()));
+            } catch (IllegalArgumentException | ArithmeticException invalid) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
+                        TimelineModelPath.root().field("automations"), id, invalid.getMessage()));
+            }
+        }
         for (int i = 0; i < candidate.automations().size(); i++) {
             CanonicalAutomationCurve a = candidate.automations().get(i);
             String target = a.targetEntityId();
             if (com.example.platform.timeline.semantics.effect.PositionKeys.isPosition(a)
-                    || com.example.platform.timeline.semantics.effect.ScaleKeys.isScale(a)) continue;
+                    || com.example.platform.timeline.semantics.effect.ScaleKeys.isScale(a)
+                    || com.example.platform.timeline.semantics.effect.GainKeys.isGain(a)) continue;
             if (target == null || target.isBlank() || !effectIds.contains(target)) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
                         TimelineModelPath.root().field("automations").index(i).field("targetEntityId"),

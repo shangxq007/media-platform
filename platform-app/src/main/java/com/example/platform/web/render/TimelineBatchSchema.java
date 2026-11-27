@@ -118,6 +118,15 @@ public final class TimelineBatchSchema {
                     "items", object(Map.of("time",parameterType("cue-time"),
                             "xMicros",integerRange(-16000000,16000000), "yMicros",integerRange(-16000000,16000000),
                             "opacityMicros",integerRange(0,1000000)), List.of("time","xMicros","yMicros","opacityMicros")));
+            case "gain-key-array" -> {
+                var frame = object(Map.of("time", Map.of("type", "string", "pattern", "^[0-9]{1,19}/[1-9][0-9]{0,18}$"),
+                        "multiplierMicros", Map.of("type", "integer", "minimum", 0, "maximum",
+                                com.example.platform.timeline.semantics.effect.GainKeys.MAX_MULTIPLIER)),
+                        List.of("time", "multiplierMicros"));
+                yield Map.of("type", "array", "items", frame, "maxItems",
+                        com.example.platform.timeline.semantics.effect.GainKeys.MAX_KEYS,
+                        "not", Map.of("minItems", 1, "maxItems", 1));
+            }
             case "scale-key-array" -> {
                 var frame = object(Map.of("time", Map.of("type", "string", "pattern", "^[0-9]{1,19}/[1-9][0-9]{0,18}$"),
                         "multiplierMicros", Map.of("type", "integer", "minimum", 1, "maximum",

@@ -230,10 +230,10 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
 
             output_rate = Fraction(rate)
 
-            def frame_curve(points, axis, origin, first_frame, counter='N'):
+            def frame_curve(points, axis, origin, first_frame, counter='N', sample_rate=output_rate):
                 # Resolve every threshold and the first sample in each interval before
                 # conversion to AVExpr doubles. GEQ's N is local to the aligned clip.
-                knots = [(Fraction(p[0]) + origin) * output_rate for p in points]
+                knots = [(Fraction(p[0]) + origin) * sample_rate for p in points]
                 cuts = [math.ceil(k) - first_frame for k in knots]
                 expression = points[-1][axis]
                 for i in range(len(points) - 2, -1, -1):
@@ -418,8 +418,19 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 audio = ff.atrim(audio, duration=str(float(Fraction(end) - Fraction(start))))
                 audio = ff.asetpts(audio, 'PTS-STARTPTS')
                 delay = str(round(Fraction(start) * 48000)) + 'S'
-                audio = ff.adelay(audio, delays=delay, all=1)
                 level = 0.0 if mute == '1' else float(gain)
+                if len(placement) == 18 and level != 0:
+                    elapsed, _, samples = placement[17].split('~')
+                    points = [key.split(';') for key in samples.split('|')]
+                    if any(int(p[1]) != 1000000 for p in points):
+                        # Clock starts at the cropped audio's first sample. Compute the
+                        # side of each authored key exactly on the 48 kHz lattice.
+                        audio = ff.ff_filter(audio, 'aresample', '48000')
+                        audio = ff.ff_filter(audio, 'aformat', channel_layouts='stereo')
+                        env = '(' + frame_curve(points, 1, -Fraction(elapsed), 0, 'n', Fraction(48000)) + ')/1000000'
+                        audio = ff.ff_filter(audio, 'aeval', exprs='val(0)*' + env + '|val(1)*' + env,
+                                             channel_layout='stereo')
+                audio = ff.adelay(audio, delays=delay, all=1)
                 audio = ff.ff_filter(audio, 'aformat', channel_layouts='stereo')
                 audio = ff.ff_filter(audio, 'volume', str(level))
                 left = (1.0 - float(pan)) / 2.0
@@ -521,7 +532,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                         + input.positionKeys().map(p -> "," + p.canonicalSamples())
                                 .orElse(input.scaleKeys().isPresent() ? "," : "")
                         + input.scaleKeys().map(k -> "," + input.start() + "~" + input.end() + "~" + input.elapsed()
-                                + "~" + input.authoredDuration() + "~" + k.canonicalSamples()).orElse(""));
+                                + "~" + input.authoredDuration() + "~" + k.canonicalSamples()).orElse("")
+                        + input.gainKeys().map(k -> "," + input.elapsed() + "~" + input.authoredDuration()
+                                + "~" + k.canonicalSamples()).orElse(""));
             }
         }
         for (var cue : plan.subtitles()) {

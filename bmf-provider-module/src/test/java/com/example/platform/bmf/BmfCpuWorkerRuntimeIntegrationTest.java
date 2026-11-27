@@ -337,6 +337,75 @@ class BmfCpuWorkerRuntimeIntegrationTest {
         assertThat(child.exitValue()).as(Files.readString(log)).isZero();
     }
 
+    @Test
+    void nativeStereoGainUsesCroppedClipTimeAndHonorsMute() throws Exception {
+        Path runtime = configuredRuntime();
+        Path video = Files.copy(Path.of(System.getenv("BMF_TEST_SOURCE")), temp.resolve("gain-video.mp4"));
+        Path audio = temp.resolve("gain-stereo.wav");
+        runFfmpeg(List.of("-f", "lavfi", "-i",
+                "aevalsrc=0.16*sin(2*PI*437*t)|0.11*sin(2*PI*881*t):s=48000:d=3",
+                "-c:a", "pcm_s16le", audio.toString()), temp.resolve("gain-source.log"));
+        var gains = Optional.of(com.example.platform.render.domain.renderplan.RenderDependency.GainRamp.parseSamples(
+                "0;1000000|1/2;1000000|3/2;250000|2/1;250000|5/2;0"));
+        var staticPcm = renderStereoGain(runtime, video, audio, "gain-static", Optional.empty(), false);
+        var animated = renderStereoGain(runtime, video, audio, "gain-animated", gains, false);
+        var muted = renderStereoGain(runtime, video, audio, "gain-muted", gains, true);
+        for (int channel = 0; channel < 2; channel++) {
+            assertThat(rms(animated, channel, 1.15, 1.35) / rms(staticPcm, channel, 1.15, 1.35))
+                    .isBetween(.22, .28);
+            assertThat(rms(animated, channel, .4, .6) / rms(staticPcm, channel, .4, .6))
+                    .isBetween(.57, .68);
+            assertThat(rms(animated, channel, 2.25, 2.5)).isLessThan(.001);
+            assertThat(rms(muted, channel, .4, .6)).isLessThan(.001);
+        }
+    }
+
+    private java.nio.FloatBuffer renderStereoGain(Path runtime, Path video, Path source, String tag,
+            Optional<com.example.platform.render.domain.renderplan.RenderDependency.GainRamp> gains, boolean mute) throws Exception {
+        var python = runtime.resolve("host-bundle/usr/bin/python3.9");
+        var launcher = BubblewrapSandboxCapabilityDetector.detect().launcher().orElseThrow();
+        var workspace = BmfSandboxWorkspace.under(temp.resolve(tag));
+        var resolver = new BmfSandboxExecutionPolicyResolver(python, runtime, workspace,
+                Duration.ofSeconds(45), 2_000_000, launcher.capabilities());
+        var executor = new SandboxRuntimeCommandExecutor(launcher, resolver, SandboxCancellation.never(),
+                workspace.outputStagingRoot());
+        var duration = MediaTime.parse("3/1");
+        var audioId = new ExecutionInputId("stereo-tone");
+        var audio = new BmfCpuTranscodePlan.TimedInput(audioId, MediaTime.ZERO, duration, 1, true,
+                .6, mute, .2, BmfCpuTranscodePlan.VideoPlacement.IDENTITY,
+                com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY,
+                MediaTime.parse("1/2"), MediaTime.parse("4/1"), MediaTime.ZERO,
+                Optional.empty(), Optional.empty(), Optional.empty(), gains);
+        var plan = new BmfCpuTranscodePlan(TASK_ID, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
+                INPUT_ID, OUTPUT_ID, Optional.empty(),
+                List.of(new BmfCpuTranscodePlan.TimedInput(INPUT_ID, MediaTime.ZERO, duration), audio),
+                Optional.of(duration), Optional.of(FrameRate.of(24, 1)), new RenderRaster(320, 240), List.of());
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(source));
+        var pin = new ArtifactPin(new ArtifactId("bmf-audio"), ContentDigest.sha256(HexFormat.of().formatHex(digest)));
+        var input = new MaterializedExecutionInput(audioId, pin, new MaterializedArtifact(pin, source, Files.size(source)));
+        Path encoded = temp.resolve(tag + ".mp4");
+        try (var output = executor.execute(new BmfCpuRuntimeAdapter(python).adapt(plan, context(tag)),
+                List.of(materialized(video), input))) {
+            Files.copy(output.content(), encoded);
+        } catch (ProviderNativeExecutionFailure failure) {
+            throw new AssertionError(failure.diagnostics().getOrDefault("boundedStderr", failure.getMessage()), failure);
+        }
+        Path decoded = temp.resolve(tag + ".f32le");
+        runFfmpeg(List.of("-i", encoded.toString(), "-vn", "-f", "f32le", "-ac", "2", "-ar", "48000", decoded.toString()),
+                temp.resolve(tag + "-decode.log"));
+        return java.nio.ByteBuffer.wrap(Files.readAllBytes(decoded)).order(java.nio.ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
+    }
+
+    private static double rms(java.nio.FloatBuffer pcm, int channel, double from, double to) {
+        int first = (int) (from * 48_000), end = (int) (to * 48_000);
+        double sum = 0;
+        for (int i = first; i < end; i++) {
+            double v = pcm.get(2 * i + channel);
+            sum += v * v;
+        }
+        return Math.sqrt(sum / (end - first));
+    }
+
     private static Path configuredRuntime() {
         String root = System.getenv("BMF_TEST_RUNTIME_ROOT");
         String source = System.getenv("BMF_TEST_SOURCE");

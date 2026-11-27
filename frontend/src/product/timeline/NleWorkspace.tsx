@@ -1,5 +1,5 @@
 import { DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
-import { useEffect, useReducer, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent } from 'react'
 import { operationGateway as defaultOperationGateway } from '../../api/app/operation.gateway'
 import { listEditingBranches, readEditingBranch, timelineQueryGateway as defaultTimelineQueryGateway } from '../../api/app/timeline-query.gateway'
 import { Button, EmptyState, Input, Panel, PropertyRow, Skeleton, Status } from '../../components/design-system'
@@ -25,7 +25,7 @@ import { DissolveEdit } from './DissolveEdit'
 import { OpacityEdit } from './OpacityEdit'
 import { SubtitleEdit } from './SubtitleEdit'
 import type { SubtitleCue } from './subtitle-cues'
-import { PositionEdit, ScaleEdit } from './PositionEdit'
+import { GainEdit, PositionEdit, ScaleEdit } from './PositionEdit'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { SourceRangeEdit } from './SourceRangeEdit'
 import { ClipClipboard } from './ClipClipboard'
@@ -239,7 +239,7 @@ export function NleWorkspace({
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
   const [loading, setLoading] = useState(true)
-  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'slip' | 'slide' | 'opacity' | 'position' | 'scale' | 'subtitle' | 'dissolve' | 'multi-move'
+  type EditorCommand = 'trim' | 'create' | 'restore' | 'trim-history' | 'paste' | 'roll' | 'slip' | 'slide' | 'opacity' | 'position' | 'scale' | 'gain' | 'subtitle' | 'dissolve' | 'multi-move'
   const issuedCommand = useRef<EditorCommand | null>(null)
   const [commandOwner, setCommandOwner] = useState<EditorCommand | null>(null)
   const [selectionPending, setSelectionPending] = useState(false)
@@ -294,6 +294,13 @@ export function NleWorkspace({
   const scalePreview = scalePlan && scaleStep?.definitionId === 'timeline.clip.scale.keyframes.set' && 'clipId' in scaleStep.target
     ? { revisionId: scalePlan.baseRevisionId, clipId: scaleStep.target.clipId, keys: scaleStep.parameters.keys.map(key =>
         ({ ...key, time: parseRational(key.time)! })) } : null
+  const [gainPlan, setGainPlan] = useState<SemanticBatch | null>(null)
+  const gainPreview = useMemo(() => {
+    const step = gainPlan?.operations[0]
+    return gainPlan && step?.definitionId === 'timeline.clip.gain.keyframes.set' && 'clipId' in step.target
+      ? { revisionId: gainPlan.baseRevisionId, clipId: step.target.clipId, keys: step.parameters.keys.map(key =>
+          ({ ...key, time: parseRational(key.time)! })) } : null
+  }, [gainPlan])
   const [opacityPlan, setOpacityPlan] = useState<SemanticBatch | null>(null)
   const opacityStep = opacityPlan?.operations[0]
   const opacityPreview = opacityPlan && opacityStep?.definitionId === 'timeline.clip.opacity.keyframes.set' && 'clipId' in opacityStep.target
@@ -335,7 +342,7 @@ export function NleWorkspace({
     const ownReadback = (issuedCommand.current === 'restore' && reason === 'RESTORE_READBACK')
       || (issuedCommand.current === 'trim' && reason === 'CLIP_READBACK')
       || (issuedCommand.current === 'trim-history' && reason === 'TRIM_HISTORY_READBACK')
-      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide' || issuedCommand.current === 'opacity' || issuedCommand.current === 'position' || issuedCommand.current === 'scale' || issuedCommand.current === 'subtitle' || issuedCommand.current === 'dissolve') && reason === 'RANGE_READBACK')
+      || ((issuedCommand.current === 'roll' || issuedCommand.current === 'slip' || issuedCommand.current === 'slide' || issuedCommand.current === 'opacity' || issuedCommand.current === 'position' || issuedCommand.current === 'scale' || issuedCommand.current === 'gain' || issuedCommand.current === 'subtitle' || issuedCommand.current === 'dissolve') && reason === 'RANGE_READBACK')
       || (issuedCommand.current === 'paste' && reason === 'PASTE_READBACK')
       || (issuedCommand.current === 'multi-move' && reason === 'MULTI_MOVE_READBACK')
     const authoritativeTransitionOwned = (issuedCommand.current !== null && !ownReadback) || applyInFlight.current
@@ -650,7 +657,7 @@ export function NleWorkspace({
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
         </Panel>
         <Panel title="Timeline media preview" className="ff-operation-panel">
-          <TimelineMediaPreview subtitlePlan={subtitlePlan} positionPreview={positionPreview} scalePreview={scalePreview} dissolvePlan={dissolvePlan} opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
+          <TimelineMediaPreview subtitlePlan={subtitlePlan} positionPreview={positionPreview} scalePreview={scalePreview} gainPreview={gainPreview} dissolvePlan={dissolvePlan} opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           {defaultBranch && !historyRevision && <section aria-label="Confirmed trim history">
@@ -663,27 +670,32 @@ export function NleWorkspace({
           </section>}
           {defaultBranch && !historyRevision && <DissolveEdit transitions={transitions} key={JSON.stringify(['dissolve', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
-            disabled={!!scalePlan || !!subtitlePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!gainPlan || !!scalePlan || !!subtitlePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('dissolve')} readback={() => loadHead('RANGE_READBACK')} onPreview={setDissolvePlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'dissolve')} />}
           {defaultBranch && !historyRevision && <OpacityEdit key={JSON.stringify(['opacity', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
-            disabled={!!scalePlan || !!subtitlePlan || !!dissolvePlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!gainPlan || !!scalePlan || !!subtitlePlan || !!dissolvePlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('opacity')} readback={() => loadHead('RANGE_READBACK')} onPreview={setOpacityPlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'opacity')} />}
           {defaultBranch && !historyRevision && <PositionEdit key={JSON.stringify(['position', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
-            disabled={!!scalePlan || !!subtitlePlan || !!dissolvePlan || !!opacityPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!gainPlan || !!scalePlan || !!subtitlePlan || !!dissolvePlan || !!opacityPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('position')} readback={() => loadHead('RANGE_READBACK')} onPreview={setPositionPlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'position')} />}
           {defaultBranch && !historyRevision && <ScaleEdit key={JSON.stringify(['scale', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
-            disabled={!!subtitlePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!gainPlan || !!subtitlePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('scale')} readback={() => loadHead('RANGE_READBACK')} onPreview={setScalePlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'scale')} />}
+          {defaultBranch && !historyRevision && <GainEdit key={JSON.stringify(['gain', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
+            disabled={!!scalePlan || !!subtitlePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            access={commandAccess('gain')} readback={() => loadHead('RANGE_READBACK')} onPreview={setGainPlan}
+            onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'gain')} />}
           {defaultBranch && !historyRevision && <SubtitleEdit key={JSON.stringify(['subtitle', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} cues={loadedProjection && loadedProjection === requestedProjection ? subtitles : []}
-            disabled={!!scalePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
+            disabled={!!gainPlan || !!scalePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('subtitle')} readback={() => loadHead('RANGE_READBACK')} onPreview={setSubtitlePlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'subtitle')} />}
           {defaultBranch && !historyRevision && (['roll', 'slip', 'slide'] as const).map(edit => <SourceRangeEdit edit={edit} key={JSON.stringify([edit, project.workspaceId, project.tenantId, project.projectId, editingBranch])}

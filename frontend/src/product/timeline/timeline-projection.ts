@@ -167,6 +167,7 @@ export interface ProjectedClip {
   readonly opacityKeys?: OpacityKeys
   readonly positionKeys?: readonly PositionKey[]
   readonly scaleKeys?: readonly ScaleKey[]
+  readonly gainKeys?: readonly ScaleKey[]
   readonly clipId: string
   readonly trackId: string
   readonly artifactId: string
@@ -374,6 +375,27 @@ export function projectTimeline(document: unknown): TimelineProjection {
             throw new Error('Scale key times must strictly increase')
           consumed.add(channel)
           clip = { ...clip, scaleKeys }
+        }
+        const gains = curves.filter(c => c.targetEntityId === clip.clipId && c.parameterPath === 'audio.gainMultiplierMicros')
+        if (gains.length) {
+          const channel = gains[0]
+          const keys = entries(channel.keyframes, 'gain keys')
+          if (track.type !== 'audio' || gains.length !== 1 || channel.valueType !== 'float'
+            || channel.extrapolation !== 'HOLD' || keys.length < 2 || keys.length > 16) {
+            throw new Error('Invalid gain channel')
+          }
+          const gainKeys = keys.map(raw => {
+            const key = object(raw, 'gain key')
+            const time = exactTime(key.time, 'gain time')
+            const multiplierMicros = projectedNumber(key.value, 'gain multiplier', 0, UNIT)
+            if (key.interpolation !== 'LINEAR' || !Number.isSafeInteger(multiplierMicros)
+              || compare(time, clip.start) < 0 || compare(time, clip.end) >= 0) throw new Error('Invalid gain key')
+            return { time, multiplierMicros }
+          })
+          if (gainKeys.some((key, i) => i > 0 && compare(gainKeys[i - 1].time, key.time) >= 0))
+            throw new Error('Gain key times must strictly increase')
+          consumed.add(channel)
+          clip = { ...clip, gainKeys }
         }
         const effects = entries(object(rawClip, 'clip').effects ?? [], 'effects').map(e => object(e, 'effect'))
         const bound = curves.filter(c => !consumed.has(c) && effects.some(e => e.id != null && e.id === c.targetEntityId))

@@ -424,12 +424,17 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         AudioRoute route = routeFor(audioMix, clip.trackId(), clip.clipId());
                         if (timedTracks) {
                             if (audio) {
+                                var gainKeys = revision.gain(clip.clipId());
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
-                                        new RenderDependency.TimedTrackInput(start, end,
+                                        gainKeys.map(keys -> RenderDependency.TimedTrackInput.animatedAudio(start, end,
+                                                revision.layer(clip.trackId()), route != null ? route.gain() : null,
+                                                route != null ? route.mute() : null, route != null ? route.balance() : null,
+                                                clip.timelineRange().start(), clip.timelineRange().end(),
+                                                new RenderDependency.GainRamp(keys)))
+                                        .orElseGet(() -> new RenderDependency.TimedTrackInput(start, end,
                                                 revision.layer(clip.trackId()), true,
-                                                route != null ? route.gain() : null,
-                                                route != null ? route.mute() : null,
-                                                route != null ? route.balance() : null)));
+                                                route != null ? route.gain() : null, route != null ? route.mute() : null,
+                                                route != null ? route.balance() : null))));
                             } else {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         RenderDependency.TimedTrackInput.video(start, end,

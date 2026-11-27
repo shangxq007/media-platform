@@ -54,7 +54,18 @@ public record BmfCpuTranscodePlan(
                              MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
                              Optional<RenderDependency.OpacityRamp> opacityKeys,
                              Optional<RenderDependency.PositionRamp> positionKeys,
-                             Optional<RenderDependency.ScaleRamp> scaleKeys) {
+                             Optional<RenderDependency.ScaleRamp> scaleKeys,
+                             Optional<RenderDependency.GainRamp> gainKeys) {
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
+                          double gain, boolean mute, double balance, VideoPlacement transform,
+                          com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
+                          MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
+                          Optional<RenderDependency.OpacityRamp> opacityKeys, Optional<RenderDependency.PositionRamp> positionKeys,
+                          Optional<RenderDependency.ScaleRamp> scaleKeys) {
+            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration,
+                    dissolveDuration, opacityKeys, positionKeys, scaleKeys, Optional.empty());
+        }
+
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                              double gain, boolean mute, double balance,
                              VideoPlacement transform,
@@ -101,6 +112,10 @@ public record BmfCpuTranscodePlan(
             }
             if (effect == null) effect = com.example.platform.render.domain.renderplan.VideoEffectSpec.IDENTITY;
             Objects.requireNonNull(elapsed, "elapsed");
+            if (gainKeys.isPresent()) {
+                if (!audio) throw new IllegalArgumentException("Gain envelope requires audio");
+                gainKeys.get().validateRelative(authoredDuration);
+            }
             Objects.requireNonNull(authoredDuration, "authoredDuration");
             Objects.requireNonNull(dissolveDuration, "dissolveDuration");
             if (elapsed.ticks() < 0 || dissolveDuration.ticks() < 0

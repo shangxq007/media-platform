@@ -132,3 +132,55 @@ export function ScaleEdit({ tracks, onPreview, ...props }: ConfirmedEditProps & 
     </>}
   </ConfirmedClipEdit>
 }
+
+export function GainEdit({ tracks, onPreview, ...props }: ConfirmedEditProps & {
+  tracks: readonly ProjectedTrack[]
+  onPreview: (batch: SemanticBatch | null) => void
+}) {
+  const clips = tracks.filter(track => track.type === 'AUDIO').flatMap(track => track.clips)
+  const [selected, select] = useState('')
+  const [form, update] = useState<{ scope: string; rows: ScaleRow[]; clear: boolean } | null>(null)
+  const clip = clips.find(c => c.clipId === selected)
+  const scope = JSON.stringify([props.head?.revisionId, props.head?.contentHash, selected])
+  const saved = clip?.gainKeys
+  const rows = form?.scope === scope ? form.rows : saved && clip
+    ? saved.map((key, i) => ({ id: 'saved-' + i, time: formatRational(subtract(key.time, clip.start)),
+      multiplier: String(Number((key.multiplierMicros / 1_000_000).toFixed(6))) }))
+    : initialScale
+  const clear = !!saved && form?.scope === scope && form.clear
+  const keys = rows.flatMap(row => {
+    const time = parseRational(row.time), value = multiplierMicros(row.multiplier)
+    return time && time.numerator >= 0n && value !== null ? [{ time, multiplierMicros: value }] : []
+  })
+  const valid = clip && (clear || keys.length === rows.length && keys.length >= 2
+    && keys.every((key, index) => key.multiplierMicros >= 0 && key.multiplierMicros <= 1_000_000
+      && (index === 0 || compare(keys[index - 1].time, key.time) < 0)
+      && compare(add(clip.start, key.time), clip.end) < 0))
+  const setRows = (next: ScaleRow[]) => update({ scope, rows: next, clear: false })
+  return <ConfirmedClipEdit {...props} edit="gain" onPreview={onPreview} inputIdentity={JSON.stringify([scope, rows, clear])}
+    draft={valid ? () => ({
+      step: { definitionId: 'timeline.clip.gain.keyframes.set', target: { clipId: selected },
+        parameters: { keys: clear ? [] : keys.map(k => ({ multiplierMicros: k.multiplierMicros, time: formatRational(add(clip.start, k.time)) })) } },
+      ranges: clear ? ['Clear the curve and use the clip’s static mix.'] : rows.map(k => k.time + ' s · ' + k.multiplier + '× static gain'),
+    }) : null}>
+    <label>Gain clip <select aria-label="Gain clip" value={clip?.clipId ?? ''} onChange={e => { select(e.target.value); update(null) }}>
+      <option value="">Choose a audio clip</option>{clips.map(c => <option key={c.clipId}>{c.clipId}</option>)}
+    </select></label>
+    {clip && <>
+      <p>1× keeps the authored gain and 0× produces silence. Both channels use the same curve, without changing balance or mute.
+        Times are relative to the clip start. Values interpolate linearly and hold at either end.</p>
+      {rows.map((row, index) => <div key={row.id}>
+        {([['time', 'time (clip seconds)'], ['multiplier', 'multiplier (×)']] as const).map(([field,label]) =>
+          <label key={field}>Key {index+1} {label} <input disabled={clear} value={row[field]}
+            onChange={e => setRows(rows.map(r => r.id === row.id ? { ...r, [field]: e.target.value } : r))} /></label>)}
+        {rows.length > 2 && <button type="button" disabled={clear} onClick={() => setRows(rows.filter(r => r.id !== row.id))}>
+          Remove gain key {index+1}</button>}
+      </div>)}
+      <button type="button" disabled={clear || rows.length >= 16}
+        onClick={() => setRows([...rows,{ id: crypto.randomUUID(), time: '', multiplier: '1' }])}>Add gain key</button>
+      {saved && <label><input type="checkbox" checked={clear}
+        onChange={e => update({ scope, rows, clear: e.target.checked })} />Clear gain keys</label>}
+      {rows.every(row => row.time) && !valid && <p role="alert">Use increasing key times inside the clip and use multipliers from 0 to 1.</p>}
+    </>}
+  </ConfirmedClipEdit>
+}

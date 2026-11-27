@@ -113,7 +113,19 @@ public final class VerifiedTimelineRevisionFactory {
         var opacity = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.OpacityKeys>();
         var position = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.PositionKeys>();
         var scale = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.ScaleKeys>();
+        var gain = new java.util.HashMap<String, com.example.platform.timeline.semantics.effect.GainKeys>();
         for (var curve : document.getAutomations()) {
+            if (com.example.platform.timeline.semantics.effect.GainKeys.isGain(curve)) {
+                var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.AUDIO)
+                        .flatMap(t -> t.clips().stream()).filter(c -> c.getClipId().value().equals(curve.targetEntityId())
+                                && "MEDIA_STREAM".equals(c.getSourceKind()))
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException("Unsupported gain target"));
+                var keys = com.example.platform.timeline.semantics.effect.GainKeys.forClip(document.getAutomations(),
+                        curve.targetEntityId()).orElseThrow();
+                keys.requireInside(owner.getStartTime(), owner.getEndTime());
+                if (gain.put(curve.targetEntityId(), keys) != null) throw new IllegalArgumentException("Ambiguous gain curve");
+                continue;
+            }
             if (com.example.platform.timeline.semantics.effect.ScaleKeys.isScale(curve)) {
                 var owner = document.getTracks().stream().filter(t -> t.type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
                         .flatMap(t -> t.clips().stream()).filter(c -> c.getClipId().value().equals(curve.targetEntityId())
@@ -147,7 +159,7 @@ public final class VerifiedTimelineRevisionFactory {
             if (opacity.put(owner.getClipId().value(), envelope) != null) throw new IllegalArgumentException("Ambiguous opacity curve");
         }
         return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
-                document.getTransitions(), opacity, position, scale, document.getMetadata().effectiveCompositionAspectRatio());
+                document.getTransitions(), opacity, position, scale, gain, document.getMetadata().effectiveCompositionAspectRatio());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

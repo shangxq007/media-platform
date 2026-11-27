@@ -171,6 +171,9 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.RemoveSubtitleCueParameters remove) {
             return framed("subtitle-cue-remove-v1", remove.cueId());
         }
+        if (p instanceof OperationParameters.GainParameters gain) {
+            return framed("gain-keys-v1", gain.keys().canonicalSamples());
+        }
         if (p instanceof OperationParameters.ScaleParameters scale) {
             return framed("scale-keys-v1", scale.keys().canonicalSamples());
         }

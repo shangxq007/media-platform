@@ -8,7 +8,7 @@ import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
 import { activeClipsAt, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
-import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
+import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type ScaleKey, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
 interface SubtitleBitmaps {
@@ -25,6 +25,12 @@ function closeSubtitle(images: SubtitleBitmaps) {
 
 type PreviewStatus = 'IDLE' | 'PREPARING' | 'READY' | 'PLAYING' | 'PAUSED' | 'FAILED'
 interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mute: boolean; pan: number }
+interface ScheduledAudio {
+  source: AudioBufferSourceNode
+  param: AudioParam
+  clip: ProjectedClip
+  gain: number
+}
 interface PreviewSession {
   revisionId: string | undefined
   controller: AbortController
@@ -33,7 +39,7 @@ interface PreviewSession {
   subtitleBlocks: Map<string, SubtitleBitmaps>
   subtitleSurface?: HTMLCanvasElement
   audioClips: AudioClip[]
-  scheduled: AudioBufferSourceNode[]
+  scheduled: ScheduledAudio[]
   audio?: AudioContext
   mixer?: GainNode
   analyser?: AnalyserNode
@@ -78,7 +84,7 @@ function stopPlayback(session: PreviewSession) {
   session.playing = false
   if (session.frame !== undefined) cancelAnimationFrame(session.frame)
   for (const media of session.videos.values()) media.pause()
-  for (const source of session.scheduled) {
+  for (const { source } of session.scheduled) {
     source.stop()
     source.disconnect()
   }
@@ -113,7 +119,7 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, subtitlePlan }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, subtitlePlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
@@ -122,6 +128,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
   scalePreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').ScaleKey[] } | null
+  gainPreview?: { revisionId: string; clipId: string; keys: readonly ScaleKey[] } | null
   onTime?: (time: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -136,6 +143,30 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   const scaleDraft = useRef(scalePreview)
   scaleDraft.current = scalePreview
   useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview, scalePreview])
+  const gainDraft = useRef(gainPreview)
+  gainDraft.current = gainPreview
+  useEffect(() => {
+    const session = current.current
+    if (!session?.playing || !session.audio) return
+    const cursor = clockCursor(Math.max(0, session.audio.currentTime - session.origin))
+    for (const item of session.scheduled) applyGainEnvelope(session, item, cursor)
+  }, [gainPreview])
+  function applyGainEnvelope(session: PreviewSession, item: ScheduledAudio, cursor: Rational) {
+    const draft = gainDraft.current
+    const keys = draft && draft.revisionId === session.revisionId && draft.clipId === item.clip.clipId
+      ? draft.keys : item.clip.gainKeys
+    const first = compare(cursor, item.clip.start) < 0 ? item.clip.start : cursor
+    if (compare(first, item.clip.end) >= 0) return
+    const when = session.origin + toSeconds(first)
+    item.param.cancelScheduledValues(when)
+    item.param.setValueAtTime(item.gain * scaleAt(keys, first), when)
+    for (const key of keys ?? []) {
+      if (compare(key.time, first) > 0) {
+        item.param.linearRampToValueAtTime(item.gain * key.multiplierMicros / 1_000_000,
+          session.origin + toSeconds(key.time))
+      }
+    }
+  }
   const currentSubtitlePlan = useRef(subtitlePlan)
   currentSubtitlePlan.current = subtitlePlan
   const pendingSubtitle = useRef<{ plan: SemanticBatch; image: SubtitleBitmaps } | null>(null)
@@ -566,6 +597,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         source.buffer = buffer
         const level = audio.createGain()
         level.gain.value = gain
+        const scheduled = { source, param: level.gain, clip, gain }
+        applyGainEnvelope(session, scheduled, session.cursorExact)
         const splitter = audio.createChannelSplitter(2)
         const merger = audio.createChannelMerger(2)
         const left = audio.createGain()
@@ -580,7 +613,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         right.connect(merger, 0, 1)
         merger.connect(session.mixer)
         source.start(session.origin + start, toSeconds(clip.sourceStart) + start - clipStart, duration)
-        session.scheduled.push(source)
+        session.scheduled.push(scheduled)
       }
     }
     const samples = session.analyser ? new Float32Array(session.analyser.fftSize) : null

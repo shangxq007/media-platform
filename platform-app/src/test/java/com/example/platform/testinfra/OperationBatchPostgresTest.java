@@ -1334,6 +1334,32 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertRippleRollsBack(base, scaleRequest(base, "scale-rolls-back", "6/1;1000000|7/1;1250000"));
     }
 
+    @Test
+    void audioGainCurvePreservesStaticRouteInOneRevision() {
+        var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("audio-main", "Audio", TrackType.AUDIO, List.of(clip("clip-a", 1, 5)))),
+                new TimelineMetadata("gain", "exact-v1", Map.of()));
+        var base = saveRevision(doc);
+        var def = OperationDefinition.V3.SET_GAIN_KEYS;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))),
+                SelectionSpec.ExpansionPolicy.EXACT);
+        var curve = com.example.platform.timeline.semantics.effect.GainKeys.parseSamples(
+                "3/2;1000000|7/3;250000|9/2;0");
+        var op = new OperationRequest(def.definitionId(), def.version(), target,
+                new OperationParameters.GainParameters(curve), base.revisionId(), hash(base), null);
+        var batch = new OperationBatchRequest("gain-curve-test",
+                new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"), base.revisionId(), List.of(op), null);
+        var result = applyPrepared(batch);
+        var animated = saveService.findById(TENANT, result.newRevisionId());
+        assertEquals(base.revisionId(), animated.parentRevisionId());
+        assertEquals(curve.curve("clip-a", null), saveService.findPayloadDocument(TENANT, result.newRevisionId())
+                .orElseThrow().getAutomations().getFirst());
+        assertEquals(doc.getAudioMix(), saveService.findPayloadDocument(TENANT, result.newRevisionId()).orElseThrow().getAudioMix());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+    }
+
     private OperationBatchRequest opacityRequest(TimelineRevision base) {
         var def = OperationDefinition.V3.SET_OPACITY_KEYS;
         var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
