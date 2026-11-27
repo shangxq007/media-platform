@@ -230,7 +230,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
 
             output_rate = Fraction(rate)
 
-            def frame_curve(points, axis, origin, first_frame):
+            def frame_curve(points, axis, origin, first_frame, counter='N'):
                 # Resolve every threshold and the first sample in each interval before
                 # conversion to AVExpr doubles. GEQ's N is local to the aligned clip.
                 knots = [(Fraction(p[0]) + origin) * output_rate for p in points]
@@ -245,9 +245,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     value = left + step * (first + first_frame - knots[i])
                     line = str(value)
                     if end - first > 1 and step:
-                        line += '+(N-(' + str(first) + '))*(' + str(step) + ')'
-                    expression = 'if(lt(N,' + str(end) + '),' + line + ',' + expression + ')'
-                return 'if(lt(N,' + str(cuts[0]) + '),' + points[0][axis] + ',' + expression + ')'
+                        line += '+(' + counter + '-(' + str(first) + '))*(' + str(step) + ')'
+                    expression = 'if(lt(' + counter + ',' + str(end) + '),' + line + ',' + expression + ')'
+                return 'if(lt(' + counter + ',' + str(cuts[0]) + '),' + points[0][axis] + ',' + expression + ')'
 
             def scaled_viewport(layer, placement, origin, first_frame, scales, static_x, static_y):
                 positions = [sample.split(';') for sample in placement[17].split('|')] if placement[17] else []
@@ -275,12 +275,24 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     fit = math.sqrt(budget / (tw * th))
                     tw = min(max(canvas_width, int(tw * fit)), budget // canvas_height)
                     th = min(th, budget // tw)
+                def texture_dimension(axis, limit, factor):
+                    return 'max(1,min(' + str(limit) + ',floor((' + str(axis) + ')*' + factor + '+0.5)))'
+
+                # Low-pass from the cropped source at the current effective dimensions.
+                # The scaler and GEQ use the same exact aligned frame index (n and N).
+                # Padding fixes the downstream raster, so neither geometry nor the
+                # frame counter restarts when swscale changes its internal footprint.
+                scale_n = '((' + frame_curve(scales, 1, origin, first_frame, 'n') + ')/1000000)'
                 layer = ff.ff_filter(layer, 'format', 'gbrap')
-                layer = ff.ff_filter(layer, 'scale', str(tw) + 'x' + str(th))
-                # GEQ bilinear clamps its sample origin to the penultimate texel.
-                # The right/bottom padding therefore needs two transparent texels.
-                layer = ff.ff_filter(layer, 'pad', 'w=iw+3:h=ih+3:x=1:y=1:color=black@0')
                 layer = ff.ff_filter(layer, 'premultiply', inplace=1)
+                layer = ff.ff_filter(layer, 'scale', 'w=' + texture_dimension(width, tw, scale_n)
+                                     + ':h=' + texture_dimension(height, th, scale_n)
+                                     + ':eval=frame:flags=bicubic')
+                layer = ff.ff_filter(layer, 'setsar', '1')
+                # GEQ clamps its sample origin to the penultimate texel. Retain
+                # two transparent texels at the right/bottom even at peak zoom.
+                layer = ff.ff_filter(layer, 'pad', 'w=' + str(tw + 3) + ':h=' + str(th + 3)
+                                     + ':x=1:y=1:color=black@0:eval=frame')
 
                 radians = math.radians(float(placement[10]))
                 cos, sin = math.cos(radians), math.sin(radians)
@@ -292,14 +304,16 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 multiplier = '((' + frame_curve(scales, 1, origin, first_frame) + ')/1000000)'
                 x, y = coordinate(1, canvas_width, static_x), coordinate(2, canvas_height, static_y)
                 phase = ('if(eq(X,0),st(0,' + multiplier + ')+st(1,' + x + ')+st(2,' + y
-                         + ')+st(3,' + str(rw / 2) + '*ld(0))+st(4,' + str(rh / 2) + '*ld(0)),0);')
+                         + ')+st(3,' + str(rw / 2) + '*ld(0))+st(4,' + str(rh / 2) + '*ld(0))'
+                         + '+st(5,' + texture_dimension(width, tw, 'ld(0)') + ')'
+                         + '+st(6,' + texture_dimension(height, th, 'ld(0)') + '),0);')
                 dx, dy = '(X+0.5-ld(1)-ld(3))', '(Y+0.5-ld(2)-ld(4))'
                 # Undo the rotation about the scaled bounds' center, then both
                 # effective axes. Convert normalized edge positions to texel centers
                 # with the one-pixel transparent halo included.
                 u = '((' + str(cos) + '*' + dx + '+' + str(sin) + '*' + dy + ')/((' + str(width) + ')*ld(0))+0.5)'
                 v = '((' + str(-sin) + '*' + dx + '+' + str(cos) + '*' + dy + ')/((' + str(height) + ')*ld(0))+0.5)'
-                sample_at = '(' + u + '*' + str(tw) + '+0.5,' + v + '*' + str(th) + '+0.5)'
+                sample_at = '(' + u + '*ld(5)+0.5,' + v + '*ld(6)+0.5)'
                 layer = ff.ff_filter(layer, 'geq', r=phase + 'r' + sample_at, g=phase + 'g' + sample_at,
                                      b=phase + 'b' + sample_at, a=phase + 'alpha' + sample_at, interpolation='bilinear')
                 layer = ff.ff_filter(layer, 'unpremultiply', inplace=1)

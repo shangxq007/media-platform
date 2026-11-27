@@ -224,6 +224,45 @@ class BmfCpuWorkerRuntimeIntegrationTest {
     }
 
     @Test
+    void animated_minification_matches_static_stripe_contrast_through_opening_and_motion_onset() throws Exception {
+        Path runtime = configuredRuntime();
+        var source = scaleSource("minification-stripes", List.of("-vf", "drawgrid=w=8:h=0:t=4:c=black"));
+        var animated = renderScale(runtime, source, "minification-animated", .1, "1/2;1000000|3/2;10000000");
+        var staticSmall = renderScale(runtime, source, "minification-static", .1, null);
+        var staticMoving = renderScale(runtime, source, "minification-first-moving", .1375, null);
+
+        for (int frame = 0; frame <= 12; frame++) {
+            var actual = stripePercentiles(animated, frame, 2, 30, 6, 12);
+            var expected = stripePercentiles(staticSmall, frame, 2, 30, 6, 12);
+            assertThat(actual[2] - actual[0]).as("opening frame %d luma spread", frame).isLessThanOrEqualTo(22);
+            for (int i = 0; i < actual.length; i++) {
+                assertThat(Math.abs(actual[i] - expected[i])).as("opening frame %d percentile %d", frame, i)
+                        .isLessThanOrEqualTo(10);
+            }
+        }
+        // This is a genuine moving sample at 11/8×, 44×33, not the last hold.
+        var actual = stripePercentiles(animated, 13, 3, 41, 9, 16);
+        var expected = stripePercentiles(staticMoving, 13, 3, 41, 9, 16);
+        for (int i = 0; i < actual.length; i++) {
+            assertThat(Math.abs(actual[i] - expected[i])).as("first moving frame percentile %d", i)
+                    .isLessThanOrEqualTo(12);
+        }
+    }
+
+    private static int[] stripePercentiles(byte[] frames, int frame, int left, int right, int top, int bottom) {
+        int[] luma = new int[(right - left) * (bottom - top)];
+        int i = 0;
+        for (int y = top; y < bottom; y++) {
+            for (int x = left; x < right; x++) {
+                luma[i++] = Byte.toUnsignedInt(frames[frame * 320 * 240 + y * 320 + x]);
+            }
+        }
+        java.util.Arrays.sort(luma);
+        return java.util.stream.IntStream.of(10, 50, 90)
+                .map(p -> luma[(p * luma.length + 99) / 100 - 1]).toArray();
+    }
+
+    @Test
     void animated_scale_keeps_the_authored_side_of_an_exact_output_frame() throws Exception {
         Path runtime = configuredRuntime();
         var source = scaleSource("solid", List.of());
