@@ -1,7 +1,7 @@
 import type { SemanticBatch, SemanticStep } from '../contracts/semantic-batch.generated'
 import { decodeCompositionAspect, type CompositionAspectRatio } from '../contracts/app/composition-aspect'
 import { z } from 'zod'
-import { subtitleDecorationId } from '../contracts/app/subtitle-decoration'
+import { subtitleDecorationId } from '../contracts/app/render-job'
 import { versionlessApi } from './app/versionless-api'
 import { sessionBoundRequest as request } from './oidc-transport'
 import { RENDER_JOB_STATUSES } from '../contracts/app/render-job'

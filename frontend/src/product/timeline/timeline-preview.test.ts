@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration } from './timeline-preview'
+import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor } from './timeline-preview'
+import { decorationVisible, type SubtitleCue } from './subtitle-cues'
 import { projectTimeline } from './timeline-projection'
-import { formatRational, parseRational } from './trim'
+import { compare, formatRational, parseRational } from './trim'
 
 const projection = projectTimeline({ schemaVersion: 'timeline-1.0', tracks: [{ trackId: 't', type: 'video', clips: [
   { clipId: 'a', sourceKind: 'MEDIA_STREAM', artifactId: 'artifact', mediaStreamId: 'stream', contentDigest: 'a'.repeat(64), startTime: '0', endTime: '2', trimStart: '4', trimEnd: '6', temporalMapping: { kind: 'CONSTANT_RATE', rate: { numerator: 1, denominator: 1 }, direction: 'FORWARD' } },
@@ -48,5 +49,28 @@ describe('timeline media preview time mapping', () => {
     expect(formatRational(timelineDuration(projection))).toBe('7/1')
     expect(formatRational(clampTimelineTime(t('99'), t('7')))).toBe('7/1')
     expect(formatRational(clampTimelineTime(t('-1'), t('7')))).toBe('0/1')
+  })
+})
+
+const cue: SubtitleCue = { cueId: 'c', text: 'Fractional', start: '0/1', end: '1/1', keys: [], width: 200, fontSize: 24,
+  decoration: { assetId: 'sunflower-v1', placement: 'right-of-cue-v1', enabled: true, start: '1/24', end: '1/12' } }
+
+describe('exact preview cursor for a fractional decoration interval', () => {
+  it('uses the frame identity when a frame time is provided', () => {
+    expect([0, 1, 2, 3].map(frame => decorationVisible(cue, parseRational(frame + '/24')!)))
+      .toEqual([false, true, false, false])
+  })
+
+  it('keeps continuous range values on their actual side of either cut', () => {
+    expect(['0.0416666', '0.0416668', '0.0833332', '0.0833334']
+      .map(position => decorationVisible(cue, decimalCursor(position)!))).toEqual([false, true, true, false])
+    expect(decimalCursor('4.16668e-2')).toEqual(decimalCursor('0.0416668'))
+  })
+
+  it('does not round the playback double to a frame or a microsecond', () => {
+    expect(compare(clockCursor(1 / 24), parseRational('1/24')!)).toBeLessThan(0)
+    expect(compare(clockCursor(1 / 12), parseRational('1/12')!)).toBeLessThan(0)
+    expect([0.0416666, 0.0416668, 0.0833332, 0.0833334]
+      .map(position => decorationVisible(cue, clockCursor(position)))).toEqual([false, true, true, false])
   })
 })

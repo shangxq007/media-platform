@@ -6,6 +6,7 @@ import {
   RENDER_JOB_STATUSES,
   RenderJobSummary,
   RenderWorkspaceScope,
+  subtitleDecorationId,
 } from './render-job'
 
 describe('render application transport projections', () => {
@@ -90,4 +91,10 @@ describe('accepted Render read adapter', () => {
     expect(await source.projects('t', abort.signal)).toEqual([]); expect(await source.jobs('t', 'p', abort.signal)).toEqual([])
     abort.abort(); await expect(source.jobs('t', 'p', abort.signal)).rejects.toThrow()
   })
+})
+
+it('validates versioned decoration identity without enumerating catalog assets', () => {
+  expect(['sunflower-v1', 'future-pin-v22', 'a-v1'].every(subtitleDecorationId)).toBe(true)
+  for (const invalid of ['sunflower', 'a-v0', 'a-v01', 'A-v1', 'a-v1\n', 'a/b-v1', 'x'.repeat(63) + '-v1', null])
+    expect(subtitleDecorationId(invalid)).toBe(false)
 })

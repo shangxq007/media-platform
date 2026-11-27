@@ -1,4 +1,4 @@
-import { subtitleDecorationId } from '../../contracts/app/subtitle-decoration'
+import { subtitleDecorationId } from '../../contracts/app/render-job'
 import type { SemanticStep } from '../../contracts/semantic-batch.generated'
 import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 /**
