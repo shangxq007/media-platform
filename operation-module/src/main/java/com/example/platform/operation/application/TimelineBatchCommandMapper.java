@@ -109,7 +109,7 @@ public final class TimelineBatchCommandMapper {
             }
             typed = TEXT_PARAMETERS.convertValue(fields, definition.parameterType());
         } else if (target instanceof OperationTargetRequest.TransitionTargetRequest transition) {
-            typed = definition.equals(OperationDefinition.V3.UPDATE_CROSS_DISSOLVE)
+            typed = definition.parameterType() == OperationParameters.TransitionUpdateParameters.class
                     ? new OperationParameters.TransitionUpdateParameters(transition.transitionId(), time(parameters, "duration"))
                     : new OperationParameters.TransitionDeleteParameters(transition.transitionId());
         } else {
@@ -222,7 +222,7 @@ public final class TimelineBatchCommandMapper {
                             requiredDouble(parameters, "fadeOutSeconds"),
                             requiredBoolean(parameters, "enabled")));
             case "timeline.clip.effect.remove" -> new OperationParameters.NoParameters();
-            case "timeline.transition.cross-dissolve.create" -> new OperationParameters.TransitionCreateParameters(
+            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create" -> new OperationParameters.TransitionCreateParameters(
                     requiredText(parameters, "transitionId"),
                     requiredText(parameters, "incomingClipId"), time(parameters, "duration"));
             case "timeline.clip.split" -> new OperationParameters.SplitParameters(

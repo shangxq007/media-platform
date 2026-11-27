@@ -7,8 +7,8 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
-import { activeClipsAt, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
-import { audioRouteFor, projectSnapshotJson, type ProjectedAudioFades, type ProjectedVideoEffect, type ProjectedClip, type ScaleKey, type TimelineProjection } from './timeline-projection'
+import { activeClipsAt, audioCrossfadeClip, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
+import { audioRouteFor, projectSnapshotJson, type ProjectedAudioFades, type ProjectedVideoEffect, type ProjectedClip, type ProjectedTransition, type ScaleKey, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
 interface SubtitleBitmaps {
@@ -120,12 +120,13 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan, audioCrossfadePlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
   subtitlePlan?: SemanticBatch | null
-  dissolvePlan?: import('../../contracts/semantic-batch.generated').SemanticBatch | null
+  dissolvePlan?: SemanticBatch | null
+  audioCrossfadePlan?: SemanticBatch | null
   opacityPreview?: { revisionId: string; clipId: string; keys: import('./timeline-projection').OpacityKeys } | null
   positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
   scalePreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').ScaleKey[] } | null
@@ -182,6 +183,38 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     if (edge.releaseStart && (!edge.attackEnd || compare(edge.releaseStart, edge.attackEnd) > 0))
       item.fade.setValueAtTime(1, at(edge.releaseStart))
     if (edge.releaseEnd) item.fade.linearRampToValueAtTime(0, at(edge.releaseEnd))
+  }
+  // A changing audition changes source coverage as well as gain. Preserve
+  // transport time and rebuild the scheduled sources on the same audio clock.
+  useEffect(() => {
+    const session = current.current
+    if (!session?.playing || !session.audio) return
+    const cursor = Math.min(session.duration, Math.max(0, clock(session) - session.origin))
+    stopPlayback(session)
+    session.cursor = cursor
+    session.cursorExact = clockCursor(cursor)
+    start(session)
+  }, [audioCrossfadePlan])
+
+  function activeAudioTransitions(session: PreviewSession): readonly ProjectedTransition[] {
+    const saved = session.projection?.transitions ?? []
+    const plan = audioCrossfadePlan
+    if (!plan || plan.baseRevisionId !== session.revisionId) return saved
+    const step = plan.operations[0]
+    switch (step?.definitionId) {
+      case 'timeline.transition.audio-crossfade.create':
+        if (!('clipId' in step.target)) return saved
+        return [...saved, { transitionId: step.parameters.transitionId, outgoingClipId: step.target.clipId,
+          incomingClipId: step.parameters.incomingClipId, duration: parseRational(step.parameters.duration)!,
+          outgoingHandle: true, audioCrossfade: true }]
+      case 'timeline.transition.audio-crossfade.update':
+        return saved.map(t => t.audioCrossfade && t.transitionId === step.target.transitionId
+          ? { ...t, duration: parseRational(step.parameters.duration)! } : t)
+      case 'timeline.transition.audio-crossfade.delete':
+        return saved.filter(t => !t.audioCrossfade || t.transitionId !== step.target.transitionId)
+      default:
+        return saved
+    }
   }
   const currentSubtitlePlan = useRef(subtitlePlan)
   currentSubtitlePlan.current = subtitlePlan
@@ -603,8 +636,10 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     session.playing = true
     const audio = session.audio
     if (audio && session.mixer) {
-      for (const { clip, buffer, gain, mute, pan } of session.audioClips) {
+      const transitions = activeAudioTransitions(session)
+      for (const { clip: authored, buffer, gain, mute, pan } of session.audioClips) {
         if (mute) continue
+        const clip = audioCrossfadeClip(authored, transitions)
         const clipStart = toSeconds(clip.start)
         const start = Math.max(session.cursor, clipStart)
         const duration = toSeconds(clip.end) - start

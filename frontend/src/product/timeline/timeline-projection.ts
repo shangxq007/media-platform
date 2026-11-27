@@ -28,6 +28,7 @@ export const IDENTITY_VIDEO_EFFECT: ProjectedVideoEffect = {
 
 export interface ProjectedTransition {
   readonly outgoingHandle?: boolean
+  readonly audioCrossfade?: true
   readonly transitionId: string
   readonly outgoingClipId: string
   readonly incomingClipId: string
@@ -465,15 +466,18 @@ export function projectTimeline(document: unknown): TimelineProjection {
     const incomingClipId = text(t.incomingClipId, 'incoming clip')
     const duration = exactTime(t.duration, 'transition duration')
     const outgoingHandle = t.alignment === 'START_AT_CUT' && t.temporalPolicy === 'USE_SOURCE_HANDLES'
+    const audioCrossfade = t.transitionDefinitionId === 'audio.crossfade'
+    const supported = audioCrossfade ? t.mediaType === 'AUDIO' && outgoingHandle
+      : t.transitionDefinitionId === 'video.cross-dissolve' && t.mediaType === 'VIDEO'
+        && (outgoingHandle || (t.alignment === 'START_AT_INCOMING' && t.temporalPolicy === 'OVERLAP_TIMELINE'))
     if (outgoingClipId === incomingClipId || duration.numerator <= 0n || incoming.has(incomingClipId)
         || !clips.some(clip => clip.clipId === incomingClipId) || !clips.some(clip => clip.clipId === outgoingClipId)
-        || t.transitionDefinitionId !== 'video.cross-dissolve' || t.transitionDefinitionVersion !== '1.0'
-        || t.mediaType !== 'VIDEO' || (!outgoingHandle && (t.alignment !== 'START_AT_INCOMING' || t.temporalPolicy !== 'OVERLAP_TIMELINE'))
+        || !supported || t.transitionDefinitionVersion !== '1.0'
         || object(t.parameters, 'transition parameters').curve !== 'LINEAR') {
       throw new Error('Unsupported Timeline transition')
     }
     incoming.add(incomingClipId)
-    return { transitionId, outgoingClipId, incomingClipId, duration, ...(outgoingHandle ? { outgoingHandle } : {}) }
+    return { transitionId, outgoingClipId, incomingClipId, duration, ...(outgoingHandle ? { outgoingHandle } : {}), ...(audioCrossfade ? { audioCrossfade: true as const } : {}) }
   })
   return { compositionAspectRatio: aspect, tracks, clips, audioRoutes, transitions, ...(subtitles.length ? { subtitles } : {}) }
 }

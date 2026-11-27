@@ -201,6 +201,20 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Submit the complete subtitle edit as one operation");
             }
         }
+        var crossfadeDefinitions = List.of(
+                com.example.platform.operation.operation.OperationDefinition.V3.CREATE_AUDIO_CROSSFADE.definitionId(),
+                com.example.platform.operation.operation.OperationDefinition.V3.UPDATE_AUDIO_CROSSFADE.definitionId(),
+                com.example.platform.operation.operation.OperationDefinition.V3.DELETE_AUDIO_CROSSFADE.definitionId());
+        if (crossfadeDefinitions.contains(instance.definitionId())) {
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                        "Audio crossfade is only available on the default editing branch");
+            }
+            if (batch.operations().size() != 1) {
+                throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
+                        "Edit one audio crossfade per confirmation");
+            }
+        }
         validateSource(instance, batch, currentCandidate, projectId);
         final OperationPlan plan;
         try {
@@ -378,7 +392,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             var track = candidate.getTracks().stream().filter(t -> t.clips().stream()
                     .anyMatch(c -> c.getClipId().equals(outgoing))).findFirst().orElseThrow();
             validateMediaRanges(batch, candidate, track.trackId(), List.of(outgoing, incoming),
-                    "Cross dissolve", false, transition);
+                    transition.isAudioCrossfade() ? "Audio crossfade source coverage" : "Cross dissolve", false, transition);
         }
         if (!RevisionRef.MAIN_REF.equals(batch.target().refId()) || preservesParentEffects(batch)) {
             try {

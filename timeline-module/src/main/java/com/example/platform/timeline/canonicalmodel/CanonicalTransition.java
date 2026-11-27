@@ -28,6 +28,7 @@ public record CanonicalTransition(
         Map<String, String> parameters) {
 
     public static final String CROSS_DISSOLVE = "video.cross-dissolve";
+    public static final String AUDIO_CROSSFADE = "audio.crossfade";
     public static final String CROSS_DISSOLVE_VERSION = "1.0";
     private static final Map<String, String> LINEAR_CURVE = Map.of("curve", "LINEAR");
 
@@ -42,8 +43,23 @@ public record CanonicalTransition(
                 outgoing, incoming, "VIDEO", duration, "START_AT_CUT", "USE_SOURCE_HANDLES", LINEAR_CURVE);
     }
 
+    public static CanonicalTransition audioCrossfade(String id, String outgoing, String incoming, MediaTime duration) {
+        return new CanonicalTransition(id, AUDIO_CROSSFADE, "1.0",
+                outgoing, incoming, "AUDIO", duration, "START_AT_CUT", "USE_SOURCE_HANDLES", LINEAR_CURVE);
+    }
+
+    public boolean isAudioCrossfade() {
+        return AUDIO_CROSSFADE.equals(transitionDefinitionId);
+    }
+
+    public boolean supportsAudioCrossfade() {
+        return isAudioCrossfade() && "1.0".equals(transitionDefinitionVersion) && "AUDIO".equals(mediaType)
+                && LINEAR_CURVE.equals(parameters) && usesOutgoingHandle();
+    }
+
     public boolean usesOutgoingHandle() {
-        return isCrossDissolve() && "START_AT_CUT".equals(alignment) && "USE_SOURCE_HANDLES".equals(temporalPolicy);
+        return (isCrossDissolve() || isAudioCrossfade()) && "START_AT_CUT".equals(alignment)
+                && "USE_SOURCE_HANDLES".equals(temporalPolicy);
     }
 
     public boolean isCrossDissolve() {

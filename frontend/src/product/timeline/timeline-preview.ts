@@ -32,7 +32,7 @@ export function activeClipsAt(projection: TimelineProjection, timelineTime: Rati
 
 /** The canonical cross-dissolve whose incoming clip is this clip, if any. */
 export function transitionForIncoming(projection: TimelineProjection, clipId: string): ProjectedTransition | null {
-  const matches = projection.transitions.filter(transition => transition.incomingClipId === clipId)
+  const matches = projection.transitions.filter(transition => !transition.audioCrossfade && transition.incomingClipId === clipId)
   if (matches.length > 1) throw new Error('Conflicting incoming Timeline transitions')
   return matches[0] ?? null
 }
@@ -108,4 +108,16 @@ export function audioFadeEnvelope(fades: ProjectedAudioFades, start: Rational, e
   return { value, attackEnd: attacking ? attackEnd : null,
     releaseStart: fades.fadeOut.numerator > 0n && compare(first, releaseStart) < 0 ? releaseStart : null,
     releaseEnd: fades.fadeOut.numerator > 0n ? end : null }
+}
+
+/** Playback-only projection. Shared-cut audio fades extend A's pinned source,
+ * without modifying any canonical range, route or manual key.
+ */
+export function audioCrossfadeClip(clip: ProjectedClip, transitions: readonly ProjectedTransition[]): ProjectedClip {
+  const incoming = transitions.find(t => t.audioCrossfade && t.incomingClipId === clip.clipId)
+  const outgoing = transitions.find(t => t.audioCrossfade && t.outgoingClipId === clip.clipId)
+  if (!incoming && !outgoing) return clip
+  return { ...clip, end: outgoing ? add(clip.end, outgoing.duration) : clip.end,
+    audioFades: { fadeIn: incoming?.duration ?? clip.audioFades?.fadeIn ?? ZERO,
+      fadeOut: outgoing?.duration ?? clip.audioFades?.fadeOut ?? ZERO } }
 }

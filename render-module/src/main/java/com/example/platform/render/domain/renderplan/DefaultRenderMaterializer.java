@@ -72,11 +72,24 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             return new MediaClip(clip.clipId(), clip.trackId(), new MediaClip.TimeRange(clip.timelineRange().start(),
                     clip.timelineRange().end().add(handle)), source, clip.temporalMapping(), extended, clip.transform(), clip.effect());
         }).toList();
-        // Preserve track order and composite the incoming picture over its outgoing handle.
+        // Keep video ordering independent of audio source-handle extensions.
         var handleLayers = new java.util.HashMap<String, Integer>();
-        if (!handles.isEmpty()) {
+        if (revision.transitions().stream().anyMatch(t -> t.isCrossDissolve() && t.usesOutgoingHandle())) {
             revision.clips().stream().sorted(java.util.Comparator.comparingInt((MediaClip c) -> revision.layer(c.trackId()))
                     .thenComparing(c -> c.timelineRange().start())).forEach(c -> handleLayers.put(c.clipId(), handleLayers.size()));
+        }
+        var audioCrossfades = revision.transitions().stream().filter(t -> t.isAudioCrossfade()).toList();
+        var attackByClip = audioCrossfades.stream().collect(java.util.stream.Collectors.toMap(
+                t -> t.incomingClipId(), t -> t.duration()));
+        var releaseByClip = audioCrossfades.stream().collect(java.util.stream.Collectors.toMap(
+                t -> t.outgoingClipId(), t -> t.duration()));
+        var audioLayers = new java.util.HashMap<String, Integer>();
+        if (!audioCrossfades.isEmpty()) {
+            revision.clips().stream()
+                    .filter(c -> revision.track(c.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO)
+                    .sorted(java.util.Comparator.comparingInt((MediaClip c) -> revision.layer(c.trackId()))
+                            .thenComparing(c -> c.timelineRange().start()))
+                    .forEachOrdered(c -> audioLayers.put(c.clipId(), audioLayers.size()));
         }
         RenderRequest request = input.request();
 
@@ -114,7 +127,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 revision.track(clip.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO);
         boolean hasAudioRoutes = audioMix != null && !audioMix.routes().isEmpty();
         boolean hasAudio = hasAudioTracks || hasAudioRoutes;
-        var dissolvesByIncoming = revision.transitions().stream().collect(
+        var dissolvesByIncoming = revision.transitions().stream().filter(t -> t.isCrossDissolve()).collect(
                 java.util.stream.Collectors.toMap(
                         com.example.platform.timeline.canonicalmodel.CanonicalTransition::incomingClipId,
                         t -> new RenderDependency.Dissolve(t.transitionId(), t.outgoingClipId(),
@@ -130,7 +143,9 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         || clips.getFirst().timelineRange().end().isLessThan(request.extent().end()));
         boolean multiClip = clips.size() > 1 || timedTracks || partialCoverage;
         if ((animated || hasTransform || hasBasicEffects || !dissolvesByIncoming.isEmpty())
-                && !hasExactEditorialFrameGrid(clips, request.extent())) {
+                && !hasExactEditorialFrameGrid(audioCrossfades.isEmpty() ? clips : clips.stream()
+                        .filter(c -> revision.track(c.trackId()).type() == com.example.platform.timeline.canonical.TrackType.VIDEO)
+                        .toList(), request.extent())) {
             diagnostics.add(RenderPlanningDiagnostic.diagnostic(
                     RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED, RenderDiagnosticSeverity.ERROR,
                     "Editorial composition requires clip and output boundaries aligned to the output frame rate"));
@@ -425,16 +440,22 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         if (timedTracks) {
                             if (audio) {
                                 var gainKeys = revision.gain(clip.clipId()).map(RenderDependency.GainRamp::new);
-                                var fades = revision.fades(clip.clipId());
+                                var authoredFades = revision.fades(clip.clipId());
+                                // An outgoing input's range ends at cut + duration in the render plan.
+                                // The crossfade release therefore starts precisely at the original cut.
+                                // Conflicting authored edge fades were rejected by Timeline validation.
+                                var fades = new RenderDependency.AudioFades(
+                                        attackByClip.getOrDefault(clip.clipId(), authoredFades.in()),
+                                        releaseByClip.getOrDefault(clip.clipId(), authoredFades.out()));
                                 var gain = route != null ? route.gain() : null;
                                 var mute = route != null ? route.mute() : null;
                                 var balance = route != null ? route.balance() : null;
-                                var layer = revision.layer(clip.trackId());
+                                var layer = audioLayers.getOrDefault(clip.clipId(), revision.layer(clip.trackId()));
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         gainKeys.isPresent() || fades.active()
                                                 ? RenderDependency.TimedTrackInput.envelopedAudio(start, end, layer, gain, mute,
                                                         balance, clip.timelineRange().start(), clip.timelineRange().end(), gainKeys,
-                                                        new RenderDependency.AudioFades(fades.in(), fades.out()))
+                                                        fades)
                                                 : new RenderDependency.TimedTrackInput(start, end, layer, true, gain, mute, balance)));
                             } else {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
@@ -450,7 +471,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                 if (embedded != null) {
                                     edges.add(new RenderDependencyEdge(embedded, compositeId,
                                             new RenderDependency.TimedTrackInput(start, end,
-                                                    revision.layer(clip.trackId()) + 1000, true,
+                                                    revision.layer(clip.trackId()) + 1000 + audioLayers.size(), true,
                                                     route != null ? route.gain() : null,
                                                     route != null ? route.mute() : null,
                                                     route != null ? route.balance() : null)));

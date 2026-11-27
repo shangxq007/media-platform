@@ -88,9 +88,9 @@ public final class OperationPlanner {
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
             case "timeline.clip.effect.set" -> planVideoEffectSet(instance, base, changes);
             case "timeline.clip.effect.remove" -> planVideoEffectRemove(instance, base, changes);
-            case "timeline.transition.cross-dissolve.create" -> planTransitionCreate(instance, base, changes);
-            case "timeline.transition.cross-dissolve.update" -> planTransitionUpdate(instance, base, changes);
-            case "timeline.transition.cross-dissolve.delete" -> planTransitionDelete(instance, base, changes);
+            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create" -> planTransitionCreate(instance, base, changes);
+            case "timeline.transition.cross-dissolve.update", "timeline.transition.audio-crossfade.update" -> planTransitionUpdate(instance, base, changes);
+            case "timeline.transition.cross-dissolve.delete", "timeline.transition.audio-crossfade.delete" -> planTransitionDelete(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.clip.ripple-delete" -> planRippleDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
@@ -1433,8 +1433,9 @@ public final class OperationPlanner {
         TimelineClip outgoing = clipOf(base, scope.get(0));
         TimelineClip incoming = clipOf(base, TimelineClipId.of(params.incomingClipId()));
         boolean sameTrack = base.getTracks().stream().anyMatch(t -> t.clips().contains(outgoing) && t.clips().contains(incoming));
-        CanonicalTransition transition = sameTrack
-                ? CanonicalTransition.cutDissolve(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
+        CanonicalTransition transition = isAudioCrossfadeOperation(inst)
+                ? CanonicalTransition.audioCrossfade(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
+                : sameTrack ? CanonicalTransition.cutDissolve(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
                 : CanonicalTransition.crossDissolve(
                 params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration());
         List<CanonicalTransition> transitions = new ArrayList<>(base.getTransitions());
@@ -1456,7 +1457,7 @@ public final class OperationPlanner {
         boolean found = false;
         for (CanonicalTransition t : base.getTransitions()) {
             if (t.transitionId().equals(params.transitionId())) {
-                if (!t.isCrossDissolve()) {
+                if (!matchesTransitionOperation(t, inst)) {
                     throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition definition mismatch");
                 }
                 transitions.add(t.withDuration(params.duration()));
@@ -1484,6 +1485,9 @@ public final class OperationPlanner {
         boolean found = false;
         for (CanonicalTransition t : base.getTransitions()) {
             if (t.transitionId().equals(params.transitionId())) {
+                if (!matchesTransitionOperation(t, inst)) {
+                    throw new PlanException(PlanErrorCode.INVALID_PLAN, "transition definition mismatch");
+                }
                 found = true;
             } else {
                 transitions.add(t);
@@ -1493,6 +1497,19 @@ public final class OperationPlanner {
                 "transition " + params.transitionId() + " missing");
         changes.add(new PlannedChange.TransitionChanged(params.transitionId(), PlannedChange.TransitionChanged.Action.REMOVED));
         return withTransitions(base, transitions);
+    }
+
+    private static boolean isAudioCrossfadeOperation(OperationInstance inst) {
+        String definition = inst.definitionId().value();
+        return switch (definition) {
+            case "timeline.transition.audio-crossfade.create", "timeline.transition.audio-crossfade.update",
+                    "timeline.transition.audio-crossfade.delete" -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean matchesTransitionOperation(CanonicalTransition transition, OperationInstance inst) {
+        return isAudioCrossfadeOperation(inst) ? transition.isAudioCrossfade() : transition.isCrossDissolve();
     }
 
     private static TimelineDocument withTransitions(TimelineDocument base,

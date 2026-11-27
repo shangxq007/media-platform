@@ -121,6 +121,34 @@ class TransitionEffectOperationPlanningTest {
                 .contains("TIMELINE_EFFECT_TARGET_UNSUPPORTED");
     }
 
+    @Test
+    void audioCrossfadeIsAnIndependentTransitionAtTheSameCut() {
+        var a = clip("a", MediaTime.ZERO, MediaTime.ofRational(4, 1));
+        var b = clip("b", MediaTime.ofRational(4, 1), MediaTime.ofRational(7, 1));
+        var pictureA = clip("picture-a", MediaTime.ZERO, MediaTime.ofRational(4, 1));
+        var pictureB = clip("picture-b", MediaTime.ofRational(4, 1), MediaTime.ofRational(7, 1));
+        var base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("picture", "Picture", TrackType.VIDEO, List.of(pictureA, pictureB)),
+                        new TimelineTrack("sound", "Sound", TrackType.AUDIO, List.of(a, b))), TimelineMetadata.empty());
+        var video = dissolve(base, "video", "picture-a", "picture-b", 1);
+        var both = plan(video, OperationDefinition.V3.CREATE_AUDIO_CROSSFADE, "a",
+                new OperationParameters.TransitionCreateParameters("audio", "b", MediaTime.ofRational(1, 1))).candidateTimeline();
+        assertThat(validate(both)).isEmpty();
+        assertThat(both.getTracks()).isEqualTo(video.getTracks());
+        assertThat(both.getTransitions()).hasSize(2).contains(video.getTransitions().getFirst());
+        var conflict = plan(both, OperationDefinition.V3.SET_AUDIO_FADES, "b",
+                new OperationParameters.AudioFadeParameters(MediaTime.ofRational(1, 4), null)).candidateTimeline();
+        assertThat(validate(conflict)).contains("TIMELINE_EFFECT_PARAMETERS_INVALID");
+        var allowed = plan(both, OperationDefinition.V3.SET_AUDIO_FADES, "b",
+                new OperationParameters.AudioFadeParameters(null, MediaTime.ofRational(1, 4))).candidateTimeline();
+        assertThat(validate(allowed)).isEmpty();
+        assertThatThrownBy(() -> plan(both, OperationDefinition.V3.DELETE_AUDIO_CROSSFADE,
+                "a", new OperationParameters.TransitionDeleteParameters("video"))).isInstanceOf(PlanException.class);
+        var cleared = plan(both, OperationDefinition.V3.DELETE_AUDIO_CROSSFADE, "a",
+                new OperationParameters.TransitionDeleteParameters("audio")).candidateTimeline();
+        assertThat(DIGESTER.digest(cleared)).isEqualTo(DIGESTER.digest(video));
+    }
+
     private static TimelineDocument dissolve(TimelineDocument base, String id, String outgoing,
             String incoming, long duration) {
         return plan(base, OperationDefinition.V3.CREATE_CROSS_DISSOLVE, outgoing,

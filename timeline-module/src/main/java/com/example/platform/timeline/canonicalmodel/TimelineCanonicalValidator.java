@@ -223,10 +223,14 @@ public final class TimelineCanonicalValidator {
                         path, transition.transitionId(), "Transition endpoints must be different"));
                 continue;
             }
-            if (!transition.isCrossDissolve()) continue;
+            if (!transition.isCrossDissolve() && !transition.isAudioCrossfade()) continue;
             try {
-                validateDissolve(candidate, layers, transition, outgoing, incoming,
-                        incomingEndpoints, windows, path, diagnostics);
+                if (transition.isAudioCrossfade()) {
+                    validateAudioCrossfade(candidate, layers, transition, outgoing, incoming, incomingEndpoints, windows);
+                } else {
+                    validateDissolve(candidate, layers, transition, outgoing, incoming,
+                            incomingEndpoints, windows, path, diagnostics);
+                }
             } catch (IllegalArgumentException invalid) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_EFFECT_PARAMETERS_INVALID,
                         path, transition.transitionId(), invalid.getMessage()));
@@ -235,6 +239,40 @@ public final class TimelineCanonicalValidator {
                         path, transition.transitionId(), "Transition time is outside the representable range"));
             }
         }
+    }
+
+    private static void validateAudioCrossfade(TimelineCandidate candidate, Map<String, Integer> layers,
+            CanonicalTransition transition, TimelineCandidate.Clip outgoing, TimelineCandidate.Clip incoming,
+            java.util.Set<String> incomingEndpoints, List<DissolveWindow> windows) {
+        int track = layers.get(outgoing.clipId());
+        if (!transition.supportsAudioCrossfade() || track != layers.get(incoming.clipId())
+                || candidate.tracks().get(track).type() != TimelineCandidate.TrackType.AUDIO
+                || !(outgoing.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding)
+                || !(incoming.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding)) {
+            throw new IllegalArgumentException("Audio crossfade requires adjacent pinned audio clips on the same track");
+        }
+        if (!ConstantRateTemporalMapping.identity().equals(outgoing.temporalMapping())
+                || !ConstantRateTemporalMapping.identity().equals(incoming.temporalMapping())) {
+            throw new IllegalArgumentException("Audio crossfade requires forward 1x endpoint mappings");
+        }
+        if (outgoing.timelineStart() == null || incoming.timelineStart() == null
+                || outgoing.duration() == null || incoming.duration() == null) return;
+        var cut = incoming.timelineStart();
+        if (!cut.equals(outgoing.timelineStart().add(outgoing.duration()))) {
+            throw new IllegalArgumentException("Audio crossfade endpoints must share an exact cut");
+        }
+        if (transition.duration().isGreaterThan(incoming.duration())) {
+            throw new IllegalArgumentException("Audio crossfade exceeds the incoming clip duration");
+        }
+        if (ClipAudioFades.fromEffects(outgoing.effects()).out().ticks() > 0
+                || ClipAudioFades.fromEffects(incoming.effects()).in().ticks() > 0) {
+            throw new IllegalArgumentException("Remove the outgoing fade-out or incoming fade-in before using audio crossfade");
+        }
+        var window = new DissolveWindow(outgoing.clipId(), incoming.clipId(), cut, cut.add(transition.duration()));
+        if (!incomingEndpoints.add(incoming.clipId()) || windows.stream().anyMatch(previous -> previous.conflictsWith(window))) {
+            throw new IllegalArgumentException("Audio crossfade coverage overlaps another transition on these clips");
+        }
+        windows.add(window);
     }
 
     private static void validateDissolve(TimelineCandidate candidate, Map<String, Integer> layers,

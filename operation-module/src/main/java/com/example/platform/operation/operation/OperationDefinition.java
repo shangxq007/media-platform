@@ -180,6 +180,16 @@ public record OperationDefinition(
         public static final OperationDefinition REMOVE_VIDEO_EFFECT = new OperationDefinition(
                 OperationDefinitionId.of("timeline.clip.effect.remove"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.NoParameters.class);
+        public static final OperationDefinition CREATE_AUDIO_CROSSFADE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.transition.audio-crossfade.create"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionCreateParameters.class);
+        public static final OperationDefinition UPDATE_AUDIO_CROSSFADE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.transition.audio-crossfade.update"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.TRANSITION, 1, 1, OperationParameters.TransitionUpdateParameters.class);
+        public static final OperationDefinition DELETE_AUDIO_CROSSFADE = new OperationDefinition(
+                OperationDefinitionId.of("timeline.transition.audio-crossfade.delete"), OperationDefinitionVersion.of(1, 0),
+                Lifecycle.ACTIVE, TargetKind.TRANSITION, 1, 1, OperationParameters.TransitionDeleteParameters.class);
+
         public static final OperationDefinition CREATE_CROSS_DISSOLVE = new OperationDefinition(
                 OperationDefinitionId.of("timeline.transition.cross-dissolve.create"), OperationDefinitionVersion.of(1, 0),
                 Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, 1, 1, OperationParameters.TransitionCreateParameters.class);
@@ -218,7 +228,7 @@ public record OperationDefinition(
                         java.util.stream.Stream.of(INITIALIZE_TIMELINE, IMPORT_TIMELINE, RESTORE_REVISION,
                                 SPLIT_CLIP, PASTE_CLIPS, SLIDE_CLIP, SLIP_CLIP, ROLL_CUT, RIPPLE_INSERT, RIPPLE_DELETE, ADD_TRACK, RELOCATE_CLIP, SET_COMPOSITION_ASPECT, SET_OPACITY_KEYS, SET_POSITION_KEYS, SET_SCALE_KEYS, SET_GAIN_KEYS, SET_AUDIO_FADES, SET_SUBTITLE_CUE, REMOVE_SUBTITLE_CUE, SET_VIDEO_TRANSFORM,
                                 SET_VIDEO_EFFECT, REMOVE_VIDEO_EFFECT, CREATE_CROSS_DISSOLVE,
-                                UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE)).toList();
+                                UPDATE_CROSS_DISSOLVE, DELETE_CROSS_DISSOLVE, CREATE_AUDIO_CROSSFADE, UPDATE_AUDIO_CROSSFADE, DELETE_AUDIO_CROSSFADE)).toList();
         private V3() {}
     }
 }

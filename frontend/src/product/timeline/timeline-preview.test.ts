@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeClipAt, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
+import { activeClipAt, audioCrossfadeClip, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
 import { decorationVisible, type SubtitleCue } from './subtitle-cues'
 import { projectTimeline } from './timeline-projection'
 import { compare, formatRational, parseRational } from './trim'
@@ -118,4 +118,19 @@ describe('audio edge envelope', () => {
     expect(audioFadeEnvelope({ fadeIn: t('0'), fadeOut: t('0') }, t('1'), t('5'), t('3')))
       .toEqual({ value: 1, attackEnd: null, releaseStart: null, releaseEnd: null })
   })
+})
+
+it('previews independent audio weights on a shared cut and never moves either authored range', () => {
+  const left = projection.clips[0]
+  const right = { ...projection.clips[1], start: left.end }
+  const blend = { transitionId: 'blend', outgoingClipId: left.clipId, incomingClipId: right.clipId,
+    duration: t('1'), outgoingHandle: true, audioCrossfade: true as const }
+  const a = audioCrossfadeClip(left, [blend]), b = audioCrossfadeClip(right, [blend])
+  expect(formatRational(left.end)).toBe('2/1')
+  expect(formatRational(a.end)).toBe('3/1')
+  expect(a.sourceEnd).toBe(left.sourceEnd)
+  expect(b.sourceStart).toBe(right.sourceStart)
+  const ratio = (c: typeof a, time: string) => audioFadeEnvelope(c.audioFades!, c.start, c.end, t(time)).value
+  expect(['2','9/4','5/2','11/4','3'].map(x => ratio(a,x))).toEqual([1,.75,.5,.25,0])
+  expect(['2','9/4','5/2','11/4','3'].map(x => ratio(b,x))).toEqual([0,.25,.5,.75,1])
 })
