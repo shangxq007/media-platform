@@ -2596,7 +2596,9 @@
                     "additionalProperties" : false,
                     "properties" : {
                       "assetId" : {
-                        "enum" : [ "sunflower-v1" ],
+                        "description" : "Versioned asset ID from the published subtitle decoration catalog.",
+                        "maxLength" : 64,
+                        "pattern" : "^(?:[a-z0-9]+-)+v[1-9][0-9]*$(?![\\s\\S])",
                         "type" : "string"
                       },
                       "enabled" : {

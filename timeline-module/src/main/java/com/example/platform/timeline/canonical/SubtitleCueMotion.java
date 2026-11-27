@@ -77,7 +77,7 @@ public record SubtitleCueMotion(
             }
             var begin = decorationTime(start);
             var finish = decorationTime(end);
-            if (!begin.isLessThan(finish)) {
+            if (compareDecorationTime(begin, finish) >= 0) {
                 throw new IllegalArgumentException("Subtitle decoration needs an increasing cue-relative interval");
             }
             start = begin.toString();
@@ -95,9 +95,14 @@ public record SubtitleCueMotion(
         }
 
         public void requireInside(MediaTime duration) {
-            if (MediaTime.parse(end).isGreaterThan(duration)) {
+            if (compareDecorationTime(MediaTime.parse(end), duration) > 0) {
                 throw new IllegalArgumentException("Subtitle decoration does not fit the cue interval. Adjust its timing or send decoration: null to remove it.");
             }
+        }
+
+        private static int compareDecorationTime(MediaTime left, MediaTime right) {
+            return java.math.BigInteger.valueOf(left.ticks()).multiply(java.math.BigInteger.valueOf(right.timeScale()))
+                    .compareTo(java.math.BigInteger.valueOf(right.ticks()).multiply(java.math.BigInteger.valueOf(left.timeScale())));
         }
 
         public String canonical() {

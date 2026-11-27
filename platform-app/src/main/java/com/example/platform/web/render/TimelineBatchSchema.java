@@ -1,5 +1,6 @@
 package com.example.platform.web.render;
 
+import com.example.platform.fonttext.typography.SubtitleBlockLayout;
 import com.example.platform.operation.application.TimelineOperationWireContract;
 import com.example.platform.operation.application.TimelineBatchCommand;
 import com.example.platform.operation.batch.OperationBatchRequest;
@@ -104,10 +105,10 @@ public final class TimelineBatchSchema {
                     List.of("start","end","time","duration"))));
             case "cue-decoration" -> Map.of("description", "Omit to preserve, supply a complete configuration, or send null to remove.",
                     "oneOf", List.of(Map.of("type", "null"), object(Map.of(
-                            "assetId", Map.of("type", "string", "enum", com.example.platform.fonttext.typography.SubtitleBlockLayout
-                                    .decorations().stream().map(asset -> asset.id()).toList()),
-                            "placement", Map.of("type", "string", "enum", com.example.platform.fonttext.typography.SubtitleBlockLayout
-                                    .decorations().stream().map(asset -> asset.placement()).distinct().toList()),
+                            "assetId", Map.of("type", "string", "maxLength", SubtitleBlockLayout.MAX_DECORATION_ID_LENGTH,
+                                    "pattern", "^" + SubtitleBlockLayout.DECORATION_ID_PATTERN + "$(?![\\s\\S])",
+                                    "description", "Versioned asset ID from the published subtitle decoration catalog."),
+                            "placement", literal(SubtitleBlockLayout.DECORATION_PLACEMENT),
                             "enabled", parameterType("boolean"), "start", parameterType("cue-time"), "end", parameterType("cue-time")),
                             List.of("assetId","placement","enabled","start","end"))));
             case "cue-width" -> integerRange(40,304);

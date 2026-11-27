@@ -1,3 +1,4 @@
+import { subtitleDecorationId } from '../../contracts/app/subtitle-decoration'
 import type { SemanticStep } from '../../contracts/semantic-batch.generated'
 import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAspectRatio } from '../../contracts/app/composition-aspect'
 /**
@@ -270,7 +271,7 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     const config = object(motion.decoration, 'subtitle decoration')
     const begin = parseRational(text(config.start, 'decoration start'))
     const finish = parseRational(text(config.end, 'decoration end'))
-    if (config.assetId !== 'sunflower-v1' || config.placement !== 'right-of-cue-v1' || typeof config.enabled !== 'boolean'
+    if (!subtitleDecorationId(config.assetId) || config.placement !== 'right-of-cue-v1' || typeof config.enabled !== 'boolean'
         || !begin || !finish || begin.numerator < 0n || compare(begin, finish) >= 0 || compare(finish, duration) > 0) {
       throw new Error('Invalid subtitle decoration')
     }

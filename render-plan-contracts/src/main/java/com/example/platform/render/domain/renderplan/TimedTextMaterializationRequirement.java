@@ -10,6 +10,8 @@ import com.example.platform.timeline.canonical.SubtitleCueMotion;
 import com.example.platform.fonttext.typography.SubtitleFontRun;
 import com.example.platform.fonttext.typography.SubtitleBlockLayout;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import java.math.BigInteger;
 import com.example.platform.timeline.canonical.TextElementId;
 import java.util.List;
 import java.util.Objects;
@@ -195,51 +197,74 @@ public record TimedTextMaterializationRequirement(
 
     public java.util.Optional<CueRaster> cueRaster(RenderExtent extent) {
         if (!editableCue()) throw new IllegalArgumentException("Only a pinned subtitle profile can prepare a block raster");
-        var first = ExactTextTimelineTimeProjection.project(start);
-        var last = ExactTextTimelineTimeProjection.projectEnd(start, duration);
-        if (!(first instanceof ExactTextTimelineTimeProjection.Projected begin)
-                || !(last instanceof ExactTextTimelineTimeProjection.Projected finish)) {
-            throw new IllegalArgumentException("Subtitle timing cannot be projected exactly");
-        }
-        if (!begin.mediaTime().isLessThan(extent.end()) || !finish.mediaTime().isGreaterThan(extent.start())) {
+        var cueEnd = offset(start, duration, false);
+        var extentStart = exact(extent.start());
+        var extentEnd = exact(extent.end());
+        if (compare(start, extentEnd) >= 0 || compare(cueEnd, extentStart) <= 0) {
             return java.util.Optional.empty();
         }
-        var visibleStart = begin.mediaTime().isGreaterThan(extent.start()) ? begin.mediaTime() : extent.start();
-        var visibleEnd = finish.mediaTime().isLessThan(extent.end()) ? finish.mediaTime() : extent.end();
-        var relativeStart = visibleStart.subtract(extent.start());
-        var relativeEnd = visibleEnd.subtract(extent.start());
+        var visibleStart = compare(start, extentStart) > 0 ? start : extentStart;
+        var visibleEnd = compare(cueEnd, extentEnd) < 0 ? cueEnd : extentEnd;
+        var relativeStart = offset(visibleStart, extentStart, true);
+        var relativeEnd = offset(visibleEnd, extentStart, true);
         long firstFrame = firstFrameAtOrAfter(relativeStart, extent.frameRate());
         long endFrame = firstFrameAtOrAfter(relativeEnd, extent.frameRate());
         if (firstFrame == endFrame) return java.util.Optional.empty();
-        subtitleCue.requireInside(finish.mediaTime().subtract(begin.mediaTime()));
+        subtitleCue.requireInside(boundedTime(duration));
         var width = frame.widthConstraint();
         var size = styledText.styleRuns().getFirst().style().fontSize().value();
         if (!width.denominator().equals(java.math.BigInteger.ONE) || !size.denominator().equals(java.math.BigInteger.ONE)) {
             throw new IllegalArgumentException("Subtitle design width and size must be integral");
         }
-        return java.util.Optional.of(new CueRaster(firstFrame, endFrame, relativeStart,
-                visibleStart.subtract(begin.mediaTime()), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
+        return java.util.Optional.of(new CueRaster(firstFrame, endFrame, boundedTime(relativeStart),
+                boundedTime(offset(visibleStart, start, true)), cueSamples(), new BlockRasterRecipe(styledText.content().value(),
                         width.numerator().intValueExact(), size.numerator().intValueExact(), subtitleCue.effectiveFontProfile(), subtitleCue.fontRuns()),
-                FadeRaster.from(subtitleCue.selectedTextFade()), decorationRaster(extent, begin.mediaTime(), firstFrame, endFrame)));
+                FadeRaster.from(subtitleCue.selectedTextFade()), decorationRaster(extent, firstFrame, endFrame)));
     }
 
-    private DecorationRaster decorationRaster(RenderExtent extent, MediaTime cueStart, long firstFrame, long endFrame) {
+    private DecorationRaster decorationRaster(RenderExtent extent, long firstFrame, long endFrame) {
         var decoration = subtitleCue.decoration();
         if (decoration == null || !decoration.enabled()) return null;
-        var begin = cueStart.add(MediaTime.parse(decoration.start()));
-        var finish = cueStart.add(MediaTime.parse(decoration.end()));
-        if (!begin.isLessThan(extent.end()) || !finish.isGreaterThan(extent.start())) return null;
-        long first = begin.isGreaterThan(extent.start())
-                ? Math.max(firstFrame, firstFrameAtOrAfter(begin.subtract(extent.start()), extent.frameRate())) : firstFrame;
-        long end = finish.isLessThan(extent.end())
-                ? Math.min(endFrame, firstFrameAtOrAfter(finish.subtract(extent.start()), extent.frameRate())) : endFrame;
+        // Check the entire positioned interval in unbounded rationals. Narrow only the
+        // frame index, not an intermediate sum or a clipped timeline timestamp.
+        var extentStart = exact(extent.start());
+        var extentEnd = exact(extent.end());
+        var begin = offset(start, exact(MediaTime.parse(decoration.start())), false);
+        var finish = offset(start, exact(MediaTime.parse(decoration.end())), false);
+        if (compare(begin, extentEnd) >= 0 || compare(finish, extentStart) <= 0) return null;
+        long first = compare(begin, extentStart) > 0
+                ? Math.max(firstFrame, firstFrameAtOrAfter(offset(begin, extentStart, true), extent.frameRate())) : firstFrame;
+        long end = compare(finish, extentEnd) < 0
+                ? Math.min(endFrame, firstFrameAtOrAfter(offset(finish, extentStart, true), extent.frameRate())) : endFrame;
         return first < end ? new DecorationRaster(first, end, decoration.assetId()) : null;
     }
 
-    static long firstFrameAtOrAfter(MediaTime time, com.example.platform.shared.time.FrameRate rate) {
-        var n = java.math.BigInteger.valueOf(time.ticks()).multiply(rate.numerator());
-        var d = java.math.BigInteger.valueOf(time.timeScale()).multiply(java.math.BigInteger.valueOf(rate.denominator()));
-        return n.add(d).subtract(java.math.BigInteger.ONE).divide(d).longValueExact();
+    private static MediaTime boundedTime(FontRational value) {
+        if (ExactTextTimelineTimeProjection.project(value) instanceof ExactTextTimelineTimeProjection.Projected result) {
+            return result.mediaTime();
+        }
+        throw new IllegalArgumentException("Subtitle timing cannot be projected exactly");
+    }
+
+    private static FontRational exact(MediaTime time) {
+        return FontRational.of(time.ticks(), time.timeScale());
+    }
+
+    private static FontRational offset(FontRational left, FontRational right, boolean subtract) {
+        var a = left.numerator().multiply(right.denominator());
+        var b = right.numerator().multiply(left.denominator());
+        return new FontRational(subtract ? a.subtract(b) : a.add(b),
+                left.denominator().multiply(right.denominator()));
+    }
+
+    private static int compare(FontRational left, FontRational right) {
+        return left.numerator().multiply(right.denominator()).compareTo(right.numerator().multiply(left.denominator()));
+    }
+
+    private static long firstFrameAtOrAfter(FontRational time, FrameRate rate) {
+        var n = time.numerator().multiply(rate.numerator());
+        var d = time.denominator().multiply(BigInteger.valueOf(rate.denominator()));
+        return n.add(d).subtract(BigInteger.ONE).divide(d).longValueExact();
     }
 
     public String cueSamples() {

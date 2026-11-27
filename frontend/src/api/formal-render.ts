@@ -1,6 +1,7 @@
 import type { SemanticBatch, SemanticStep } from '../contracts/semantic-batch.generated'
 import { decodeCompositionAspect, type CompositionAspectRatio } from '../contracts/app/composition-aspect'
 import { z } from 'zod'
+import { subtitleDecorationId } from '../contracts/app/subtitle-decoration'
 import { versionlessApi } from './app/versionless-api'
 import { sessionBoundRequest as request } from './oidc-transport'
 import { RENDER_JOB_STATUSES } from '../contracts/app/render-job'
@@ -67,9 +68,9 @@ const fontCatalog = z.array(resolvedFont.extend({ family: id, style: id })).min(
   .refine(entries => new Set(entries.map(entry => entry.id)).size === entries.length, 'Duplicate subtitle font ID')
 export type SubtitleFontCatalog = z.infer<typeof fontCatalog>
 const subtitleDecorationCatalog = z.array(z.object({
-  id: z.literal('sunflower-v1'), label: z.string(), placement: z.literal('right-of-cue-v1'),
+  id: z.string().refine(subtitleDecorationId, 'Invalid versioned subtitle decoration ID'), label: id, placement: z.literal('right-of-cue-v1'),
   size: z.number().int().positive(), gap: z.number().int().nonnegative(), referenceWidth: z.number().int().positive(),
-}))
+})).refine(entries => new Set(entries.map(entry => entry.id)).size === entries.length, 'Duplicate subtitle decoration ID')
 export type SubtitleDecorationCatalog = z.infer<typeof subtitleDecorationCatalog>
 
 const planSchema = z.object({ batchDigest: z.string().regex(/^[0-9a-f]{64}$/),

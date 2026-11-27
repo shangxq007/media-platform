@@ -31,28 +31,43 @@ public final class SubtitleBlockLayout {
     public static final String FIXTURE_PROFILE = "n18-fixture-serif-v1";
     public static final String PROFILE_ID_PATTERN = "[a-z0-9-]{1,40}";
 
+    public static final String DECORATION_ID_PATTERN = "(?:[a-z0-9]+-)+v[1-9][0-9]*";
+    public static final int MAX_DECORATION_ID_LENGTH = 64;
+    public static final String DECORATION_PLACEMENT = "right-of-cue-v1";
+
     public record DecorationAsset(String id, String label, String placement, int size, int gap, int referenceWidth) {}
 
-    private static final DecorationAsset SUNFLOWER = new DecorationAsset(
-            "sunflower-v1", "Sunflower", "right-of-cue-v1", 24, 4, 320);
+    private record BundledDecoration(DecorationAsset asset, String bitmapKey) {}
+
+    private static final Map<String, BundledDecoration> DECORATIONS = Map.of(
+            "sunflower-v1", new BundledDecoration(new DecorationAsset(
+                    "sunflower-v1", "Sunflower", DECORATION_PLACEMENT, 24, 4, 320), "1f33b"));
+
+    private static BundledDecoration resolveDecoration(String id) {
+        var bundled = id != null && id.length() <= MAX_DECORATION_ID_LENGTH && id.matches(DECORATION_ID_PATTERN)
+                ? DECORATIONS.get(id) : null;
+        if (bundled == null) throw new IllegalArgumentException("Unknown subtitle decoration asset");
+        return bundled;
+    }
 
     public static DecorationAsset decoration(String id) {
-        if (!SUNFLOWER.id().equals(id)) throw new IllegalArgumentException("Unknown subtitle decoration asset");
-        return SUNFLOWER;
+        return resolveDecoration(id).asset();
     }
 
     public static List<DecorationAsset> decorations() {
-        return List.of(SUNFLOWER);
+        return DECORATIONS.values().stream().map(BundledDecoration::asset)
+                .sorted(java.util.Comparator.comparing(DecorationAsset::id)).toList();
     }
 
     public static byte[] decorationPng(String id, int destinationWidth) {
-        var asset = decoration(id);
+        var bundled = resolveDecoration(id);
+        var asset = bundled.asset();
         if (destinationWidth < 1 || destinationWidth > MAX_DESTINATION_WIDTH)
             throw new IllegalArgumentException("Subtitle decoration destination width is outside the raster budget");
         int size = Math.max(1, (int) Math.round(asset.size() * (double) destinationWidth / asset.referenceWidth()));
         var block = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         try {
-            var graphic = ImageIO.read(new java.io.ByteArrayInputStream(Resources.EMOJI.get("1f33b")));
+            var graphic = ImageIO.read(new java.io.ByteArrayInputStream(Resources.EMOJI.get(bundled.bitmapKey())));
             var graphics = block.createGraphics();
             try {
                 graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);

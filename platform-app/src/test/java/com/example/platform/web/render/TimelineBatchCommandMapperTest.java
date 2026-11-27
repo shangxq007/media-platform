@@ -129,7 +129,7 @@ class TimelineBatchCommandMapperTest {
         fields.put("end", "5/2");
         assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, null, fields)));
         fields.put("end", "5/1");
-        fields.put("decoration", Map.of("assetId","unregistered","placement","right-of-cue-v1",
+        fields.put("decoration", Map.of("assetId","unregistered-v1","placement","right-of-cue-v1",
                 "enabled",true,"start","0","end","2/1"));
         assertThrows(IllegalArgumentException.class, () -> map(new TimelineOperationStep(id, null, fields)));
         fields.put("decoration", null);

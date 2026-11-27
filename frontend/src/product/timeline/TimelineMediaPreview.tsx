@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
-import { parseRational, compare, subtract, toSeconds, type Rational } from './trim'
+import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
+import { decimalCursor, clockCursor } from './preview-clock'
 import { activeClipsAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
@@ -43,6 +44,7 @@ interface PreviewSession {
   end: Rational
   seekInputEnd: number
   cursor: number
+  cursorExact: Rational
   origin: number
   playing: boolean
   starting: boolean
@@ -50,7 +52,6 @@ interface PreviewSession {
 }
 
 const clock = (session: PreviewSession) => session.audio?.currentTime ?? performance.now() / 1000
-const rationalTime = (seconds: number) => ({ numerator: BigInt(Math.floor(seconds * 1_000_000)), denominator: 1_000_000n })
 const seekInputMax = (duration: number) => Math.max(0.01, duration)
 
 function effectiveSubtitleCues(projection: TimelineProjection, plan: SemanticBatch | null | undefined, revisionId: string | undefined) {
@@ -164,6 +165,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
   const [duration, setDuration] = useState(0)
   const [time, setTime] = useState(0)
+  const [exactSeek, setExactSeek] = useState('')
+  const exactTarget = exactSeek.length <= 64 ? parseRational(exactSeek) ?? decimalCursor(exactSeek) : null
   const [message, setMessage] = useState('')
   const [retry, setRetry] = useState(0)
 
@@ -183,13 +186,14 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     session.duration = toSeconds(end)
     session.seekInputEnd = nativeSeekInputEnd(session.duration)
     setDuration(session.duration)
-    const clamped = session.cursor > session.duration
-    if (session.playing && session.cursor >= session.duration) {
+    const clamped = compare(session.cursorExact, end) > 0
+    if (session.playing && compare(session.cursorExact, end) >= 0) {
       stopPlayback(session)
       setStatus('PAUSED')
     }
     if (clamped) {
       session.cursor = session.duration
+      session.cursorExact = end
       publishTime(session.cursor)
     }
     draw(session, clamped)
@@ -240,7 +244,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     }
     const context = target.getContext('2d')
     if (!context) return
-    const time = session.cursor === session.duration ? session.end : rationalTime(session.cursor)
+    const time = session.cursorExact
+    if (host.current) host.current.dataset.previewCursor = formatRational(time)
     let projection = session.projection
     const plan = dissolve.current
     const step = plan?.operations[0]
@@ -402,7 +407,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   useEffect(() => {
     const session: PreviewSession = {
       revisionId, controller: new AbortController(), urls: [], videos: new Map(), subtitleBlocks: new Map(), audioClips: [], scheduled: [],
-      duration: 0, end: rationalTime(0), seekInputEnd: 0, cursor: 0, origin: 0, playing: false, starting: false,
+      duration: 0, end: ZERO, seekInputEnd: 0, cursor: 0, cursorExact: ZERO, origin: 0, playing: false, starting: false,
     }
     current.current = session
     setCueTarget(null)
@@ -577,7 +582,11 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const samples = session.analyser ? new Float32Array(session.analyser.fftSize) : null
     const advance = () => {
       if (!session.playing) return
-      session.cursor = Math.min(session.duration, Math.max(0, clock(session) - session.origin))
+      const elapsed = Math.max(0, clock(session) - session.origin)
+      const exact = clockCursor(elapsed)
+      const reachedEnd = compare(exact, session.end) >= 0
+      session.cursorExact = reachedEnd ? session.end : exact
+      session.cursor = reachedEnd ? session.duration : elapsed
       publishTime(session.cursor)
       draw(session)
       if (samples && host.current && session.analyser) {
@@ -586,7 +595,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         for (const sample of samples) energy += sample * sample
         host.current.dataset.audioRms = Math.sqrt(energy / samples.length).toFixed(4)
       }
-      if (session.cursor >= session.duration) {
+      if (compare(session.cursorExact, session.end) >= 0) {
         stopPlayback(session)
         setStatus('PAUSED')
       } else {
@@ -594,7 +603,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       }
     }
     setStatus('PLAYING')
-    advance()
+    session.frame = requestAnimationFrame(advance)
   }
 
   async function toggle() {
@@ -609,7 +618,12 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     try {
       if (session.audio) await session.audio.resume()
       if (current.current !== session || !session.duration) return
-      if (session.cursor >= session.duration) session.cursor = 0
+      if (compare(session.cursorExact, session.end) >= 0) {
+        session.cursorExact = ZERO
+        session.cursor = 0
+        publishTime(0)
+        draw(session, true)
+      }
       start(session)
     } catch (error) {
       fail(session, error)
@@ -618,13 +632,14 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     }
   }
 
-  function seek(seconds: number) {
+  function seek(position: Rational, nativeEnd = false) {
     const session = current.current
     if (!session?.projection) return
     const resume = session.playing
     stopPlayback(session)
-    session.cursor = seconds === session.seekInputEnd
-      ? session.duration : Math.min(session.duration, Math.max(0, seconds))
+    session.cursorExact = nativeEnd || compare(position, session.end) >= 0 ? session.end
+      : compare(position, ZERO) < 0 ? ZERO : position
+    session.cursor = toSeconds(session.cursorExact)
     publishTime(session.cursor)
     draw(session, true)
     if (resume) start(session)
@@ -645,9 +660,26 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</Button>
       {/* The native input must be able to reach a canonical end that is off the centisecond grid. */}
       <input aria-label="Timeline preview seek" type="range" min={0} max={seekInputMax(duration)}
-        step="any" value={time} onChange={event => seek(Number(event.target.value))} style={{ flex: 1, minWidth: 0 }} />
+        step="any" value={time} onChange={event => {
+          const cursor = decimalCursor(event.target.value)
+          if (cursor) seek(cursor, event.target.valueAsNumber === current.current?.seekInputEnd)
+        }} style={{ flex: 1, minWidth: 0 }} />
       <output aria-label="Timeline preview time">{time.toFixed(2)}s / {duration.toFixed(2)}s</output>
     </div>
+    <details>
+      <summary>Precise seek</summary>
+      <label>Exact preview time (seconds) <input value={exactSeek} placeholder="1/24" maxLength={64}
+        onChange={event => setExactSeek(event.target.value)} onKeyDown={event => {
+          if (event.key === 'Enter' && exactTarget && exactTarget.numerator >= 0n && duration > 0
+            && (status === 'READY' || status === 'PAUSED' || status === 'PLAYING')) {
+            event.preventDefault()
+            seek(exactTarget)
+          }
+        }} /></label>
+      <Button type="button" disabled={!exactTarget || exactTarget.numerator < 0n || !duration
+        || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
+        onClick={() => { if (exactTarget) seek(exactTarget) }}>Seek exact time</Button>
+    </details>
     {status === 'FAILED' && <Button type="button" onClick={() => setRetry(value => value + 1)}>Retry preview</Button>}
   </section>
 }
