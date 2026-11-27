@@ -10,7 +10,8 @@ import subprocess
 import sys
 import types
 
-arguments, output = map(pathlib.Path, sys.argv[1:])
+arguments, output = map(pathlib.Path, sys.argv[1:3])
+expected_envelopes = int(sys.argv[3])
 args = arguments.read_bytes().decode().split('\0')
 assert args[:2] == ['-s', '-c']
 program, graph_args = args[2], args[3:]
@@ -48,7 +49,7 @@ graph_args[2] = str(output / 'graph-marker.bin')
 sys.argv = ['bmf-production-graph', *graph_args]
 exec(compile(program, 'production-multitrack-graph', 'exec'), {'__name__':'__main__'})
 assert final_audio is not None
-assert [n for n, _, _ in final_audio].count('aeval') == 1
+assert [n for n, _, _ in final_audio].count('aeval') == expected_envelopes
 assert [n for n, _, _ in final_audio].count('adelay') == 1
 assert final_audio[-1] == ('aformat', (), {'sample_fmts': 's16'})
 (output / 'filters.json').write_text(json.dumps({'placement':graph_args[-1],'beforeAac':final_audio},indent=2)+'\n')

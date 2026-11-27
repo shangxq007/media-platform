@@ -417,10 +417,11 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 audio = graph.decode({'input_path': path})['audio']
                 audio = ff.atrim(audio, duration=str(float(Fraction(end) - Fraction(start))))
                 audio = ff.asetpts(audio, 'PTS-STARTPTS')
+                sample_rate = Fraction(48000)
+                # Keep physical placement on the existing decimal clock for every gain state.
+                delay_samples = round(Fraction(start) * sample_rate)
                 exact_start, elapsed, _, samples = (placement[17].split('~') if len(placement) == 18
                                                     else (start, '0', '0', ''))
-                sample_rate = Fraction(48000)
-                delay_samples = round(Fraction(exact_start) * sample_rate)
                 level = 0.0 if mute == '1' else float(gain)
                 if samples and level != 0:
                     points = [key.split(';') for key in samples.split('|')]

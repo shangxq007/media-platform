@@ -1,6 +1,7 @@
 package com.example.platform.bmf;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.platform.execution.domain.ExecutionInputId;
@@ -20,6 +21,7 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -41,15 +43,8 @@ class BmfAudioGainSampleAlignmentTest {
     @Test
     void gainEnvelopeUsesTheActualOutputSampleTimeAtAdjacentRationalKeys() throws Exception {
         var python = Path.of("/usr/bin/python3");
-        Assumptions.assumeTrue(Files.isExecutable(python) && Files.isExecutable(Path.of("/usr/bin/ffmpeg")),
-                "Python and host libavfilter fixture runner are required");
-        var probe = temp.resolve("probe.py");
-        try (var source = getClass().getResourceAsStream("/bmf-gain-pcm-probe.py")) {
-            Files.copy(java.util.Objects.requireNonNull(source), probe);
-        }
-        String retained = System.getenv("BMF_GAIN_PROBE_DIR");
-        var output = retained == null ? temp.resolve("result") : Path.of(retained);
-        Files.createDirectories(output);
+        var probe = copyProbe(python);
+        var output = resultDirectory();
         var checks = new ArrayList<Executable>();
         var table = new StringBuilder("startCase\textent\toutputSample\ttimelineTime\texpectedGain\tleftGain\trightGain\n");
 
@@ -63,7 +58,9 @@ class BmfAudioGainSampleAlignmentTest {
                 MediaTime extentStart = extent.equals("full") ? MediaTime.ZERO : MediaTime.ofRational(1, 2);
                 Path dir = Files.createDirectory(output.resolve(placement + "-" + extent));
                 int pivot = extent.equals("full") ? RATE : RATE / 2;
-                var pcm = render(python, probe, dir, clipStart, extentStart);
+                var gain = RenderDependency.GainRamp.parseSamples(
+                        FIRST.subtract(clipStart) + ";0|" + LAST.subtract(clipStart) + ";1000000");
+                var pcm = render(python, probe, dir, clipStart, extentStart, Optional.of(gain), true);
                 for (int sample = pivot - 1; sample <= pivot + 1; sample++) {
                     MediaTime time = extentStart.add(MediaTime.ofRational(sample, RATE));
                     double expected = time.isLessThan(LAST) ? 0 : 1;
@@ -84,16 +81,80 @@ class BmfAudioGainSampleAlignmentTest {
         assertAll(checks);
     }
 
-    private ByteBuffer render(Path python, Path probe, Path dir, MediaTime clipStart, MediaTime extentStart) throws Exception {
-        var gain = RenderDependency.GainRamp.parseSamples(
-                FIRST.subtract(clipStart) + ";0|" + LAST.subtract(clipStart) + ";1000000");
+    @Test
+    void halfSamplePlacementIsIndependentOfTheGainCurve() throws Exception {
+        var python = Path.of("/usr/bin/python3");
+        var probe = copyProbe(python);
+        var output = resultDirectory();
+        var start = MediaTime.ofRational(48_001, 96_000);
+        var unity = RenderDependency.GainRamp.parseSamples("1/4;1000000|1/2;1000000");
+        var baseline = render(python, probe, Files.createDirectory(output.resolve("half-up-static")),
+                start, MediaTime.ZERO, Optional.empty(), false);
+        var keyed = render(python, probe, Files.createDirectory(output.resolve("half-up-unity")),
+                start, MediaTime.ZERO, Optional.of(unity), false);
+
+        // This half sample rounds the other way through the static decimal. The
+        // initial unity hold makes any placement shift audible even with a real aeval.
+        var earlierStart = MediaTime.ofRational(47_999, 96_000);
+        var fall = MediaTime.ofRational(36_000, RATE);
+        var half = RenderDependency.GainRamp.parseSamples(fall.subtract(earlierStart)
+                + ";1000000|" + fall.add(MediaTime.ofRational(2, RATE)).subtract(earlierStart) + ";500000");
+        var earlier = render(python, probe, Files.createDirectory(output.resolve("half-down-static")),
+                earlierStart, MediaTime.ZERO, Optional.empty(), false);
+        var changing = render(python, probe, Files.createDirectory(output.resolve("half-down-non-unity")),
+                earlierStart, MediaTime.ZERO, Optional.of(half), true);
+
+        assertAll(
+                () -> assertEquals(24_001, onset(baseline), "static half-up onset"),
+                () -> assertEquals(24_001, onset(keyed), "unity half-up onset"),
+                () -> assertEquals(baseline.capacity(), keyed.capacity(), "static/unity PCM lengths"),
+                () -> assertArrayEquals(baseline.array(), keyed.array(), "complete unshifted static/unity PCM"),
+                () -> assertEquals(23_999, onset(earlier), "static half-down onset"),
+                () -> assertEquals(23_999, onset(changing), "non-unity half-down onset"),
+                () -> assertArrayEquals(Arrays.copyOf(earlier.array(), 4 * 36_001),
+                        Arrays.copyOf(changing.array(), 4 * 36_001), "PCM through the initial unity hold"),
+                () -> assertStereo(changing, 36_000, 1024, 512),
+                () -> assertStereo(changing, 36_001, 768, 384),
+                () -> assertStereo(changing, 36_002, 512, 256));
+    }
+
+    private static int onset(ByteBuffer pcm) {
+        for (int i = 0; i < pcm.capacity() / 4; i++) {
+            if (pcm.getShort(4 * i) != 0 || pcm.getShort(4 * i + 2) != 0) return i;
+        }
+        return -1;
+    }
+
+    private static void assertStereo(ByteBuffer pcm, int sample, int left, int right) {
+        assertEquals(left, pcm.getShort(4 * sample), "sample " + sample + " left");
+        assertEquals(right, pcm.getShort(4 * sample + 2), "sample " + sample + " right");
+    }
+
+    private Path copyProbe(Path python) throws Exception {
+        Assumptions.assumeTrue(Files.isExecutable(python) && Files.isExecutable(Path.of("/usr/bin/ffmpeg")),
+                "Python and host libavfilter fixture runner are required");
+        var probe = temp.resolve("probe.py");
+        try (var source = getClass().getResourceAsStream("/bmf-gain-pcm-probe.py")) {
+            Files.copy(java.util.Objects.requireNonNull(source), probe);
+        }
+        return probe;
+    }
+
+    private Path resultDirectory() throws Exception {
+        String retained = System.getenv("BMF_GAIN_PROBE_DIR");
+        var output = retained == null ? temp.resolve("result") : Path.of(retained);
+        return Files.createDirectories(output);
+    }
+
+    private ByteBuffer render(Path python, Path probe, Path dir, MediaTime clipStart, MediaTime extentStart,
+                              Optional<RenderDependency.GainRamp> gain, boolean usesEnvelope) throws Exception {
         boolean crop = extentStart.isGreaterThan(clipStart);
         var inputId = new ExecutionInputId("constant-audio");
         var input = new BmfCpuTranscodePlan.TimedInput(inputId,
                 crop ? MediaTime.ZERO : clipStart.subtract(extentStart), END.subtract(extentStart),
                 0, true, 1, false, 0, BmfCpuTranscodePlan.VideoPlacement.IDENTITY, VideoEffectSpec.IDENTITY,
                 crop ? extentStart.subtract(clipStart) : MediaTime.ZERO, END.subtract(clipStart), MediaTime.ZERO,
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(gain));
+                Optional.empty(), Optional.empty(), Optional.empty(), gain);
         var plan = new BmfCpuTranscodePlan(TASK, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
                 inputId, new ExecutionOutputId("composite"), Optional.empty(), List.of(input),
                 Optional.of(END.subtract(extentStart)), Optional.of(FrameRate.of(24, 1)),
@@ -104,7 +165,7 @@ class BmfAudioGainSampleAlignmentTest {
                 .commands().getFirst().invocationSpec();
         var args = Files.writeString(dir.resolve("argv.txt"), String.join(Character.toString(0), invocation.arguments()));
         var log = dir.resolve("probe.log");
-        var command = new ProcessBuilder(python.toString(), probe.toString(), args.toString(), dir.toString())
+        var command = new ProcessBuilder(python.toString(), probe.toString(), args.toString(), dir.toString(), usesEnvelope ? "1" : "0")
                 .redirectErrorStream(true).redirectOutput(log.toFile()).start();
         if (!command.waitFor(15, TimeUnit.SECONDS)) {
             command.destroyForcibly();
