@@ -2,6 +2,7 @@ package com.example.platform.timeline.canonicalmodel;
 
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -100,6 +101,19 @@ public final class TimelineCanonicalValidator {
                     : trackPath.field("clips").id(clip.clipId());
             validateClip(clip, clipPath, diagnostics);
             validateBasicVideoEffect(track, clip, clipPath, diagnostics);
+            if (clip.effects().stream().anyMatch(ClipAudioFades::isFade)) {
+                try {
+                    if (track.type() != TimelineCandidate.TrackType.AUDIO || !(clip.sourceBinding() instanceof
+                            com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding)) {
+                        throw new IllegalArgumentException("Audio fades require a media clip on an audio track");
+                    }
+                    var fades = ClipAudioFades.fromEffects(clip.effects());
+                    if (clip.duration() != null) fades.requireFits(clip.duration());
+                } catch (IllegalArgumentException | ArithmeticException invalid) {
+                    diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_EFFECT_TARGET_UNSUPPORTED,
+                            clipPath.field("effects"), clip.clipId(), invalid.getMessage()));
+                }
+            }
             if (previous != null && hasPositiveOverlap(previous, clip)) {
                 diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_CLIP_OVERLAP,
                         clipPath, clip.clipId(), "Clips overlap on the same track"));

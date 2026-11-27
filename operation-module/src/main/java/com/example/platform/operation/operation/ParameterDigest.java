@@ -171,6 +171,11 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.RemoveSubtitleCueParameters remove) {
             return framed("subtitle-cue-remove-v1", remove.cueId());
         }
+        if (p instanceof OperationParameters.AudioFadeParameters fades) {
+            return framed("clip-audio-fades-v1",
+                    fades.fadeIn() == null ? "preserve" : fades.fadeIn().toString(),
+                    fades.fadeOut() == null ? "preserve" : fades.fadeOut().toString());
+        }
         if (p instanceof OperationParameters.GainParameters gain) {
             return framed("gain-keys-v1", gain.keys().canonicalSamples());
         }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeClipAt, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
+import { activeClipAt, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
 import { decorationVisible, type SubtitleCue } from './subtitle-cues'
 import { projectTimeline } from './timeline-projection'
 import { compare, formatRational, parseRational } from './trim'
@@ -101,4 +101,21 @@ it('reopens the saved scale channel without replacing the authored transform', (
   expect(clip.transform.scaleY).toBe(.4)
   expect(clip.scaleKeys?.map(k => [formatRational(k.time), k.multiplierMicros]))
     .toEqual([['3/2', 1000000], ['73/24', 1500000]])
+})
+
+describe('audio edge envelope', () => {
+  const fades = { fadeIn: t('1'), fadeOut: t('1/2') }
+  it('samples the same attack after a seek and releases at the exclusive clip end', () => {
+    const at = (time: string) => audioFadeEnvelope(fades, t('1'), t('5'), t(time))
+    expect(at('3/2')).toEqual({ value: 0.5, attackEnd: t('2'), releaseStart: t('9/2'), releaseEnd: t('5') })
+    expect(at('3').value).toBe(1)
+    expect(at('19/4')).toEqual({ value: 0.5, attackEnd: null, releaseStart: null, releaseEnd: t('5') })
+    expect(at('239999/48000').value).toBeCloseTo(1/24000, 15)
+    expect(at('5').value).toBe(0)
+  })
+  it('joins equal-duration bounds without a gap and leaves disabled edges at unity', () => {
+    expect(audioFadeEnvelope({ fadeIn: t('1'), fadeOut: t('3') }, t('1'), t('5'), t('2')).value).toBe(1)
+    expect(audioFadeEnvelope({ fadeIn: t('0'), fadeOut: t('0') }, t('1'), t('5'), t('3')))
+      .toEqual({ value: 1, attackEnd: null, releaseStart: null, releaseEnd: null })
+  })
 })

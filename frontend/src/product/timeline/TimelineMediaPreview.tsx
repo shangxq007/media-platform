@@ -7,8 +7,8 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { parseRational, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
-import { activeClipsAt, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
-import { audioRouteFor, projectSnapshotJson, type ProjectedVideoEffect, type ProjectedClip, type ScaleKey, type TimelineProjection } from './timeline-projection'
+import { activeClipsAt, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
+import { audioRouteFor, projectSnapshotJson, type ProjectedAudioFades, type ProjectedVideoEffect, type ProjectedClip, type ScaleKey, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
 interface SubtitleBitmaps {
@@ -28,6 +28,7 @@ interface AudioClip { clip: ProjectedClip; buffer: AudioBuffer; gain: number; mu
 interface ScheduledAudio {
   source: AudioBufferSourceNode
   param: AudioParam
+  fade: AudioParam
   clip: ProjectedClip
   gain: number
 }
@@ -119,7 +120,7 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, subtitlePlan }: {
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
@@ -129,6 +130,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   positionPreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').PositionKey[] } | null
   scalePreview?: { revisionId: string; clipId: string; keys: readonly import('./timeline-projection').ScaleKey[] } | null
   gainPreview?: { revisionId: string; clipId: string; keys: readonly ScaleKey[] } | null
+  fadePreview?: ({ revisionId: string; clipId: string } & Partial<ProjectedAudioFades>) | null
   onTime?: (time: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -145,12 +147,14 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   useEffect(() => { if (current.current?.projection) draw(current.current) }, [opacityPreview, dissolvePlan, positionPreview, scalePreview])
   const gainDraft = useRef(gainPreview)
   gainDraft.current = gainPreview
+  const fadeDraft = useRef(fadePreview)
+  fadeDraft.current = fadePreview
   useEffect(() => {
     const session = current.current
     if (!session?.playing || !session.audio) return
     const cursor = clockCursor(Math.max(0, session.audio.currentTime - session.origin))
     for (const item of session.scheduled) applyGainEnvelope(session, item, cursor)
-  }, [gainPreview])
+  }, [gainPreview, fadePreview])
   function applyGainEnvelope(session: PreviewSession, item: ScheduledAudio, cursor: Rational) {
     const draft = gainDraft.current
     const keys = draft && draft.revisionId === session.revisionId && draft.clipId === item.clip.clipId
@@ -166,6 +170,18 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
           session.origin + toSeconds(key.time))
       }
     }
+    const requested = fadeDraft.current
+    const edgeDraft = requested?.revisionId === session.revisionId && requested?.clipId === item.clip.clipId ? requested : undefined
+    const fades = { fadeIn: edgeDraft?.fadeIn ?? item.clip.audioFades?.fadeIn ?? ZERO,
+      fadeOut: edgeDraft?.fadeOut ?? item.clip.audioFades?.fadeOut ?? ZERO }
+    const edge = audioFadeEnvelope(fades, item.clip.start, item.clip.end, first)
+    const at = (time: Rational) => session.origin + toSeconds(time)
+    item.fade.cancelScheduledValues(when)
+    item.fade.setValueAtTime(edge.value, when)
+    if (edge.attackEnd) item.fade.linearRampToValueAtTime(1, at(edge.attackEnd))
+    if (edge.releaseStart && (!edge.attackEnd || compare(edge.releaseStart, edge.attackEnd) > 0))
+      item.fade.setValueAtTime(1, at(edge.releaseStart))
+    if (edge.releaseEnd) item.fade.linearRampToValueAtTime(0, at(edge.releaseEnd))
   }
   const currentSubtitlePlan = useRef(subtitlePlan)
   currentSubtitlePlan.current = subtitlePlan
@@ -597,7 +613,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         source.buffer = buffer
         const level = audio.createGain()
         level.gain.value = gain
-        const scheduled = { source, param: level.gain, clip, gain }
+        const fade = audio.createGain()
+        const scheduled = { source, param: level.gain, fade: fade.gain, clip, gain }
         applyGainEnvelope(session, scheduled, session.cursorExact)
         const splitter = audio.createChannelSplitter(2)
         const merger = audio.createChannelMerger(2)
@@ -605,7 +622,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         const right = audio.createGain()
         left.gain.value = (1 - pan) / 2
         right.gain.value = (1 + pan) / 2
-        source.connect(level).connect(splitter)
+        source.connect(level).connect(fade).connect(splitter)
         // Mono sources feed both sides; stereo sources preserve their channels.
         splitter.connect(left, 0)
         splitter.connect(right, Math.min(1, buffer.numberOfChannels - 1))

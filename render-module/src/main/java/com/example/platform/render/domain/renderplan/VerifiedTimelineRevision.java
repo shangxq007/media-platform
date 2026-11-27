@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.audio.domain.mix.AudioMix;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
@@ -47,6 +48,7 @@ public final class VerifiedTimelineRevision {
     private final Map<String, PositionKeys> position;
     private final Map<String, ScaleKeys> scale;
     private final Map<String, GainKeys> gain;
+    private final Map<String, ClipAudioFades> fades;
     private final AudioMix audioMix;
     private final com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio;
 
@@ -62,7 +64,8 @@ public final class VerifiedTimelineRevision {
             AudioMix audioMix,
             List<TextElement> textElements,
             List<CanonicalTransition> transitions, java.util.Map<String, com.example.platform.timeline.semantics.effect.OpacityKeys> opacity,
-            Map<String, PositionKeys> position, Map<String, ScaleKeys> scale, Map<String, GainKeys> gain, com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
+            Map<String, PositionKeys> position, Map<String, ScaleKeys> scale, Map<String, GainKeys> gain,
+            Map<String, ClipAudioFades> fades, com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
         this.revision = Objects.requireNonNull(revision, "revision");
         this.clips = List.copyOf(clips);
         this.tracks = List.copyOf(tracks);
@@ -72,6 +75,7 @@ public final class VerifiedTimelineRevision {
         this.position = Map.copyOf(position);
         this.scale = Map.copyOf(scale);
         this.gain = Map.copyOf(gain);
+        this.fades = Map.copyOf(fades);
         this.transitions = List.copyOf(transitions);
         this.aspectRatio = Objects.requireNonNull(aspectRatio);
     }
@@ -84,8 +88,9 @@ public final class VerifiedTimelineRevision {
             AudioMix audioMix,
             List<TextElement> textElements,
             List<CanonicalTransition> transitions, java.util.Map<String, com.example.platform.timeline.semantics.effect.OpacityKeys> opacity,
-            Map<String, PositionKeys> position, Map<String, ScaleKeys> scale, Map<String, GainKeys> gain, com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
-        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements, transitions, opacity, position, scale, gain, aspectRatio);
+            Map<String, PositionKeys> position, Map<String, ScaleKeys> scale, Map<String, GainKeys> gain,
+            Map<String, ClipAudioFades> fades, com.example.platform.timeline.canonical.CompositionAspectRatio aspectRatio) {
+        return new VerifiedTimelineRevision(revision, clips, tracks, audioMix, textElements, transitions, opacity, position, scale, gain, fades, aspectRatio);
     }
 
     public TimelineRevisionReference revision() {
@@ -109,6 +114,8 @@ public final class VerifiedTimelineRevision {
     }
 
     java.util.Optional<com.example.platform.timeline.semantics.effect.OpacityKeys> opacity(String clipId) { return java.util.Optional.ofNullable(opacity.get(clipId)); }
+
+    ClipAudioFades fades(String clipId) { return fades.getOrDefault(clipId, ClipAudioFades.NONE); }
 
     Optional<GainKeys> gain(String clipId) { return Optional.ofNullable(gain.get(clipId)); }
 

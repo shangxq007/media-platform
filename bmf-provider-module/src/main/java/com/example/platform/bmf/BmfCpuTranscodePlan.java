@@ -7,6 +7,7 @@ import com.example.platform.execution.domain.ExecutionOutputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionPlan;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,7 +56,17 @@ public record BmfCpuTranscodePlan(
                              Optional<RenderDependency.OpacityRamp> opacityKeys,
                              Optional<RenderDependency.PositionRamp> positionKeys,
                              Optional<RenderDependency.ScaleRamp> scaleKeys,
-                             Optional<RenderDependency.GainRamp> gainKeys) {
+                             Optional<RenderDependency.GainRamp> gainKeys, ClipAudioFades fades) {
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
+                          double gain, boolean mute, double balance, VideoPlacement transform,
+                          com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
+                          MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
+                          Optional<RenderDependency.OpacityRamp> opacityKeys, Optional<RenderDependency.PositionRamp> positionKeys,
+                          Optional<RenderDependency.ScaleRamp> scaleKeys, Optional<RenderDependency.GainRamp> gainKeys) {
+            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration,
+                    dissolveDuration, opacityKeys, positionKeys, scaleKeys, gainKeys, ClipAudioFades.NONE);
+        }
+
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                           double gain, boolean mute, double balance, VideoPlacement transform,
                           com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
@@ -117,6 +128,11 @@ public record BmfCpuTranscodePlan(
                 gainKeys.get().validateRelative(authoredDuration);
             }
             Objects.requireNonNull(authoredDuration, "authoredDuration");
+            Objects.requireNonNull(fades, "fades");
+            if (fades.active()) {
+                if (!audio) throw new IllegalArgumentException("Audio fades require audio");
+                fades.requireFits(authoredDuration);
+            }
             Objects.requireNonNull(dissolveDuration, "dissolveDuration");
             if (elapsed.ticks() < 0 || dissolveDuration.ticks() < 0
                     || dissolveDuration.isGreaterThan(authoredDuration)

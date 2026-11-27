@@ -12,6 +12,7 @@ import com.example.platform.render.domain.renderplan.RenderRaster;
 import com.example.platform.render.domain.renderplan.VideoEffectSpec;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
@@ -118,6 +119,41 @@ class BmfAudioGainSampleAlignmentTest {
                 () -> assertStereo(changing, 36_002, 512, 256));
     }
 
+    @Test
+    void edgeFadesUseAuthoredTimesAndMultiplyTheManualGain() throws Exception {
+        var python = Path.of("/usr/bin/python3");
+        var probe = copyProbe(python);
+        var output = resultDirectory();
+        var start = MediaTime.ofRational(1, 1);
+        var end = MediaTime.ofRational(5, 1);
+        var extentEnd = MediaTime.ofRational(6, 1);
+        var manual = Optional.of(RenderDependency.GainRamp.parseSamples("0;0|1/1;1000000"));
+        var fade = new ClipAudioFades(start, MediaTime.ofRational(1, 2));
+        var baseline = renderInterval(python, probe, Files.createDirectory(output.resolve("n24-manual")),
+                start, end, MediaTime.ZERO, extentEnd, manual, ClipAudioFades.NONE, true);
+        var cleared = renderInterval(python, probe, Files.createDirectory(output.resolve("n24-cleared")),
+                start, end, MediaTime.ZERO, extentEnd, manual, ClipAudioFades.NONE, true);
+        assertArrayEquals(baseline.array(), cleared.array());
+        for (var kind : List.of("edges-full", "edges-crop", "product-full", "product-crop")) {
+            boolean cropped = kind.endsWith("crop");
+            boolean product = kind.startsWith("product");
+            var dir = Files.createDirectory(output.resolve("n24-" + kind));
+            var crop = cropped ? MediaTime.ofRational(5, 4) : MediaTime.ZERO;
+            var pcm = renderInterval(python, probe, dir, start, end, crop, extentEnd,
+                    product ? manual : Optional.empty(), fade, true);
+            int shift = cropped ? 60_000 : 0;
+            assertStereo(pcm, 72_000 - shift, product ? 256 : 512, product ? 128 : 256);
+            assertStereo(pcm, 144_000 - shift, 1024, 512);
+            assertStereo(pcm, 228_000 - shift, 512, 256);
+            var precise = ByteBuffer.wrap(Files.readAllBytes(dir.resolve("before-s16.f64le")))
+                    .order(ByteOrder.LITTLE_ENDIAN);
+            assertEquals((1024 / 32768.0) / 24_000, precise.getDouble(16 * (239_999 - shift)), 1e-12);
+            assertEquals((512 / 32768.0) / 24_000, precise.getDouble(16 * (239_999 - shift) + 8), 1e-12);
+            assertEquals(0, precise.getDouble(16 * (240_000 - shift)));
+            assertEquals(0, precise.getDouble(16 * (240_000 - shift) + 8));
+        }
+    }
+
     private static int onset(ByteBuffer pcm) {
         for (int i = 0; i < pcm.capacity() / 4; i++) {
             if (pcm.getShort(4 * i) != 0 || pcm.getShort(4 * i + 2) != 0) return i;
@@ -148,16 +184,23 @@ class BmfAudioGainSampleAlignmentTest {
 
     private ByteBuffer render(Path python, Path probe, Path dir, MediaTime clipStart, MediaTime extentStart,
                               Optional<RenderDependency.GainRamp> gain, boolean usesEnvelope) throws Exception {
+        return renderInterval(python, probe, dir, clipStart, END, extentStart, END,
+                gain, ClipAudioFades.NONE, usesEnvelope);
+    }
+
+    private ByteBuffer renderInterval(Path python, Path probe, Path dir,
+            MediaTime clipStart, MediaTime clipEnd, MediaTime extentStart, MediaTime extentEnd,
+            Optional<RenderDependency.GainRamp> gain, ClipAudioFades fades, boolean usesEnvelope) throws Exception {
         boolean crop = extentStart.isGreaterThan(clipStart);
         var inputId = new ExecutionInputId("constant-audio");
         var input = new BmfCpuTranscodePlan.TimedInput(inputId,
-                crop ? MediaTime.ZERO : clipStart.subtract(extentStart), END.subtract(extentStart),
+                crop ? MediaTime.ZERO : clipStart.subtract(extentStart), clipEnd.subtract(extentStart),
                 0, true, 1, false, 0, BmfCpuTranscodePlan.VideoPlacement.IDENTITY, VideoEffectSpec.IDENTITY,
-                crop ? extentStart.subtract(clipStart) : MediaTime.ZERO, END.subtract(clipStart), MediaTime.ZERO,
-                Optional.empty(), Optional.empty(), Optional.empty(), gain);
+                crop ? extentStart.subtract(clipStart) : MediaTime.ZERO, clipEnd.subtract(clipStart), MediaTime.ZERO,
+                Optional.empty(), Optional.empty(), Optional.empty(), gain, fades);
         var plan = new BmfCpuTranscodePlan(TASK, BmfCpuProvider.BINDING, BmfOperation.MULTITRACK_COMPOSITE,
                 inputId, new ExecutionOutputId("composite"), Optional.empty(), List.of(input),
-                Optional.of(END.subtract(extentStart)), Optional.of(FrameRate.of(24, 1)),
+                Optional.of(extentEnd.subtract(extentStart)), Optional.of(FrameRate.of(24, 1)),
                 new RenderRaster(320, 240), List.of());
         var context = new RuntimeExecutionContext(TASK, BmfCpuProvider.BINDING,
                 ExecutionAttemptId.of("gain-sample-alignment"), ExecutionOwnershipGeneration.first());
@@ -165,7 +208,7 @@ class BmfAudioGainSampleAlignmentTest {
                 .commands().getFirst().invocationSpec();
         var args = Files.writeString(dir.resolve("argv.txt"), String.join(Character.toString(0), invocation.arguments()));
         var log = dir.resolve("probe.log");
-        var command = new ProcessBuilder(python.toString(), probe.toString(), args.toString(), dir.toString(), usesEnvelope ? "1" : "0")
+        var command = new ProcessBuilder(python.toString(), probe.toString(), args.toString(), dir.toString(), usesEnvelope ? "1" : "0", fades.active() ? "precision" : "legacy")
                 .redirectErrorStream(true).redirectOutput(log.toFile()).start();
         if (!command.waitFor(15, TimeUnit.SECONDS)) {
             command.destroyForcibly();

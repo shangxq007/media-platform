@@ -424,17 +424,17 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         AudioRoute route = routeFor(audioMix, clip.trackId(), clip.clipId());
                         if (timedTracks) {
                             if (audio) {
-                                var gainKeys = revision.gain(clip.clipId());
+                                var gainKeys = revision.gain(clip.clipId()).map(RenderDependency.GainRamp::new);
+                                var fades = revision.fades(clip.clipId());
+                                var gain = route != null ? route.gain() : null;
+                                var mute = route != null ? route.mute() : null;
+                                var balance = route != null ? route.balance() : null;
+                                var layer = revision.layer(clip.trackId());
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
-                                        gainKeys.map(keys -> RenderDependency.TimedTrackInput.animatedAudio(start, end,
-                                                revision.layer(clip.trackId()), route != null ? route.gain() : null,
-                                                route != null ? route.mute() : null, route != null ? route.balance() : null,
-                                                clip.timelineRange().start(), clip.timelineRange().end(),
-                                                new RenderDependency.GainRamp(keys)))
-                                        .orElseGet(() -> new RenderDependency.TimedTrackInput(start, end,
-                                                revision.layer(clip.trackId()), true,
-                                                route != null ? route.gain() : null, route != null ? route.mute() : null,
-                                                route != null ? route.balance() : null))));
+                                        gainKeys.isPresent() || fades.active()
+                                                ? RenderDependency.TimedTrackInput.envelopedAudio(start, end, layer, gain, mute,
+                                                        balance, clip.timelineRange().start(), clip.timelineRange().end(), gainKeys, fades)
+                                                : new RenderDependency.TimedTrackInput(start, end, layer, true, gain, mute, balance)));
                             } else {
                                 edges.add(new RenderDependencyEdge(producer, compositeId,
                                         RenderDependency.TimedTrackInput.video(start, end,

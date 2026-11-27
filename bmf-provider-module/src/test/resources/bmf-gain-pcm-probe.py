@@ -12,6 +12,7 @@ import types
 
 arguments, output = map(pathlib.Path, sys.argv[1:3])
 expected_envelopes = int(sys.argv[3])
+precision = len(sys.argv) > 4 and sys.argv[4] == 'precision'
 args = arguments.read_bytes().decode().split('\0')
 assert args[:2] == ['-s', '-c']
 program, graph_args = args[2], args[3:]
@@ -66,7 +67,15 @@ def filter_arg(item):
     return name+('=' + ':'.join(parts) if parts else '')
 
 
-chain = ','.join(map(filter_arg, final_audio))
-subprocess.run(['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi',
-    '-i','aevalsrc=0.125|0.0625:s=48000:d=2','-af',chain,'-f','s16le',
-    '-c:a','pcm_s16le',str(output/'before-aac.s16le')], check=True)
+def render(filters, encoding, name, duration):
+    chain = ','.join(map(filter_arg, filters))
+    subprocess.run(['/usr/bin/ffmpeg','-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi',
+        '-i',f'aevalsrc=0.125|0.0625:s=48000:d={duration}','-af',chain,'-f',encoding,
+        '-c:a','pcm_'+encoding,str(output/name)], check=True)
+
+
+render(final_audio, 's16le', 'before-aac.s16le', 6 if output.name.startswith('n24-') else 2)
+if precision:
+    # Score the actual envelope before the last sample format conversion. At
+    # one sample from the edge, signed-16 quantization can already yield zero.
+    render(final_audio[:-1], 'f64le', 'before-s16.f64le', 6)

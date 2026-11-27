@@ -46,6 +46,7 @@ public sealed interface OperationParameters permits
         OperationParameters.PositionParameters,
         OperationParameters.ScaleParameters,
         OperationParameters.GainParameters,
+        OperationParameters.AudioFadeParameters,
         OperationParameters.SubtitleCueParameters,
         OperationParameters.RemoveSubtitleCueParameters,
         OperationParameters.VideoTransformParameters,
@@ -141,6 +142,15 @@ public sealed interface OperationParameters permits
     }
 
     @org.springframework.modulith.NamedInterface("invocation")
+    /** A null field was omitted; an exact zero explicitly clears that edge. */
+    record AudioFadeParameters(MediaTime fadeIn, MediaTime fadeOut) implements OperationParameters {
+        public AudioFadeParameters {
+            if (fadeIn != null && fadeIn.ticks() < 0 || fadeOut != null && fadeOut.ticks() < 0) {
+                throw new IllegalArgumentException("Audio fade durations cannot be negative");
+            }
+        }
+    }
+
     record GainParameters(com.example.platform.timeline.semantics.effect.GainKeys keys) implements OperationParameters {
         public GainParameters { java.util.Objects.requireNonNull(keys); }
     }

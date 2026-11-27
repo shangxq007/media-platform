@@ -1,6 +1,8 @@
 package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.audio.domain.mix.AudioMixInput;
+import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.timeline.semantics.effect.PositionKeys;
 import com.example.platform.timeline.semantics.effect.ScaleKeys;
 import com.example.platform.timeline.semantics.effect.GainKeys;
@@ -206,8 +208,19 @@ public sealed interface RenderDependency permits
                            com.example.platform.shared.time.MediaTime authoredStart,
                            com.example.platform.shared.time.MediaTime authoredEnd,
                            java.util.Optional<Dissolve> dissolve, java.util.Optional<OpacityRamp> opacityKeys,
-                           Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys, Optional<GainRamp> gainKeys)
+                           Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys, Optional<GainRamp> gainKeys,
+                           ClipAudioFades fades)
             implements RenderDependency {
+        public TimedTrackInput(MediaTime start, MediaTime end, int layer, boolean audio,
+                com.example.platform.audio.domain.mix.AudioGain gain,
+                com.example.platform.audio.domain.mix.AudioMute mute,
+                com.example.platform.audio.domain.mix.StereoBalance balance,
+                com.example.platform.timeline.semantics.effect.VideoTransform transform, VideoEffectSpec effect,
+                MediaTime authoredStart, MediaTime authoredEnd, Optional<Dissolve> dissolve, Optional<OpacityRamp> opacityKeys,
+                Optional<PositionRamp> positionKeys, Optional<ScaleRamp> scaleKeys, Optional<GainRamp> gainKeys) {
+            this(start, end, layer, audio, gain, mute, balance, transform, effect, authoredStart, authoredEnd,
+                    dissolve, opacityKeys, positionKeys, scaleKeys, gainKeys, ClipAudioFades.NONE);
+        }
         public TimedTrackInput(com.example.platform.shared.time.MediaTime start,
                            com.example.platform.shared.time.MediaTime end, int layer, boolean audio,
                            com.example.platform.audio.domain.mix.AudioGain gain,
@@ -267,6 +280,16 @@ public sealed interface RenderDependency permits
                     Optional.empty(), Optional.of(gainKeys));
         }
 
+        public static TimedTrackInput envelopedAudio(MediaTime start, MediaTime end, int layer,
+                com.example.platform.audio.domain.mix.AudioGain gain, com.example.platform.audio.domain.mix.AudioMute mute,
+                com.example.platform.audio.domain.mix.StereoBalance balance, MediaTime authoredStart, MediaTime authoredEnd,
+                Optional<GainRamp> gainKeys, ClipAudioFades fades) {
+            return new TimedTrackInput(start, end, layer, true, gain, mute, balance,
+                    com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY, VideoEffectSpec.IDENTITY,
+                    authoredStart, authoredEnd, Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.empty(), gainKeys, fades);
+        }
+
         public TimedTrackInput {
             java.util.Objects.requireNonNull(start, "start");
             java.util.Objects.requireNonNull(end, "end");
@@ -293,6 +316,11 @@ public sealed interface RenderDependency permits
                 if (!audio) throw new IllegalArgumentException("Gain channels require audio");
                 ramp.keys().requireInside(authoredStart, authoredEnd);
             });
+            java.util.Objects.requireNonNull(fades, "fades");
+            if (fades.active()) {
+                if (!audio) throw new IllegalArgumentException("Audio fades require audio");
+                fades.requireFits(authoredEnd.subtract(authoredStart));
+            }
             if (audio && opacityKeys.isPresent()) throw new IllegalArgumentException("Audio cannot carry opacity keys");
             if (!start.isLessThan(end) || start.isLessThan(authoredStart) || end.isGreaterThan(authoredEnd)
                     || layer < 0 || (audio && dissolve.isPresent())) {

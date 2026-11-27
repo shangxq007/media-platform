@@ -3,7 +3,7 @@
  * this module never mutates the Timeline or performs a write.
  */
 import { add, compare, multiply, rational, subtract, toSeconds, ZERO, type Rational } from './trim'
-import type { ProjectedClip, ProjectedTransition, ProjectedVideoTransform, ScaleKey, TimelineProjection } from './timeline-projection'
+import type { ProjectedAudioFades, ProjectedClip, ProjectedTransition, ProjectedVideoTransform, ScaleKey, TimelineProjection } from './timeline-projection'
 
 export function timelineDuration(projection: TimelineProjection): Rational {
   let end: Rational = { numerator: 0n, denominator: 1n }
@@ -95,4 +95,17 @@ export function scaleAt(keys: readonly ScaleKey[] | undefined, time: Rational): 
   const left = index <= 0 ? right : keys[index - 1]
   const fraction = left === right ? 0 : toSeconds(subtract(time, left.time)) / toSeconds(subtract(right.time, left.time))
   return (left.multiplierMicros + fraction * (right.multiplierMicros - left.multiplierMicros)) / 1_000_000
+}
+
+/** Schedule the edge envelope separately from manual gain so their product is exact. */
+export function audioFadeEnvelope(fades: ProjectedAudioFades, start: Rational, end: Rational, first: Rational) {
+  const attackEnd = add(start, fades.fadeIn)
+  const releaseStart = subtract(end, fades.fadeOut)
+  const attacking = fades.fadeIn.numerator > 0n && compare(first, attackEnd) < 0
+  const releasing = fades.fadeOut.numerator > 0n && compare(first, releaseStart) >= 0
+  const value = attacking ? toSeconds(subtract(first, start)) / toSeconds(fades.fadeIn)
+    : releasing ? toSeconds(subtract(end, first)) / toSeconds(fades.fadeOut) : 1
+  return { value, attackEnd: attacking ? attackEnd : null,
+    releaseStart: fades.fadeOut.numerator > 0n && compare(first, releaseStart) < 0 ? releaseStart : null,
+    releaseEnd: fades.fadeOut.numerator > 0n ? end : null }
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { ConfirmedClipEdit, type ConfirmedEditProps } from './ConfirmedClipEdit'
 import { scaleMultiplierBounds, type ProjectedTrack } from './timeline-projection'
-import { add, compare, formatRational, parseRational, subtract } from './trim'
+import { add, compare, formatRational, parseRational, subtract, ZERO, type Rational } from './trim'
 
 type Row = { id: string; time: string; x: string; y: string }
 const initial = (): Row[] => [
@@ -181,6 +181,46 @@ export function GainEdit({ tracks, onPreview, ...props }: ConfirmedEditProps & {
       {saved && <label><input type="checkbox" checked={clear}
         onChange={e => update({ scope, rows, clear: e.target.checked })} />Clear gain keys</label>}
       {rows.every(row => row.time) && !valid && <p role="alert">Use increasing key times inside the clip and use multipliers from 0 to 1.</p>}
+    </>}
+  </ConfirmedClipEdit>
+}
+
+export function AudioFadeEdit({ tracks, onPreview, ...props }: ConfirmedEditProps & {
+  tracks: readonly ProjectedTrack[]
+  onPreview: (batch: SemanticBatch | null) => void
+}) {
+  const clips = tracks.filter(track => track.type === 'AUDIO').flatMap(track => track.clips)
+  const [selected, select] = useState('')
+  const [form, update] = useState<{ scope: string; inValue: string; outValue: string } | null>(null)
+  const clip = clips.find(c => c.clipId === selected)
+  const scope = JSON.stringify([props.head?.revisionId, props.head?.contentHash, selected])
+  const savedIn = clip?.audioFades?.fadeIn ?? ZERO
+  const savedOut = clip?.audioFades?.fadeOut ?? ZERO
+  const wire = (time: Rational) => time.numerator === 0n ? '0' : formatRational(time)
+  const inValue = form?.scope === scope ? form.inValue : wire(savedIn)
+  const outValue = form?.scope === scope ? form.outValue : wire(savedOut)
+  const a = parseRational(inValue), b = parseRational(outValue)
+  const bounded = (time: Rational) => time.numerator >= 0n && time.numerator <= 9223372036854775807n
+    && time.denominator <= 9223372036854775807n
+  const valid = clip && a && b && bounded(a) && bounded(b) && compare(add(a, b), subtract(clip.end, clip.start)) <= 0
+  const changed = valid && (compare(a, savedIn) !== 0 || compare(b, savedOut) !== 0)
+  return <ConfirmedClipEdit {...props} edit="audio fades" onPreview={onPreview}
+    inputIdentity={JSON.stringify([scope, inValue, outValue])}
+    draft={changed ? () => ({
+      step: { definitionId: 'timeline.clip.audio-fades.set', target: { clipId: selected }, parameters: {
+        ...(compare(a, savedIn) !== 0 ? { fadeIn: wire(a) } : {}),
+        ...(compare(b, savedOut) !== 0 ? { fadeOut: wire(b) } : {}),
+      } },
+      ranges: ['Fade-in: ' + wire(a) + ' s', 'Fade-out: ' + wire(b) + ' s'],
+    }) : null}>
+    <label>Fade clip <select value={clip?.clipId ?? ''} onChange={e => { select(e.target.value); update(null) }}>
+      <option value="">Choose an audio clip</option>{clips.map(c => <option key={c.clipId}>{c.clipId}</option>)}
+    </select></label>
+    {clip && <>
+      <p>Use exact seconds, for example 1/2. A duration of 0 removes that edge. Manual gain keys are unchanged.</p>
+      <label>Fade-in duration <input value={inValue} onChange={e => update({ scope, inValue: e.target.value, outValue })} /></label>
+      <label>Fade-out duration <input value={outValue} onChange={e => update({ scope, inValue, outValue: e.target.value })} /></label>
+      {!valid && <p role="alert">Enter nonnegative durations whose sum does not exceed the clip duration.</p>}
     </>}
   </ConfirmedClipEdit>
 }

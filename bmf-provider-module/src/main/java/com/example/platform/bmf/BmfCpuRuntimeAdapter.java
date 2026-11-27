@@ -1,5 +1,6 @@
 package com.example.platform.bmf;
 
+import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.workerfabric.domain.providernative.ExecutionCommand;
@@ -420,18 +421,32 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 sample_rate = Fraction(48000)
                 # Keep physical placement on the existing decimal clock for every gain state.
                 delay_samples = round(Fraction(start) * sample_rate)
-                exact_start, elapsed, _, samples = (placement[17].split('~') if len(placement) == 18
-                                                    else (start, '0', '0', ''))
                 level = 0.0 if mute == '1' else float(gain)
-                if samples and level != 0:
-                    points = [key.split(';') for key in samples.split('|')]
-                    if any(int(p[1]) != 1000000 for p in points):
-                        # aeval's local sample n will land at output sample n + delay_samples.
-                        # Project the clip-local keys onto the export clock before rounding.
-                        origin = Fraction(exact_start) - Fraction(elapsed)
+                if len(placement) == 18 and level != 0:
+                    exact_start, elapsed, authored_duration, samples, *fades = placement[17].split('~')
+                    origin = Fraction(exact_start) - Fraction(elapsed)
+
+                    def envelope(points):
+                        # Local sample n lands at n + delay_samples, even when the authored
+                        # edge or key lies between two physical output samples.
+                        return '(' + frame_curve(points, 1, origin, delay_samples, 'n', sample_rate) + ')/1000000'
+
+                    factors = []
+                    if samples:
+                        points = [key.split(';') for key in samples.split('|')]
+                        if any(int(p[1]) != 1000000 for p in points):
+                            factors.append(envelope(points))
+                    if fades:
+                        fade_in, fade_out = map(Fraction, fades)
+                        if fade_in:
+                            factors.append(envelope([('0', '0'), (str(fade_in), '1000000')]))
+                        if fade_out:
+                            end_time = Fraction(authored_duration)
+                            factors.append(envelope([(str(end_time - fade_out), '1000000'), (str(end_time), '0')]))
+                    if factors:
                         audio = ff.ff_filter(audio, 'aresample', '48000')
                         audio = ff.ff_filter(audio, 'aformat', channel_layouts='stereo')
-                        env = '(' + frame_curve(points, 1, origin, delay_samples, 'n', sample_rate) + ')/1000000'
+                        env = '*'.join(factors)
                         audio = ff.ff_filter(audio, 'aeval', exprs='val(0)*' + env + '|val(1)*' + env,
                                              channel_layout='stereo')
                 audio = ff.adelay(audio, delays=str(delay_samples) + 'S', all=1)
@@ -537,8 +552,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                                 .orElse(input.scaleKeys().isPresent() ? "," : "")
                         + input.scaleKeys().map(k -> "," + input.start() + "~" + input.end() + "~" + input.elapsed()
                                 + "~" + input.authoredDuration() + "~" + k.canonicalSamples()).orElse("")
-                        + input.gainKeys().map(k -> "," + input.start() + "~" + input.elapsed() + "~" + input.authoredDuration()
-                                + "~" + k.canonicalSamples()).orElse(""));
+                        + audioEnvelopeToken(input));
             }
         }
         for (var cue : plan.subtitles()) {
@@ -549,6 +563,13 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                             + cue.encodedStyleSuffix());
         }
         return ProcessInvocationSpec.of(python.toString(), List.copyOf(arguments));
+    }
+
+    private static String audioEnvelopeToken(BmfCpuTranscodePlan.TimedInput input) {
+        if (input.gainKeys().isEmpty() && !input.fades().active()) return "";
+        return "," + input.start() + "~" + input.elapsed() + "~" + input.authoredDuration() + "~"
+                + input.gainKeys().map(RenderDependency.GainRamp::canonicalSamples).orElse("")
+                + (input.fades().active() ? "~" + input.fades().in() + "~" + input.fades().out() : "");
     }
 
     private static String rasterToken(BmfCpuTranscodePlan plan) {

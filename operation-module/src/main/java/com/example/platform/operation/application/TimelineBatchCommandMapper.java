@@ -203,6 +203,8 @@ public final class TimelineBatchCommandMapper {
                     CompositionAspectRatio.fromParameters(parameters));
             case "timeline.subtitle.cue.set" -> subtitleCue(parameters);
             case "timeline.subtitle.cue.remove" -> new OperationParameters.RemoveSubtitleCueParameters(requiredText(parameters, "cueId"));
+            case "timeline.clip.audio-fades.set" -> new OperationParameters.AudioFadeParameters(
+                    fadeDuration(parameters, "fadeIn"), fadeDuration(parameters, "fadeOut"));
             case "timeline.clip.gain.keyframes.set" -> gainKeys(parameters);
             case "timeline.clip.scale.keyframes.set" -> scaleKeys(parameters);
             case "timeline.clip.position.keyframes.set" -> positionKeys(parameters);
@@ -516,6 +518,14 @@ public final class TimelineBatchCommandMapper {
         long value = requiredLong(map,key);
         if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) throw new IllegalArgumentException("Subtitle integer out of range");
         return (int)value;
+    }
+
+    private static MediaTime fadeDuration(Map<String, Object> parameters, String edge) {
+        if (!parameters.containsKey(edge)) return null;
+        if (!(parameters.get(edge) instanceof String time)) {
+            throw new IllegalArgumentException(edge + " must be an exact rational duration");
+        }
+        return com.example.platform.timeline.semantics.effect.ClipAudioFades.parseDuration(time);
     }
 
     private static OperationParameters.GainParameters gainKeys(Map<String, Object> parameters) {

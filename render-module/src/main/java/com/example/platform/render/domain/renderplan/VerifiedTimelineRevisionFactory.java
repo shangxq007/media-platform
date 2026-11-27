@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.audio.domain.mix.AudioMix;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.shared.digest.ContentDigest;
@@ -158,8 +159,18 @@ public final class VerifiedTimelineRevisionFactory {
             envelope.requireInside(owner.getStartTime(), owner.getEndTime());
             if (opacity.put(owner.getClipId().value(), envelope) != null) throw new IllegalArgumentException("Ambiguous opacity curve");
         }
+        var fades = new java.util.HashMap<String, ClipAudioFades>();
+        for (var track : document.getTracks()) for (var clip : track.clips()) {
+            var envelope = ClipAudioFades.fromEffects(clip.getEffects());
+            if (!envelope.active()) continue;
+            if (track.type() != com.example.platform.timeline.canonical.TrackType.AUDIO) {
+                throw new IllegalArgumentException("Audio fades require an audio track");
+            }
+            envelope.requireFits(clip.getEndTime().subtract(clip.getStartTime()));
+            fades.put(clip.getClipId().value(), envelope);
+        }
         return VerifiedTimelineRevision.create(reference, clips, tracks, audioMix, textElements,
-                document.getTransitions(), opacity, position, scale, gain, document.getMetadata().effectiveCompositionAspectRatio());
+                document.getTransitions(), opacity, position, scale, gain, fades, document.getMetadata().effectiveCompositionAspectRatio());
     }
 
     /** Base64 SHA-256 -> lowercase hex (ContentDigest canonical form). */

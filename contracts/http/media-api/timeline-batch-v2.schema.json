@@ -2727,6 +2727,65 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.clip.audio-fades.set" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "fadeIn" : {
+                  "description" : "Exact clip-relative duration in seconds. Omit to preserve; send 0 to clear.",
+                  "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                  "type" : "string"
+                },
+                "fadeOut" : {
+                  "description" : "Exact clip-relative duration in seconds. Omit to preserve; send 0 to clear.",
+                  "pattern" : "^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$",
+                  "type" : "string"
+                }
+              },
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.subtitle.cue.set" ],
               "type" : "string"
             },

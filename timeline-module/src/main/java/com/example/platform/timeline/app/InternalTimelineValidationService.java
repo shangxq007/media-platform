@@ -57,7 +57,8 @@ public class InternalTimelineValidationService implements TimelineValidation {
                 .flatMap(track -> track.clips().stream())
                 .flatMap(clip -> clip.getEffects().stream())
                 .noneMatch(effect -> com.example.platform.timeline.semantics.effect.BasicVideoEffect
-                        .EFFECT_KEY.equals(effect.effectKey()))) {
+                        .EFFECT_KEY.equals(effect.effectKey())
+                        || com.example.platform.timeline.semantics.effect.ClipAudioFades.isFade(effect))) {
             return;
         }
         var result = TimelineCanonicalValidator.validate(TimelineDocumentCandidateMapper.map(timelineId, document));

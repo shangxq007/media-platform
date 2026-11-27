@@ -6,6 +6,7 @@ import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.timeline.semantics.effect.PositionKeys;
 import com.example.platform.timeline.semantics.effect.ScaleKeys;
 import com.example.platform.timeline.semantics.effect.GainKeys;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.timeline.semantics.effect.BasicVideoEffect;
 import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
@@ -79,6 +80,7 @@ public final class OperationPlanner {
             case "timeline.clip.relocate" -> planRelocate(instance, base, changes);
             case "timeline.composition.aspect.set" -> planCompositionAspect(instance, base, changes);
             case "timeline.subtitle.cue.set", "timeline.subtitle.cue.remove" -> SubtitleCuePlanner.plan(instance, base, changes);
+            case "timeline.clip.audio-fades.set" -> planAudioFades(instance, base, changes);
             case "timeline.clip.gain.keyframes.set" -> planGain(instance, base, changes);
             case "timeline.clip.scale.keyframes.set" -> planScale(instance, base, changes);
             case "timeline.clip.position.keyframes.set" -> planPosition(instance, base, changes);
@@ -1044,6 +1046,11 @@ public final class OperationPlanner {
                 || newSourceStart.isLessThan(MediaTime.ZERO)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "trim must leave a positive media range");
         }
+        try {
+            ClipAudioFades.fromEffects(clip.getEffects()).requireFits(newEnd.subtract(newStart));
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
         TimelineClip trimmed = withRanges(clip, newStart, newEnd, newSourceStart, newSourceEnd);
         // frozen policy: trim invalidating a Sync object-local anchor => REJECT
         for (SemanticRelationship rel : base.getSemanticRelationships()) {
@@ -1174,6 +1181,32 @@ public final class OperationPlanner {
                         metadata.title(), metadata.description(), metadata.properties(), params.aspectRatio()),
                 base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
                 base.getTransitions(), base.getAutomations());
+    }
+
+    private TimelineDocument planAudioFades(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        var id = scopeOf(instance).getFirst();
+        var clip = clipOf(base, id);
+        if (!"MEDIA_STREAM".equals(clip.getSourceKind()) || base.getTracks().stream().noneMatch(t ->
+                t.type() == com.example.platform.timeline.canonical.TrackType.AUDIO && t.clips().contains(clip))) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Audio fades require a media clip on an audio track");
+        }
+        var request = (OperationParameters.AudioFadeParameters) instance.parameters();
+        ClipAudioFades fades;
+        try {
+            var old = ClipAudioFades.fromEffects(clip.getEffects());
+            fades = new ClipAudioFades(request.fadeIn() == null ? old.in() : request.fadeIn(),
+                    request.fadeOut() == null ? old.out() : request.fadeOut());
+            if (fades.equals(old)) return base;
+            fades.requireFits(clip.getEndTime().subtract(clip.getStartTime()));
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
+        var updated = new TimelineClip(id.value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
+                clip.getArtifactId(), clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(),
+                clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), clip.getTemporalMapping(),
+                fades.updateEffects(id.value(), clip.getEffects()), clip.getTransform());
+        changes.add(new PlannedChange.ClipReplaced(id, updated));
+        return replaceClip(base, id, updated);
     }
 
     private TimelineDocument planGain(OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {

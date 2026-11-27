@@ -1360,6 +1360,60 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         assertEquals(1, count("timeline.apply_command"));
     }
 
+    @Test
+    void fadeConfirmationPreservesManualKeysAndReplaysWithoutAnotherRevision() {
+        var manual = com.example.platform.timeline.semantics.effect.GainKeys.parseSamples(
+                "3/2;500000|2/1;1000000").curve("clip-a", null);
+        var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("audio-main", "Audio", TrackType.AUDIO, List.of(clip("clip-a", 1, 5)))),
+                new TimelineMetadata("fades", "exact", Map.of()), null, List.of(), List.of(), List.of(), List.of(manual));
+        var base = saveRevision(doc);
+        var request = fadeRequest(base, "fade-both", time("1/1"), time("1/2"));
+        var actor = mutation().actor();
+        var preview = batch.preview(request, OperationBatchContext.preview(actor, "test"));
+        assertEquals(1, count("timeline.timeline_revision"));
+        assertEquals(0, count("timeline.apply_command"));
+        var apply = OperationBatchContext.apply(request.batchId(), actor, null, "test", preview.batchDigest());
+        var accepted = batch.commit(request, apply);
+        assertEquals(accepted.newRevisionId(), batch.commit(request, apply).newRevisionId());
+        assertEquals(2, count("timeline.timeline_revision"));
+        assertEquals(1, count("timeline.apply_command"));
+
+        var saved = saveService.findById(TENANT, accepted.newRevisionId());
+        assertEquals(base.revisionId(), saved.parentRevisionId());
+        var persisted = saveService.findPayloadDocument(TENANT, saved.revisionId()).orElseThrow();
+        assertEquals(List.of(manual), persisted.getAutomations());
+        assertEquals(doc.getAudioMix(), persisted.getAudioMix());
+        assertEquals(List.of("1/1", "1/2"), persisted.getTracks().getFirst().clips().getFirst().getEffects()
+                .stream().map(e -> e.parameters().get("duration")).toList());
+
+        var oversize = fadeRequest(saved, "fade-invalid", time("15/4"), null);
+        assertThrows(BatchException.class, () -> batch.preview(oversize, OperationBatchContext.preview(actor, "test")));
+        assertEquals(2, count("timeline.timeline_revision"));
+
+        var retimed = applyPrepared(fadeRequest(saved, "fade-retime", time("3/4"), null));
+        var released = saveService.findById(TENANT, applyPrepared(fadeRequest(
+                saveService.findById(TENANT, retimed.newRevisionId()), "attack-removed", MediaTime.ZERO, null)).newRevisionId());
+        var clip = saveService.findPayloadDocument(TENANT, released.revisionId()).orElseThrow()
+                .getTracks().getFirst().clips().getFirst();
+        assertEquals(1, clip.getEffects().size());
+        assertEquals("audio.fade_out", clip.getEffects().getFirst().effectKey());
+        assertEquals("1/2", clip.getEffects().getFirst().parameters().get("duration"));
+        var cleared = applyPrepared(fadeRequest(released, "release-removed", null, MediaTime.ZERO));
+        assertEquals(json.valueToTree(doc), json.valueToTree(saveService.findPayloadDocument(TENANT, cleared.newRevisionId()).orElseThrow()));
+    }
+
+    private OperationBatchRequest fadeRequest(TimelineRevision base, String id, MediaTime in, MediaTime out) {
+        var def = OperationDefinition.V3.SET_AUDIO_FADES;
+        var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,
+                new SelectionSpec.ExplicitObjectSelection(List.of(TimelineClipId.of("clip-a"))),
+                SelectionSpec.ExpansionPolicy.EXACT);
+        var op = new OperationRequest(def.definitionId(), def.version(), target,
+                new OperationParameters.AudioFadeParameters(in, out), base.revisionId(), hash(base), null);
+        return new OperationBatchRequest(id,
+                new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"), base.revisionId(), List.of(op), null);
+    }
+
     private OperationBatchRequest opacityRequest(TimelineRevision base) {
         var def = OperationDefinition.V3.SET_OPACITY_KEYS;
         var target = new OperationTargetRequest.ClipSelectionTargetRequest(PROJECT,

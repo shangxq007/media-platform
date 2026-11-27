@@ -65,6 +65,10 @@ public final class TimelineOperationWireContract {
                 fields(fields, "cue-key-array", "keys");
             }
             case "timeline.subtitle.cue.remove" -> fields(fields, "string", "cueId");
+            case "timeline.clip.audio-fades.set" -> {
+                fields.put("fadeIn", new Field("audio-fade-duration", false));
+                fields.put("fadeOut", new Field("audio-fade-duration", false));
+            }
             case "timeline.clip.gain.keyframes.set" -> fields(fields, "gain-key-array", "keys");
             case "timeline.clip.scale.keyframes.set" -> fields(fields, "scale-key-array", "keys");
             case "timeline.clip.position.keyframes.set" -> fields(fields, "position-key-array", "keys");

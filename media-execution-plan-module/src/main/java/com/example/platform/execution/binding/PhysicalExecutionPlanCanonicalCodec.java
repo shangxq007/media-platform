@@ -555,7 +555,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("start", timed.start().toString()).field("end", timed.end().toString()).build();
         }
         if (dependency instanceof RenderDependency.TimedTrackInput timed) {
-            writer.field("variant", timed.gainKeys().isPresent() ? "TIMED_TRACK_GAIN_V1"
+            writer.field("variant", timed.fades().active() ? "TIMED_TRACK_AUDIO_FADES_V1"
+                    : timed.gainKeys().isPresent() ? "TIMED_TRACK_GAIN_V1"
                     : timed.scaleKeys().isPresent() ? "TIMED_TRACK_SCALE_V1"
                     : timed.positionKeys().isPresent() ? "TIMED_TRACK_POSITION_V1"
                     : timed.opacityKeys().isPresent() ? "TIMED_TRACK_OPACITY_V1" : "TIMED_TRACK_INPUT")
@@ -588,7 +589,13 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                                     .field("outgoingClipId", dissolve.outgoingClipId())
                                     .field("incomingClipId", dissolve.incomingClipId())
                                     .field("duration", dissolve.duration().toString()).build()).orElse(null));
-            timed.gainKeys().ifPresent(g -> writer.field("gainEnvelope", g.canonicalSamples()));
+            if (timed.fades().active()) {
+                writer.field("audioFadeIn", timed.fades().in().toString())
+                        .field("audioFadeOut", timed.fades().out().toString())
+                        .field("gainEnvelope", timed.gainKeys().map(RenderDependency.GainRamp::canonicalSamples).orElse(""));
+            } else {
+                timed.gainKeys().ifPresent(g -> writer.field("gainEnvelope", g.canonicalSamples()));
+            }
             if (timed.scaleKeys().isPresent()) {
                 writer.field("scales", timed.scaleKeys().get().canonicalSamples())
                         .field("hasPosition", Boolean.toString(timed.positionKeys().isPresent()));
@@ -618,7 +625,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
             case "COMPOSITE_INPUT" -> new RenderDependency.CompositeInput();
             case "TIMED_COMPOSITE_INPUT" -> new RenderDependency.TimedCompositeInput(
                     MediaTime.parse(reader.field("start")), MediaTime.parse(reader.field("end")));
-            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1", "TIMED_TRACK_SCALE_V1", "TIMED_TRACK_GAIN_V1" -> readTimedTrack(reader, variant);
+            case "TIMED_TRACK_INPUT", "TIMED_TRACK_OPACITY_V1", "TIMED_TRACK_POSITION_V1", "TIMED_TRACK_SCALE_V1", "TIMED_TRACK_GAIN_V1", "TIMED_TRACK_AUDIO_FADES_V1" -> readTimedTrack(reader, variant);
             default -> throw new UnsupportedPersistedConstructException("RenderDependency " + variant);
         };
     }
@@ -645,12 +652,22 @@ public final class PhysicalExecutionPlanCanonicalCodec {
         var authoredStart = MediaTime.parse(reader.field("authoredStart"));
         var authoredEnd = MediaTime.parse(reader.field("authoredEnd"));
         var dissolve = dissolve(reader.optionalNested());
-        var gains = variant.equals("TIMED_TRACK_GAIN_V1")
-                ? Optional.of(RenderDependency.GainRamp.parseSamples(reader.field("gainEnvelope")))
-                : Optional.<RenderDependency.GainRamp>empty();
+        var fades = com.example.platform.timeline.semantics.effect.ClipAudioFades.NONE;
+        boolean faded = variant.equals("TIMED_TRACK_AUDIO_FADES_V1");
+        if (faded) {
+            fades = new com.example.platform.timeline.semantics.effect.ClipAudioFades(
+                    MediaTime.parse(reader.field("audioFadeIn")), MediaTime.parse(reader.field("audioFadeOut")));
+            if (!fades.active()) throw new IllegalArgumentException("Fade dependency must have an active edge");
+        }
+        String samples = faded || variant.equals("TIMED_TRACK_GAIN_V1") ? reader.field("gainEnvelope") : "";
+        if (samples.isEmpty() && variant.equals("TIMED_TRACK_GAIN_V1")) {
+            throw new IllegalArgumentException("Gain dependency must have an envelope");
+        }
+        var gains = samples.isEmpty() ? Optional.<RenderDependency.GainRamp>empty()
+                : Optional.of(RenderDependency.GainRamp.parseSamples(samples));
         var animation = timedAutomation(reader, variant);
         return new RenderDependency.TimedTrackInput(start, end, layer, audio, gain, mute, balance, transform,
-                effect, authoredStart, authoredEnd, dissolve, animation.opacity(), animation.positions(), animation.scales(), gains);
+                effect, authoredStart, authoredEnd, dissolve, animation.opacity(), animation.positions(), animation.scales(), gains, fades);
     }
 
     private static TimedAutomation timedAutomation(FrameReader reader, String variant) {

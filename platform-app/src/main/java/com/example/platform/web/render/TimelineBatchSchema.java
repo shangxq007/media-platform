@@ -92,6 +92,9 @@ public final class TimelineBatchSchema {
             case "composition-aspect-rational-v1" -> ASPECT;
             case "revision-id" -> Map.of("type", "string", "pattern", "^"
                     + com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters.SOURCE_REVISION_ID_PATTERN + "$");
+            case "audio-fade-duration" -> Map.of("type", "string",
+                    "pattern", "^" + com.example.platform.timeline.semantics.effect.ClipAudioFades.TIME_PATTERN + "$",
+                    "description", "Exact clip-relative duration in seconds. Omit to preserve; send 0 to clear.");
             case "cue-time" -> Map.of("type","string","pattern","^(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})$");
             case "cue-font" -> Map.of("type", "string", "pattern", "^"
                     + com.example.platform.fonttext.typography.SubtitleBlockLayout.PROFILE_ID_PATTERN + "$");

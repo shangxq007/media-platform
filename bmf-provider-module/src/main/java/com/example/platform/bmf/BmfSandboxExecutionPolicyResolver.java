@@ -6,6 +6,7 @@ import com.example.platform.render.domain.renderplan.TimedTextMaterializationReq
 import com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement.RasterRange;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderRaster;
+import com.example.platform.timeline.semantics.effect.ClipAudioFades;
 import com.example.platform.sandbox.DeviceExposurePolicy;
 import com.example.platform.sandbox.EnvironmentPolicy;
 import com.example.platform.sandbox.FilesystemPolicy;
@@ -352,7 +353,7 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
             if (fx.length == 14 && (!parts[0].equals("V") || !validOpacityRamp(fx))) return false;
             if (parts[0].equals("A") && parts.length > 17
-                    && !(parts.length == 18 && validGainRamp(parts[17], start))) return false;
+                    && !(parts.length == 18 && validAudioEnvelope(parts[17], start))) return false;
             if (parts[0].equals("V") && parts.length > 17 && (
                     !(parts.length == 19 && parts[17].isEmpty()) && !validPositionRamp(parts[17], fx[8]))) return false;
             if (parts.length == 19 && !validScaleRamp(parts[18], scaleX, scaleY, degrees, raster)) return false;
@@ -489,22 +490,33 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
         }
     }
 
-    private static boolean validGainRamp(String token, BigDecimal placementStart) {
-        String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+    private static boolean validAudioEnvelope(String token, BigDecimal placementStart) {
+        String time = ClipAudioFades.TIME_PATTERN;
         String pair = time + ";[0-9]{1,7}";
-        if (token.length() > 1000 || !token.matches(time + "~" + time + "~" + time + "~"
-                + pair + "(?:\\|" + pair + "){1,15}")) return false;
+        if (token.length() > 1100) return false;
         try {
-            var fields = token.split("~");
+            var fields = token.split("~", -1);
+            if (fields.length != 4 && fields.length != 6) return false;
+            for (int index = 0; index < 3; index++) {
+                if (!fields[index].matches(time)) return false;
+            }
             var exactStart = com.example.platform.shared.time.MediaTime.parse(fields[0]);
             var startSeconds = BigDecimal.valueOf(exactStart.ticks()).divide(BigDecimal.valueOf(exactStart.timeScale()),
                     9, java.math.RoundingMode.HALF_UP);
             if (startSeconds.compareTo(placementStart) != 0) return false;
             var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[1]);
             var duration = com.example.platform.shared.time.MediaTime.parse(fields[2]);
-            var ramp = RenderDependency.GainRamp.parseSamples(fields[3]);
-            ramp.validateRelative(duration);
-            return elapsed.compareTo(duration) < 0;
+            if (elapsed.compareTo(duration) >= 0) return false;
+            if (!fields[3].isEmpty()) {
+                if (!fields[3].matches(pair + "(?:\\|" + pair + "){1,15}")) return false;
+                RenderDependency.GainRamp.parseSamples(fields[3]).validateRelative(duration);
+            } else if (fields.length == 4) return false;
+            if (fields.length == 6) {
+                var fades = new ClipAudioFades(ClipAudioFades.parseDuration(fields[4]), ClipAudioFades.parseDuration(fields[5]));
+                if (!fades.active()) return false;
+                fades.requireFits(duration);
+            }
+            return true;
         } catch (IllegalArgumentException | ArithmeticException invalid) {
             return false;
         }

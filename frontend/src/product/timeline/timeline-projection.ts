@@ -8,7 +8,7 @@ import { decodeCompositionAspect, DEFAULT_COMPOSITION_ASPECT, type CompositionAs
  * second persistent Timeline authority: it holds no draft, performs no writes and can be rebuilt
  * from the same snapshot bytes at any time.
  */
-import { add, compare, formatRational, parseRational, type Rational } from './trim'
+import { add, compare, formatRational, parseRational, subtract, ZERO, type Rational } from './trim'
 import { savedSubtitleFont, type SubtitleCue } from './subtitle-cues'
 
 export interface ProjectedVideoEffect {
@@ -123,7 +123,10 @@ function projectTransform(value: unknown): ProjectedVideoTransform {
 
 function projectEffect(value: unknown): ProjectedVideoEffect {
   if (value == null) return IDENTITY_VIDEO_EFFECT
-  const effects = entries(value, 'Timeline effects')
+  const effects = entries(value, 'Timeline effects').filter(raw => {
+    const key = object(raw, 'Timeline effect').effectKey
+    return key !== 'audio.fade_in' && key !== 'audio.fade_out'
+  })
   if (!effects.length) return IDENTITY_VIDEO_EFFECT
   if (effects.length !== 1) throw new Error('Unsupported Timeline effect stack')
   const entry = object(effects[0], 'Timeline effect')
@@ -163,11 +166,17 @@ export interface OpacityKeys {
   lastValue: number
 }
 
+export interface ProjectedAudioFades {
+  readonly fadeIn: Rational
+  readonly fadeOut: Rational
+}
+
 export interface ProjectedClip {
   readonly opacityKeys?: OpacityKeys
   readonly positionKeys?: readonly PositionKey[]
   readonly scaleKeys?: readonly ScaleKey[]
   readonly gainKeys?: readonly ScaleKey[]
+  readonly audioFades?: ProjectedAudioFades
   readonly clipId: string
   readonly trackId: string
   readonly artifactId: string
@@ -398,6 +407,22 @@ export function projectTimeline(document: unknown): TimelineProjection {
           clip = { ...clip, gainKeys }
         }
         const effects = entries(object(rawClip, 'clip').effects ?? [], 'effects').map(e => object(e, 'effect'))
+        const edge = (key: string): Rational => {
+          const found = effects.filter(effect => effect.effectKey === key)
+          if (!found.length) return ZERO
+          const parameters = object(found[0].parameters, 'audio fade parameters')
+          const duration = exactTime(parameters.duration, 'audio fade duration')
+          if (track.type !== 'audio' || found.length !== 1 || Object.keys(parameters).length !== 1
+            || duration.numerator === 0n || formatRational(duration) !== parameters.duration)
+            throw new Error('Invalid audio fade')
+          return duration
+        }
+        const fadeIn = edge('audio.fade_in'), fadeOut = edge('audio.fade_out')
+        if (fadeIn.numerator || fadeOut.numerator) {
+          if (compare(add(fadeIn, fadeOut), subtract(clip.end, clip.start)) > 0)
+            throw new Error('Audio fade durations exceed the clip interval')
+          clip = { ...clip, audioFades: { fadeIn, fadeOut } }
+        }
         const bound = curves.filter(c => !consumed.has(c) && effects.some(e => e.id != null && e.id === c.targetEntityId))
         if (!bound.length) return clip
         const curve = bound[0]
