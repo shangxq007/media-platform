@@ -97,6 +97,21 @@ class TimelineReviewControllerTest {
     }
 
     @Test
+    void rejectsNegativeFrameAnchorAsABadRequestBeforePosting() throws Exception {
+        org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller).build()
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/render/projects/proj_1/timeline/reviews/comments")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"revisionId":"trev_001","content":"note",
+                                 "requestId":"22222222-2222-4222-8222-222222222222",
+                                 "frameAnchor":{"side":"B","branch":"alternate","position":"-1/24"}}
+                                """))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
+        verifyNoInteractions(commentService);
+    }
+
+    @Test
     void shouldApproveReview() {
         ResponseEntity<Map<String, Object>> response =
                 controller.approve("proj_1", "rvw_1");

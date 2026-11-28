@@ -19,7 +19,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -123,6 +125,12 @@ public class TimelineReviewController {
         var row = commentService.addFrameComment(projectId, reviewId, body.revisionId(), actorId, body.content(),
                 body.frameAnchor(), body.requestId());
         return ResponseEntity.status(HttpStatus.CREATED).body(toCommentResponse(row));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail invalidReviewRequest() {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "Invalid review request body. Frame anchors require a side, branch and nonnegative exact rational position.");
     }
 
     @GetMapping("/{reviewId}/comments")
