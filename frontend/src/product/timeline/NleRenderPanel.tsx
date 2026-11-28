@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input } from '../../components/design-system'
-import { FormalRenderAPI, type RasterProfile, type RenderResult } from '../../api/formal-render'
+import { FormalRenderAPI, type RasterProfile, type RenderLifecycle } from '../../api/formal-render'
 import { DeliveryAPI, type Delivery } from '../../api/delivery'
 import { renderReadSource } from '../../api/render-jobs'
 import type { RenderJobSummary } from '../../contracts/app/render-job'
@@ -47,7 +47,7 @@ export function NleRenderPanel({ head, version, timelineEndMillis = 3000, aspect
   const rasterError = profiles ? outputRasterError(aspectRatio, width, height, profiles)
     : profileError || 'Loading output capabilities.'
   const [jobs, setJobs] = useState<RenderJobSummary[]>([])
-  const [job, setJob] = useState<RenderResult | null>(null)
+  const [job, setJob] = useState<RenderLifecycle | null>(null)
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
   const [delivery, setDelivery] = useState<Delivery | null>(null)
   const [busy, setBusy] = useState(false)
@@ -74,12 +74,22 @@ export function NleRenderPanel({ head, version, timelineEndMillis = 3000, aspect
   }, [project.tenantId, project.projectId])
   useEffect(() => {
     if (!job || terminal.has(job.status) || !project.tenantId) return
-    const id = job.renderJobId; const timer = setInterval(() => { void (async () => {
-      try { const result = await FormalRenderAPI.result(project.tenantId!, project.projectId, id); setJob(result)
-        if (terminal.has(result.status)) await refresh() }
-      catch (error) { setMessage(error instanceof Error ? error.message : 'Render status unavailable.') }
-    })() }, 1000)
-    return () => clearInterval(timer)
+    const id = job.renderJobId
+    const pending = new AbortController()
+    let timer: ReturnType<typeof setTimeout>
+    async function poll() {
+      try {
+        const result = await FormalRenderAPI.lifecycle(project.tenantId!, project.projectId, id, pending.signal)
+        if (pending.signal.aborted) return
+        setJob(current => current?.renderJobId === id ? result : current)
+        if (terminal.has(result.status)) { await refresh(); return }
+      } catch (error) {
+        if (!pending.signal.aborted) setMessage(error instanceof Error ? error.message : 'Render status unavailable.')
+      }
+      if (!pending.signal.aborted) timer = setTimeout(() => void poll(), 1000)
+    }
+    timer = setTimeout(() => void poll(), 1000)
+    return () => { pending.abort(); clearTimeout(timer) }
   }, [job?.renderJobId, job?.status, project.tenantId, project.projectId])
   async function run(action: () => Promise<void>) {
     setBusy(true); setMessage(''); setActionFailed(false)
@@ -92,14 +102,15 @@ export function NleRenderPanel({ head, version, timelineEndMillis = 3000, aspect
       frameRateNumerator: fps, frameRateDenominator: 1, width, height }, outputFormat: 'MP4' as const, profile: 'default' }
     void run(async () => {
       const accepted = await FormalRenderAPI.submit(intent, key([project.projectId, intent]))
-      const current = await FormalRenderAPI.result(project.tenantId!, project.projectId, accepted.renderJobId)
-      setJob(current); await refresh()
+      const current = await FormalRenderAPI.lifecycle(project.tenantId!, project.projectId, accepted.renderJobId)
+      if (current.timelineRevisionId !== intent.revisionId) throw new Error('Submitted render revision did not match the job pin.')
+      setJob(current); setDelivery(null); await refresh()
       setMessage(`RenderJob ${accepted.renderJobId} accepted for version ${version}, revision ${intent.revisionId}.`)
     })
   }
   async function selectJob(id: string) {
     if (!project.tenantId) return
-    await run(async () => { setJob(await FormalRenderAPI.result(project.tenantId!, project.projectId, id)); setDelivery(null) })
+    await run(async () => { setJob(await FormalRenderAPI.lifecycle(project.tenantId!, project.projectId, id)); setDelivery(null) })
   }
   return <section aria-label="Render and delivery">
     <h3>Render current revision</h3>
@@ -122,11 +133,11 @@ export function NleRenderPanel({ head, version, timelineEndMillis = 3000, aspect
       <Button type="button" onClick={() => void selectJob(item.id)}>{item.id}: {item.status}</Button>
     </li>)}</ul>}
     {job && <div aria-label="Current RenderJob"><p>Job <code>{job.renderJobId}</code> · <span role="status">{job.status}</span></p>
-      {job.timelineRevisionId && <p>Submitted revision <code>{job.timelineRevisionId}</code></p>}
+      <p>Submitted revision <code>{job.timelineRevisionId}</code></p>
       {job.failureCode && <p role="alert">{job.failureCode}</p>}
       {!terminal.has(job.status) && project.tenantId && <Button type="button" disabled={busy} onClick={() => void run(async () => {
         await FormalRenderAPI.cancel(project.tenantId!, project.projectId, job.renderJobId)
-        setJob(await FormalRenderAPI.result(project.tenantId!, project.projectId, job.renderJobId))
+        setJob(await FormalRenderAPI.lifecycle(project.tenantId!, project.projectId, job.renderJobId))
       })}>Cancel render</Button>}
       {job.status === 'COMPLETED' && job.finalArtifactId && <Button type="button" disabled={busy} onClick={() => void run(async () => {
         const created = await DeliveryAPI.create(project.projectId, { sourceRenderJobId: job.renderJobId, artifactId: job.finalArtifactId! },

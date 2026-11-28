@@ -1,8 +1,11 @@
 package com.example.platform.operation.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.platform.operation.batch.BatchStepDescriptor;
 import com.example.platform.operation.batch.OperationBatchPlan;
 import com.example.platform.timeline.api.revision.RevisionProvenance;
+import java.util.Optional;
 
 /**
  * Deterministic, format-versioned provenance document for one batch commit.
@@ -15,6 +18,8 @@ import com.example.platform.timeline.api.revision.RevisionProvenance;
 public final class BatchCommitProvenance {
 
     public static final String FORMAT_VERSION = "operation-batch-provenance-v1";
+    private static final String RESTORE_FORMAT = "operation-batch-provenance-v3";
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private BatchCommitProvenance() {
     }
@@ -29,7 +34,7 @@ public final class BatchCommitProvenance {
                 com.example.platform.operation.operation.OperationParameters.CompositionAspectParameters aspect && aspect.input() != null);
         boolean restoring = operations.stream().anyMatch(op -> op.parameters() instanceof
                 com.example.platform.operation.operation.OperationParameters.RestoreRevisionParameters);
-        String version = restoring ? "operation-batch-provenance-v3" : hasInputs ? "operation-batch-provenance-v2" : FORMAT_VERSION;
+        String version = restoring ? RESTORE_FORMAT : hasInputs ? "operation-batch-provenance-v2" : FORMAT_VERSION;
         StringBuilder json = new StringBuilder(256 + plan.steps().size() * 220);
         json.append('{');
         field(json, "formatVersion", version).append(',');
@@ -78,6 +83,36 @@ public final class BatchCommitProvenance {
         }
         json.append("]}");
         return new RevisionProvenance(version, message, json.toString());
+    }
+
+    record CommittedStep(String batchId, String batchDigest, String baseRevisionId, String finalCandidateHash,
+                         String definitionId, String version, String restoredFrom) {}
+
+    /** Reads the narrow single-step provenance needed to corroborate an immutable batch receipt. */
+    static Optional<CommittedStep> readSingleStep(String json) {
+        if (json == null) return Optional.empty();
+        try {
+            var root = JSON.readTree(json);
+            if (root == null || !root.isObject()) return Optional.empty();
+            var format = root.path("formatVersion").textValue();
+            boolean restore = RESTORE_FORMAT.equals(format);
+            if (!restore && !FORMAT_VERSION.equals(format)) return Optional.empty();
+            var steps = root.path("steps");
+            if (!steps.isArray() || steps.size() != 1 || steps.path(0).path("index").asInt(-1) != 0) return Optional.empty();
+            var step = steps.path(0);
+            String batch = root.path("batchId").textValue();
+            String digest = root.path("batchDigest").textValue();
+            String base = root.path("baseRevisionId").textValue();
+            String hash = root.path("finalCandidateHash").textValue();
+            String definition = step.path("definitionId").textValue();
+            String version = step.path("version").textValue();
+            String source = root.path("sourceRevisionId").textValue();
+            if (batch == null || digest == null || base == null || hash == null || definition == null || version == null
+                    || (restore && source == null) || (!restore && root.has("sourceRevisionId"))) return Optional.empty();
+            return Optional.of(new CommittedStep(batch, digest, base, hash, definition, version, source));
+        } catch (JsonProcessingException malformed) {
+            return Optional.empty();
+        }
     }
 
     private static StringBuilder field(StringBuilder json, String name, String value) {

@@ -12,6 +12,7 @@ import com.example.platform.operation.batch.OperationBatchPlanner;
 import com.example.platform.operation.batch.OperationBatchRequest;
 import com.example.platform.operation.batch.VersionedAggregateRef;
 import com.example.platform.operation.operation.OperationInstance;
+import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationRequestResolver;
@@ -29,6 +30,7 @@ import com.example.platform.timeline.api.revision.RevisionProvenance;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException;
 import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -58,6 +60,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
     public static final String BATCH_COMMAND_DOMAIN = "OPERATION_BATCH";
 
     private final TimelineRevisionCommands revisions;
+    private final TimelineRevisionQueries revisionQueries;
     private final TimelineSourceValidation sourceValidator;
     private final TimelineValidation timelineValidator;
     private final TimelineContentDigester digester = new TimelineContentDigester();
@@ -67,13 +70,8 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
     private final com.example.platform.operation.operation.TextOperationPlanner.FontResolutionInput fonts;
     private final com.example.platform.artifact.app.ArtifactSourceFactsQuery sourceFacts;
 
-    public TimelineBatchTargetDomain(TimelineRevisionCommands revisions, TimelineSourceValidation sourceValidator,
-            TimelineValidation timelineValidator) {
-        this(revisions, sourceValidator, timelineValidator, null, null);
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired
     public TimelineBatchTargetDomain(TimelineRevisionCommands revisions,
+                                     TimelineRevisionQueries revisionQueries,
                                      TimelineSourceValidation sourceValidator,
                                      TimelineValidation timelineValidator,
                                      com.example.platform.operation.operation.TextOperationPlanner.FontResolutionInput fonts,
@@ -81,6 +79,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         this.fonts = fonts;
         this.sourceFacts = sourceFacts;
         this.revisions = Objects.requireNonNull(revisions, "revisions");
+        this.revisionQueries = Objects.requireNonNull(revisionQueries, "revisionQueries");
         this.sourceValidator = Objects.requireNonNull(sourceValidator, "sourceValidator");
         this.timelineValidator = Objects.requireNonNull(timelineValidator, "timelineValidator");
     }
@@ -292,18 +291,39 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
     }
 
     private void requireEditingBranchHistory(OperationBatchRequest batch, String sourceRevisionId) {
-        // Named-branch Undo/Redo can restore only the history of the exact CAS base.
-        // Do not use a mutable ref head here: retries must replan the original command.
+        // Verify every traversed edge from the immutable CAS base. A prior restore
+        // is not itself proof of a voiceover edit: also verify the edges it traversed.
+        // This includes restores saved before this guard and keeps exact replay deterministic.
         var seen = new HashSet<String>();
+        var required = new HashSet<String>();
+        required.add(sourceRevisionId);
         var target = batch.target();
+        var ref = new RevisionRef(target.tenantId(), target.projectId(), target.refId());
         for (String id = batch.baseRevisionId(); id != null && seen.add(id);) {
-            var revision = revisions.findById(target.tenantId(), id);
-            if (revision == null || !target.projectId().equals(revision.productId())) break;
-            if (id.equals(sourceRevisionId)) return;
+            required.remove(id);
+            if (required.isEmpty() && !id.equals(batch.baseRevisionId())) return;
+            if (required.isEmpty()) break; // No confirmed action to undo or redo.
+            var revision = revisionQueries.findById(target.projectId(), target.tenantId(), id).orElse(null);
+            if (revision == null) break;
+            var step = BatchCommitProvenance.readSingleStep(revision.changeSummaryJson()).orElse(null);
+            if (step == null || !step.baseRevisionId().equals(revision.parentRevisionId())
+                    || !step.finalCandidateHash().equals(revision.contentHash())
+                    || !id.equals(revisions.completedCommandRevision(ref, step.batchId(), BATCH_COMMAND_DOMAIN,
+                            step.baseRevisionId(), step.batchDigest()).orElse(null))) break;
+            var voiceover = OperationDefinition.V3.REPLACE_VOICEOVER;
+            var restore = OperationDefinition.V3.RESTORE_REVISION;
+            if (step.definitionId().equals(voiceover.definitionId().value()) && step.version().equals(voiceover.version().toString())
+                    && step.restoredFrom() == null) {
+                id = revision.parentRevisionId();
+                continue;
+            }
+            if (!step.definitionId().equals(restore.definitionId().value()) || !step.version().equals(restore.version().toString())
+                    || step.restoredFrom() == null || seen.contains(step.restoredFrom())) break;
+            required.add(step.restoredFrom());
             id = revision.parentRevisionId();
         }
         throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                "A named editing branch can only restore its own revision history");
+                "Named-branch Undo/Redo can only traverse confirmed voiceover edits on that branch");
     }
 
     private TimelineRevisionCommands.RestoreSource requireRestoreRevision(OperationBatchRequest batch, String revisionId) {

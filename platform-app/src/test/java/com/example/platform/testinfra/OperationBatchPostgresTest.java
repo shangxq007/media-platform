@@ -47,6 +47,8 @@ import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineRevisionDiffService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -197,8 +199,17 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
                 return new ValidationResult(true, List.of());
             }
         };
-        domain = new TimelineBatchTargetDomain(saveService, sourceValidation,
-                new InternalTimelineValidationService());
+        var revisionQueries = new TimelineRevisionQueryService(new TimelineRevisionRepository(dsl), snapshotService,
+                new TimelineRevisionDiffService());
+        domain = new TimelineBatchTargetDomain(saveService, revisionQueries, sourceValidation,
+                new InternalTimelineValidationService(), null, (tenant, project, artifact, digest) -> {
+                    if (!TENANT.equals(tenant) || !PROJECT.equals(project) || !"f1-replacement".equals(artifact.value())
+                            || !digest.canonicalValue().equals("b".repeat(64))) return java.util.Optional.empty();
+                    var duration = time("8/1");
+                    return java.util.Optional.of(new com.example.platform.artifact.contract.ArtifactSourceFacts(duration,
+                            List.of(new com.example.platform.artifact.contract.ArtifactSourceFacts.Stream("audio-stream",
+                                    com.example.platform.artifact.contract.ArtifactSourceFacts.Kind.AUDIO, duration))));
+                });
         batch = new CanonicalBatchInvocationService(domain, authorization);
     }
 
@@ -678,35 +689,91 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void namedBranchUndoRedoRestoresOnlyItsHistoryWithoutMovingOriginal() {
-        var fork = saveRevision(twoClipDocument());
+    void namedBranchUndoRedoTraversesConfirmedVoiceoversAndReplaysWithoutMovingOriginal() {
+        var fork = saveVoiceoverFork();
         var ref = new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "alternate");
         saveService.createEditingRef(mutation(), ref.refId(), fork.revisionId(), "fork-undo-redo").orElseThrow();
         var original = applyPrepared(new OperationBatchRequest("advance-original", new VersionedAggregateRef(
                 "TIMELINE", TENANT, PROJECT, PROJECT, "main"), fork.revisionId(), List.of(trim(fork, "clip-a", "1/1")), null));
-        var originalRevision = saveService.findById(TENANT, original.newRevisionId());
-        var changed = applyPrepared(new OperationBatchRequest("edit-alternate", ref, fork.revisionId(),
-                List.of(trim(fork, "clip-b", "1/1")), null));
-        var changedRevision = saveService.findById(TENANT, changed.newRevisionId());
+        var first = saveService.findById(TENANT, applyPrepared(voiceover(ref, fork, "voice-1", "1/1")).newRevisionId());
+        var second = saveService.findById(TENANT, applyPrepared(voiceover(ref, first, "voice-2", "2/1")).newRevisionId());
         long rows = count("timeline.timeline_revision");
         long commands = count("timeline.apply_command");
-        var across = restoreRequest("restore-sibling", changedRevision, originalRevision, ref.refId());
-        assertEquals(BatchErrorCode.REF_NOT_SUPPORTED, assertThrows(BatchException.class,
-                () -> batch.preview(across, OperationBatchContext.preview(mutation().actor(), "test"))).code());
-        assertEquals(rows, count("timeline.timeline_revision"));
-        assertEquals(commands, count("timeline.apply_command"));
-        assertEquals(changed.newRevisionId(), refHead(ref.refId()));
-        var undo = restoreRequest("undo-alternate", changedRevision, fork, ref.refId());
+        var undo = restoreRequest("undo-alternate", second, first, ref.refId());
         var undone = applyPrepared(undo);
-        assertEquals(hash(fork), undone.newContentHash());
+        assertEquals(hash(first), undone.newContentHash());
         assertTrue(applyPrepared(undo).replayed());
-        var restoredFork = saveService.findById(TENANT, undone.newRevisionId());
-        var redone = applyPrepared(restoreRequest("redo-alternate", restoredFork, changedRevision, ref.refId()));
-        assertEquals(hash(changedRevision), redone.newContentHash());
+        var restoredFirst = saveService.findById(TENANT, undone.newRevisionId());
+        var undoAgain = applyPrepared(restoreRequest("undo-alternate-again", restoredFirst, fork, ref.refId()));
+        assertEquals(hash(fork), undoAgain.newContentHash());
+        var restoredFork = saveService.findById(TENANT, undoAgain.newRevisionId());
+        var redoFirst = applyPrepared(restoreRequest("redo-first", restoredFork, first, ref.refId()));
+        assertEquals(hash(first), redoFirst.newContentHash());
+        var redone = applyPrepared(restoreRequest("redo-second", saveService.findById(TENANT, redoFirst.newRevisionId()), second, ref.refId()));
+        assertEquals(hash(second), redone.newContentHash());
         assertEquals(redone.newRevisionId(), refHead(ref.refId()));
         assertEquals(original.newRevisionId(), refHead("main"));
-        assertEquals(rows + 2, count("timeline.timeline_revision"));
-        assertEquals(commands + 2, count("timeline.apply_command"));
+        assertEquals(rows + 4, count("timeline.timeline_revision"));
+        assertEquals(commands + 4, count("timeline.apply_command"));
+    }
+
+    @Test
+    void namedBranchRejectsTrimCrossingUnrelatedEditAndSiblingRestoreWithoutWrites() {
+        var fork = saveVoiceoverFork();
+        var ref = new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "alternate");
+        saveService.createEditingRef(mutation(), ref.refId(), fork.revisionId(), "fork-rejected").orElseThrow();
+        var main = applyPrepared(new OperationBatchRequest("main-sibling", new VersionedAggregateRef(
+                "TIMELINE", TENANT, PROJECT, PROJECT, "main"), fork.revisionId(), List.of(trim(fork, "clip-a", "1/2")), null));
+        var sibling = saveService.findById(TENANT, main.newRevisionId());
+        var voice = saveService.findById(TENANT, applyPrepared(voiceover(ref, fork, "first-voice", "1/1")).newRevisionId());
+        rejectVoiceoverRestore(restoreRequest("reject-sibling", voice, sibling, ref.refId()), sibling, voice);
+        var trim = applyPrepared(new OperationBatchRequest("alternate-trim", ref, voice.revisionId(),
+                List.of(trim(voice, "clip-a", "1/1")), null));
+        var shortened = saveService.findById(TENANT, trim.newRevisionId());
+        rejectVoiceoverRestore(restoreRequest("reject-trim", shortened, voice, ref.refId()), sibling, shortened);
+        var after = saveService.findById(TENANT, applyPrepared(voiceover(ref, shortened, "after-trim", "2/1")).newRevisionId());
+        rejectVoiceoverRestore(restoreRequest("reject-cross-trim", after, voice, ref.refId()), sibling, after);
+        // The trim is a valid baseline, but it cannot be traversed.
+        assertEquals(hash(shortened), applyPrepared(restoreRequest("undo-to-trim", after, shortened, ref.refId())).newContentHash());
+    }
+
+    private void rejectVoiceoverRestore(OperationBatchRequest request, TimelineRevision main, TimelineRevision alternative) {
+        long rows = count("timeline.timeline_revision");
+        long commands = count("timeline.apply_command");
+        var actor = mutation().actor();
+        assertEquals(BatchErrorCode.REF_NOT_SUPPORTED, assertThrows(BatchException.class,
+                () -> batch.preview(request, OperationBatchContext.preview(actor, "test"))).code());
+        assertEquals(BatchErrorCode.REF_NOT_SUPPORTED, assertThrows(BatchException.class,
+                () -> batch.commit(request, OperationBatchContext.apply(request.batchId(), actor, null, "test", "0".repeat(64)))).code());
+        assertEquals(main.revisionId(), refHead("main"));
+        assertEquals(alternative.revisionId(), refHead(request.target().refId()));
+        assertEquals(rows, count("timeline.timeline_revision"));
+        assertEquals(commands, count("timeline.apply_command"));
+    }
+
+    private TimelineRevision saveVoiceoverFork() {
+        for (String name : List.of("f1-original", "f1-replacement")) {
+            jdbc.update("""
+                    insert into artifacts.artifact(id,tenant_id,project_id,content_digest,byte_length,
+                        media_type,artifact_kind,state,schema_version,created_at)
+                    values (?,?,?,?,1024,'AUDIO','SOURCE_MEDIA','AVAILABLE',1,now())
+                    """, name, TENANT, PROJECT, (name.equals("f1-original") ? "a" : "b").repeat(64));
+        }
+        var clip = new TimelineClip("clip-a", "f1-original", "audio-stream", "f1-original", "a".repeat(64),
+                time("1/1"), time("5/1"), MediaTime.ZERO, time("4/1"), "MEDIA_STREAM",
+                ConstantRateTemporalMapping.identity());
+        return saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("audio-main", "Audio", TrackType.AUDIO, List.of(clip))),
+                new TimelineMetadata("voiceovers", "exact", Map.of()), null, List.of(), List.of(), List.of(), List.of()));
+    }
+
+    private OperationBatchRequest voiceover(VersionedAggregateRef ref, TimelineRevision base, String batchId, String in) {
+        var parameters = new OperationParameters.ReplaceVoiceoverParameters(
+                new com.example.platform.shared.identity.ArtifactId("f1-replacement"),
+                com.example.platform.shared.digest.ContentDigest.sha256("b".repeat(64)),
+                com.example.platform.media.domain.stream.MediaStreamId.of("audio-stream"), time(in));
+        return new OperationBatchRequest(batchId, ref, base.revisionId(),
+                List.of(clipRequest(OperationDefinition.V3.REPLACE_VOICEOVER, base, "clip-a", parameters)), null);
     }
 
     @Test
