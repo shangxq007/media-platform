@@ -10,6 +10,7 @@ import com.example.platform.shared.web.TenantGuard;
 
 import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.timeline.diff.merge.TimelineComment;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -117,7 +118,11 @@ public class TimelineCommentService implements TimelineComments {
             var duration = MediaTime.ofTicks(text.duration().numerator().longValueExact(), text.duration().denominator().longValueExact());
             end = end.max(start.add(duration));
         }
-        if (anchor.time().compareTo(end) >= 0) {
+        // A browser clock fraction can fit in MediaTime while its cross-products do not fit in a long.
+        var time = anchor.time();
+        var scaledPosition = BigInteger.valueOf(time.ticks()).multiply(BigInteger.valueOf(end.timeScale()));
+        var scaledEnd = BigInteger.valueOf(end.ticks()).multiply(BigInteger.valueOf(time.timeScale()));
+        if (scaledPosition.compareTo(scaledEnd) >= 0) {
             throw new IllegalArgumentException("Frame position is outside the saved revision's half-open timeline extent");
         }
     }

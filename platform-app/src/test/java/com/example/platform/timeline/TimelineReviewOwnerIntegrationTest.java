@@ -163,6 +163,40 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   assertFalse(comments.listProjectComments("other").contains(first));
  }
 
+ @Test void frameCommentExtentOrdersLargeRationalsExactly() {
+  var end=MediaTime.ofTicks(300,1);
+  var clip=new TimelineClip("long-review-clip","asset","stream","artifact","a".repeat(64),MediaTime.ZERO,end,
+      MediaTime.ZERO,end,"MEDIA_STREAM");
+  var doc=new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+      List.of(new TimelineTrack("video","Video",TrackType.VIDEO,List.of(clip))),TimelineMetadata.empty());
+  jdbc.update("update timeline.timeline_snapshot set payload_json=? where id='project-snapshot'",
+      TimelineDocumentJsonSerializer.serialize(doc));
+  var comments=context.getBean(TimelineComments.class);
+  String clock="3602879701896397/36028797018963968";
+  String inside="5404319552844595199/18014398509481984"; // 300 − 1/2^54
+  String outside="5404319552844595201/18014398509481984"; // 300 + 1/2^54
+  long reviews=count("timeline.timeline_review"), notes=count("timeline.timeline_comment"),
+      revisions=count("timeline.timeline_revision"), commands=count("timeline.apply_command");
+  var anchor=new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",clock);
+  var request=UUID.randomUUID();
+  var saved=comments.addFrameComment("project",null,"project-revision","server-actor","clock",anchor,request);
+  assertEquals(clock,saved.frameAnchor().position());
+  assertEquals(saved,comments.addFrameComment("project",null,"project-revision","server-actor","clock",anchor,request));
+  assertEquals(notes+1,count("timeline.timeline_comment"));
+  for(String position:List.of("300/1",outside)) {
+   assertThrows(IllegalArgumentException.class,()->comments.addFrameComment("project",null,"project-revision","server-actor",
+       "boundary",new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",position),UUID.randomUUID()));
+  }
+  assertEquals(notes+1,count("timeline.timeline_comment"));
+  var near=comments.addFrameComment("project",null,"project-revision","server-actor",
+      "near end",new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",inside),UUID.randomUUID());
+  assertEquals(inside,near.frameAnchor().position());
+  assertEquals(reviews+1,count("timeline.timeline_review"));
+  assertEquals(notes+2,count("timeline.timeline_comment"));
+  assertEquals(revisions,count("timeline.timeline_revision"));
+  assertEquals(commands,count("timeline.apply_command"));
+ }
+
  @Test void retiredAndMalformedDurableTimelineInputsAreExplicitlyDeadLettered()throws Exception {
   String review=create();context.getBean(TimelineReviews.class).approve(review,"server-actor");
   long audits=count("policy.audit_records"),notifications=count("notification.notification_event");int n=0;
