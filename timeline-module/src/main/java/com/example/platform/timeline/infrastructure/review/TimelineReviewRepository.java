@@ -31,25 +31,24 @@ public class TimelineReviewRepository {
 
     public void insertReview(String id, String projectId, String tenantId, String revisionId,
                              String authorUserId, String title, String description, String status, OffsetDateTime now) {
-        reviewInsert(id, projectId, tenantId, revisionId, authorUserId, title, description, status, now).execute();
+        insertReview(id, projectId, tenantId, revisionId, authorUserId, title, description, status, now, false);
     }
 
     public boolean insertFrameReviewIfAbsent(String id, String projectId, String tenantId, String revisionId,
                                              String authorUserId, OffsetDateTime now) {
-        return reviewInsert(id, projectId, tenantId, revisionId, authorUserId, "Frame comments", null, "OPEN", now)
-                .onConflictDoNothing().execute() == 1;
+        return insertReview(id, projectId, tenantId, revisionId, authorUserId, "Frame comments", null, "OPEN", now, true);
     }
 
-    private org.jooq.InsertOnDuplicateStep<com.example.platform.typedschema.jooq.generated.timeline.tables.records.TimelineReviewRecord>
-            reviewInsert(String id, String projectId, String tenantId, String revisionId, String authorUserId,
-                         String title, String description, String status, OffsetDateTime now) {
-        return dsl.insertInto(TIMELINE_REVIEW)
+    private boolean insertReview(String id, String projectId, String tenantId, String revisionId, String authorUserId,
+                                 String title, String description, String status, OffsetDateTime now, boolean ifAbsent) {
+        var insert = dsl.insertInto(TIMELINE_REVIEW)
                 .columns(TIMELINE_REVIEW.ID, TIMELINE_REVIEW.PROJECT_ID, TIMELINE_REVIEW.TENANT_ID,
                         TIMELINE_REVIEW.REVISION_ID, TIMELINE_REVIEW.TARGET_TYPE, TIMELINE_REVIEW.AUTHOR_USER_ID,
                         TIMELINE_REVIEW.TITLE, TIMELINE_REVIEW.DESCRIPTION, TIMELINE_REVIEW.STATUS,
                         TIMELINE_REVIEW.CREATED_AT, TIMELINE_REVIEW.UPDATED_AT)
                 .values(id, projectId, tenantId, revisionId, "TIMELINE", authorUserId,
                         title, description, status, now.toLocalDateTime(), now.toLocalDateTime());
+        return (ifAbsent ? insert.onConflictDoNothing() : insert).execute() == 1;
     }
 
     public String targetType(String reviewId) {

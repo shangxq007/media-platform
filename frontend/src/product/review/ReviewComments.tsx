@@ -65,12 +65,12 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
     }
   }
 
-  return <Panel title="Review comments">
+  return <section aria-label="Review comments"><Panel title="Review comments">
     {capture && <Button type="button" disabled={!canCapture || !!draft} onClick={begin}>Comment on this frame</Button>}
     {draft && <form aria-label="Frame comment draft" onSubmit={event => { event.preventDefault(); void post() }}>
       <p>Side {draft.frameAnchor.side} · {draft.frameAnchor.branch} · Revision <code>{draft.revisionId}</code></p>
       <p>Exact time <output aria-label="Comment draft time">{draft.frameAnchor.position} s</output></p>
-      <label>Comment text <textarea value={draft.content} maxLength={4000} readOnly={draft.issued}
+      <label>Comment text <textarea aria-label="Comment text" value={draft.content} maxLength={4000} readOnly={draft.issued}
         onChange={event => setDraft({ ...draft, content: event.target.value })} /></label>{' '}
       <Button type="submit" disabled={sending || !draft.content.trim()}>{draft.issued ? 'Retry comment' : 'Post comment'}</Button>{' '}
       <Button type="button" disabled={sending} onClick={() => { setDraft(null); setPostProblem('') }}>Cancel comment</Button>
@@ -90,5 +90,5 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
         }}>Open saved frame</Button>}
       </> : <p>No frame anchor.</p>}
     </li>)}</ul>}
-  </Panel>
+  </Panel></section>
 }
