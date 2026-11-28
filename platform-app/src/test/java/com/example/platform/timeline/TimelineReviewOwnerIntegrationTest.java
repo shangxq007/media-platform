@@ -164,13 +164,17 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
  }
 
  @Test void frameCommentExtentOrdersLargeRationalsExactly() {
+  String revision="long-review-revision";
+  String snapshot="long-review-snapshot";
   var end=MediaTime.ofTicks(300,1);
   var clip=new TimelineClip("long-review-clip","asset","stream","artifact","a".repeat(64),MediaTime.ZERO,end,
       MediaTime.ZERO,end,"MEDIA_STREAM");
   var doc=new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
       List.of(new TimelineTrack("video","Video",TrackType.VIDEO,List.of(clip))),TimelineMetadata.empty());
-  jdbc.update("update timeline.timeline_snapshot set payload_json=? where id='project-snapshot'",
-      TimelineDocumentJsonSerializer.serialize(doc));
+  jdbc.update("insert into timeline.timeline_snapshot(id,project_id,tenant_id,payload_json) values (?,'project','tenant',?)",
+      snapshot,TimelineDocumentJsonSerializer.serialize(doc));
+  jdbc.update("insert into timeline.timeline_revision(id,project_id,tenant_id,revision_number,snapshot_id,content_hash,source,created_at)"
+      +" values (?,'project','tenant',2,?,'long-review-fixture','TEST',now())",revision,snapshot);
   var comments=context.getBean(TimelineComments.class);
   String clock="3602879701896397/36028797018963968";
   String inside="5404319552844595199/18014398509481984"; // 300 − 1/2^54
@@ -179,20 +183,22 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
       revisions=count("timeline.timeline_revision"), commands=count("timeline.apply_command");
   var anchor=new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",clock);
   var request=UUID.randomUUID();
-  var saved=comments.addFrameComment("project",null,"project-revision","server-actor","clock",anchor,request);
+  var saved=comments.addFrameComment("project",null,revision,"server-actor","clock",anchor,request);
   assertEquals(clock,saved.frameAnchor().position());
-  assertEquals(saved,comments.addFrameComment("project",null,"project-revision","server-actor","clock",anchor,request));
+  assertEquals(saved,comments.addFrameComment("project",null,revision,"server-actor","clock",anchor,request));
   assertEquals(notes+1,count("timeline.timeline_comment"));
-  for(String position:List.of("300/1",outside)) {
-   assertThrows(IllegalArgumentException.class,()->comments.addFrameComment("project",null,"project-revision","server-actor",
+  for(String position:List.of("300/1","7201/24",outside)) {
+   assertThrows(IllegalArgumentException.class,()->comments.addFrameComment("project",null,revision,"server-actor",
        "boundary",new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",position),UUID.randomUUID()));
   }
   assertEquals(notes+1,count("timeline.timeline_comment"));
-  var near=comments.addFrameComment("project",null,"project-revision","server-actor",
-      "near end",new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",inside),UUID.randomUUID());
-  assertEquals(inside,near.frameAnchor().position());
+  for(String position:List.of("7199/24",inside)) {
+   var near=comments.addFrameComment("project",null,revision,"server-actor",
+       "near end",new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main",position),UUID.randomUUID());
+   assertEquals(position,near.frameAnchor().position());
+  }
   assertEquals(reviews+1,count("timeline.timeline_review"));
-  assertEquals(notes+2,count("timeline.timeline_comment"));
+  assertEquals(notes+3,count("timeline.timeline_comment"));
   assertEquals(revisions,count("timeline.timeline_revision"));
   assertEquals(commands,count("timeline.apply_command"));
  }
