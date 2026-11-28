@@ -1,7 +1,11 @@
 import type { SemanticStep } from '../../contracts/semantic-batch.generated'
 import { add, compare, parseRational, subtract, toSeconds, type Rational } from './trim'
 
-export type SubtitleCue = Extract<SemanticStep, { definitionId: 'timeline.subtitle.cue.set' }>['parameters']
+export type SubtitleCue = Extract<SemanticStep, { definitionId: 'timeline.subtitle.cue.set' }>['parameters'] & {
+  /** Read-only canonical information for the named editor, never submitted. */
+  canonicalStyleRuns?: readonly { start: number; end: number; styleIdentity: string }[] | null
+  hasPinnedTextRanges?: boolean
+}
 
 export type SubtitleDecoration = NonNullable<SubtitleCue['decoration']>
 export type SelectedTextFade = NonNullable<SubtitleCue['selectedTextFade']>

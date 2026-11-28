@@ -2,6 +2,7 @@ package com.example.platform.operation.plan;
 
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
+import com.example.platform.fonttext.text.TextRange;
 import com.example.platform.timeline.semantics.effect.VideoTransform;
 import com.example.platform.timeline.semantics.effect.PositionKeys;
 import com.example.platform.timeline.semantics.effect.ScaleKeys;
@@ -23,6 +24,7 @@ import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.semantics.relationship.AlignmentRelationship;
 import com.example.platform.timeline.semantics.relationship.GroupRelationship;
 import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
@@ -129,6 +131,18 @@ public final class OperationPlanner {
                                 + " keys: " + clip.getClipId().value());
             }
         }
+        return finish(instance, candidate, changes, List.of(), null);
+    }
+
+    /** Plans text only. The batch domain supplies the cue and proven edit span from its immutable base. */
+    public OperationPlan planNamedSubtitleText(OperationInstance instance, TimelineDocument base,
+                                                TextElement saved, TextRange changed) {
+        if (!(instance.parameters() instanceof OperationParameters.SubtitleCueParameters set)
+                || !saved.id().value().equals(set.cueId()) || saved.subtitleCue() == null) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "A saved subtitle cue is required");
+        }
+        var changes = new ArrayList<PlannedChange>();
+        var candidate = SubtitleCuePlanner.planNamedText(base, saved, set, changed, changes);
         return finish(instance, candidate, changes, List.of(), null);
     }
 

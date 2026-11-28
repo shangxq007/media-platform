@@ -1348,6 +1348,90 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void namedSubtitlePreservesCompleteTrackingAcrossApplyUndoRedoAndIdenticalReplay() {
+        var main = seedCanonicalTrackedSubtitle(false);
+        var original = loadCue(main.revisionId());
+        saveService.createEditingRef(mutation(), "alternate", main.revisionId(), "tracked-fork").orElseThrow();
+        var body = namedCue(main, "port", "cue", "SAFE PORTER", original.subtitleCue(), "alternate");
+        long rows = count("timeline.timeline_revision");
+        long commands = count("timeline.apply_command");
+        var actor = mutation().actor();
+        var plan = batch.preview(body, OperationBatchContext.preview(actor, "test"));
+        assertEquals(main.revisionId(), refHead("alternate"));
+        assertEquals(rows, count("timeline.timeline_revision"));
+        assertEquals(commands, count("timeline.apply_command"));
+        var applied = batch.commit(body, OperationBatchContext.apply(body.batchId(), actor, null, "test", plan.batchDigest()));
+        var changed = saveService.findById(TENANT, applied.newRevisionId());
+        assertEquals("SAFE PORTER", loadCue(changed.revisionId()).styledText().content().value());
+        assertEquals(original.styledText().styleRuns(), loadCue(changed.revisionId()).styledText().styleRuns());
+        var undo = applyPrepared(restoreRequest("tracked-undo", changed, main, "alternate"));
+        assertEquals(original, loadCue(undo.newRevisionId()));
+        var undone = saveService.findById(TENANT, undo.newRevisionId());
+        var redo = applyPrepared(restoreRequest("tracked-redo", undone, changed, "alternate"));
+        assertEquals(loadCue(changed.revisionId()), loadCue(redo.newRevisionId()));
+        assertEquals(main.revisionId(), refHead("main"));
+        assertEquals(rows + 3, count("timeline.timeline_revision"));
+        assertEquals(commands + 3, count("timeline.apply_command"));
+        var head = saveService.findById(TENANT, redo.newRevisionId());
+        var same = namedCue(head, "tracked-same", "cue", "SAFE PORTER", original.subtitleCue(), "alternate");
+        assertTrue(batch.preview(same, OperationBatchContext.preview(actor, "test")).noOp());
+        assertEquals(BatchCommitResult.NO_OP, applyPrepared(same).status());
+        assertTrue(applyPrepared(same).replayed());
+        assertEquals(main.revisionId(), refHead("main"));
+        assertEquals(head.revisionId(), refHead("alternate"));
+        assertEquals(rows + 3, count("timeline.timeline_revision"));
+        assertEquals(commands + 4, count("timeline.apply_command"));
+        assertEquals(original.styledText().styleRuns(), loadCue(head.revisionId()).styledText().styleRuns());
+    }
+
+    @Test
+    void namedSubtitleRejectsAmbiguousCanonicalStylesWithoutAdvancingEitherHead() {
+        var main = seedCanonicalTrackedSubtitle(true);
+        saveService.createEditingRef(mutation(), "alternate", main.revisionId(), "ambiguous-fork").orElseThrow();
+        var op = namedCue(main, "cross-style", "cue", "SAFE PORTER", loadCue(main.revisionId()).subtitleCue(), "alternate");
+        long rows = count("timeline.timeline_revision");
+        long commands = count("timeline.apply_command");
+        var actor = mutation().actor();
+        var preview = assertThrows(BatchException.class, () -> batch.preview(op, OperationBatchContext.preview(actor, "test")));
+        assertEquals(BatchErrorCode.STEP_PLAN_FAILED, preview.code());
+        assertTrue(preview.getMessage().contains("canonical text style"));
+        assertEquals(BatchErrorCode.STEP_PLAN_FAILED, assertThrows(BatchException.class, () ->
+            batch.commit(op, OperationBatchContext.apply(op.batchId(), actor, null, "test", "0".repeat(64)))).code());
+        assertEquals(main.revisionId(), refHead("main"));
+        assertEquals(main.revisionId(), refHead("alternate"));
+        assertEquals(rows, count("timeline.timeline_revision"));
+        assertEquals(commands, count("timeline.apply_command"));
+    }
+
+    private TimelineRevision seedCanonicalTrackedSubtitle(boolean split) {
+        var base = saveRevision(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(), TimelineMetadata.empty()));
+        var ordinary = applyPrepared(subtitleRequest(base, "tracked-seed", "cue", null, "SAFE HARBOR"));
+        var doc = saveService.findPayloadDocument(TENANT, ordinary.newRevisionId()).orElseThrow();
+        var cue = doc.getTextElements().getFirst();
+        var source = cue.styledText().styleRuns().getFirst().style();
+        var style = new com.example.platform.fonttext.typography.TextStyle(source.fontSelection(), source.fontSize(),
+                com.example.platform.fonttext.typography.FontRational.of(3, 2), source.features());
+        var other = new com.example.platform.fonttext.typography.TextStyle(source.fontSelection(), source.fontSize(),
+                com.example.platform.fonttext.typography.FontRational.whole(2), source.features());
+        var runs = new java.util.ArrayList<com.example.platform.fonttext.typography.TextStyleRun>();
+        runs.add(new com.example.platform.fonttext.typography.TextStyleRun(
+                com.example.platform.fonttext.text.TextRange.of(0, split ? 7 : 11), style));
+        if (split) runs.add(new com.example.platform.fonttext.typography.TextStyleRun(
+                com.example.platform.fonttext.text.TextRange.of(7, 11), other));
+        var styled = new com.example.platform.fonttext.text.StyledText(cue.styledText().content(),
+                cue.styledText().semanticRuns(), runs, cue.styledText().paragraphStyle());
+        var seeded = new com.example.platform.timeline.canonical.TextElement(cue.id(), cue.start(), cue.duration(),
+                styled, cue.frame(), cue.fallbackPolicy(), cue.resolvedFontRuns(), cue.subtitleCue());
+        var updated = new TimelineDocument(doc.getSchemaVersion(), doc.getTracks(), doc.getMetadata(), doc.getAudioMix(),
+                doc.getSemanticRelationships(), List.of(seeded), doc.getTransitions(), doc.getAutomations());
+        return saveService.saveRevision(mutation(), ordinary.newRevisionId(), updated);
+    }
+
+    private com.example.platform.timeline.canonical.TextElement loadCue(String revision) {
+        return saveService.findPayloadDocument(TENANT, revision).orElseThrow().getTextElements().getFirst();
+    }
+
+    @Test
     void namedSubtitleTextUndoRedoPreservesVoiceoverCueStyleAndControlCue() {
         var base = saveVoiceoverFork();
         var serif = "noto-serif-sc-color-emoji-v1";

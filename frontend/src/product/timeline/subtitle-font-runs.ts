@@ -52,8 +52,8 @@ export function setRangeFont(runs: FontRun[], range: Range, profile: string): Fo
 export type TextInputSpan = Range & { inputType: string }
 
 /** The unchanged graphemes common to all minimal single-span replacements. */
-export function anchoredSubtitleRanges(before: string, after: string): (range: Range) => boolean {
-  if (before === after) return () => true
+function provenChangeSpan(before: string, after: string): Range {
+  if (before === after) return { start: Array.from(before).length, end: Array.from(before).length }
   const old = Array.from(segmenter.segment(before), item => item.segment)
   const next = Array.from(segmenter.segment(after), item => item.segment)
   const shared = Math.min(old.length, next.length)
@@ -63,7 +63,35 @@ export function anchoredSubtitleRanges(before: string, after: string): (range: R
   const retained = Math.min(shared, prefix + suffix)
   const left = Array.from(old.slice(0, retained - suffix).join('')).length
   const right = Array.from(before).length - Array.from(old.slice(old.length - (retained - prefix)).join('')).length
-  return range => range.end <= left || range.start >= right
+  return { start: left, end: right }
+}
+
+export function anchoredSubtitleRanges(before: string, after: string): (range: Range) => boolean {
+  const { start, end } = provenChangeSpan(before, after)
+  return range => range.end <= start || range.start >= end
+}
+
+/** Determine whether the proposed grapheme edit has a uniquely inferable full style. */
+export function ambiguousCanonicalSubtitleStyle(cue: SubtitleCue, after: string): boolean {
+  if (cue.text === after) return false
+  if (cue.hasPinnedTextRanges || cue.canonicalStyleRuns === null) return true
+  if (!cue.canonicalStyleRuns) return false
+  const boundaries = graphemeBoundaries(cue.text)
+  const scalar = boundaries[boundaries.length - 1].scalars
+  const complete = new Set(boundaries.map(item => item.scalars))
+  let cursor = 0
+  for (const run of cue.canonicalStyleRuns) {
+    if (run.start !== cursor || run.end <= cursor || !complete.has(run.end)) return true
+    cursor = run.end
+  }
+  if (cursor !== scalar) return true
+  const { start, end } = provenChangeSpan(cue.text, after)
+  const inline = (position: number) => cue.fontRuns?.some(run => run.start <= position && position < run.end)
+  const owners = cue.canonicalStyleRuns.filter(run => start < end
+    ? run.start < end && start < run.end
+    : (run.start <= start && start < run.end && !inline(start))
+      || (run.start < start && start <= run.end && !inline(start - 1)))
+  return new Set(owners.map(run => run.styleIdentity)).size > 1
 }
 
 function editSpan(before: string, after: string, caret: number, span: TextInputSpan | null): Range | null {

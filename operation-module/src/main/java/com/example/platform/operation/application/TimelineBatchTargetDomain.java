@@ -39,6 +39,7 @@ import com.example.platform.timeline.canonical.SubtitleCueMotion;
 import com.example.platform.fonttext.typography.FontRational;
 import com.example.platform.fonttext.typography.SubtitleFontRun;
 import com.example.platform.fonttext.typography.SubtitleTextRange;
+import com.example.platform.fonttext.text.TextRange;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonicalmodel.TimelineDiagnostic;
@@ -256,6 +257,10 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 var base = requireRestoreRevision(batch, batch.baseRevisionId());
                 var source = requireRestoreRevision(batch, restore.sourceRevisionId());
                 plan = planner.planRestore(instance, source.document(), base.semanticDigest(), source.semanticDigest());
+            } else if (namedCue != null && instance.parameters() instanceof OperationParameters.SubtitleCueParameters set) {
+                var span = SubtitleTextEditSpan.between(namedCue.styledText().content().value(), set.text());
+                plan = planner.planNamedSubtitleText(instance, currentCandidate, namedCue,
+                        TextRange.of(span.prefix(), span.suffixStart()));
             } else {
                 plan = planner.plan(instance, batch.baseRevisionId(), currentCandidate, fonts);
             }

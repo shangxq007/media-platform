@@ -1,4 +1,4 @@
-import { anchoredSubtitleRanges, editRangeFonts, setRangeFont, subtitleSelection, textareaText, type FontRun, type TextInputSpan } from './subtitle-font-runs'
+import { ambiguousCanonicalSubtitleStyle, anchoredSubtitleRanges, editRangeFonts, setRangeFont, subtitleSelection, textareaText, type FontRun, type TextInputSpan } from './subtitle-font-runs'
 import { useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI, type SubtitleDecorationCatalog, type SubtitleFontCatalog } from '../../api/formal-render'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
@@ -45,7 +45,8 @@ function NamedSubtitleTextEdit({ cues, onPreview, ...props }: SubtitleEditProps)
       const next = styled.fontRuns[i]
       return !anchored(run) || !next || run.fontProfile !== next.fontProfile || run.end - run.start !== next.end - next.start
     }) || (!!fade && (!anchored(fade) || !nextFade || fade.end - fade.start !== nextFade.end - nextFade.start)))
-  const ready = saved && styled && !conflict && styled.text !== saved.text && styled.text.trim() && styled.text.length <= 384
+  const canonicalConflict = !!saved && !!styled && !conflict && ambiguousCanonicalSubtitleStyle(saved, styled.text)
+  const ready = saved && styled && !conflict && !canonicalConflict && styled.text !== saved.text && styled.text.trim() && styled.text.length <= 384
   return <ConfirmedClipEdit {...props} edit="subtitle" inputIdentity={JSON.stringify([scope, input])} onPreview={onPreview}
     draft={ready ? () => ({
       step: { definitionId: 'timeline.subtitle.cue.set', parameters: {
@@ -65,6 +66,7 @@ function NamedSubtitleTextEdit({ cues, onPreview, ...props }: SubtitleEditProps)
     {saved && <label>Subtitle text <textarea aria-label="Subtitle text" maxLength={384} value={input}
       onChange={event => change({ scope, text: event.target.value })} /></label>}
     {conflict && <p role="alert">Translation would change an inline font range or selected-text fade. Keep that styled text intact.</p>}
+    {canonicalConflict && <p role="alert">Translation cannot unambiguously preserve the saved canonical text style. Edit within one style or keep its boundary intact.</p>}
   </ConfirmedClipEdit>
 }
 

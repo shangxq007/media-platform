@@ -50,6 +50,26 @@ it('N18 exposes the saved font as a named selector and sends a scoped read-only 
 
 const serif = 'n18-fixture-serif-v1'
 
+it('named subtitle editor blocks an edit spanning differently tracked canonical style ranges', () => {
+  const preview = vi.spyOn(FormalRenderAPI, 'previewBatch')
+  try {
+    render(<SubtitleEdit refId="alternate" head={{ projectId: projectId('project'), timelineId: timelineId('timeline'),
+      revisionId: revisionId('rev'), contentHash: contentHash(btoa('a'.repeat(32))) }} tenant="tenant" disabled={false}
+      access={{ blocked: false, canStart: () => true, claim: () => true, release: vi.fn() }}
+      readback={vi.fn()} onAccepted={vi.fn()} onPreview={vi.fn()}
+      cues={[{ cueId: 'tracked', text: 'SAFE HARBOR', width: 160, fontSize: 24, start: '0/1', end: '2/1', keys: [],
+        canonicalStyleRuns: [{ start: 0, end: 7, styleIdentity: 'tracking-3/2' },
+          { start: 7, end: 11, styleIdentity: 'tracking-2' }] }]} />)
+    fireEvent.change(screen.getByLabelText('Subtitle cue'), { target: { value: 'tracked' } })
+    fireEvent.change(screen.getByLabelText('Subtitle text'), { target: { value: 'SAFE PORTER' } })
+    expect(screen.getByRole('alert').textContent).toContain('cannot unambiguously preserve the saved canonical text style')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview subtitle' }).disabled).toBe(true)
+    expect(preview).not.toHaveBeenCalled()
+  } finally {
+    vi.restoreAllMocks()
+  }
+})
+
 it('named subtitle editing keeps surviving inline and fade ranges and blocks a conflicting translation', async () => {
   const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({
     batchDigest: 'a'.repeat(64), steps: [],

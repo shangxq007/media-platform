@@ -34,12 +34,7 @@ final class SubtitleCuePlanner {
             if (previous == null && elements.stream().filter(e -> e.subtitleCue() != null).count() >= 16) {
                 throw new PlanException(PlanErrorCode.INVALID_PLAN, "A timeline can contain at most sixteen editable subtitles");
             }
-            try {
-                SubtitleBlockLayout.png(set.text(), set.width(), set.fontSize(), set.motion().fontProfile(),
-                        SubtitleBlockLayout.REFERENCE_WIDTH, set.motion().fontRuns());
-            } catch (IllegalArgumentException invalid) {
-                throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
-            }
+            validateRaster(set);
             var replacement = element(id, set, resolvedMotion(set, previous));
             if (replacement.equals(previous)) return base;
             elements.remove(previous);
@@ -52,6 +47,109 @@ final class SubtitleCuePlanner {
         }
         return new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(), base.getAudioMix(),
                 base.getSemanticRelationships(), elements, base.getTransitions(), base.getAutomations());
+    }
+
+    static TimelineDocument planNamedText(TimelineDocument base, TextElement saved,
+            OperationParameters.SubtitleCueParameters set, TextRange changed, List<PlannedChange> changes) {
+        var old = saved.styledText();
+        if (old.content().value().equals(set.text())) return base;
+        if (base.getTextElements().stream().anyMatch(e -> e.subtitleCue() == null)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, "Editable cues cannot share a render with legacy text elements");
+        }
+        // Canonical cue runs carry the full style. A font-profile projection
+        // cannot reconstruct authored tracking, features, axes, or other intent.
+        if (!old.semanticRuns().isEmpty() || !saved.resolvedFontRuns().isEmpty()) throw styleConflict();
+        var text = new TextContent(set.text());
+        var styles = remapStyles(saved, text, changed);
+        validateRaster(set);
+        var styled = new StyledText(text, old.semanticRuns(), styles, old.paragraphStyle());
+        var replacement = new TextElement(saved.id(), saved.start(), saved.duration(), styled,
+                saved.frame(), saved.fallbackPolicy(), saved.resolvedFontRuns(), resolvedMotion(set, saved));
+        var elements = new ArrayList<>(base.getTextElements());
+        elements.replaceAll(e -> e.id().equals(saved.id()) ? replacement : e);
+        changes.add(new PlannedChange.TextElementReplaced(saved.id()));
+        return new TimelineDocument(base.getSchemaVersion(), base.getTracks(), base.getMetadata(), base.getAudioMix(),
+                base.getSemanticRelationships(), elements, base.getTransitions(), base.getAutomations());
+    }
+
+    private static void validateRaster(OperationParameters.SubtitleCueParameters cue) {
+        try {
+            SubtitleBlockLayout.png(cue.text(), cue.width(), cue.fontSize(), cue.motion().fontProfile(),
+                    SubtitleBlockLayout.REFERENCE_WIDTH, cue.motion().fontRuns());
+        } catch (IllegalArgumentException invalid) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN, invalid.getMessage());
+        }
+    }
+
+    private record StylePiece(int owner, TextStyleRun run) {}
+
+    private static List<TextStyleRun> remapStyles(TextElement saved, TextContent next, TextRange changed) {
+        var old = saved.styledText();
+        var runs = old.styleRuns();
+        int oldLength = old.content().scalarCount();
+        int delta = next.scalarCount() - oldLength;
+        int from = changed.start(), to = changed.end();
+        int cursor = 0;
+        try {
+            for (var run : runs) {
+                var range = run.range();
+                if (range.start() != cursor) throw styleConflict();
+                new SubtitleTextRange(range.start(), range.end()).requireWholeGraphemes(old.content().value());
+                cursor = range.end();
+            }
+            if (cursor != oldLength) throw styleConflict();
+            var owners = new ArrayList<Integer>();
+            for (int i = 0; i < runs.size(); i++) {
+                var range = runs.get(i).range();
+                if (from < to ? range.overlaps(changed) :
+                        ((range.start() <= from && from < range.end() && !insideInline(saved, from))
+                            || (range.start() < from && from <= range.end() && !insideInline(saved, from - 1)))) {
+                    owners.add(i);
+                }
+            }
+            // New text outside a wholly inline old cue has no previously
+            // saved base run. Give only the new text the established cue default.
+            if (owners.isEmpty() && from < to) throw styleConflict();
+            int owner = owners.isEmpty() ? -1 : owners.getFirst();
+            var style = owner < 0
+                    ? style(saved.subtitleCue().effectiveFontProfile(), runs.getFirst().style().fontSize().value().numerator().intValueExact())
+                    : runs.get(owner).style();
+            if (owners.stream().anyMatch(i -> !runs.get(i).style().equals(style))) throw styleConflict();
+            var remapped = new ArrayList<StylePiece>();
+            for (int i = 0; i < runs.size(); i++) {
+                var run = runs.get(i);
+                append(remapped, i, run.style(), run.range().start(), Math.min(from, run.range().end()));
+            }
+            append(remapped, owner, style, from, to + delta);
+            for (int i = 0; i < runs.size(); i++) {
+                var run = runs.get(i);
+                append(remapped, i, run.style(), Math.max(to, run.range().start()) + delta, run.range().end() + delta);
+            }
+            for (var piece : remapped) {
+                var range = piece.run().range();
+                new SubtitleTextRange(range.start(), range.end()).requireWholeGraphemes(next.value());
+            }
+            return remapped.stream().map(StylePiece::run).toList();
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
+            throw styleConflict();
+        }
+    }
+
+    private static boolean insideInline(TextElement saved, int scalar) {
+        return saved.subtitleCue().fontRuns().stream().anyMatch(run -> run.start() <= scalar && scalar < run.end());
+    }
+
+    private static void append(List<StylePiece> pieces, int owner, TextStyle style, int start, int end) {
+        if (start >= end) return;
+        if (!pieces.isEmpty() && pieces.getLast().owner() == owner && pieces.getLast().run().range().end() == start) {
+            start = pieces.removeLast().run().range().start();
+        }
+        pieces.add(new StylePiece(owner, new TextStyleRun(TextRange.of(start, end), style)));
+    }
+
+    private static PlanException styleConflict() {
+        return new PlanException(PlanErrorCode.INVALID_PLAN,
+                "Translation cannot unambiguously preserve the saved canonical text style. Edit within one style or keep its boundary intact.");
     }
 
     private static SubtitleCueMotion resolvedMotion(OperationParameters.SubtitleCueParameters cue, TextElement previous) {

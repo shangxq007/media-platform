@@ -265,7 +265,17 @@ function projectSubtitle(raw: unknown): SubtitleCue {
   const start = fontRational(element.start), duration = fontRational(element.duration)
   const styled = object(element.styledText, 'styled subtitle')
   const frame = object(element.frame, 'subtitle frame')
-  const style = object(object(entries(styled.styleRuns, 'subtitle style runs')[0], 'subtitle style run').style, 'subtitle style')
+  const styleRuns = entries(styled.styleRuns, 'subtitle style runs').map(run => object(run, 'subtitle style run'))
+  const style = object(styleRuns[0].style, 'subtitle style')
+  const canonicalStyleRuns = styleRuns.every(run => run.range != null)
+    ? styleRuns.map(run => {
+      const range = object(run.range, 'subtitle style range')
+      return { start: projectedNumber(range.start, 'style range start', 0, 384),
+        end: projectedNumber(range.end, 'style range end', 0, 384),
+        styleIdentity: JSON.stringify(object(run.style, 'canonical text style')) }
+    }) : null
+  const hasPinnedTextRanges = (Array.isArray(styled.semanticRuns) && styled.semanticRuns.length > 0)
+    || (Array.isArray(element.resolvedFontRuns) && element.resolvedFontRuns.length > 0)
   const size = fontRational(object(style.fontSize, 'subtitle font size').value)
   const width = fontRational(frame.widthConstraint)
   if (size.denominator !== 1n || width.denominator !== 1n) throw new Error('Invalid subtitle layout dimensions')
@@ -316,7 +326,8 @@ function projectSubtitle(raw: unknown): SubtitleCue {
     throw new Error('Invalid subtitle motion')
   return { cueId: text(element.id, 'subtitle identity'), text: text(styled.content, 'subtitle text'),
     start: formatRational(start), end: formatRational(add(start, duration)), width: Number(width.numerator),
-    fontSize: Number(size.numerator), fontProfile, keys, ...(fontRuns.length ? { fontRuns } : {}), ...(selectedTextFade && { selectedTextFade }), ...(decoration && { decoration }) }
+    fontSize: Number(size.numerator), fontProfile, keys, canonicalStyleRuns, hasPinnedTextRanges,
+    ...(fontRuns.length ? { fontRuns } : {}), ...(selectedTextFade && { selectedTextFade }), ...(decoration && { decoration }) }
 }
 
 /** Reject unsupported semantics at the read-only projection boundary. */
