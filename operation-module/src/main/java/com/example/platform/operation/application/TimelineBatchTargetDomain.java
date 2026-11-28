@@ -34,15 +34,24 @@ import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TextElement;
+import com.example.platform.timeline.canonical.SubtitleCueMotion;
+import com.example.platform.fonttext.typography.FontRational;
+import com.example.platform.fonttext.typography.SubtitleFontRun;
+import com.example.platform.fonttext.typography.SubtitleTextRange;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonicalmodel.TimelineDiagnostic;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.timeline.version.TimelineRevision;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 /**
@@ -192,13 +201,17 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Multi-clip move must be the only operation in its batch");
             }
         }
+        TextElement namedCue = null;
         if (operation.parameters() instanceof OperationParameters.SubtitleCueParameters
                 || operation.parameters() instanceof OperationParameters.RemoveSubtitleCueParameters) {
-            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
-                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null, "Subtitle editing requires the default branch");
-            }
             if (batch.operations().size() != 1) {
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null, "Submit the complete subtitle edit as one operation");
+            }
+            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                if (!(instance.parameters() instanceof OperationParameters.SubtitleCueParameters set)) {
+                    throw namedSubtitleScope();
+                }
+                namedCue = requireNamedSubtitleText(currentCandidate, set);
             }
         }
         var crossfadeDefinitions = List.of(
@@ -250,6 +263,15 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             throw new BatchException(BatchErrorCode.STEP_PLAN_FAILED, null,
                     failure.getMessage(), failure);
         }
+        if (namedCue != null) {
+            var edited = findSubtitle(plan.candidateTimeline(), namedCue.id().value());
+            if (!namedCue.frame().equals(edited.frame()) || !namedCue.fallbackPolicy().equals(edited.fallbackPolicy())
+                    || !namedCue.resolvedFontRuns().equals(edited.resolvedFontRuns())
+                    || !namedCue.styledText().paragraphStyle().equals(edited.styledText().paragraphStyle())
+                    || !namedCue.styledText().semanticRuns().equals(edited.styledText().semanticRuns())) {
+                throw namedSubtitleScope();
+            }
+        }
         if (instance.parameters() instanceof OperationParameters.SlideParameters slide) {
             validateMediaRanges(batch, plan.candidateTimeline(), slide.trackId(),
                     List.of(slide.leftClipId(), slide.middleClipId(), slide.rightClipId()), "Slide", true);
@@ -292,7 +314,7 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
 
     private void requireEditingBranchHistory(OperationBatchRequest batch, String sourceRevisionId) {
         // Verify every traversed edge from the immutable CAS base. A prior restore
-        // is not itself proof of a voiceover edit: also verify the edges it traversed.
+        // is not itself proof of a supported edit: also verify the edges it traversed.
         // This includes restores saved before this guard and keeps exact replay deterministic.
         var seen = new HashSet<String>();
         var required = new HashSet<String>();
@@ -310,20 +332,105 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                     || !step.finalCandidateHash().equals(revision.contentHash())
                     || !id.equals(revisions.completedCommandRevision(ref, step.batchId(), BATCH_COMMAND_DOMAIN,
                             step.baseRevisionId(), step.batchDigest()).orElse(null))) break;
-            var voiceover = OperationDefinition.V3.REPLACE_VOICEOVER;
             var restore = OperationDefinition.V3.RESTORE_REVISION;
-            if (step.definitionId().equals(voiceover.definitionId().value()) && step.version().equals(voiceover.version().toString())
-                    && step.restoredFrom() == null) {
+            if (step.restoredFrom() == null && (matches(step, OperationDefinition.V3.REPLACE_VOICEOVER)
+                    || matches(step, OperationDefinition.V3.SET_SUBTITLE_CUE))) {
                 id = revision.parentRevisionId();
                 continue;
             }
-            if (!step.definitionId().equals(restore.definitionId().value()) || !step.version().equals(restore.version().toString())
+            if (!matches(step, restore)
                     || step.restoredFrom() == null || seen.contains(step.restoredFrom())) break;
             required.add(step.restoredFrom());
             id = revision.parentRevisionId();
         }
         throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                "Named-branch Undo/Redo can only traverse confirmed voiceover edits on that branch");
+                "Named-branch Undo/Redo can only traverse confirmed voiceover and subtitle text edits on that branch");
+    }
+
+    private static boolean matches(BatchCommitProvenance.CommittedStep step, OperationDefinition definition) {
+        return step.definitionId().equals(definition.definitionId().value())
+                && step.version().equals(definition.version().toString());
+    }
+
+    private static BatchException namedSubtitleScope() {
+        return new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                "On a named branch, only the text of one existing subtitle cue can be changed");
+    }
+
+    private static TextElement findSubtitle(TimelineDocument base, String cue) {
+        return base.getTextElements().stream().filter(e -> cue.equals(e.id().value()) && e.subtitleCue() != null)
+                .findFirst().orElseThrow(TimelineBatchTargetDomain::namedSubtitleScope);
+    }
+
+    static TextElement requireNamedSubtitleText(TimelineDocument base, OperationParameters.SubtitleCueParameters set) {
+        var saved = findSubtitle(base, set.cueId());
+        var motion = saved.subtitleCue();
+        var submitted = set.motion();
+        var start = MediaTime.ofRational(saved.start().numerator().longValueExact(), saved.start().denominator().longValueExact());
+        var duration = MediaTime.ofRational(saved.duration().numerator().longValueExact(), saved.duration().denominator().longValueExact());
+        if (!start.equals(set.start()) || !start.add(duration).equals(set.end())
+                || !FontRational.whole(set.width()).equals(saved.frame().widthConstraint())
+                || saved.styledText().styleRuns().isEmpty()
+                || !FontRational.whole(set.fontSize()).equals(saved.styledText().styleRuns().getFirst().style().fontSize().value())
+                || (!set.useDefault() && !motion.effectiveFontProfile().equals(submitted.effectiveFontProfile()))
+                || !motion.keys().equals(submitted.keys())
+                || (set.decorationSupplied() && !Objects.equals(motion.decoration(), submitted.decoration()))) {
+            throw namedSubtitleScope();
+        }
+        var before = saved.styledText().content().value();
+        var change = SubtitleTextEditSpan.between(before, set.text());
+        var fonts = new ArrayList<SubtitleFontRun>();
+        for (var run : motion.fontRuns()) {
+            var mapped = change.retain(run.start(), run.end());
+            fonts.add(new SubtitleFontRun(mapped.start(), mapped.end(), run.fontProfile()));
+        }
+        var fade = motion.selectedTextFade();
+        SubtitleCueMotion.SelectedTextFade expectedFade = null;
+        if (fade != null) {
+            var mapped = change.retain(fade.start(), fade.end());
+            expectedFade = new SubtitleCueMotion.SelectedTextFade(mapped.start(), mapped.end(), fade.time(), fade.duration());
+        }
+        boolean implicitSavedFade = before.equals(set.text())
+                && set.fadeIntent() == OperationParameters.SubtitleCueParameters.FadeIntent.PRESERVE;
+        if (!fonts.equals(submitted.fontRuns())
+                || (!implicitSavedFade && !Objects.equals(expectedFade, submitted.selectedTextFade()))) {
+            throw SubtitleTextEditSpan.styledConflict();
+        }
+        return saved;
+    }
+
+    /** The same contiguous grapheme edit as the editor fallback, without trusting an input span. */
+    private record SubtitleTextEditSpan(int prefix, int suffixStart, int delta) {
+        private static final Pattern GRAPHEME = Pattern.compile("\\X");
+
+        static SubtitleTextEditSpan between(String before, String after) {
+            var old = GRAPHEME.matcher(before).results().map(MatchResult::group).toList();
+            var next = GRAPHEME.matcher(after).results().map(MatchResult::group).toList();
+            int first = 0, last = 0;
+            int shared = Math.min(old.size(), next.size());
+            while (first < shared && old.get(first).equals(next.get(first))) first++;
+            while (last < shared && old.get(old.size() - last - 1).equals(next.get(next.size() - last - 1))) last++;
+            // If repeated text permits multiple equally small replacements, only the
+            // prefix and suffix shared by all such replacements have proven identity.
+            int retained = Math.min(shared, first + last);
+            int left = old.subList(0, retained - last).stream().mapToInt(g -> g.codePointCount(0, g.length())).sum();
+            int right = old.subList(old.size() - (retained - first), old.size()).stream()
+                    .mapToInt(g -> g.codePointCount(0, g.length())).sum();
+            int oldLength = before.codePointCount(0, before.length());
+            if (before.equals(after)) return new SubtitleTextEditSpan(oldLength, oldLength, 0);
+            return new SubtitleTextEditSpan(left, oldLength - right, after.codePointCount(0, after.length()) - oldLength);
+        }
+
+        SubtitleTextRange retain(int start, int end) {
+            if (end <= prefix) return new SubtitleTextRange(start, end);
+            if (start >= suffixStart) return new SubtitleTextRange(start + delta, end + delta);
+            throw styledConflict();
+        }
+
+        private static BatchException styledConflict() {
+            return new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                    "Translation would change an inline font range or selected-text fade. Keep that styled text intact.");
+        }
     }
 
     private TimelineRevisionCommands.RestoreSource requireRestoreRevision(OperationBatchRequest batch, String revisionId) {

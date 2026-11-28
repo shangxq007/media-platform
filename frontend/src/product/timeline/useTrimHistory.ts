@@ -63,7 +63,7 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
 
   function kindFor(direction: Direction, attempt?: Attempt): EditKind {
     const stack = attempt?.history ?? active
-    return (stack && stack.edits[stack.cursor - (direction === 'Undo' ? 1 : 0)]) || 'trim'
+    return (stack && stack.edits[stack.cursor - (direction === 'Undo' ? 1 : 0)]) || (refId ? 'replace voiceover' : 'trim')
   }
 
   async function execute(direction: Direction, attempt?: Attempt) {

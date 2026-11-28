@@ -1347,6 +1347,83 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
         return subtitleRequest(base, batchId, cueId, profile, text, List.of());
     }
 
+    @Test
+    void namedSubtitleTextUndoRedoPreservesVoiceoverCueStyleAndControlCue() {
+        var base = saveVoiceoverFork();
+        var serif = "noto-serif-sc-color-emoji-v1";
+        var decorations = new com.example.platform.timeline.canonical.SubtitleCueMotion.Decoration(
+                "sunflower-v1", "right-of-cue-v1", true, "0", "2/1");
+        var keys = List.of(new com.example.platform.timeline.canonical.SubtitleCueMotion.Key("0", 100000, 550000, 1000000),
+                new com.example.platform.timeline.canonical.SubtitleCueMotion.Key("1/1", 150000, 550000, 900000));
+        var styled = new com.example.platform.timeline.canonical.SubtitleCueMotion(serif, keys, List.of(), null, decorations);
+        var original = saveService.findById(TENANT, applyPrepared(namedCue(base, "target", "cue", "Safe harbor", styled, "main")).newRevisionId());
+        var main = saveService.findById(TENANT, applyPrepared(subtitleRequest(original, "control", "control", serif, "Control")).newRevisionId());
+        var alt = new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "alternate");
+        saveService.createEditingRef(mutation(), alt.refId(), main.revisionId(), "subtitle-fork").orElseThrow();
+        var voice = saveService.findById(TENANT, applyPrepared(voiceover(alt, main, "voice-then-subtitle", "1/1")).newRevisionId());
+        var request = namedCue(voice, "translate", "cue", "Puerto seguro", styled, alt.refId());
+        var result = applyPrepared(request);
+        assertTrue(applyPrepared(request).replayed());
+        var translated = saveService.findById(TENANT, result.newRevisionId());
+        var from = saveService.findPayloadDocument(TENANT, voice.revisionId()).orElseThrow();
+        var to = saveService.findPayloadDocument(TENANT, translated.revisionId()).orElseThrow();
+        var beforeCue = from.getTextElements().stream().filter(e -> e.id().value().equals("cue")).findFirst().orElseThrow();
+        var afterCue = to.getTextElements().stream().filter(e -> e.id().value().equals("cue")).findFirst().orElseThrow();
+        assertEquals("Puerto seguro", afterCue.styledText().content().value());
+        assertEquals(beforeCue.subtitleCue(), afterCue.subtitleCue());
+        assertEquals(beforeCue.frame(), afterCue.frame());
+        assertEquals(from.getTextElements().stream().filter(e -> e.id().value().equals("control")).toList(),
+                to.getTextElements().stream().filter(e -> e.id().value().equals("control")).toList());
+        assertEquals("f1-replacement", to.getTracks().getFirst().clips().getFirst().getArtifactId());
+        assertEquals(hash(voice), applyPrepared(restoreRequest("undo-subtitle", translated, voice, alt.refId())).newContentHash());
+        var undone = saveService.findById(TENANT, refHead(alt.refId()));
+        assertEquals(hash(translated), applyPrepared(restoreRequest("redo-subtitle", undone, translated, alt.refId())).newContentHash());
+        assertEquals(main.revisionId(), refHead("main"));
+    }
+
+    @Test
+    void namedSubtitleRejectsBroaderCueEditsButShiftsUnchangedInlineAndFadeRanges() {
+        var base = saveVoiceoverFork();
+        var serif = "noto-serif-sc-color-emoji-v1";
+        var sans = "noto-sc-color-emoji-v1";
+        var old = new com.example.platform.timeline.canonical.SubtitleCueMotion(sans, List.of(),
+                List.of(new com.example.platform.fonttext.typography.SubtitleFontRun(4, 8, serif)),
+                new com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade(4, 8, "0", "1/2"));
+        var main = saveService.findById(TENANT, applyPrepared(namedCue(base, "seed-styled", "cue", "OLD KEEP", old, "main")).newRevisionId());
+        saveService.createEditingRef(mutation(), "alternate", main.revisionId(), "styled-fork").orElseThrow();
+        var alternate = "alternate";
+        var gap = new com.example.platform.timeline.canonical.SubtitleCueMotion(sans, List.of());
+        rejectVoiceoverRestore(namedCue(main, "new-cue", "another", "Unrelated", gap, alternate), main, main);
+        rejectVoiceoverRestore(namedCue(main, "break-style", "cue", "NEW WORD", gap, alternate), main, main);
+        rejectVoiceoverRestore(namedCue(main, "change-font", "cue", "NEW KEEP",
+                new com.example.platform.timeline.canonical.SubtitleCueMotion(serif, List.of(), old.fontRuns(), old.selectedTextFade()), alternate),
+                main, main);
+        var raw = namedCue(main, "retime", "cue", "NEW KEEP", old, alternate);
+        var retime = new OperationParameters.SubtitleCueParameters("cue", time("0"), time("3/1"), "NEW KEEP", 160, 24, old);
+        rejectVoiceoverRestore(withCueParameters(raw, retime), main, main);
+        var remove = OperationDefinition.V3.REMOVE_SUBTITLE_CUE;
+        rejectVoiceoverRestore(new OperationBatchRequest("remove-cue", raw.target(), main.revisionId(),
+                List.of(new OperationRequest(remove.definitionId(), remove.version(), new OperationTargetRequest.TimelineTargetRequest(PROJECT),
+                        new OperationParameters.RemoveSubtitleCueParameters("cue"), main.revisionId(), hash(main), null)), null), main, main);
+        var shifted = new com.example.platform.timeline.canonical.SubtitleCueMotion(sans, List.of(),
+                List.of(new com.example.platform.fonttext.typography.SubtitleFontRun(7, 11, serif)),
+                new com.example.platform.timeline.canonical.SubtitleCueMotion.SelectedTextFade(7, 11, "0", "1/2"));
+        var changed = applyPrepared(namedCue(main, "keep-style", "cue", "LONGER KEEP", shifted, alternate));
+        var cue = saveService.findPayloadDocument(TENANT, changed.newRevisionId()).orElseThrow().getTextElements().getFirst();
+        assertEquals(shifted, cue.subtitleCue());
+        assertEquals(main.revisionId(), refHead("main"));
+    }
+
+    private OperationBatchRequest namedCue(TimelineRevision base, String command, String cueId, String text,
+            com.example.platform.timeline.canonical.SubtitleCueMotion motion, String ref) {
+        var def = OperationDefinition.V3.SET_SUBTITLE_CUE;
+        var params = new OperationParameters.SubtitleCueParameters(cueId, time("0"), time("2/1"), text, 160, 24,
+                motion, motion.fontProfile() == null);
+        return new OperationBatchRequest(command, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, ref),
+                base.revisionId(), List.of(new OperationRequest(def.definitionId(), def.version(),
+                        new OperationTargetRequest.TimelineTargetRequest(PROJECT), params, base.revisionId(), hash(base), null)), null);
+    }
+
     private OperationBatchRequest subtitleRequest(TimelineRevision base, String batchId, String cueId,
             String profile, String text, List<com.example.platform.fonttext.typography.SubtitleFontRun> runs) {
         var def = OperationDefinition.V3.SET_SUBTITLE_CUE;

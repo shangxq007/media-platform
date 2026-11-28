@@ -603,7 +603,7 @@ export function NleWorkspace({
     if (!onSwitchBranch || next === editingBranch || switchLocked || issuedCommand.current !== null) return
     const manualDraft = !['AppliedRevision', 'CanonicalHead'].includes(state.phase.kind) && state.draft.command !== null
       || (state.phase.kind !== 'AppliedRevision' && fields !== emptyFields)
-    if (clipDraft || restoreDraft || voiceoverPlan || manualDraft) setSwitchTarget(next)
+    if (clipDraft || restoreDraft || voiceoverPlan || subtitlePlan || manualDraft) setSwitchTarget(next)
     else onSwitchBranch(next)
   }
   useEffect(() => {
@@ -672,10 +672,10 @@ export function NleWorkspace({
           <TimelineMediaPreview voiceoverPlan={voiceoverPlan} subtitlePlan={subtitlePlan} positionPreview={positionPreview} scalePreview={scalePreview} gainPreview={gainPreview} fadePreview={fadePreview} dissolvePlan={dissolvePlan} audioCrossfadePlan={audioCrossfadePlan} opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
-          {!historyRevision && <section aria-label={defaultBranch ? "Confirmed trim history" : "Confirmed voiceover history"}>
+          {!historyRevision && <section aria-label={defaultBranch ? "Confirmed trim history" : "Confirmed alternate edit history"}>
             {(['Undo', 'Redo'] as const).map(direction => <Button key={direction}
               disabled={loading || revisionSelectionLocked || selectionPending || trimHistory.busy || !trimHistory.can(direction)}
-              onClick={() => void trimHistory.execute(direction)}>{direction} {defaultBranch ? trimHistory.kindFor(direction) : 'replace voiceover'}</Button>)}
+              onClick={() => void trimHistory.execute(direction)}>{direction} {trimHistory.kindFor(direction)}</Button>)}
             {trimHistory.retry && <Button disabled={trimHistory.busy}
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
@@ -721,8 +721,8 @@ export function NleWorkspace({
             disabled={!!voiceoverPlan || !!audioCrossfadePlan || !!gainPlan || !!scalePlan || !!subtitlePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('audio fades')} readback={() => loadHead('RANGE_READBACK')} onPreview={setFadePlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'audio fades')} />}
-          {defaultBranch && !historyRevision && <SubtitleEdit key={JSON.stringify(['subtitle', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
-            head={editingHead} tenant={project.tenantId} cues={loadedProjection && loadedProjection === requestedProjection ? subtitles : []}
+          {!historyRevision && <SubtitleEdit key={JSON.stringify(['subtitle', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
+            head={editingHead} tenant={project.tenantId} refId={defaultBranch ? undefined : editingBranch} cues={loadedProjection && loadedProjection === requestedProjection ? subtitles : []}
             disabled={!!voiceoverPlan || !!audioCrossfadePlan || !!fadePlan || !!gainPlan || !!scalePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('subtitle')} readback={() => loadHead('RANGE_READBACK')} onPreview={setSubtitlePlan}
             onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'subtitle')} />}

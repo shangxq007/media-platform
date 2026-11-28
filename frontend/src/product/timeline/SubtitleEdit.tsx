@@ -1,4 +1,4 @@
-import { editRangeFonts, setRangeFont, subtitleSelection, textareaText, type FontRun, type TextInputSpan } from './subtitle-font-runs'
+import { anchoredSubtitleRanges, editRangeFonts, setRangeFont, subtitleSelection, textareaText, type FontRun, type TextInputSpan } from './subtitle-font-runs'
 import { useEffect, useRef, useState } from 'react'
 import { FormalRenderAPI, type SubtitleDecorationCatalog, type SubtitleFontCatalog } from '../../api/formal-render'
 import type { SemanticBatch, SemanticStep } from '../../contracts/semantic-batch.generated'
@@ -17,10 +17,58 @@ const percent = (input: string, min: number, max: number) => {
 }
 const integer = (value: string, min: number, max: number) => /^\d{1,3}$/.test(value) && +value >= min && +value <= max
 
-export function SubtitleEdit({ cues, onPreview, ...props }: ConfirmedEditProps & {
+type SubtitleEditProps = ConfirmedEditProps & {
   cues: readonly SubtitleCue[]
   onPreview: (batch: SemanticBatch | null) => void
-}) {
+  refId?: string
+}
+
+export function SubtitleEdit(props: SubtitleEditProps) {
+  return props.refId ? <NamedSubtitleTextEdit {...props} /> : <DefaultSubtitleEdit {...props} />
+}
+
+function NamedSubtitleTextEdit({ cues, onPreview, ...props }: SubtitleEditProps) {
+  const [selected, select] = useState('')
+  const [draft, change] = useState<{ scope: string; text: string } | null>(null)
+  const saved = cues.find(cue => cue.cueId === selected)
+  const scope = JSON.stringify([props.head?.projectId, props.tenant, props.refId, props.head?.revisionId, props.head?.contentHash, selected])
+  const input = draft?.scope === scope ? draft.text : textareaText(saved?.text ?? '')
+  const styled = saved ? editRangeFonts(saved.text, input, saved.fontRuns ?? [], input.length, null, saved.selectedTextFade ?? undefined) : null
+  // The range editor retains existing graphemes and moves surviving offsets.
+  // Here splitting or dropping any part is a conflict, not an implicit style edit.
+  const runs = saved?.fontRuns ?? []
+  const fade = saved?.selectedTextFade
+  const nextFade = styled?.selectedTextFade
+  const anchored = anchoredSubtitleRanges(saved?.text ?? '', styled?.text ?? '')
+  const conflict = !!styled && (runs.length !== styled.fontRuns.length
+    || runs.some((run, i) => {
+      const next = styled.fontRuns[i]
+      return !anchored(run) || !next || run.fontProfile !== next.fontProfile || run.end - run.start !== next.end - next.start
+    }) || (!!fade && (!anchored(fade) || !nextFade || fade.end - fade.start !== nextFade.end - nextFade.start)))
+  const ready = saved && styled && !conflict && styled.text !== saved.text && styled.text.trim() && styled.text.length <= 384
+  return <ConfirmedClipEdit {...props} edit="subtitle" inputIdentity={JSON.stringify([scope, input])} onPreview={onPreview}
+    draft={ready ? () => ({
+      step: { definitionId: 'timeline.subtitle.cue.set', parameters: {
+        cueId: saved.cueId, text: styled.text, start: saved.start, end: saved.end, width: saved.width,
+        fontSize: saved.fontSize, keys: saved.keys,
+        ...(styled.fontRuns.length ? { fontRuns: styled.fontRuns } : {}),
+        ...(nextFade ? { selectedTextFade: nextFade } : {}),
+        ...(saved.decoration ? { decoration: saved.decoration } : {}),
+      } },
+      ranges: [`Preview the translated subtitle on [${saved.start}, ${saved.end}) seconds.`],
+    }) : null}>
+    <p>Change the text of an existing cue. Timing and styling stay with the cue.</p>
+    <label>Subtitle cue <select aria-label="Subtitle cue" value={saved?.cueId ?? ''} onChange={event => { select(event.target.value); change(null) }}>
+      <option value="">Choose an existing subtitle</option>
+      {cues.map(cue => <option key={cue.cueId} value={cue.cueId}>{cue.text.split(/\r?\n/, 1)[0]} · {cue.start} s</option>)}
+    </select></label>
+    {saved && <label>Subtitle text <textarea aria-label="Subtitle text" maxLength={384} value={input}
+      onChange={event => change({ scope, text: event.target.value })} /></label>}
+    {conflict && <p role="alert">Translation would change an inline font range or selected-text fade. Keep that styled text intact.</p>}
+  </ConfirmedClipEdit>
+}
+
+function DefaultSubtitleEdit({ cues, onPreview, ...props }: SubtitleEditProps) {
   const [selected, select] = useState('')
   const [draft, update] = useState<Form | null>(null)
   const [selection, setSelection] = useState<{ scope: string; text: string; from: number; to: number } | null>(null)

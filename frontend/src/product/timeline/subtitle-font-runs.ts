@@ -51,6 +51,21 @@ export function setRangeFont(runs: FontRun[], range: Range, profile: string): Fo
 
 export type TextInputSpan = Range & { inputType: string }
 
+/** The unchanged graphemes common to all minimal single-span replacements. */
+export function anchoredSubtitleRanges(before: string, after: string): (range: Range) => boolean {
+  if (before === after) return () => true
+  const old = Array.from(segmenter.segment(before), item => item.segment)
+  const next = Array.from(segmenter.segment(after), item => item.segment)
+  const shared = Math.min(old.length, next.length)
+  let prefix = 0, suffix = 0
+  while (prefix < shared && old[prefix] === next[prefix]) prefix++
+  while (suffix < shared && old[old.length - suffix - 1] === next[next.length - suffix - 1]) suffix++
+  const retained = Math.min(shared, prefix + suffix)
+  const left = Array.from(old.slice(0, retained - suffix).join('')).length
+  const right = Array.from(before).length - Array.from(old.slice(old.length - (retained - prefix)).join('')).length
+  return range => range.end <= left || range.start >= right
+}
+
 function editSpan(before: string, after: string, caret: number, span: TextInputSpan | null): Range | null {
   if (!span) return null
   let { start, end } = span

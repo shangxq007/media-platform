@@ -130,6 +130,11 @@ public final class CanonicalBatchInvocationService implements BatchInvocationPor
             throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, 0,
                     "Submit the complete subtitle edit as one operation");
         }
+        if (!com.example.platform.timeline.revisioncommand.RevisionRef.MAIN_REF.equals(request.target().refId())) {
+            var base = domain.resolveBase(request.target(), request.baseRevisionId(), request.baseContentHash());
+            var saved = TimelineBatchTargetDomain.requireNamedSubtitleText(base, cue);
+            return replaceCue(request, cue.withResolvedFont(saved.subtitleCue().fontProfile()));
+        }
         String profile = null;
         boolean previouslyOmittedFade = false;
         if (applying != null) {

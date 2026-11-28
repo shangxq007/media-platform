@@ -50,6 +50,42 @@ it('N18 exposes the saved font as a named selector and sends a scoped read-only 
 
 const serif = 'n18-fixture-serif-v1'
 
+it('named subtitle editing keeps surviving inline and fade ranges and blocks a conflicting translation', async () => {
+  const preview = vi.spyOn(FormalRenderAPI, 'previewBatch').mockResolvedValue({
+    batchDigest: 'a'.repeat(64), steps: [],
+    resolvedSubtitleFont: { id: 'noto-sc-color-emoji-v1', label: 'Sans' },
+  })
+  const write = vi.spyOn(FormalRenderAPI, 'commitBatch')
+  try {
+    render(<SubtitleEdit refId="alternate" head={{ projectId: projectId('project'), timelineId: timelineId('timeline'),
+      revisionId: revisionId('rev'), contentHash: contentHash(btoa('a'.repeat(32))) }} tenant="tenant" disabled={false}
+      access={{ blocked: false, canStart: () => true, claim: () => true, release: vi.fn() }}
+      readback={vi.fn()} onAccepted={vi.fn()} onPreview={vi.fn()}
+      cues={[{ cueId: 'one', text: 'OLD KEEP', width: 160, fontSize: 24, start: '0/1', end: '2/1', keys: [],
+        fontRuns: [{ start: 4, end: 8, fontProfile: serif }],
+        selectedTextFade: { start: 4, end: 8, time: '0/1', duration: '1/2' } }]} />)
+    fireEvent.change(screen.getByLabelText('Subtitle cue'), { target: { value: 'one' } })
+    const text = screen.getByLabelText('Subtitle text')
+    const action = screen.getByRole<HTMLButtonElement>('button', { name: 'Preview subtitle' })
+    fireEvent.change(text, { target: { value: 'NEW WORD' } })
+    expect(screen.getByRole('alert').textContent).toContain('Keep that styled text intact')
+    expect(action.disabled).toBe(true)
+    expect(screen.queryByLabelText('Subtitle start (timeline seconds)')).toBeNull()
+    expect(preview).not.toHaveBeenCalled()
+    fireEvent.change(text, { target: { value: 'LONGER KEEP' } })
+    fireEvent.click(action)
+    await screen.findByRole('button', { name: 'Confirm subtitle' })
+    expect(preview.mock.calls[0][2]).toMatchObject({ refId: 'alternate', baseRevisionId: 'rev',
+      operations: [{ parameters: { cueId: 'one', text: 'LONGER KEEP', start: '0/1', end: '2/1',
+        width: 160, keys: [], fontRuns: [{ start: 7, end: 11, fontProfile: serif }],
+        selectedTextFade: { start: 7, end: 11, time: '0/1', duration: '1/2' } } }] })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel subtitle' }))
+    expect(write).not.toHaveBeenCalled()
+  } finally {
+    vi.restoreAllMocks()
+  }
+})
+
 it.each([
   { name: 'types over the last letter', text: 'foo cat dog', run: [4, 7], selection: [6, 7], inputType: 'insertText',
     value: 'foo car dog', caret: 7, savedText: 'foo car dog', expected: [{ start: 4, end: 6, fontProfile: serif }] },
