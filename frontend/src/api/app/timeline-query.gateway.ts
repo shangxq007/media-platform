@@ -83,12 +83,12 @@ const EditingRef = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
 const BranchAuthority = z.object({ projectId: IdSchema, refId: EditingRef, headRevisionId: IdSchema,
   contentHash: TimelineDigestSchema, history: z.array(RevisionSchema) })
 
-export async function readEditingBranch(project: ProjectId, refId: string): Promise<GatewayResult<{
+export async function readEditingBranch(project: ProjectId, refId: string, signal?: AbortSignal): Promise<GatewayResult<{
   head: CanonicalHeadReference
   history: readonly RevisionListEntry[]
 }>> {
   try {
-    const response = await versionlessTransport.get(`${editingBranches(project)}/${encodeURIComponent(refId)}`)
+    const response = await versionlessTransport.get(`${editingBranches(project)}/${encodeURIComponent(refId)}`, { signal })
     const data = BranchAuthority.parse(response.data)
     if (data.projectId !== project || data.refId !== refId || data.history[0]?.id !== data.headRevisionId) {
       return responseValidationFailure('Branch response did not match the requested branch and head.')

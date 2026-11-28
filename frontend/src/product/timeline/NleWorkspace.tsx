@@ -36,6 +36,7 @@ import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timelin
 import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
+import { RevisionComparison, readRevisionComparison, saveRevisionComparison } from './RevisionComparison'
 import { RestoreRevisionControl } from './RestoreRevisionControl'
 import { useTrimHistory } from './useTrimHistory'
 import { CreateEditingBranch } from './CreateEditingBranch'
@@ -217,6 +218,8 @@ export function NleWorkspace({
   const [clipWriteLocked, setClipWriteLocked] = useState(false)
   const [restoreDraft, setRestoreDraft] = useState(false)
   const defaultBranch = editingBranch === 'main'
+  const reviewKey = JSON.stringify(['revision-comparison', project.tenantId, project.projectId])
+  const [reviewing, setReviewing] = useState(() => !!onSwitchBranch && readRevisionComparison(reviewKey).open)
 
   useEffect(() => {
     if (!onSwitchBranch) return
@@ -625,7 +628,14 @@ export function NleWorkspace({
       <PageHeading eyebrow="Creative · NLE" title="Timeline editor" description="One canonical Timeline core with explicit server HEAD, read-only revision queries, and preview-before-apply operations." />
       {loading ? <Skeleton label="Loading canonical Timeline HEAD" /> : null}
       <EditorPhaseNotice phase={state.phase} readbackRetrying={readbackRetrying} onRetryReadback={() => void retryAuthoritativeReadback()} />
-      <div className="ff-nle-layout">
+      {onSwitchBranch && !reviewing && <Button type="button" disabled={switchLocked || selectionPending || !editingHead}
+        onClick={() => {
+          saveRevisionComparison(reviewKey, { ...readRevisionComparison(reviewKey), open: true })
+          setReviewing(true)
+        }}>Compare saved revisions</Button>}
+      {reviewing && <RevisionComparison project={project.projectId} tenant={project.tenantId} editingBranch={editingBranch}
+        preferenceScope={reviewKey} onClose={() => setReviewing(false)} />}
+      <div className="ff-nle-layout" inert={reviewing} style={{ display: reviewing ? 'none' : undefined }}>
         <Panel title="Canonical revision authority" actions={<Button onClick={() => void loadHead()} disabled={loading || revisionSelectionLocked}>Reload HEAD</Button>}>
           {state.server.head ? <div className="ff-head-identity"><Status label={`${historyRevision ? "Editing head" : "Viewing editing head"} · ${editingBranch}`} tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>
             <EmptyState title="HEAD unavailable" description={defaultBranch ? "Create a Timeline to start editing this project." : "This editing branch could not be loaded."} />
@@ -669,7 +679,7 @@ export function NleWorkspace({
         </Panel>
         <Panel title="Timeline media preview" className="ff-operation-panel">
           <p>Previewing version <strong>{editingBranch}</strong>{historyRevision ? ' (historical revision)' : ''}.</p>
-          <TimelineMediaPreview voiceoverPlan={voiceoverPlan} subtitlePlan={subtitlePlan} positionPreview={positionPreview} scalePreview={scalePreview} gainPreview={gainPreview} fadePreview={fadePreview} dissolvePlan={dissolvePlan} audioCrossfadePlan={audioCrossfadePlan} opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
+          <TimelineMediaPreview suspended={reviewing} voiceoverPlan={voiceoverPlan} subtitlePlan={subtitlePlan} positionPreview={positionPreview} scalePreview={scalePreview} gainPreview={gainPreview} fadePreview={fadePreview} dissolvePlan={dissolvePlan} audioCrossfadePlan={audioCrossfadePlan} opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           {!historyRevision && <section aria-label={defaultBranch ? "Confirmed trim history" : "Confirmed alternate edit history"}>

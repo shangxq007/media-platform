@@ -2,7 +2,7 @@ import { decorationVisible, savedSubtitleFont, selectedTextAlpha, subtitlePose, 
 import type { SemanticBatch } from '../../contracts/semantic-batch.generated'
 import { DEFAULT_COMPOSITION_ASPECT } from '../../contracts/app/composition-aspect'
 import { previewRaster } from './composition-raster'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react'
 import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
@@ -48,6 +48,7 @@ interface PreviewSession {
   audio?: AudioContext
   mixer?: GainNode
   analyser?: AnalyserNode
+  output?: AudioNode
   projection?: TimelineProjection
   colorSurface?: HTMLCanvasElement
   duration: number
@@ -58,6 +59,7 @@ interface PreviewSession {
   origin: number
   playing: boolean
   starting: boolean
+  playAttempt: number
   frame?: number
 }
 
@@ -124,7 +126,20 @@ function applyBasicVideoColor(samples: Uint8ClampedArray, effect: ProjectedVideo
   }
 }
 
-export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan, audioCrossfadePlan, voiceoverPlan }: {
+export interface PreviewTransport {
+  pause(): Rational
+  seek(position: Rational): void
+  play(): void
+}
+
+export interface ComparisonPreview {
+  audioContext(): AudioContext
+  onPrepared(end: Rational | null): void
+  onCursor(position: Rational): void
+  onEnd(): void
+}
+
+export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, transportRef, comparison, suspended, opacityPreview, dissolvePlan, positionPreview, scalePreview, gainPreview, fadePreview, subtitlePlan, audioCrossfadePlan, voiceoverPlan }: {
   revisionId: string | undefined
   tenantId: string | null
   projectId: string
@@ -138,6 +153,9 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   gainPreview?: { revisionId: string; clipId: string; keys: readonly ScaleKey[] } | null
   fadePreview?: ({ revisionId: string; clipId: string } & Partial<ProjectedAudioFades>) | null
   onTime?: (time: number) => void
+  transportRef?: Ref<PreviewTransport>
+  comparison?: ComparisonPreview
+  suspended?: boolean
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const host = useRef<HTMLElement>(null)
@@ -255,6 +273,10 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   }, [subtitlePlan, tenantId, projectId, revisionId, cueTarget])
   const timeCallback = useRef(onTime)
   timeCallback.current = onTime
+  const comparisonRef = useRef(comparison)
+  comparisonRef.current = comparison
+  const suspendedRef = useRef(suspended)
+  suspendedRef.current = suspended
   const [status, setStatus] = useState<PreviewStatus>('IDLE')
   const [audition, setAudition] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle')
   const auditionTransportReady = status === 'READY' || status === 'PLAYING' || status === 'PAUSED'
@@ -348,6 +370,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
 
   function fail(session: PreviewSession, error: unknown) {
     if (current.current !== session) return
+    comparisonRef.current?.onPrepared(null)
     stopPlayback(session)
     setStatus('FAILED')
     setMessage(error instanceof Error ? error.message : 'Timeline media could not be played.')
@@ -556,7 +579,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
   useEffect(() => {
     const session: PreviewSession = {
       revisionId, controller: new AbortController(), urls: [], videos: new Map(), subtitleBlocks: new Map(), audioClips: [], scheduled: [],
-      duration: 0, end: ZERO, seekInputEnd: 0, cursor: 0, cursorExact: ZERO, origin: 0, playing: false, starting: false,
+      duration: 0, end: ZERO, seekInputEnd: 0, cursor: 0, cursorExact: ZERO, origin: 0, playing: false, starting: false, playAttempt: 0,
     }
     current.current = session
     setCueTarget(null)
@@ -566,6 +589,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     setMessage('')
     draw(session)
     if (host.current) host.current.dataset.audioRms = '0'
+    const sharedAudio = comparisonRef.current?.audioContext
 
     async function prepare(revision: string, tenant: string) {
       setStatus('PREPARING')
@@ -642,7 +666,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         await Promise.all(videosReady)
         if (signal.aborted) return
         if (audioClips.length) {
-          const context = new AudioContext({ sampleRate: 48_000 })
+          const context = sharedAudio ? sharedAudio() : new AudioContext({ sampleRate: 48_000 })
           session.audio = context
           const mixer = context.createGain()
           mixer.gain.value = 0.5
@@ -655,6 +679,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
           mixer.connect(limiter).connect(analyser).connect(context.destination)
           session.mixer = mixer
           session.analyser = analyser
+          session.output = analyser
           const buffers = new Map<string, AudioBuffer>()
           for (const clip of audioClips) {
             if (clip.direction !== 'FORWARD' || toSeconds(clip.rate) !== 1) {
@@ -674,6 +699,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         session.projection = projection
         refreshComposition(session)
         setStatus('READY')
+        comparisonRef.current?.onPrepared(session.end)
       } catch (error) {
         if (!signal.aborted) fail(session, error)
       }
@@ -690,7 +716,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       }
       for (const bitmap of session.subtitleBlocks.values()) closeSubtitle(bitmap)
       for (const url of session.urls) URL.revokeObjectURL(url)
-      if (session.audio) void session.audio.close()
+      if (sharedAudio) session.output?.disconnect()
+      else if (session.audio) void session.audio.close()
       current.current = null
     }
   }, [projectId, retry, revisionId, tenantId])
@@ -747,6 +774,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       session.cursor = reachedEnd ? session.duration : elapsed
       publishTime(session.cursor)
       draw(session)
+      comparisonRef.current?.onCursor(session.cursorExact)
       if (samples && host.current && session.analyser) {
         session.analyser.getFloatTimeDomainData(samples)
         let energy = 0
@@ -756,6 +784,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       if (compare(session.cursorExact, session.end) >= 0) {
         stopPlayback(session)
         setStatus('PAUSED')
+        comparisonRef.current?.onEnd()
       } else {
         session.frame = requestAnimationFrame(advance)
       }
@@ -764,19 +793,35 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     session.frame = requestAnimationFrame(advance)
   }
 
-  async function toggle() {
+  function pause(): Rational {
     const session = current.current
-    if (!session?.duration || session.starting) return
+    if (!session) return ZERO
+    session.playAttempt++
+    session.starting = false
     if (session.playing) {
+      const now = clockCursor(Math.max(0, clock(session) - session.origin))
+      session.cursorExact = compare(now, session.end) < 0 ? now : session.end
+      session.cursor = toSeconds(session.cursorExact)
       stopPlayback(session)
+      publishTime(session.cursor)
+      draw(session, true)
+      if (host.current) host.current.dataset.audioRms = '0'
       setStatus('PAUSED')
-      return
     }
+    return session.cursorExact
+  }
+
+  async function play(resetOnEnd: boolean) {
+    const session = current.current
+    if (!session?.duration || session.playing || session.starting || suspendedRef.current) return
+    if (!resetOnEnd && compare(session.cursorExact, session.end) >= 0) return
+    const attempt = ++session.playAttempt
     session.starting = true
     try {
       if (session.audio) await session.audio.resume()
-      if (current.current !== session || !session.duration) return
+      if (current.current !== session || session.playAttempt !== attempt || suspendedRef.current) return
       if (compare(session.cursorExact, session.end) >= 0) {
+        if (!resetOnEnd) return
         session.cursorExact = ZERO
         session.cursor = 0
         publishTime(0)
@@ -784,11 +829,19 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       }
       start(session)
     } catch (error) {
-      fail(session, error)
+      if (session.playAttempt === attempt) fail(session, error)
     } finally {
-      session.starting = false
+      if (session.playAttempt === attempt) session.starting = false
     }
   }
+
+  function toggle() {
+    if (current.current?.playing || current.current?.starting) pause()
+    else void play(true)
+  }
+
+  useImperativeHandle(transportRef, () => ({ pause, seek, play: () => { void play(false) } }))
+  useLayoutEffect(() => { if (suspended) pause() }, [suspended])
 
   function seek(position: Rational, nativeEnd = false) {
     const session = current.current
@@ -815,8 +868,8 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       : audition === 'ready' ? 'Auditioning replacement voiceover. Saved revision is unchanged.'
         : 'Replacement audio cannot be auditioned. The preview is playing saved media.'}</p>}
     <canvas ref={canvas} width={320} height={240} hidden={status === 'FAILED'} aria-label="Timeline preview canvas"
-      style={{ display: 'block', width: '100%', maxWidth: 480, background: '#000', borderRadius: 4 }} />
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+      style={{ display: status === 'FAILED' ? 'none' : 'block', width: '100%', maxWidth: 480, background: '#000', borderRadius: 4 }} />
+    {!comparison && <><div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
       <Button type="button" disabled={!duration || (audition === 'loading' && status !== 'PLAYING') || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
         onClick={() => void toggle()}>{status === 'PLAYING' ? 'Pause Timeline' : 'Play Timeline'}</Button>
       {/* The native input must be able to reach a canonical end that is off the centisecond grid. */}
@@ -840,7 +893,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
       <Button type="button" disabled={!exactTarget || exactTarget.numerator < 0n || !duration
         || !['READY', 'PAUSED', 'PLAYING'].includes(status)}
         onClick={() => { if (exactTarget) seek(exactTarget) }}>Seek exact time</Button>
-    </details>
+    </details></>}
     {status === 'FAILED' && <Button type="button" onClick={() => setRetry(value => value + 1)}>Retry preview</Button>}
   </section>
 }

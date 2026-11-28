@@ -54,6 +54,7 @@ export const POST_H7_GOVERNED_PATHS = [
   'product/timeline/SemanticDiff.tsx',
   'product/timeline/SourceBrowser.tsx',
   'product/timeline/ReplaceVoiceoverEdit.tsx',
+  'product/timeline/RevisionComparison.tsx',
   'product/timeline/timeline-preview.ts',
   'product/timeline/timeline-projection.ts',
   'product/timeline/trim.ts',
