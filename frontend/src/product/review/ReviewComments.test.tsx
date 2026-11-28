@@ -53,11 +53,14 @@ it('does not write while browsing, opening a draft, or cancelling it', async () 
 
 it('changes only the selected note and opens its saved frame in either state without touching the draft', async () => {
   const frame = { side: 'B' as const, branch: 'alternate', position: '73/24' }
-  const first: ReviewComment = { ...legacy, commentId: 'first', content: 'First frame note', frameAnchor: frame, frameStatus: 'OPEN' }
+  const first: ReviewComment = { ...legacy, commentId: 'first', content: 'First frame note', frameAnchor: frame,
+    frameStatus: 'OPEN', frameStatusVersion: '0' }
   const second: ReviewComment = { ...first, commentId: 'second', content: 'Second frame note' }
   const list = vi.spyOn(timelineCommentSource, 'list').mockResolvedValue([first, second])
   const transition = vi.spyOn(timelineCommentSource, 'transitionFrame').mockImplementation(
-    async (_, row, action) => ({ ...row, threadId: 'thread', frameStatus: action === 'resolve' ? 'RESOLVED' : 'OPEN' }),
+    async (_, row, command) => ({ row: { ...row, threadId: 'thread',
+      frameStatus: command.action === 'resolve' ? 'RESOLVED' : 'OPEN',
+      frameStatusVersion: command.action === 'resolve' ? '1' : '2' }, stale: false }),
   )
   const openFrame = vi.fn()
   const capture = () => ({ revisionId: 'r1', frameAnchor: frame })
@@ -75,7 +78,7 @@ it('changes only the selected note and opens its saved frame in either state wit
   fireEvent.click(note.getByRole('button', { name: 'Open saved frame' }))
   expect(openFrame).toHaveBeenNthCalledWith(2, capture())
   expect(transition).toHaveBeenCalledTimes(1)
-  const saved = { ...first, threadId: 'thread', frameStatus: 'RESOLVED' as const }
+  const saved = { ...first, threadId: 'thread', frameStatus: 'RESOLVED' as const, frameStatusVersion: '1' }
   list.mockResolvedValue([saved, second])
   ui.unmount()
   render(<ReviewComments project="project" openFrame={openFrame} />)
@@ -83,5 +86,28 @@ it('changes only the selected note and opens its saved frame in either state wit
   expect(reloaded.getByText('Resolved')).toBeDefined()
   fireEvent.click(reloaded.getByRole('button', { name: 'Reopen comment' }))
   await reloaded.findByText('Open')
-  expect(transition).toHaveBeenLastCalledWith('project', saved, 'reopen', expect.any(AbortSignal))
+  expect(transition).toHaveBeenLastCalledWith('project', saved, { action: 'reopen', expectedVersion: '1' }, expect.any(AbortSignal))
+})
+
+it('refreshes uncertain status, retries the original version, then uses the current version for a new action', async () => {
+  const open: ReviewComment = { ...legacy, frameAnchor: { side: 'B', branch: 'alternate', position: '73/24' },
+    frameStatus: 'OPEN', frameStatusVersion: '0' }
+  const resolved = { ...open, threadId: 'thread', frameStatus: 'RESOLVED' as const, frameStatusVersion: '1' }
+  const reopened = { ...open, threadId: 'thread', frameStatusVersion: '2' }
+  vi.spyOn(timelineCommentSource, 'list').mockResolvedValueOnce([open]).mockResolvedValueOnce([resolved])
+  const transition = vi.spyOn(timelineCommentSource, 'transitionFrame')
+    .mockRejectedValueOnce(new Error('response dropped'))
+    .mockResolvedValueOnce({ row: reopened, stale: true })
+    .mockResolvedValueOnce({ row: { ...resolved, frameStatusVersion: '3' }, stale: false })
+  render(<ReviewComments project="project" openFrame={vi.fn()} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Resolve comment' }))
+  await screen.findByText('Resolved')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry status action' }))
+  await screen.findByText('Open')
+  expect(transition.mock.calls[0][2]).toEqual({ action: 'resolve', expectedVersion: '0' })
+  expect(transition.mock.calls[1][2]).toEqual(transition.mock.calls[0][2])
+  fireEvent.click(screen.getByRole('button', { name: 'Resolve comment' }))
+  await screen.findByText('Resolved')
+  expect(transition.mock.calls[2][2]).toEqual({ action: 'resolve', expectedVersion: '2' })
+  expect(screen.queryByRole('button', { name: 'Retry status action' })).toBeNull()
 })

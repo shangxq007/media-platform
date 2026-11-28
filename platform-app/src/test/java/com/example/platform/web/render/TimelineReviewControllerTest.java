@@ -75,7 +75,7 @@ class TimelineReviewControllerTest {
         var request = UUID.randomUUID();
         var body = new TimelineReviewController.AddCommentRequest(null, "trev_001", null, null, "note", anchor, request);
         var comment = new ReviewRecords.CommentRow("comment", "rvw_1", null, "trev_001", null,
-                "user_1", "note", OffsetDateTime.now(), anchor, ReviewRecords.FrameCommentStatus.OPEN);
+                "user_1", "note", OffsetDateTime.now(), anchor, ReviewRecords.FrameCommentStatus.OPEN, "0");
         when(commentService.addFrameComment("proj_1", null, "trev_001", "user_1", "note", anchor, request))
                 .thenReturn(comment);
         var response = controller.addFrameComment("proj_1", body);
@@ -92,15 +92,41 @@ class TimelineReviewControllerTest {
         var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
                 com.example.platform.timeline.api.review.ReviewFrameAnchor.Side.B, "alternate", "73/24");
         var row = new ReviewRecords.CommentRow("comment", "rvw_1", "thread", "revision", null,
-                "user_1", "note", OffsetDateTime.now(), anchor, status);
-        when(commentService.transitionFrameComment("proj_1", "comment", status)).thenReturn(Optional.of(row));
-        var response = controller.resolveFrameComment("proj_1", "comment");
-        assertEquals("comment", response.commentId());
-        assertEquals(anchor, response.frameAnchor());
-        assertEquals(status, response.frameStatus());
+                "user_1", "note", OffsetDateTime.now(), anchor, status, "1");
+        when(commentService.transitionFrameComment("proj_1", "comment", status, "0"))
+                .thenReturn(Optional.of(new ReviewRecords.FrameCommentTransition(row, false)));
+        var response = controller.resolveFrameComment("proj_1", "comment",
+                new TimelineReviewController.FrameStatusRequest("0"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("comment", response.getBody().commentId());
+        assertEquals(anchor, response.getBody().frameAnchor());
+        assertEquals(status, response.getBody().frameStatus());
+        assertEquals("1", response.getBody().frameStatusVersion());
         var calls = inOrder(projectAuthorization, commentService);
         calls.verify(projectAuthorization).requireWrite(null, "proj_1");
-        calls.verify(commentService).transitionFrameComment("proj_1", "comment", status);
+        calls.verify(commentService).transitionFrameComment("proj_1", "comment", status, "0");
+    }
+
+    @Test
+    void staleFrameActionReturnsConflictWithCurrentComment() throws Exception {
+        var open = ReviewRecords.FrameCommentStatus.OPEN;
+        var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
+                com.example.platform.timeline.api.review.ReviewFrameAnchor.Side.B, "alternate", "73/24");
+        var row = new ReviewRecords.CommentRow("comment", "rvw_1", "thread", "revision", null,
+                "user_1", "note", OffsetDateTime.now(), anchor, open, "2");
+        when(commentService.transitionFrameComment("proj_1", "comment", ReviewRecords.FrameCommentStatus.RESOLVED, "0"))
+                .thenReturn(Optional.of(new ReviewRecords.FrameCommentTransition(row, true)));
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller).build();
+        var route = "/api/render/projects/proj_1/timeline/reviews/comments/comment/resolve";
+        var result = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(route)
+                        .contentType("application/json").content("{\"expectedVersion\":\"0\"}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict())
+                .andReturn();
+        var body = new com.fasterxml.jackson.databind.ObjectMapper().readTree(result.getResponse().getContentAsString());
+        assertEquals("OPEN", body.get("frameStatus").asText());
+        assertEquals("2", body.get("frameStatusVersion").asText());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(route))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
     }
 
     @Test
@@ -108,7 +134,8 @@ class TimelineReviewControllerTest {
         when(projectAuthorization.requireWrite(null, "proj_1")).thenThrow(
                 new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN));
         assertThrows(org.springframework.web.server.ResponseStatusException.class,
-                () -> controller.reopenFrameComment("proj_1", "comment"));
+                () -> controller.reopenFrameComment("proj_1", "comment",
+                        new TimelineReviewController.FrameStatusRequest("1")));
         verifyNoInteractions(commentService);
     }
 

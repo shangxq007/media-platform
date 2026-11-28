@@ -106,8 +106,12 @@ public class TimelineCommentService implements TimelineComments {
 
     @Override
     @Transactional
-    public Optional<CommentRow> transitionFrameComment(String projectId, String commentId, FrameCommentStatus status) {
+    public Optional<FrameCommentTransition> transitionFrameComment(String projectId, String commentId,
+                                                                  FrameCommentStatus status, String expectedVersion) {
         String tenantId = auth.require(projectId, true).tenantId();
+        if (expectedVersion == null || !expectedVersion.matches("0|[1-9][0-9]{0,18}")) {
+            throw new IllegalArgumentException("A frame comment status version is required");
+        }
         var target = reviewRepository.findOwnedComment(projectId, tenantId, commentId)
                 .filter(row -> row.frameAnchor() != null);
         if (target.isEmpty()) return Optional.empty();
@@ -116,18 +120,23 @@ public class TimelineCommentService implements TimelineComments {
         // action sees both the committed thread and its latest status.
         var review = reviews.requireReview(target.get().reviewId(), true);
         var current = reviewRepository.findOwnedComment(projectId, tenantId, commentId).orElseThrow();
-        if (current.frameStatus() == status) return Optional.of(current);
+        if (!expectedVersion.equals(current.frameStatusVersion())) {
+            return Optional.of(new FrameCommentTransition(current, true));
+        }
+        if (current.frameStatus() == status) return Optional.of(new FrameCommentTransition(current, false));
 
+        long version = Math.incrementExact(Long.parseLong(current.frameStatusVersion()));
         String threadId = current.threadId();
         if (threadId == null) {
             threadId = current.id();
-            reviewRepository.insertThread(threadId, review.id(), null, null, FrameCommentStatus.OPEN.name(),
+            reviewRepository.insertFrameThread(threadId, review.id(), status, version,
                     OffsetDateTime.now(ZoneOffset.UTC));
-        }
-        if (!transitionThread(review, threadId, status)) {
+        } else if (!reviewRepository.updateFrameThreadStatus(review.id(), threadId, status, version)) {
             throw new IllegalStateException("Frame comment thread is missing from its review");
         }
-        return reviewRepository.findOwnedComment(projectId, tenantId, commentId);
+        if (status == FrameCommentStatus.RESOLVED) publishResolution(review, threadId, null);
+        return reviewRepository.findOwnedComment(projectId, tenantId, commentId)
+                .map(saved -> new FrameCommentTransition(saved, false));
     }
 
     private void requireFrameWithinRevision(String projectId, String tenantId, String revisionId, ReviewFrameAnchor anchor) {
@@ -170,16 +179,22 @@ public class TimelineCommentService implements TimelineComments {
     }
 
     private boolean transitionThread(ReviewRow review, String threadId, FrameCommentStatus status) {
+        // Frame actions must go through the version-checked comment endpoint.
+        if (reviewRepository.isFrameThread(review.id(), threadId)) return false;
         var thread = reviewRepository.findThread(review.id(), threadId);
         if (thread.isEmpty()) return false;
         if (status.name().equals(thread.get().status())) return true;
         if (!reviewRepository.updateThreadStatus(review.id(), threadId, status.name())) return false;
-        if (status == FrameCommentStatus.RESOLVED && "TIMELINE".equals(reviewRepository.targetType(review.id()))) {
+        if (status == FrameCommentStatus.RESOLVED) publishResolution(review, threadId, thread.get().entityRef());
+        return true;
+    }
+
+    private void publishResolution(ReviewRow review, String threadId, String entityRef) {
+        if ("TIMELINE".equals(reviewRepository.targetType(review.id()))) {
             events.publish(new TimelineReviewThreadResolvedEvent(new TimelineReviewReference(review.id(),
                     new TimelineRevisionIdentity(review.tenantId(), review.projectId(), review.revisionId())),
-                    UUID.randomUUID().toString(), threadId, thread.get().entityRef(), java.time.Instant.now()));
+                    UUID.randomUUID().toString(), threadId, entityRef, java.time.Instant.now()));
         }
-        return true;
     }
 
     public List<ThreadRow> listThreads(String reviewId) {

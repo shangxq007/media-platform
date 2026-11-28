@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Panel } from '../../components/design-system'
-import { timelineCommentSource, type FrameCommentDraft, type FrameCommentWrite, type ReviewComment } from '../timeline-review/api'
+import { timelineCommentSource, type FrameCommentDraft, type FrameCommentWrite, type FrameStatusAction, type ReviewComment } from '../timeline-review/api'
 
 export function ReviewComments({ project, capture, openFrame, canCapture }: {
   project: string
@@ -13,6 +13,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
   const transitioning = useRef(new Set<string>())
   const [pending, setPending] = useState<string[]>([])
   const [actionProblems, setActionProblems] = useState<Record<string, string>>({})
+  const [uncertainActions, setUncertainActions] = useState<Record<string, FrameStatusAction | undefined>>({})
   const [comments, setComments] = useState<ReviewComment[]>([])
   const [problem, setProblem] = useState('')
   const [loading, setLoading] = useState(true)
@@ -68,19 +69,36 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
     }
   }
 
-  async function changeStatus(row: ReviewComment) {
+  async function changeStatus(row: ReviewComment, retry?: FrameStatusAction) {
     const signal = lifetime.current?.signal
     const id = row.commentId
-    if (!signal || signal.aborted || !row.frameStatus || transitioning.current.has(id)) return
-    const action = row.frameStatus === 'RESOLVED' ? 'reopen' : 'resolve'
+    if (!signal || signal.aborted || !row.frameStatus || row.frameStatusVersion === undefined
+      || transitioning.current.has(id)) return
+    const command: FrameStatusAction = retry ?? {
+      action: row.frameStatus === 'RESOLVED' ? 'reopen' : 'resolve', expectedVersion: row.frameStatusVersion,
+    }
     transitioning.current.add(id)
     setPending([...transitioning.current])
     setActionProblems(previous => ({ ...previous, [id]: '' }))
+    const showSaved = (saved: ReviewComment) =>
+      setComments(previous => previous.map(item => item.commentId === id ? saved : item))
     try {
-      const saved = await timelineCommentSource.transitionFrame(project, row, action, signal)
-      if (!signal.aborted) setComments(previous => previous.map(item => item.commentId === id ? saved : item))
+      const result = await timelineCommentSource.transitionFrame(project, row, command, signal)
+      if (signal.aborted) return
+      showSaved(result.row)
+      setUncertainActions(previous => ({ ...previous, [id]: undefined }))
+      if (result.stale) setActionProblems(previous => ({ ...previous, [id]: 'That action is out of date. Showing the saved status.' }))
     } catch {
-      if (!signal.aborted) setActionProblems(previous => ({ ...previous, [id]: `Could not ${action} this comment.` }))
+      if (signal.aborted) return
+      setUncertainActions(previous => ({ ...previous, [id]: command }))
+      try {
+        const saved = await timelineCommentSource.refreshFrame(project, row, signal)
+        if (signal.aborted) return
+        showSaved(saved)
+        setActionProblems(previous => ({ ...previous, [id]: 'The action was not confirmed. Showing the saved status.' }))
+      } catch {
+        if (!signal.aborted) setActionProblems(previous => ({ ...previous, [id]: 'The saved status could not be confirmed.' }))
+      }
     } finally {
       transitioning.current = new Set([...transitioning.current].filter(commentId => commentId !== id))
       if (!signal.aborted) setPending([...transitioning.current])
@@ -111,8 +129,11 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
         {openFrame && <Button type="button" onClick={() => {
           if (row.revisionId && row.frameAnchor) openFrame({ revisionId: row.revisionId, frameAnchor: row.frameAnchor })
         }}>Open saved frame</Button>}{' '}
-        {openFrame && row.frameStatus && <Button type="button" disabled={loading || pending.includes(row.commentId)}
+        {openFrame && row.frameStatus && row.frameStatusVersion !== undefined
+          && <Button type="button" disabled={loading || pending.includes(row.commentId)}
           onClick={() => void changeStatus(row)}>{row.frameStatus === 'RESOLVED' ? 'Reopen comment' : 'Resolve comment'}</Button>}
+        {openFrame && uncertainActions[row.commentId] && <Button type="button" disabled={pending.includes(row.commentId)}
+          onClick={() => void changeStatus(row, uncertainActions[row.commentId])}>Retry status action</Button>}
         {actionProblems[row.commentId] && <p role="alert">{actionProblems[row.commentId]}</p>}
       </> : <p>No frame anchor.</p>}
     </li>)}</ul>}

@@ -24,10 +24,12 @@ export const FrameAnchor = z.object({
 export type FrameAnchor = z.infer<typeof FrameAnchor>
 const ReviewComment = z.object({ commentId: id, reviewId: id, threadId: text, revisionId: text, entityRef: text,
   authorUserId: text, content: z.string(), createdAt: text, frameAnchor: FrameAnchor.nullish(),
-  frameStatus: z.enum(['OPEN', 'RESOLVED']).optional() }).strict()
+  frameStatus: z.enum(['OPEN', 'RESOLVED']).optional(),
+  frameStatusVersion: z.string().regex(/^(0|[1-9][0-9]{0,18})$/).optional() }).strict()
 export type ReviewComment = z.infer<typeof ReviewComment>
 export type FrameCommentDraft = { revisionId: string; frameAnchor: FrameAnchor }
 export type FrameCommentWrite = FrameCommentDraft & { content: string; requestId: string }
+export type FrameStatusAction = { action: 'resolve' | 'reopen'; expectedVersion: string }
 
 export const ReviewDetail = z.object({ review: Review,
   comments: z.array(ReviewComment),
@@ -72,6 +74,15 @@ export const timelineReviewSource = {
 }
 export type TimelineReviewSource = typeof timelineReviewSource
 
+function sameFrameComment(row: ReviewComment, requested: ReviewComment) {
+  return row.commentId === requested.commentId && row.reviewId === requested.reviewId
+    && row.revisionId === requested.revisionId && row.content === requested.content
+    && row.frameAnchor && requested.frameAnchor && row.frameAnchor.side === requested.frameAnchor.side
+    && row.frameAnchor.branch === requested.frameAnchor.branch
+    && row.frameAnchor.position === requested.frameAnchor.position
+    && row.frameStatus && row.frameStatusVersion !== undefined
+}
+
 export const timelineCommentSource = {
   async list(project: string, signal: AbortSignal) {
     const rows = ReviewComment.array().parse(await get(`${path(project)}/reviews/comments`, signal))
@@ -87,17 +98,22 @@ export const timelineCommentSource = {
       || row.frameAnchor.position !== body.frameAnchor.position) throw new Error('Comment target mismatch')
     return row
   },
-  async transitionFrame(project: string, comment: ReviewComment, action: 'resolve' | 'reopen', signal: AbortSignal) {
-    const { data } = await api.post(`${path(project)}/reviews/comments/${part(comment.commentId)}/${action}`,
-      undefined, { baseURL: '', signal })
+  async transitionFrame(project: string, comment: ReviewComment, command: FrameStatusAction, signal: AbortSignal) {
+    const { action, expectedVersion } = command
+    const { data, status } = await api.post(`${path(project)}/reviews/comments/${part(comment.commentId)}/${action}`,
+      { expectedVersion }, { baseURL: '', signal, validateStatus: value => value === 200 || value === 409 })
     signal.throwIfAborted()
     const row = ReviewComment.parse(data)
-    if (row.commentId !== comment.commentId || row.reviewId !== comment.reviewId
-      || row.revisionId !== comment.revisionId || row.content !== comment.content
-      || row.frameStatus !== (action === 'resolve' ? 'RESOLVED' : 'OPEN')
-      || !row.frameAnchor || row.frameAnchor.side !== comment.frameAnchor?.side
-      || row.frameAnchor.branch !== comment.frameAnchor.branch
-      || row.frameAnchor.position !== comment.frameAnchor.position) throw new Error('Comment action target mismatch')
+    if (!sameFrameComment(row, comment)
+      || (status === 200 && row.frameStatus !== (action === 'resolve' ? 'RESOLVED' : 'OPEN'))) {
+      throw new Error('Comment action target mismatch')
+    }
+    return { row, stale: status === 409 }
+  },
+  async refreshFrame(project: string, comment: ReviewComment, signal: AbortSignal) {
+    const rows = await this.list(project, signal)
+    const row = rows.find(row => row.commentId === comment.commentId)
+    if (!row || !sameFrameComment(row, comment)) throw new Error('Saved frame comment could not be confirmed')
     return row
   },
 }

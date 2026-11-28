@@ -130,7 +130,7 @@ public class TimelineReviewController {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ProblemDetail invalidReviewRequest() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
-                "Invalid review request body. Frame anchors require a side, branch and nonnegative exact rational position.");
+                "Invalid review request body. Provide the frame anchor or expected status version required by this operation.");
     }
 
     @GetMapping("/{reviewId}/comments")
@@ -147,23 +147,26 @@ public class TimelineReviewController {
 
     @PostMapping("/comments/{commentId}/resolve")
     @Operation(summary = "Resolve one saved frame comment")
-    public CommentResponse resolveFrameComment(@PathVariable String projectId, @PathVariable String commentId) {
-        return transitionFrameComment(projectId, commentId, ReviewRecords.FrameCommentStatus.RESOLVED);
+    public ResponseEntity<CommentResponse> resolveFrameComment(@PathVariable String projectId, @PathVariable String commentId,
+                                                                @RequestBody FrameStatusRequest body) {
+        return transitionFrameComment(projectId, commentId, ReviewRecords.FrameCommentStatus.RESOLVED, body);
     }
 
     @PostMapping("/comments/{commentId}/reopen")
     @Operation(summary = "Reopen one saved frame comment")
-    public CommentResponse reopenFrameComment(@PathVariable String projectId, @PathVariable String commentId) {
-        return transitionFrameComment(projectId, commentId, ReviewRecords.FrameCommentStatus.OPEN);
+    public ResponseEntity<CommentResponse> reopenFrameComment(@PathVariable String projectId, @PathVariable String commentId,
+                                                               @RequestBody FrameStatusRequest body) {
+        return transitionFrameComment(projectId, commentId, ReviewRecords.FrameCommentStatus.OPEN, body);
     }
 
-    private CommentResponse transitionFrameComment(String projectId, String commentId,
-                                                    ReviewRecords.FrameCommentStatus status) {
+    private ResponseEntity<CommentResponse> transitionFrameComment(String projectId, String commentId,
+                                          ReviewRecords.FrameCommentStatus status, FrameStatusRequest body) {
         projectAuthorization.requireWrite(TenantContext.get(), projectId);
-        return commentService.transitionFrameComment(projectId, commentId, status)
-                .map(TimelineReviewController::toCommentResponse)
+        var result = commentService.transitionFrameComment(projectId, commentId, status, body.expectedVersion())
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         HttpStatus.NOT_FOUND, "frame comment not found in project"));
+        return ResponseEntity.status(result.stale() ? HttpStatus.CONFLICT : HttpStatus.OK)
+                .body(toCommentResponse(result.current()));
     }
 
     @PostMapping("/{reviewId}/comments/{threadId}/resolve")
@@ -274,13 +277,14 @@ public class TimelineReviewController {
     private static CommentResponse toCommentResponse(ReviewRecords.CommentRow c) {
         return new CommentResponse(c.id(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef(), c.authorUserId(), c.content(),
-                c.createdAt() != null ? c.createdAt().toString() : null, c.frameAnchor(), c.frameStatus());
+                c.createdAt() != null ? c.createdAt().toString() : null, c.frameAnchor(), c.frameStatus(),
+                c.frameStatusVersion());
     }
 
     private static CommentResponse toCommentResponse(TimelineComment c) {
         return new CommentResponse(c.commentId(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef() != null ? c.entityRef().key() : null,
-                c.authorUserId(), c.content(), c.createdAt().toString(), null, null);
+                c.authorUserId(), c.content(), c.createdAt().toString(), null, null, null);
     }
 
     private static ThreadResponse toThreadResponse(ReviewRecords.ThreadRow t) {
@@ -300,6 +304,8 @@ public class TimelineReviewController {
                                       String entityKind, String entityId,
                                       String content, ReviewFrameAnchor frameAnchor, UUID requestId) {}
 
+    public record FrameStatusRequest(String expectedVersion) {}
+
     public record ReviewResponse(String reviewId, String projectId, String revisionId,
                                    String authorUserId, String title, String description,
                                    String status, String createdAt, String updatedAt) {}
@@ -313,7 +319,8 @@ public class TimelineReviewController {
                                     String revisionId, String entityRef,
                                     String authorUserId, String content, String createdAt,
                                     @JsonInclude(JsonInclude.Include.NON_NULL) ReviewFrameAnchor frameAnchor,
-                                    @JsonInclude(JsonInclude.Include.NON_NULL) ReviewRecords.FrameCommentStatus frameStatus) {}
+                                    @JsonInclude(JsonInclude.Include.NON_NULL) ReviewRecords.FrameCommentStatus frameStatus,
+                                    @JsonInclude(JsonInclude.Include.NON_NULL) String frameStatusVersion) {}
 
     public record ThreadResponse(String threadId, String reviewId, String entityRef,
                                    String diffId, String status, String createdAt) {}

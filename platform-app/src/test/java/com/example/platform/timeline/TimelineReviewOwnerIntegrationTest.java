@@ -218,21 +218,21 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
       commands=count("timeline.apply_command"), notes=count("timeline.timeline_comment");
   assertTrue(comments.listComments(review).stream().allMatch(row->row.frameStatus()==OPEN && row.threadId()==null));
   assertEquals(threads,count("timeline.review_thread"));
-  assertEquals(Optional.empty(),comments.transitionFrameComment("other",first,RESOLVED));
+  assertEquals(Optional.empty(),comments.transitionFrameComment("other",first,RESOLVED,"0"));
   denied=true;
   assertThrows(org.springframework.web.server.ResponseStatusException.class,
-      ()->comments.transitionFrameComment("project",first,RESOLVED));
+      ()->comments.transitionFrameComment("project",first,RESOLVED,"0"));
   denied=false;
   assertEquals(threads,count("timeline.review_thread"));
 
   var ready=new CountDownLatch(2);
   var go=new CountDownLatch(1);
-  Callable<ReviewRecords.CommentRow> action=()->{
+  Callable<ReviewRecords.FrameCommentTransition> action=()->{
    TenantContext.set("tenant");
    try {
     ready.countDown();
     if(!go.await(10,TimeUnit.SECONDS))throw new IllegalStateException("Action gate did not open");
-    return comments.transitionFrameComment("project",first,RESOLVED).orElseThrow();
+    return comments.transitionFrameComment("project",first,RESOLVED,"0").orElseThrow();
    } finally {TenantContext.clear();actor.remove();}
   };
   ReviewRecords.CommentRow resolved;
@@ -241,28 +241,79 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
    var two=pool.submit(action);
    assertTrue(ready.await(10,TimeUnit.SECONDS));
    go.countDown();
-   resolved=one.get(20,TimeUnit.SECONDS);
-   assertEquals(resolved,two.get(20,TimeUnit.SECONDS));
+   var oneResult=one.get(20,TimeUnit.SECONDS);
+   var twoResult=two.get(20,TimeUnit.SECONDS);
+   assertNotEquals(oneResult.stale(),twoResult.stale());
+   resolved=oneResult.current();
+   assertEquals(resolved,twoResult.current());
   }
   assertEquals(RESOLVED,resolved.frameStatus());
   assertEquals("73/24",resolved.frameAnchor().position());
   assertEquals("project-revision",resolved.revisionId());
   assertNotNull(resolved.threadId());
-  assertEquals(resolved,comments.transitionFrameComment("project",first,RESOLVED).orElseThrow());
+  assertEquals(new ReviewRecords.FrameCommentTransition(resolved,true),
+      comments.transitionFrameComment("project",first,RESOLVED,"0").orElseThrow());
   var independent=comments.listComments(review).stream().filter(row->row.id().equals(second)).findFirst().orElseThrow();
   assertEquals(OPEN,independent.frameStatus());
   assertNull(independent.threadId());
 
-  var reopened=comments.transitionFrameComment("project",first,OPEN).orElseThrow();
+  var reopened=comments.transitionFrameComment("project",first,OPEN,"1").orElseThrow().current();
   assertEquals(OPEN,reopened.frameStatus());
   assertEquals(resolved.threadId(),reopened.threadId());
-  assertEquals(reopened,comments.transitionFrameComment("project",first,OPEN).orElseThrow());
+  assertEquals(new ReviewRecords.FrameCommentTransition(reopened,true),
+      comments.transitionFrameComment("project",first,OPEN,"1").orElseThrow());
   assertEquals(1L,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?"
       +" and event_type='timeline.review.thread.resolved'",Long.class,resolved.threadId()));
   assertEquals(threads+1,count("timeline.review_thread"));
   assertEquals(notes,count("timeline.timeline_comment"));
   assertEquals(revisions,count("timeline.timeline_revision"));
   assertEquals(commands,count("timeline.apply_command"));
+ }
+
+ @Test void staleResolveAndReopenCannotUndoAnotherReviewersDecision() {
+  var review=create();
+  var id="status-"+UUID.randomUUID();
+  jdbc.update("insert into timeline.timeline_comment(id,review_id,revision_id,entity_ref,author_user_id,content,created_at)"
+      +" values (?,?,'project-revision','FRAME.v1|B|alternate|73/24','server-actor','note',now())",id,review);
+  var comments=context.getBean(TimelineComments.class);
+  long threads=count("timeline.review_thread"), revisions=count("timeline.timeline_revision"),
+      commands=count("timeline.apply_command");
+  var aResolve=comments.transitionFrameComment("project",id,RESOLVED,"0").orElseThrow();
+  assertFalse(aResolve.stale());
+  assertEquals("1",aResolve.current().frameStatusVersion());
+  // The unversioned legacy mutation must not bypass the conditional frame API.
+  assertFalse(comments.reopenThread(review,id));
+
+  actor.set("second-reviewer");
+  var bReopen=comments.transitionFrameComment("project",id,OPEN,"1").orElseThrow();
+  actor.remove();
+  assertEquals(new ReviewRecords.FrameCommentTransition(bReopen.current(),true),
+      comments.transitionFrameComment("project",id,RESOLVED,"0").orElseThrow());
+  assertEquals(OPEN,bReopen.current().frameStatus());
+  assertEquals(1L,resolutionFacts(id));
+  var aNewResolve=comments.transitionFrameComment("project",id,RESOLVED,"2").orElseThrow();
+  assertFalse(aNewResolve.stale());
+  assertEquals("3",aNewResolve.current().frameStatusVersion());
+  assertEquals(2L,resolutionFacts(id));
+
+  var aReopen=comments.transitionFrameComment("project",id,OPEN,"3").orElseThrow();
+  assertEquals("4",aReopen.current().frameStatusVersion());
+  actor.set("second-reviewer");
+  var bResolve=comments.transitionFrameComment("project",id,RESOLVED,"4").orElseThrow();
+  actor.remove();
+  assertEquals(new ReviewRecords.FrameCommentTransition(bResolve.current(),true),
+      comments.transitionFrameComment("project",id,OPEN,"3").orElseThrow());
+  assertEquals(RESOLVED,bResolve.current().frameStatus());
+  assertEquals("5",bResolve.current().frameStatusVersion());
+  assertEquals(3L,resolutionFacts(id));
+  assertEquals(threads+1,count("timeline.review_thread"));
+  assertEquals(revisions,count("timeline.timeline_revision"));
+  assertEquals(commands,count("timeline.apply_command"));
+ }
+
+ private long resolutionFacts(String thread) {
+  return jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?"
+      +" and event_type='timeline.review.thread.resolved'",Long.class,thread);
  }
 
  @Test void retiredAndMalformedDurableTimelineInputsAreExplicitlyDeadLettered()throws Exception {

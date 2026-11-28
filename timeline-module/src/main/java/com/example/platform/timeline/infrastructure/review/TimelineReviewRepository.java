@@ -24,6 +24,7 @@ public class TimelineReviewRepository {
     // entity_ref already holds tagged review targets. Frame targets are disjoint
     // from the legacy EntityRef grammar and are never projected as entity IDs.
     private static final String FRAME_PREFIX = "FRAME.v1|";
+    private static final String VERSIONED_FRAME_STATUS = "v1|";
 
     private final DSLContext dsl;
 
@@ -160,6 +161,39 @@ public class TimelineReviewRepository {
                 .fetchOptional(TimelineReviewRepository::mapThread);
     }
 
+    public boolean isFrameThread(String reviewId, String threadId) {
+        return dsl.fetchExists(dsl.selectOne().from(TIMELINE_COMMENT)
+                .where(TIMELINE_COMMENT.REVIEW_ID.eq(reviewId).and(TIMELINE_COMMENT.ID.eq(threadId)))
+                .and(TIMELINE_COMMENT.ENTITY_REF.startsWith(FRAME_PREFIX)));
+    }
+
+    public void insertFrameThread(String id, String reviewId, FrameCommentStatus status, long version, OffsetDateTime now) {
+        insertThread(id, reviewId, null, null, storeFrameStatus(status, version), now);
+    }
+
+    public boolean updateFrameThreadStatus(String reviewId, String threadId, FrameCommentStatus status, long version) {
+        return updateThreadStatus(reviewId, threadId, storeFrameStatus(status, version));
+    }
+
+    // Keep the status and its compare-and-set version in the same frame-thread
+    // value. Legacy entity threads retain the unversioned status representation.
+    private static String storeFrameStatus(FrameCommentStatus status, long version) {
+        return VERSIONED_FRAME_STATUS + status.name() + "|" + version;
+    }
+
+    private record FrameThreadStatus(FrameCommentStatus status, String version) {
+        static FrameThreadStatus read(String stored) {
+            if (stored == null) return new FrameThreadStatus(FrameCommentStatus.OPEN, "0");
+            if (!stored.startsWith(VERSIONED_FRAME_STATUS)) {
+                return new FrameThreadStatus(FrameCommentStatus.valueOf(stored), "0");
+            }
+            int separator = stored.indexOf('|', VERSIONED_FRAME_STATUS.length());
+            return new FrameThreadStatus(
+                    FrameCommentStatus.valueOf(stored.substring(VERSIONED_FRAME_STATUS.length(), separator)),
+                    stored.substring(separator + 1));
+        }
+    }
+
     public boolean updateThreadStatus(String reviewId, String threadId, String status) {
         return dsl.update(REVIEW_THREAD)
                 .set(REVIEW_THREAD.STATUS, status)
@@ -226,14 +260,13 @@ public class TimelineReviewRepository {
         String ref = r.get(TIMELINE_COMMENT.ENTITY_REF);
         String threadId = r.get(TIMELINE_COMMENT.THREAD_ID);
         ReviewFrameAnchor anchor = null;
-        FrameCommentStatus status = null;
+        FrameThreadStatus status = null;
         if (ref != null && ref.startsWith(FRAME_PREFIX)) {
             String[] parts = ref.substring(FRAME_PREFIX.length()).split("\\|", -1);
             if (parts.length != 3) throw new IllegalStateException("Malformed saved review frame anchor");
             anchor = new ReviewFrameAnchor(ReviewFrameAnchor.Side.valueOf(parts[0]), parts[1], parts[2]);
             threadId = r.get(REVIEW_THREAD.ID);
-            status = threadId == null ? FrameCommentStatus.OPEN
-                    : FrameCommentStatus.valueOf(r.get(REVIEW_THREAD.STATUS));
+            status = FrameThreadStatus.read(r.get(REVIEW_THREAD.STATUS));
             ref = null;
         }
         return new CommentRow(
@@ -244,16 +277,18 @@ public class TimelineReviewRepository {
                 ref,
                 r.get(TIMELINE_COMMENT.AUTHOR_USER_ID),
                 r.get(TIMELINE_COMMENT.CONTENT),
-                r.get(TIMELINE_COMMENT.CREATED_AT).atOffset(java.time.ZoneOffset.UTC), anchor, status);
+                r.get(TIMELINE_COMMENT.CREATED_AT).atOffset(java.time.ZoneOffset.UTC), anchor,
+                status == null ? null : status.status(), status == null ? null : status.version());
     }
 
     private static ThreadRow mapThread(Record r) {
+        String status = r.get(REVIEW_THREAD.STATUS);
         return new ThreadRow(
                 r.get(REVIEW_THREAD.ID),
                 r.get(REVIEW_THREAD.REVIEW_ID),
                 r.get(REVIEW_THREAD.ENTITY_REF),
                 r.get(REVIEW_THREAD.DIFF_ID),
-                r.get(REVIEW_THREAD.STATUS),
+                status.startsWith(VERSIONED_FRAME_STATUS) ? FrameThreadStatus.read(status).status().name() : status,
                 r.get(REVIEW_THREAD.CREATED_AT).atOffset(java.time.ZoneOffset.UTC));
     }
 
