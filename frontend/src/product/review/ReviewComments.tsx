@@ -119,7 +119,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
         // A list initiated before a confirmed Post must not erase that receipt.
         return [
           ...rows.map(listed => {
-            const current = Object.hasOwn(known, listed.commentId) ? known[listed.commentId] : undefined
+            const current = Object.prototype.hasOwnProperty.call(known, listed.commentId) ? known[listed.commentId] : undefined
             return current ? newestStatus(current, listed) : listed
           }),
           ...previous.filter(row => !listedIds.has(row.commentId)),
