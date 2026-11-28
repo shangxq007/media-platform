@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Panel } from '../../components/design-system'
+import { Badge, Button, Panel } from '../../components/design-system'
 import { compare, parseRational, type Rational } from '../timeline/trim'
 import { timelineCommentSource, type FrameCommentDraft, type FrameCommentWrite, type FrameStatusAction, type ReviewComment } from '../timeline-review/api'
 
@@ -149,14 +149,14 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
   }
 
   return <section aria-label="Review comments"><Panel title="Review comments">
-    {pinnedRevisions && <label>Review comments view <select value={view} onChange={event => {
+    {pinnedRevisions && <div className="ff-review-compare-controls"><label>Review comments view <select value={view} onChange={event => {
       setSelectedId(null)
       setView(event.target.value as View)
     }}>
       <option value="all">All comments</option>
       <option value="A" disabled={!pinnedRevisions.A}>Open comments for side A</option>
       <option value="B" disabled={!pinnedRevisions.B}>Open comments for side B</option>
-    </select></label>}
+    </select></label></div>}
     {view !== 'all' && <div role="group" aria-label="Open frame comment navigation">
       {revisionId && <p>Side {view} pinned revision <code aria-label="Filtered pinned revision">{revisionId}</code></p>}
       <Button type="button" disabled={index <= 0}
@@ -185,7 +185,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
     {visible.length > 0 && <ul>{visible.map(row => <li key={row.commentId} data-comment-id={row.commentId}
       aria-current={view !== 'all' && row.commentId === currentId ? true : undefined}>
       <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.content}</p>
-      {view !== 'all' && row.commentId === currentId && <p>Selected comment</p>}
+      {view !== 'all' && row.commentId === currentId && <p><Badge tone="info">Selected comment</Badge></p>}
       {row.frameAnchor && row.revisionId ? <>
         <p>Side {row.frameAnchor.side} · {row.frameAnchor.branch} · <code>{row.revisionId}</code> · {row.frameAnchor.position} s</p>
         {row.frameStatus && <p role="status" aria-label="Frame comment status">{row.frameStatus === 'RESOLVED' ? 'Resolved' : 'Open'}</p>}
