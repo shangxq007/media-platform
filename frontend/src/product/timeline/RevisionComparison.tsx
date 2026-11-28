@@ -319,6 +319,7 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
       })}
     </Panel>
     <ReviewComments key={project} project={project} capture={captureFrame}
-      canCapture={!!duration && !outOfRange(duration)} openFrame={openFrame} />
+      canCapture={!!duration && !outOfRange(duration)} openFrame={openFrame}
+      pinnedRevisions={{ A: mounts.A?.pin.revision ?? null, B: mounts.B?.pin.revision ?? null }} />
   </section>
 }
