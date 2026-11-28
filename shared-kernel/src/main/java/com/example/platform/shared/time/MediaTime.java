@@ -1,6 +1,7 @@
 package com.example.platform.shared.time;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.Objects;
 
 /**
@@ -169,41 +170,35 @@ public final class MediaTime implements Comparable<MediaTime>, Serializable {
      * Returns true if this >= other.
      */
     public boolean isGreaterThanOrEqualTo(MediaTime other) {
-        // a/b >= c/d iff a*d >= c*b
-        return Math.multiplyExact(this.ticks, other.timeScale)
-            >= Math.multiplyExact(other.ticks, this.timeScale);
+        return compareTo(other) >= 0;
     }
 
     /**
      * Returns true if this > other.
      */
     public boolean isGreaterThan(MediaTime other) {
-        return Math.multiplyExact(this.ticks, other.timeScale)
-            > Math.multiplyExact(other.ticks, this.timeScale);
+        return compareTo(other) > 0;
     }
 
     /**
      * Returns true if this < other.
      */
     public boolean isLessThan(MediaTime other) {
-        return Math.multiplyExact(this.ticks, other.timeScale)
-            < Math.multiplyExact(other.ticks, this.timeScale);
+        return compareTo(other) < 0;
     }
 
     /**
      * Returns true if this <= other.
      */
     public boolean isLessThanOrEqualTo(MediaTime other) {
-        return Math.multiplyExact(this.ticks, other.timeScale)
-            <= Math.multiplyExact(other.ticks, this.timeScale);
+        return compareTo(other) <= 0;
     }
 
     /**
      * Returns true if this == other.
      */
     public boolean isEqualTo(MediaTime other) {
-        // Canonical form guarantees same representation for equal values
-        return this.ticks == other.ticks && this.timeScale == other.timeScale;
+        return compareTo(other) == 0;
     }
 
     /**
@@ -230,9 +225,17 @@ public final class MediaTime implements Comparable<MediaTime>, Serializable {
     @Override
     public int compareTo(MediaTime other) {
         // a/b vs c/d -> compare a*d vs c*b
-        long lhs = Math.multiplyExact(this.ticks, other.timeScale);
-        long rhs = Math.multiplyExact(other.ticks, this.timeScale);
-        return Long.compare(lhs, rhs);
+        if (timeScale == other.timeScale) {
+            return Long.compare(ticks, other.ticks);
+        }
+        try {
+            long lhs = Math.multiplyExact(ticks, other.timeScale);
+            long rhs = Math.multiplyExact(other.ticks, timeScale);
+            return Long.compare(lhs, rhs);
+        } catch (ArithmeticException overflow) {
+            return BigInteger.valueOf(ticks).multiply(BigInteger.valueOf(other.timeScale))
+                .compareTo(BigInteger.valueOf(other.ticks).multiply(BigInteger.valueOf(timeScale)));
+        }
     }
 
     @Override

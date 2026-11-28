@@ -62,6 +62,44 @@ class MediaTimeTest {
     }
 
     @Test
+    void ordersExactBrowserTimeAndHalfOpenEnd() {
+        MediaTime clock = MediaTime.parse("3602879701896397/36028797018963968");
+        MediaTime end = MediaTime.ofTicks(300, 1);
+        assertOrdering(clock, end, -1);
+        assertOrdering(MediaTime.ofFrames(7199, 24, 1), end, -1);
+        assertOrdering(MediaTime.ofTicks(600, 2), end, 0);
+        assertOrdering(MediaTime.ofFrames(7201, 24, 1), end, 1);
+        // Both near-end values round to 300 as a double.
+        assertOrdering(MediaTime.parse("5404319552844595199/18014398509481984"), end, -1);
+        assertOrdering(MediaTime.parse("5404319552844595201/18014398509481984"), end, 1);
+    }
+
+    @Test
+    void ordersWhenBothCrossProductsOverflowAndDifferByOne() {
+        long max = Long.MAX_VALUE;
+        MediaTime lower = MediaTime.ofTicks(max - 2, max - 1);
+        MediaTime higher = MediaTime.ofTicks(max - 1, max);
+        assertOrdering(lower, higher, -1);
+        assertOrdering(higher, MediaTime.ofTicks(max - 1, max), 0);
+    }
+
+    private static void assertOrdering(MediaTime left, MediaTime right, int expected) {
+        assertOrderInOneDirection(left, right, expected);
+        assertOrderInOneDirection(right, left, -expected);
+    }
+
+    private static void assertOrderInOneDirection(MediaTime left, MediaTime right, int expected) {
+        assertEquals(expected, Integer.signum(left.compareTo(right)));
+        assertEquals(expected < 0, left.isLessThan(right));
+        assertEquals(expected <= 0, left.isLessThanOrEqualTo(right));
+        assertEquals(expected == 0, left.isEqualTo(right));
+        assertEquals(expected >= 0, left.isGreaterThanOrEqualTo(right));
+        assertEquals(expected > 0, left.isGreaterThan(right));
+        assertEquals(expected <= 0 ? left : right, left.min(right));
+        assertEquals(expected >= 0 ? left : right, left.max(right));
+    }
+
+    @Test
     @DisplayName("Equality: different representations of same value")
     void equality() {
         MediaTime a = MediaTime.ofRational(1, 2);

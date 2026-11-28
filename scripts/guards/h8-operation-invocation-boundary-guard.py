@@ -107,7 +107,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "shared-kernel/src/main/java/com/example/platform/shared/digest/CanonicalCommandFingerprint.java": "2806a006f7f840ffdcc9b3fe7d7545f5455534646e52aef759247c79f240707c",
     "shared-kernel/src/main/java/com/example/platform/shared/digest/ContentDigest.java": "9b909f58acf190e50ff2ac1c47a9c305e8780173f1d8db8e5e96d34fc0fd9d14",
     "shared-kernel/src/main/java/com/example/platform/shared/identity/ArtifactId.java": "84ba3f0930448050e7bb462999f0c6c0c2733d756a323c887c2b9edbfa6d5f97",
-    "shared-kernel/src/main/java/com/example/platform/shared/time/MediaTime.java": "623b6c99ad371987fb9fceb427e7c8290e0cb4eac6f36dc10a2a70c8a1d33942",
+    "shared-kernel/src/main/java/com/example/platform/shared/time/MediaTime.java": "205d2a3abb31c6505517a57daa8cf50eb22b33e4561c1f6e8154b2b1a39f5e86",
     "timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java": "f1abedb939e83f415ada382328e54cb4afa607b6aa3ca37155080e8154cbd6fc",
     "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineCanonicalRejectionException.java": "a7b274409c017c0c0aaeda47f3630886e5ab6e2db0efc0210e23aaaacafc5c2c",
     "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineSourceValidation.java": "40b8cced5d35fb4e341a1ad768a9d51074a34461335dfdc6112dbf0efe203a81",
