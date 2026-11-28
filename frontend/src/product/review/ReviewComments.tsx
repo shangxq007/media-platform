@@ -17,8 +17,16 @@ function compareComments(a: LocatedComment, b: LocatedComment) {
 function newestStatus(previous: ReviewComment | undefined, incoming: ReviewComment) {
   const before = previous?.frameStatusVersion
   const next = incoming.frameStatusVersion
-  // A delayed list or link read must not undo a newer status receipt.
+  // Every receipt, including a successful write or a recovery read, can arrive late.
   return previous && before !== undefined && (next === undefined || BigInt(before) > BigInt(next)) ? previous : incoming
+}
+
+function acceptComment(rows: ReviewComment[], incoming: ReviewComment, insert = false) {
+  const index = rows.findIndex(row => row.commentId === incoming.commentId)
+  if (index === -1) return insert ? [incoming, ...rows] : rows
+  const accepted = newestStatus(rows[index], incoming)
+  if (accepted === rows[index]) return rows
+  return rows.map((row, i) => i === index ? accepted : row)
 }
 
 export function ReviewComments({ project, capture, openFrame, canCapture, pinnedRevisions, linkedComment, copyLink }: {
@@ -80,11 +88,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
 
   useEffect(() => {
     if (!linkedComment) return
-    setComments(previous => {
-      const existing = previous.find(row => row.commentId === linkedComment.commentId)
-      if (!existing) return [linkedComment, ...previous]
-      return previous.map(row => row === existing ? newestStatus(row, linkedComment) : row)
-    })
+    setComments(previous => acceptComment(previous, linkedComment, true))
     setView('all')
     setSelectedId(linkedComment.commentId)
   }, [linkedComment])
@@ -148,7 +152,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
     setPostProblem('')
     try {
       const row = await timelineCommentSource.submitFrame(project, { revisionId, frameAnchor, content, requestId }, signal)
-      setComments(previous => [row, ...previous.filter(comment => comment.commentId !== row.commentId)])
+      setComments(previous => acceptComment(previous, row, true))
       setDraft(null)
       setAcknowledged('Comment posted.')
     } catch {
@@ -171,7 +175,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
     setPending([...transitioning.current])
     setActionProblems(previous => ({ ...previous, [id]: '' }))
     const showSaved = (saved: ReviewComment) =>
-      setComments(previous => previous.map(item => item.commentId === id ? saved : item))
+      setComments(previous => acceptComment(previous, saved))
     try {
       const result = await timelineCommentSource.transitionFrame(project, row, command, signal)
       if (signal.aborted) return
@@ -231,6 +235,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
       : <p role="status">{revisionId ? 'No open frame comments for this revision.'
         : `Pin a saved revision on side ${view} to see its open comments.`}</p>)}
     {visible.length > 0 && <ul>{visible.map(row => <li key={row.commentId} data-comment-id={row.commentId}
+      data-frame-status-version={row.frameStatusVersion}
       ref={row.commentId === linkedComment?.commentId ? linkedRow : undefined}
       aria-current={row.commentId === currentId ? true : undefined}>
       <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.content}</p>

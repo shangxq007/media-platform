@@ -103,8 +103,8 @@ it('stops the old side before playing the new side and retains a seek beyond a s
 
 it('builds a same-editor URL with the comment ID and drops unrelated query data', () => {
   const url = new URL('https://example.test/w/ws/projects/project1/edit?branch=translated&token=hidden&position=44#old')
-  const link = frameCommentLink(url, 'translated', 'tfc_saved')
-  expect(link).toBe('https://example.test/w/ws/projects/project1/edit?branch=translated#frame-comment=tfc_saved')
+  const link = frameCommentLink(url, 'tfc_saved')
+  expect(link).toBe('https://example.test/w/ws/projects/project1/edit#frame-comment=tfc_saved')
   expect(frameCommentFromHash(new URL(link).hash)).toBe('tfc_saved')
   expect(frameCommentFromHash('#frame-comment=a&frame-comment=b')).toBe('')
   expect(frameCommentFromHash('#frame-comment=%2F')).toBe('')

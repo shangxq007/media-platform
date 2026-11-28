@@ -78,7 +78,6 @@ function RevisionPicker({ side, project, branches, initialBranch, pin, onPin }: 
 const pinKey = (pin: Pin | null) => pin ? JSON.stringify([pin.branch, pin.revision]) : ''
 
 const commentIdPattern = /^[A-Za-z0-9._:-]{1,64}$/
-const branchPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 
 export function frameCommentFromHash(hash: string): string | null {
   const values = new URLSearchParams(hash.slice(1)).getAll('frame-comment')
@@ -86,15 +85,10 @@ export function frameCommentFromHash(hash: string): string | null {
   return values.length === 1 && commentIdPattern.test(values[0]) ? values[0] : ''
 }
 
-export function frameCommentLink(location: Pick<Location, 'origin' | 'pathname' | 'search'>,
-                                 editingBranch: string, commentId: string): string {
+export function frameCommentLink(location: Pick<Location, 'origin' | 'pathname'>, commentId: string): string {
   const url = new URL(location.origin)
   url.pathname = location.pathname
-  // Retain only the existing editor branch selector, not comment anchor data
-  // or arbitrary query parameters. This keeps same-editor links in the document.
-  if (branchPattern.test(editingBranch) && new URLSearchParams(location.search).get('branch') === editingBranch) {
-    url.searchParams.set('branch', editingBranch)
-  }
+  // Only the saved comment record determines the branch being reviewed.
   url.hash = new URLSearchParams({ 'frame-comment': commentId }).toString()
   return url.href
 }
@@ -351,7 +345,7 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
     <ReviewComments key={project} project={project} capture={captureFrame}
       canCapture={!!duration && !outOfRange(duration)} openFrame={openFrame}
       linkedComment={linkedComment}
-      copyLink={async commentId => navigator.clipboard.writeText(frameCommentLink(window.location, editingBranch, commentId))}
+      copyLink={async commentId => navigator.clipboard.writeText(frameCommentLink(window.location, commentId))}
       pinnedRevisions={{ A: mounts.A?.pin.revision ?? null, B: mounts.B?.pin.revision ?? null }} />
   </section>
 }

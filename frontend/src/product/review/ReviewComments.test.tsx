@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ReviewComments } from './ReviewComments'
 import { timelineCommentSource, type ReviewComment, type SavedFrameComment } from '../timeline-review/api'
@@ -208,6 +208,45 @@ it('selects the linked resolved ID and does not overwrite it with an older list 
   expect(within(other).getByText('Open')).toBeDefined()
   expect((screen.getByRole('combobox', { name: 'Review comments view' }) as HTMLSelectElement).value).toBe('all')
 })
+
+it.each(['success', 'stale', 'recovery'] as const)(
+  'does not replace a linked v2 row with an older %s status response',
+  async mode => {
+    const initial = frameNote('held-note', 'rB', 'B', '73/24')
+    const older: SavedFrameComment = { ...initial, revisionId: 'rB', frameAnchor: initial.frameAnchor!,
+      threadId: 'thread', frameStatus: 'RESOLVED', frameStatusVersion: '1' }
+    const linked: SavedFrameComment = { ...older, frameStatus: 'OPEN', frameStatusVersion: '2' }
+    const newer: SavedFrameComment = { ...older, frameStatusVersion: '3' }
+    vi.spyOn(timelineCommentSource, 'list').mockResolvedValue([initial])
+    const transition = vi.spyOn(timelineCommentSource, 'transitionFrame')
+    let release!: () => void
+    const hold = new Promise<void>(resolve => { release = resolve })
+    const recover = vi.spyOn(timelineCommentSource, 'refreshFrame').mockImplementation(
+      async () => { await hold; return older },
+    )
+    if (mode === 'recovery') transition.mockRejectedValueOnce(new Error('response lost'))
+    else transition.mockImplementationOnce(async () => { await hold; return { row: older, stale: mode === 'stale' } })
+    transition.mockResolvedValueOnce({ row: newer, stale: false })
+    const comparison = (comment?: SavedFrameComment) => <ReviewComments project="project"
+      pinnedRevisions={{ A: null, B: 'rB' }} openFrame={() => {}} linkedComment={comment} />
+    const ui = render(comparison())
+    fireEvent.click(await screen.findByRole('button', { name: 'Resolve comment' }))
+    if (mode === 'recovery') await waitFor(() => expect(recover).toHaveBeenCalledTimes(1))
+    ui.rerender(comparison(linked))
+    const row = () => screen.getByText(initial.content).closest('li')!
+    await waitFor(() => expect(row().getAttribute('data-frame-status-version')).toBe('2'))
+    await act(async () => release())
+    expect(row().getAttribute('aria-current')).toBe('true')
+    expect(row().getAttribute('data-frame-status-version')).toBe('2')
+    expect(within(row()).getByText('Open')).toBeDefined()
+    const filter = screen.getByRole('combobox', { name: 'Review comments view' })
+    fireEvent.change(filter, { target: { value: 'B' } })
+    expect(row().getAttribute('aria-current')).toBe('true')
+    fireEvent.click(within(row()).getByRole('button', { name: 'Resolve comment' }))
+    expect(transition.mock.calls[1][2]).toEqual({ action: 'resolve', expectedVersion: '2' })
+    await screen.findByText('No open frame comments for this revision.')
+  },
+)
 
 it('reports copy success only once the clipboard write succeeds and reports rejection', async () => {
   const note = frameNote('share-me', 'rB', 'B', '73/24')

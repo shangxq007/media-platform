@@ -181,6 +181,12 @@ export function NlePage() {
   return <ProjectFrame surfaceId="nle"><EditingBranchWorkspace /></ProjectFrame>
 }
 
+type EditorNavigateEvent = Event & {
+  canIntercept: boolean
+  destination: { url: string }
+  navigationType: 'push' | 'replace' | 'reload' | 'traverse'
+}
+
 function EditingBranchWorkspace() {
   const project = useProjectContext()
   return <ProjectEditingBranches key={JSON.stringify([project.tenantId, project.projectId])} />
@@ -229,10 +235,25 @@ export function NleWorkspace({
   useEffect(() => {
     if (!hasEditorRoute) return
     const onLocation = () => setLinkHash(window.location.hash)
+    const navigation = (window as Window & { navigation?: EventTarget }).navigation
+    const onNavigate = (raw: Event) => {
+      const event = raw as EditorNavigateEvent
+      if (!event.canIntercept || !event.cancelable || (event.navigationType !== 'push' && event.navigationType !== 'replace')) return
+      const current = new URL(window.location.href)
+      const target = new URL(event.destination.url)
+      if (target.origin !== current.origin || target.pathname !== current.pathname || target.search === current.search
+        || frameCommentFromHash(target.hash) === null) return
+      // Keep the recipient's branch selector when an in-page link would change the query.
+      event.preventDefault()
+      current.hash = target.hash
+      queueMicrotask(() => event.navigationType === 'replace' ? window.location.replace(current) : window.location.assign(current))
+    }
+    navigation?.addEventListener('navigate', onNavigate)
     window.addEventListener('hashchange', onLocation)
     window.addEventListener('popstate', onLocation)
     onLocation()
     return () => {
+      navigation?.removeEventListener('navigate', onNavigate)
       window.removeEventListener('hashchange', onLocation)
       window.removeEventListener('popstate', onLocation)
     }
