@@ -105,6 +105,13 @@ public class TimelineCommentService implements TimelineComments {
     }
 
     @Override
+    public Optional<CommentRow> findFrameComment(String projectId, String commentId) {
+        var actor = auth.require(projectId, false);
+        return reviewRepository.findOwnedComment(projectId, actor.tenantId(), commentId)
+                .filter(row -> row.frameAnchor() != null);
+    }
+
+    @Override
     @Transactional
     public Optional<FrameCommentTransition> transitionFrameComment(String projectId, String commentId,
                                                                   FrameCommentStatus status, String expectedVersion) {

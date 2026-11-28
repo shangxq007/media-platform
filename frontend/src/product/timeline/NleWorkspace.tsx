@@ -36,7 +36,8 @@ import { projectSnapshotJson, timelineEnd, type ProjectedTrack } from './timelin
 import { add, formatRational, parseRational, toSeconds } from './trim'
 import { NleRenderPanel } from './NleRenderPanel'
 import { TimelineMediaPreview } from './TimelineMediaPreview'
-import { RevisionComparison, readRevisionComparison, saveRevisionComparison } from './RevisionComparison'
+import { RevisionComparison, frameCommentFromHash, readRevisionComparison, saveRevisionComparison } from './RevisionComparison'
+import { timelineCommentSource, type SavedFrameComment } from '../timeline-review/api'
 import { RestoreRevisionControl } from './RestoreRevisionControl'
 import { useTrimHistory } from './useTrimHistory'
 import { CreateEditingBranch } from './CreateEditingBranch'
@@ -220,6 +221,56 @@ export function NleWorkspace({
   const defaultBranch = editingBranch === 'main'
   const reviewKey = JSON.stringify(['revision-comparison', project.tenantId, project.projectId])
   const [reviewing, setReviewing] = useState(() => !!onSwitchBranch && readRevisionComparison(reviewKey).open)
+  const [linkHash, setLinkHash] = useState(() => window.location.hash)
+  const [linkedComment, setLinkedComment] = useState<SavedFrameComment | null>(null)
+  const [linkMessage, setLinkMessage] = useState('')
+  const hasEditorRoute = !!onSwitchBranch
+
+  useEffect(() => {
+    if (!hasEditorRoute) return
+    const onLocation = () => setLinkHash(window.location.hash)
+    window.addEventListener('hashchange', onLocation)
+    window.addEventListener('popstate', onLocation)
+    onLocation()
+    return () => {
+      window.removeEventListener('hashchange', onLocation)
+      window.removeEventListener('popstate', onLocation)
+    }
+  }, [hasEditorRoute])
+
+  useEffect(() => {
+    if (!hasEditorRoute) return
+    const id = frameCommentFromHash(linkHash)
+    setLinkMessage('')
+    if (id === null) {
+      setLinkedComment(null)
+      return
+    }
+    const unavailable = 'The linked frame comment is unavailable in this project.'
+    if (!id) {
+      setLinkMessage(unavailable)
+      return
+    }
+    const controller = new AbortController()
+    const current = () => !controller.signal.aborted && window.location.hash === linkHash
+    void timelineCommentSource.readFrame(project.projectId, id, controller.signal).then(comment => {
+      if (!current()) return
+      setLinkedComment(comment)
+      setReviewing(true)
+    }, () => { if (current()) setLinkMessage(unavailable) })
+    return () => controller.abort()
+  }, [hasEditorRoute, project.projectId, project.tenantId, linkHash])
+
+  function closeReview() {
+    if (frameCommentFromHash(window.location.hash) !== null) {
+      const url = new URL(window.location.href)
+      url.hash = ''
+      window.history.replaceState(window.history.state, '', url)
+      setLinkHash('')
+    }
+    setLinkedComment(null)
+    setReviewing(false)
+  }
 
   useEffect(() => {
     if (!onSwitchBranch) return
@@ -628,13 +679,14 @@ export function NleWorkspace({
       <PageHeading eyebrow="Creative · NLE" title="Timeline editor" description="One canonical Timeline core with explicit server HEAD, read-only revision queries, and preview-before-apply operations." />
       {loading ? <Skeleton label="Loading canonical Timeline HEAD" /> : null}
       <EditorPhaseNotice phase={state.phase} readbackRetrying={readbackRetrying} onRetryReadback={() => void retryAuthoritativeReadback()} />
+      {linkMessage && <p role="alert">{linkMessage}</p>}
       {onSwitchBranch && !reviewing && <Button type="button" disabled={switchLocked || selectionPending || !editingHead}
         onClick={() => {
           saveRevisionComparison(reviewKey, { ...readRevisionComparison(reviewKey), open: true })
           setReviewing(true)
         }}>Compare saved revisions</Button>}
       {reviewing && <RevisionComparison project={project.projectId} tenant={project.tenantId} editingBranch={editingBranch}
-        preferenceScope={reviewKey} onClose={() => setReviewing(false)} />}
+        preferenceScope={reviewKey} linkedComment={linkedComment} onClose={closeReview} />}
       <div className="ff-nle-layout" inert={reviewing} style={{ display: reviewing ? 'none' : undefined }}>
         <Panel title="Canonical revision authority" actions={<Button onClick={() => void loadHead()} disabled={loading || revisionSelectionLocked}>Reload HEAD</Button>}>
           {state.server.head ? <div className="ff-head-identity"><Status label={`${historyRevision ? "Editing head" : "Viewing editing head"} · ${editingBranch}`} tone="success" /><PropertyRow label="Revision"><code>{state.server.head.revisionId}</code></PropertyRow><PropertyRow label="Content hash"><code>{state.server.head.contentHash}</code></PropertyRow></div> : <>

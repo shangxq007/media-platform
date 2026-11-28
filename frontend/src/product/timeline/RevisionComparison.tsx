@@ -3,7 +3,7 @@ import { listEditingBranches, readEditingBranch } from '../../api/app/timeline-q
 import { Button, Panel } from '../../components/design-system'
 import type { RevisionListEntry } from './gateways'
 import { ReviewComments } from '../review/ReviewComments'
-import type { FrameCommentDraft } from '../timeline-review/api'
+import type { FrameCommentDraft, SavedFrameComment } from '../timeline-review/api'
 import { TimelineMediaPreview, type PreviewTransport } from './TimelineMediaPreview'
 import { decimalCursor } from './timeline-preview'
 import { compare, formatRational, parseRational, toSeconds, ZERO, type Rational } from './trim'
@@ -77,8 +77,31 @@ function RevisionPicker({ side, project, branches, initialBranch, pin, onPin }: 
 
 const pinKey = (pin: Pin | null) => pin ? JSON.stringify([pin.branch, pin.revision]) : ''
 
-export function RevisionComparison({ project, tenant, editingBranch, preferenceScope, onClose }: {
+const commentIdPattern = /^[A-Za-z0-9._:-]{1,64}$/
+const branchPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+
+export function frameCommentFromHash(hash: string): string | null {
+  const values = new URLSearchParams(hash.slice(1)).getAll('frame-comment')
+  if (!values.length) return null
+  return values.length === 1 && commentIdPattern.test(values[0]) ? values[0] : ''
+}
+
+export function frameCommentLink(location: Pick<Location, 'origin' | 'pathname' | 'search'>,
+                                 editingBranch: string, commentId: string): string {
+  const url = new URL(location.origin)
+  url.pathname = location.pathname
+  // Retain only the existing editor branch selector, not comment anchor data
+  // or arbitrary query parameters. This keeps same-editor links in the document.
+  if (branchPattern.test(editingBranch) && new URLSearchParams(location.search).get('branch') === editingBranch) {
+    url.searchParams.set('branch', editingBranch)
+  }
+  url.hash = new URLSearchParams({ 'frame-comment': commentId }).toString()
+  return url.href
+}
+
+export function RevisionComparison({ project, tenant, editingBranch, preferenceScope, onClose, linkedComment }: {
   project: string; tenant: string | null; editingBranch: string; preferenceScope: string; onClose(): void
+  linkedComment?: SavedFrameComment | null
 }) {
   const [initial] = useState(() => readRevisionComparison(preferenceScope))
   const [mounts, setMounts] = useState<Mounts>(() => ({
@@ -91,6 +114,7 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
   const active = useRef(selected)
   const [position, setPosition] = useState(() => parseRational(initial.position) ?? ZERO)
   const cursor = useRef(position)
+  const appliedCommentLink = useRef<SavedFrameComment | null>(null)
   const [playback, setPlayback] = useState<Playback>('paused')
   const wantsPlayback = useRef(false)
   const running = useRef<Mount | null>(null)
@@ -247,6 +271,12 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
     persist()
   }
 
+  useEffect(() => {
+    if (!linkedComment || appliedCommentLink.current === linkedComment) return
+    appliedCommentLink.current = linkedComment
+    openFrame(linkedComment)
+  }, [linkedComment, openFrame])
+
   const exactTarget = exact.length <= 64 ? parseRational(exact) ?? decimalCursor(exact) : null
   const canSeek = exactTarget && compare(exactTarget, ZERO) >= 0 && compare(exactTarget, maximum) <= 0 && ends.length > 0
   return <section aria-label="Revision comparison" data-review-side={selected}
@@ -320,6 +350,8 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
     </Panel>
     <ReviewComments key={project} project={project} capture={captureFrame}
       canCapture={!!duration && !outOfRange(duration)} openFrame={openFrame}
+      linkedComment={linkedComment}
+      copyLink={async commentId => navigator.clipboard.writeText(frameCommentLink(window.location, editingBranch, commentId))}
       pinnedRevisions={{ A: mounts.A?.pin.revision ?? null, B: mounts.B?.pin.revision ?? null }} />
   </section>
 }

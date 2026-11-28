@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ReviewComments } from './ReviewComments'
-import { timelineCommentSource, type ReviewComment } from '../timeline-review/api'
+import { timelineCommentSource, type ReviewComment, type SavedFrameComment } from '../timeline-review/api'
 
 const legacy: ReviewComment = { commentId:'old', reviewId:'review',threadId:null,revisionId:'r1',entityRef:null,
   authorUserId:'author',content:'Legacy note',createdAt:null }
@@ -190,4 +190,40 @@ it('navigates distinct same-frame IDs and recovers selection after a saved or st
   expect(transition.mock.calls.map(call => call[1].commentId)).toEqual([first.commentId, second.commentId, adjacent.commentId])
   fireEvent.change(filter, { target: { value: 'all' } })
   expect(screen.getAllByText('Resolved')).toHaveLength(3)
+})
+
+it('selects the linked resolved ID and does not overwrite it with an older list response', async () => {
+  const first = frameNote('first-note', 'rB', 'B', '73/24')
+  const second = frameNote('second-note', 'rB', 'B', '73/24')
+  const linked: SavedFrameComment = { ...second, revisionId: 'rB', frameAnchor: second.frameAnchor!,
+    frameStatus: 'RESOLVED', frameStatusVersion: '1' }
+  vi.spyOn(timelineCommentSource, 'list').mockResolvedValue([first, second])
+  render(<ReviewComments project="project" pinnedRevisions={{ A: null, B: 'rB' }}
+    openFrame={vi.fn()} linkedComment={linked} />)
+  const other = (await screen.findByText(first.content)).closest('li')!
+  const selected = screen.getByText(second.content).closest('li')!
+  expect(selected.getAttribute('aria-current')).toBe('true')
+  expect(other.getAttribute('aria-current')).toBeNull()
+  expect(within(selected).getByText('Resolved')).toBeDefined()
+  expect(within(other).getByText('Open')).toBeDefined()
+  expect((screen.getByRole('combobox', { name: 'Review comments view' }) as HTMLSelectElement).value).toBe('all')
+})
+
+it('reports copy success only once the clipboard write succeeds and reports rejection', async () => {
+  const note = frameNote('share-me', 'rB', 'B', '73/24')
+  vi.spyOn(timelineCommentSource, 'list').mockResolvedValue([note, legacy])
+  let finish!: () => void
+  const copyLink = vi.fn()
+    .mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve }))
+    .mockRejectedValueOnce(new Error('clipboard unavailable'))
+  render(<ReviewComments project="project" copyLink={copyLink} />)
+  const button = await screen.findByRole('button', { name: 'Copy comment link' })
+  fireEvent.click(button)
+  expect(copyLink).toHaveBeenLastCalledWith(note.commentId)
+  expect(screen.queryByText('Comment link copied.')).toBeNull()
+  finish()
+  await screen.findByText('Comment link copied.')
+  fireEvent.click(button)
+  await screen.findByText('Could not copy the comment link.')
+  expect(screen.queryByText('Comment link copied.')).toBeNull()
 })

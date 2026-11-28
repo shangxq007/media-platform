@@ -28,6 +28,10 @@ const ReviewComment = z.object({ commentId: id, reviewId: id, threadId: text, re
   frameStatusVersion: z.string().regex(/^(0|[1-9][0-9]{0,18})$/).optional() }).strict()
 export type ReviewComment = z.infer<typeof ReviewComment>
 export type FrameCommentDraft = { revisionId: string; frameAnchor: FrameAnchor }
+export type SavedFrameComment = ReviewComment & FrameCommentDraft & {
+  frameStatus: 'OPEN' | 'RESOLVED'
+  frameStatusVersion: string
+}
 export type FrameCommentWrite = FrameCommentDraft & { content: string; requestId: string }
 export type FrameStatusAction = { action: 'resolve' | 'reopen'; expectedVersion: string }
 
@@ -88,6 +92,13 @@ export const timelineCommentSource = {
     const rows = ReviewComment.array().parse(await get(`${path(project)}/reviews/comments`, signal))
     unique(rows.map(row => row.commentId))
     return rows
+  },
+  async readFrame(project: string, commentId: string, signal: AbortSignal): Promise<SavedFrameComment> {
+    const row = ReviewComment.parse(await get(`${path(project)}/reviews/comments/${part(commentId)}/frame`, signal))
+    if (row.commentId !== commentId || !row.revisionId || !row.frameAnchor || !row.frameStatus
+      || row.frameStatusVersion === undefined) throw new Error('Saved frame comment identity mismatch')
+    return { ...row, revisionId: row.revisionId, frameAnchor: row.frameAnchor,
+      frameStatus: row.frameStatus, frameStatusVersion: row.frameStatusVersion }
   },
   async submitFrame(project: string, body: FrameCommentWrite, signal: AbortSignal) {
     const { data } = await api.post(`${path(project)}/reviews/comments`, body, { baseURL: '', signal })

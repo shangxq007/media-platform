@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Button, Panel } from '../../components/design-system'
 import { compare, parseRational, type Rational } from '../timeline/trim'
-import { timelineCommentSource, type FrameCommentDraft, type FrameCommentWrite, type FrameStatusAction, type ReviewComment } from '../timeline-review/api'
+import { timelineCommentSource, type FrameCommentDraft, type FrameCommentWrite, type FrameStatusAction, type ReviewComment, type SavedFrameComment } from '../timeline-review/api'
 
 type Side = FrameCommentDraft['frameAnchor']['side']
 type View = 'all' | Side
@@ -14,12 +14,21 @@ function compareComments(a: LocatedComment, b: LocatedComment) {
   return a.row.commentId < b.row.commentId ? -1 : a.row.commentId > b.row.commentId ? 1 : 0
 }
 
-export function ReviewComments({ project, capture, openFrame, canCapture, pinnedRevisions }: {
+function newestStatus(previous: ReviewComment | undefined, incoming: ReviewComment) {
+  const before = previous?.frameStatusVersion
+  const next = incoming.frameStatusVersion
+  // A delayed list or link read must not undo a newer status receipt.
+  return previous && before !== undefined && (next === undefined || BigInt(before) > BigInt(next)) ? previous : incoming
+}
+
+export function ReviewComments({ project, capture, openFrame, canCapture, pinnedRevisions, linkedComment, copyLink }: {
   project: string
   capture?: () => FrameCommentDraft | null
   openFrame?: (target: FrameCommentDraft) => void
   canCapture?: boolean
   pinnedRevisions?: Record<Side, string | null>
+  linkedComment?: SavedFrameComment | null
+  copyLink?: (id: string) => Promise<void>
 }) {
   const lifetime = useRef<AbortController | null>(null)
   const inFlight = useRef(false)
@@ -27,7 +36,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
   const [pending, setPending] = useState<string[]>([])
   const [actionProblems, setActionProblems] = useState<Record<string, string>>({})
   const [uncertainActions, setUncertainActions] = useState<Record<string, FrameStatusAction | undefined>>({})
-  const [comments, setComments] = useState<ReviewComment[]>([])
+  const [comments, setComments] = useState<ReviewComment[]>(() => linkedComment ? [linkedComment] : [])
   const [problem, setProblem] = useState('')
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState<(FrameCommentWrite & { issued: boolean }) | null>(null)
@@ -36,7 +45,10 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
   const [acknowledged, setAcknowledged] = useState('')
   const [reload, setReload] = useState(0)
   const [view, setView] = useState<View>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() => linkedComment?.commentId ?? null)
+  const linkedRow = useRef<HTMLLIElement | null>(null)
+  const copyAttempt = useRef(0)
+  const [copyFeedback, setCopyFeedback] = useState<{ ok: boolean; text: string } | null>(null)
   const revisionId = view === 'all' ? null : pinnedRevisions?.[view] ?? null
   const located = useMemo(() => comments.flatMap(row => {
     if (!revisionId || row.revisionId !== revisionId || !row.frameAnchor) return []
@@ -48,7 +60,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
   const selected = remembered?.row.frameStatus === 'OPEN' ? remembered
     : remembered ? outstanding.find(item => compareComments(item, remembered) > 0) ?? outstanding[outstanding.length - 1]
     : outstanding[0]
-  const currentId = selected?.row.commentId ?? null
+  const currentId = view === 'all' ? selectedId : selected?.row.commentId ?? null
   const index = selected ? outstanding.indexOf(selected) : -1
   const visible = view === 'all' ? comments : outstanding.map(item => item.row)
 
@@ -62,8 +74,37 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
 
   function open(row: ReviewComment) {
     if (!row.revisionId || !row.frameAnchor) return
-    if (view !== 'all') setSelectedId(row.commentId)
+    setSelectedId(row.commentId)
     openFrame?.({ revisionId: row.revisionId, frameAnchor: row.frameAnchor })
+  }
+
+  useEffect(() => {
+    if (!linkedComment) return
+    setComments(previous => {
+      const existing = previous.find(row => row.commentId === linkedComment.commentId)
+      if (!existing) return [linkedComment, ...previous]
+      return previous.map(row => row === existing ? newestStatus(row, linkedComment) : row)
+    })
+    setView('all')
+    setSelectedId(linkedComment.commentId)
+  }, [linkedComment])
+
+  useEffect(() => {
+    if (linkedComment && view === 'all' && selectedId === linkedComment.commentId) {
+      linkedRow.current?.scrollIntoView?.({ block: 'nearest' })
+    }
+  }, [linkedComment, selectedId, view])
+
+  async function copy(id: string) {
+    if (!copyLink) return
+    const attempt = ++copyAttempt.current
+    setCopyFeedback(null)
+    try {
+      await copyLink(id)
+      if (copyAttempt.current === attempt) setCopyFeedback({ ok: true, text: 'Comment link copied.' })
+    } catch {
+      if (copyAttempt.current === attempt) setCopyFeedback({ ok: false, text: 'Could not copy the comment link.' })
+    }
   }
 
   useEffect(() => {
@@ -75,7 +116,10 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
       if (!signal.signal.aborted) setComments(previous => {
         const indexed = new Map(rows.map(row => [row.commentId, row]))
         // A list initiated before a confirmed Post must not erase that receipt.
-        for (const row of previous) if (!indexed.has(row.commentId)) indexed.set(row.commentId, row)
+        for (const row of previous) {
+          const listed = indexed.get(row.commentId)
+          indexed.set(row.commentId, listed ? newestStatus(row, listed) : row)
+        }
         return [...indexed.values()]
       })
     }, () => { if (!signal.signal.aborted) setProblem('Review comments could not be read.') })
@@ -176,6 +220,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
       {postProblem && <p role="alert">{postProblem}</p>}
     </form>}
     {acknowledged && <p role="status">{acknowledged}</p>}
+    {copyFeedback && <p role={copyFeedback.ok ? 'status' : 'alert'}>{copyFeedback.text}</p>}
     {loading && <p role="status">Loading review comments…</p>}
     {problem && <p role="alert">{problem} <Button type="button" disabled={sending || pending.length > 0}
       onClick={() => setReload(value => value + 1)}>Retry loading comments</Button></p>}
@@ -183,13 +228,15 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
       : <p role="status">{revisionId ? 'No open frame comments for this revision.'
         : `Pin a saved revision on side ${view} to see its open comments.`}</p>)}
     {visible.length > 0 && <ul>{visible.map(row => <li key={row.commentId} data-comment-id={row.commentId}
-      aria-current={view !== 'all' && row.commentId === currentId ? true : undefined}>
+      ref={row.commentId === linkedComment?.commentId ? linkedRow : undefined}
+      aria-current={row.commentId === currentId ? true : undefined}>
       <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.content}</p>
-      {view !== 'all' && row.commentId === currentId && <p><Badge tone="info">Selected comment</Badge></p>}
+      {row.commentId === currentId && <p><Badge tone="info">Selected comment</Badge></p>}
       {row.frameAnchor && row.revisionId ? <>
         <p>Side {row.frameAnchor.side} · {row.frameAnchor.branch} · <code>{row.revisionId}</code> · {row.frameAnchor.position} s</p>
         {row.frameStatus && <p role="status" aria-label="Frame comment status">{row.frameStatus === 'RESOLVED' ? 'Resolved' : 'Open'}</p>}
         {openFrame && <Button type="button" onClick={() => open(row)}>Open saved frame</Button>}{' '}
+        {copyLink && <Button type="button" onClick={() => void copy(row.commentId)}>Copy comment link</Button>}{' '}
         {openFrame && row.frameStatus && row.frameStatusVersion !== undefined
           && <Button type="button" disabled={loading || pending.includes(row.commentId)}
           onClick={() => void changeStatus(row)}>{row.frameStatus === 'RESOLVED' ? 'Reopen comment' : 'Resolve comment'}</Button>}

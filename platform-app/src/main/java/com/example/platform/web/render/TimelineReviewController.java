@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -89,6 +90,16 @@ public class TimelineReviewController {
     public List<CommentResponse> listProjectComments(@PathVariable String projectId) {
         projectAuthorization.requireRead(TenantContext.get(), projectId);
         return commentService.listProjectComments(projectId).stream().map(TimelineReviewController::toCommentResponse).toList();
+    }
+
+    @GetMapping("/comments/{commentId}/frame")
+    @Operation(summary = "Read one saved frame comment in the authorized project")
+    public ResponseEntity<CommentResponse> getFrameComment(@PathVariable String projectId, @PathVariable String commentId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
+        var found = commentService.findFrameComment(projectId, commentId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "frame comment not found in project"));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(toCommentResponse(found));
     }
 
     @PostMapping("/comments")

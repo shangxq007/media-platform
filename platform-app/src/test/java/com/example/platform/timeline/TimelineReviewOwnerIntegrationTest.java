@@ -316,6 +316,30 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
       +" and event_type='timeline.review.thread.resolved'",Long.class,thread);
  }
 
+ @Test void linkedFrameReadUsesCurrentStatusAndDoesNotModifyReviewOrTimelineData() {
+  var review=create();
+  var id="link-"+UUID.randomUUID();
+  var comments=context.getBean(TimelineComments.class);
+  jdbc.update("insert into timeline.timeline_comment(id,review_id,revision_id,entity_ref,author_user_id,content,created_at)"
+      +" values (?,?,'project-revision','FRAME.v1|B|alternate|73/24','server-actor','linked note',now())",id,review);
+  var legacy=comments.addComment(review,"project-revision",null,null,"server-actor","legacy note");
+  assertTrue(comments.findFrameComment("project",legacy.commentId()).isEmpty());
+  assertEquals(OPEN,comments.findFrameComment("project",id).orElseThrow().frameStatus());
+  var resolved=comments.transitionFrameComment("project",id,RESOLVED,"0").orElseThrow().current();
+  var tables=List.of("timeline.timeline_review","timeline.timeline_comment","timeline.review_thread",
+      "infrastructure.outbox_events","timeline.timeline_revision","timeline.apply_command");
+  var before=tables.stream().map(this::count).toList();
+  actor.set("another-reviewer");
+  var read=comments.findFrameComment("project",id).orElseThrow();
+  assertEquals(resolved,read);
+  assertEquals("73/24",read.frameAnchor().position());
+  assertTrue(comments.findFrameComment("other",id).isEmpty());
+  denied=true;
+  assertThrows(org.springframework.web.server.ResponseStatusException.class,()->comments.findFrameComment("project",id));
+  denied=false;
+  assertEquals(before,tables.stream().map(this::count).toList());
+ }
+
  @Test void retiredAndMalformedDurableTimelineInputsAreExplicitlyDeadLettered()throws Exception {
   String review=create();context.getBean(TimelineReviews.class).approve(review,"server-actor");
   long audits=count("policy.audit_records"),notifications=count("notification.notification_event");int n=0;

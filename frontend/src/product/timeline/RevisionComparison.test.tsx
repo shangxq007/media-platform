@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { RevisionComparison, readRevisionComparison, saveRevisionComparison } from './RevisionComparison'
+import { RevisionComparison, frameCommentFromHash, frameCommentLink, readRevisionComparison, saveRevisionComparison } from './RevisionComparison'
+import { timelineCommentSource, type SavedFrameComment } from '../timeline-review/api'
 import { formatRational, type Rational, ZERO } from './trim'
 
 const mocks = vi.hoisted(() => ({
@@ -98,4 +99,36 @@ it('stops the old side before playing the new side and retains a seek beyond a s
   expect(within(panel).getByText('Preview main-1').closest('[hidden]')).toBeNull()
   expect(panel.getAttribute('data-review-position')).toBe('4/1')
   await waitFor(() => expect(mocks.events[mocks.events.length-1]).toBe('seek main-1 4/1'))
+})
+
+it('builds a same-editor URL with the comment ID and drops unrelated query data', () => {
+  const url = new URL('https://example.test/w/ws/projects/project1/edit?branch=translated&token=hidden&position=44#old')
+  const link = frameCommentLink(url, 'translated', 'tfc_saved')
+  expect(link).toBe('https://example.test/w/ws/projects/project1/edit?branch=translated#frame-comment=tfc_saved')
+  expect(frameCommentFromHash(new URL(link).hash)).toBe('tfc_saved')
+  expect(frameCommentFromHash('#frame-comment=a&frame-comment=b')).toBe('')
+  expect(frameCommentFromHash('#frame-comment=%2F')).toBe('')
+  expect(frameCommentFromHash('#other-fragment')).toBeNull()
+})
+
+it('opens a linked resolved frame exactly without requiring any previous pins', async () => {
+  sessionStorage.clear()
+  const linked: SavedFrameComment = { commentId:'tfc_saved', reviewId:'review', threadId:'thread',
+    revisionId:'translation-1', entityRef:null, authorUserId:null, content:'Second note', createdAt:null,
+    frameAnchor:{side:'B',branch:'translated',position:'73/24'}, frameStatus:'RESOLVED', frameStatusVersion:'1' }
+  const list = vi.spyOn(timelineCommentSource, 'list').mockResolvedValue([])
+  try {
+    render(<RevisionComparison project="project1" tenant="tenant1" editingBranch="main"
+      preferenceScope={preferenceScope} onClose={() => {}} linkedComment={linked} />)
+    const panel = screen.getByRole('region', {name:'Revision comparison'})
+    await within(panel).findByText('Preview translation-1')
+    finish('translation-1')
+    expect(panel.getAttribute('data-review-side')).toBe('B')
+    expect(panel.getAttribute('data-review-position')).toBe('73/24')
+    expect(mocks.events).toContain('seek translation-1 73/24')
+    expect(mocks.events.some(event => event.startsWith('play '))).toBe(false)
+    expect(readRevisionComparison(preferenceScope).pins.A).toBeNull()
+    expect(screen.getByText('Second note').closest('li')?.getAttribute('aria-current')).toBe('true')
+    expect(screen.getByText('Resolved')).toBeDefined()
+  } finally { list.mockRestore() }
 })

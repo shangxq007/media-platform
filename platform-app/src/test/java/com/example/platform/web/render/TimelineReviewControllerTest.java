@@ -87,6 +87,40 @@ class TimelineReviewControllerTest {
     }
 
     @Test
+    void readsOneFrameCommentWithProjectReadAndNoCaching() {
+        var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
+                com.example.platform.timeline.api.review.ReviewFrameAnchor.Side.B, "alternate", "73/24");
+        var row = new ReviewRecords.CommentRow("comment", "rvw_1", "thread", "saved-revision", null,
+                "user_1", "note", OffsetDateTime.now(), anchor, ReviewRecords.FrameCommentStatus.RESOLVED, "1");
+        when(commentService.findFrameComment("proj_1", "comment")).thenReturn(Optional.of(row));
+        var response = controller.getFrameComment("proj_1", "comment");
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("no-store", response.getHeaders().getCacheControl());
+        assertEquals("comment", response.getBody().commentId());
+        assertEquals("saved-revision", response.getBody().revisionId());
+        assertEquals(anchor, response.getBody().frameAnchor());
+        assertEquals(ReviewRecords.FrameCommentStatus.RESOLVED, response.getBody().frameStatus());
+        var calls = inOrder(projectAuthorization, commentService);
+        calls.verify(projectAuthorization).requireRead(null, "proj_1");
+        calls.verify(commentService).findFrameComment("proj_1", "comment");
+        verifyNoMoreInteractions(projectAuthorization, commentService);
+    }
+
+    @Test
+    void anUnavailableFrameLinkDoesNotReturnDetails() {
+        when(commentService.findFrameComment("proj_1", "other")).thenReturn(Optional.empty());
+        var missing = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controller.getFrameComment("proj_1", "other"));
+        assertEquals(HttpStatus.NOT_FOUND, missing.getStatusCode());
+        when(projectAuthorization.requireRead(null, "private")).thenThrow(
+                new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN));
+        var denied = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controller.getFrameComment("private", "comment"));
+        assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode());
+        verify(commentService, never()).findFrameComment("private", "comment");
+    }
+
+    @Test
     void frameActionsUseProjectWritePermissionAndTheCommentIdentity() {
         var status = ReviewRecords.FrameCommentStatus.RESOLVED;
         var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
