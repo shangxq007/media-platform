@@ -82,7 +82,7 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
     } catch {
       if (!signal.aborted) setActionProblems(previous => ({ ...previous, [id]: `Could not ${action} this comment.` }))
     } finally {
-      transitioning.current.delete(id)
+      transitioning.current = new Set([...transitioning.current].filter(commentId => commentId !== id))
       if (!signal.aborted) setPending([...transitioning.current])
     }
   }
