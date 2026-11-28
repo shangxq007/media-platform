@@ -635,7 +635,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 .toPlainString();
     }
 
-    private static String seconds(MediaTime time) {
+    static String seconds(MediaTime time) {
         Objects.requireNonNull(time, "time");
         return BigDecimal.valueOf(time.ticks())
                 .divide(BigDecimal.valueOf(time.timeScale()), 9, RoundingMode.HALF_UP)

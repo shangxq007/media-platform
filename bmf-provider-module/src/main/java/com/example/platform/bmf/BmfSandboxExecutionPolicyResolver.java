@@ -347,6 +347,10 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
             var top = new java.math.BigDecimal(parts[13]);
             var bottom = new java.math.BigDecimal(parts[14]);
             String[] fx = parts[16].split(";", -1);
+            if (fx.length == 11 || fx.length == 15) {
+                if (!parts[0].equals("V") || !validWipeTiming(fx[fx.length - 1], parts[1], parts[2], fx)) return false;
+                fx = java.util.Arrays.copyOf(fx, fx.length - 1);
+            }
             if ((fx.length != 10 && fx.length != 14) || !isNonNegativeSeconds(fx[7])
                     || !isNonNegativeSeconds(fx[8]) || !isNonNegativeSeconds(fx[9])
                     || new java.math.BigDecimal(fx[8]).signum() <= 0) return false;
@@ -389,6 +393,28 @@ public final class BmfSandboxExecutionPolicyResolver implements SandboxExecution
                     && (parts[0].equals("A") || BmfCpuTranscodePlan.VideoPlacement.fitsIntermediateRaster(
                             raster, scaleX.doubleValue(), scaleY.doubleValue(), degrees.doubleValue()));
         } catch (NumberFormatException invalid) {
+            return false;
+        }
+    }
+
+    private static boolean validWipeTiming(String token, String placedStart, String placedEnd, String[] fx) {
+        String time = "(?:0|[0-9]{1,19}/[1-9][0-9]{0,18})";
+        if (token.length() > 170 || !token.matches("wipe=" + time + "(?:\\|" + time + "){3}")) return false;
+        try {
+            var fields = token.substring(5).split("\\|");
+            var start = com.example.platform.shared.time.MediaTime.parse(fields[0]);
+            var end = com.example.platform.shared.time.MediaTime.parse(fields[1]);
+            var elapsed = com.example.platform.shared.time.MediaTime.parse(fields[2]);
+            var length = com.example.platform.shared.time.MediaTime.parse(fields[3]);
+            var authored = new BigDecimal(fx[8]);
+            return start.isLessThan(end) && length.ticks() > 0
+                    && BmfCpuRuntimeAdapter.seconds(start).equals(placedStart)
+                    && BmfCpuRuntimeAdapter.seconds(end).equals(placedEnd)
+                    && BmfCpuRuntimeAdapter.seconds(elapsed).equals(fx[7])
+                    && BmfCpuRuntimeAdapter.seconds(length).equals(fx[9])
+                    && new BigDecimal(fx[9]).compareTo(authored) <= 0
+                    && new BigDecimal(BmfCpuRuntimeAdapter.seconds(elapsed.add(end.subtract(start)))).compareTo(authored) <= 0;
+        } catch (IllegalArgumentException | ArithmeticException invalid) {
             return false;
         }
     }
