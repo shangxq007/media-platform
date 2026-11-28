@@ -7,7 +7,7 @@ public final class ReviewRecords { private ReviewRecords() {}
 
     public record CommentRow(String id, String reviewId, String threadId, String revisionId,
                                String entityRef, String authorUserId, String content,
-                               OffsetDateTime createdAt) {}
+                               OffsetDateTime createdAt, ReviewFrameAnchor frameAnchor) {}
 
     public record ThreadRow(String id, String reviewId, String entityRef, String diffId,
                               String status, OffsetDateTime createdAt) {}

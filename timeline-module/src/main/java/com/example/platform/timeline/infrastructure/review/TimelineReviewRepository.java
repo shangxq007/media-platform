@@ -1,4 +1,5 @@
 package com.example.platform.timeline.infrastructure.review;
+import com.example.platform.timeline.api.review.ReviewFrameAnchor;
 import com.example.platform.timeline.api.review.ReviewRecords.*;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,10 @@ import static com.example.platform.typedschema.jooq.generated.timeline.tables.Ti
 @Repository
 public class TimelineReviewRepository {
 
+    // entity_ref already holds tagged review targets. Frame targets are disjoint
+    // from the legacy EntityRef grammar and are never projected as entity IDs.
+    private static final String FRAME_PREFIX = "FRAME.v1|";
+
     private final DSLContext dsl;
 
     public TimelineReviewRepository(DSLContext dsl) {
@@ -25,16 +30,26 @@ public class TimelineReviewRepository {
     }
 
     public void insertReview(String id, String projectId, String tenantId, String revisionId,
-                               String authorUserId, String title, String description,
-                               String status, OffsetDateTime now) {
-        dsl.insertInto(TIMELINE_REVIEW)
+                             String authorUserId, String title, String description, String status, OffsetDateTime now) {
+        reviewInsert(id, projectId, tenantId, revisionId, authorUserId, title, description, status, now).execute();
+    }
+
+    public boolean insertFrameReviewIfAbsent(String id, String projectId, String tenantId, String revisionId,
+                                             String authorUserId, OffsetDateTime now) {
+        return reviewInsert(id, projectId, tenantId, revisionId, authorUserId, "Frame comments", null, "OPEN", now)
+                .onConflictDoNothing().execute() == 1;
+    }
+
+    private org.jooq.InsertOnDuplicateStep<com.example.platform.typedschema.jooq.generated.timeline.tables.records.TimelineReviewRecord>
+            reviewInsert(String id, String projectId, String tenantId, String revisionId, String authorUserId,
+                         String title, String description, String status, OffsetDateTime now) {
+        return dsl.insertInto(TIMELINE_REVIEW)
                 .columns(TIMELINE_REVIEW.ID, TIMELINE_REVIEW.PROJECT_ID, TIMELINE_REVIEW.TENANT_ID,
                         TIMELINE_REVIEW.REVISION_ID, TIMELINE_REVIEW.TARGET_TYPE, TIMELINE_REVIEW.AUTHOR_USER_ID,
                         TIMELINE_REVIEW.TITLE, TIMELINE_REVIEW.DESCRIPTION, TIMELINE_REVIEW.STATUS,
                         TIMELINE_REVIEW.CREATED_AT, TIMELINE_REVIEW.UPDATED_AT)
                 .values(id, projectId, tenantId, revisionId, "TIMELINE", authorUserId,
-                        title, description, status, now.toLocalDateTime(), now.toLocalDateTime())
-                .execute();
+                        title, description, status, now.toLocalDateTime(), now.toLocalDateTime());
     }
 
     public String targetType(String reviewId) {
@@ -100,6 +115,37 @@ public class TimelineReviewRepository {
                 .execute();
     }
 
+    public boolean insertFrameComment(String id, String reviewId, String revisionId, ReviewFrameAnchor anchor,
+                                      String authorUserId, String content, OffsetDateTime now) {
+        String ref = FRAME_PREFIX + anchor.side() + "|" + anchor.branch() + "|" + anchor.position();
+        return dsl.insertInto(TIMELINE_COMMENT)
+                .columns(TIMELINE_COMMENT.ID, TIMELINE_COMMENT.REVIEW_ID, TIMELINE_COMMENT.REVISION_ID,
+                        TIMELINE_COMMENT.ENTITY_REF, TIMELINE_COMMENT.AUTHOR_USER_ID,
+                        TIMELINE_COMMENT.CONTENT, TIMELINE_COMMENT.CREATED_AT)
+                .values(id, reviewId, revisionId, ref, authorUserId, content, now.toLocalDateTime())
+                .onConflictDoNothing().execute() == 1;
+    }
+
+    public Optional<CommentRow> findOwnedComment(String projectId, String tenantId, String id) {
+        return dsl.select(TIMELINE_COMMENT.fields()).from(TIMELINE_COMMENT).join(TIMELINE_REVIEW)
+                .on(TIMELINE_COMMENT.REVIEW_ID.eq(TIMELINE_REVIEW.ID))
+                .where(ownedReview(projectId, tenantId)).and(TIMELINE_COMMENT.ID.eq(id))
+                .fetchOptional(TimelineReviewRepository::mapComment);
+    }
+
+    public List<CommentRow> listOwnedProjectComments(String projectId, String tenantId) {
+        return dsl.select(TIMELINE_COMMENT.fields()).from(TIMELINE_COMMENT).join(TIMELINE_REVIEW)
+                .on(TIMELINE_COMMENT.REVIEW_ID.eq(TIMELINE_REVIEW.ID))
+                .where(ownedReview(projectId, tenantId))
+                .orderBy(TIMELINE_COMMENT.CREATED_AT.desc(), TIMELINE_COMMENT.ID.desc())
+                .fetch(TimelineReviewRepository::mapComment);
+    }
+
+    private static Condition ownedReview(String projectId, String tenantId) {
+        return TIMELINE_REVIEW.PROJECT_ID.eq(projectId).and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
+                .and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"));
+    }
+
     public void insertThread(String id, String reviewId, String entityRef,
                                String diffId, String status, OffsetDateTime now) {
         dsl.insertInto(REVIEW_THREAD)
@@ -161,15 +207,23 @@ public class TimelineReviewRepository {
     }
 
     private static CommentRow mapComment(Record r) {
+        String ref = r.get(TIMELINE_COMMENT.ENTITY_REF);
+        ReviewFrameAnchor anchor = null;
+        if (ref != null && ref.startsWith(FRAME_PREFIX)) {
+            String[] parts = ref.substring(FRAME_PREFIX.length()).split("\\|", -1);
+            if (parts.length != 3) throw new IllegalStateException("Malformed saved review frame anchor");
+            anchor = new ReviewFrameAnchor(ReviewFrameAnchor.Side.valueOf(parts[0]), parts[1], parts[2]);
+            ref = null;
+        }
         return new CommentRow(
                 r.get(TIMELINE_COMMENT.ID),
                 r.get(TIMELINE_COMMENT.REVIEW_ID),
                 r.get(TIMELINE_COMMENT.THREAD_ID),
                 r.get(TIMELINE_COMMENT.REVISION_ID),
-                r.get(TIMELINE_COMMENT.ENTITY_REF),
+                ref,
                 r.get(TIMELINE_COMMENT.AUTHOR_USER_ID),
                 r.get(TIMELINE_COMMENT.CONTENT),
-                r.get(TIMELINE_COMMENT.CREATED_AT).atOffset(java.time.ZoneOffset.UTC));
+                r.get(TIMELINE_COMMENT.CREATED_AT).atOffset(java.time.ZoneOffset.UTC), anchor);
     }
 
     private static ThreadRow mapThread(Record r) {

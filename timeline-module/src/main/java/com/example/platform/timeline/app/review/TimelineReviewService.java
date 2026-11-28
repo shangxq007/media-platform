@@ -42,6 +42,19 @@ public class TimelineReviewService implements TimelineReviews {
                 authorUserId, title, description);
     }
 
+    ReviewRow frameReview(String projectId, String tenantId, String revisionId, String authorUserId) {
+        String id = TimelineCommentService.scopedId("tfr_", tenantId, projectId, revisionId);
+        var now = OffsetDateTime.now(java.time.ZoneOffset.UTC);
+        if (reviewRepository.insertFrameReviewIfAbsent(id, projectId, tenantId, revisionId, authorUserId, now)) {
+            events.publish(new TimelineReviewCreatedEvent(new TimelineReviewReference(id,
+                    new TimelineRevisionIdentity(tenantId, projectId, revisionId)),
+                    authorUserId, "Frame comments", now.toInstant()));
+        }
+        return reviewRepository.findOwnedById(id, projectId, tenantId)
+                .filter(row -> revisionId.equals(row.revisionId()))
+                .orElseThrow(() -> new IllegalStateException("Frame review identity mismatch"));
+    }
+
     public Optional<ReviewRow> getReview(
             String projectId, String tenantId, String reviewId) {
         com.example.platform.shared.web.TenantGuard.assertSameTenant(tenantId);auth.require(projectId,false);

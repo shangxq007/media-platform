@@ -8,6 +8,10 @@ import com.example.platform.timeline.api.review.*;
 import com.example.platform.timeline.app.review.*;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
+import com.example.platform.timeline.canonical.*;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.infrastructure.review.TimelineReviewRepository;
 import com.example.platform.outbox.app.*;
 import com.example.platform.web.render.*;
@@ -41,7 +45,8 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
    if(denied)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"denied by owner");
    assertEquals("tenant",request.resource().tenantId());return AuthorizationDecision.allow("fixture");});
   context.registerBean(TimelineRevisionRepository.class);
-  context.registerBean(TimelineRevisionQueryService.class,()->new TimelineRevisionQueryService(context.getBean(TimelineRevisionRepository.class),mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),mock(com.example.platform.timeline.app.TimelineRevisionDiffService.class)));
+  context.registerBean(TimelineSnapshotService.class);
+  context.registerBean(TimelineRevisionQueryService.class,()->new TimelineRevisionQueryService(context.getBean(TimelineRevisionRepository.class),context.getBean(TimelineSnapshotService.class),mock(com.example.platform.timeline.app.TimelineRevisionDiffService.class)));
   context.registerBean(TimelineReviewRepository.class);context.registerBean(ReviewAuthorization.class);context.registerBean(TimelineReviewQueries.class);
   context.registerBean(TimelineReviewService.class);context.registerBean(TimelineCommentService.class);context.registerBean(ReviewDecisionService.class);context.registerBean(ReviewEventPublisher.class);
   context.registerBean(OutboxEventRouter.class,()->new OutboxEventRouter(List.of(new TimelineOutboxEvents())));
@@ -111,6 +116,51 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   denied=true;mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(base+"/"+id+"/approve")).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());denied=false;
   context.getBean(TimelineReviews.class).reject(id);
   mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(base+"/"+id+"/approve")).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict());
+ }
+
+ @Test void frameCommentsStoreExactPositionDeduplicateAndLeaveTimelineAlone() {
+  var end=MediaTime.ofTicks(8,1);
+  var clip=new TimelineClip("frame-clip","asset","stream","artifact","a".repeat(64),MediaTime.ZERO,end,
+      MediaTime.ZERO,end,"MEDIA_STREAM");
+  var doc=new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+      List.of(new TimelineTrack("video","Video",TrackType.VIDEO,List.of(clip))),TimelineMetadata.empty());
+  jdbc.update("update timeline.timeline_snapshot set payload_json=? where id='project-snapshot'",
+      TimelineDocumentJsonSerializer.serialize(doc));
+  var comments=context.getBean(TimelineComments.class);
+  var anchor=new ReviewFrameAnchor(ReviewFrameAnchor.Side.B,"alternate","73/24");
+  var id=UUID.randomUUID();
+  long reviews=count("timeline.timeline_review"), notes=count("timeline.timeline_comment"),
+      revisions=count("timeline.timeline_revision"), commands=count("timeline.apply_command");
+  var before=comments.listProjectComments("project");
+  assertEquals(reviews,count("timeline.timeline_review"));
+  assertThrows(IllegalArgumentException.class,()->new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main","-1/1"));
+  assertThrows(IllegalArgumentException.class,()->comments.addFrameComment("project",null,"project-revision","server-actor",
+      "boundary",new ReviewFrameAnchor(ReviewFrameAnchor.Side.A,"main","8/1"),UUID.randomUUID()));
+  assertThrows(IllegalArgumentException.class,()->comments.addFrameComment("other",null,"project-revision","server-actor",
+      "cross project",anchor,UUID.randomUUID()));
+  denied=true;
+  assertThrows(org.springframework.web.server.ResponseStatusException.class,()->comments.addFrameComment(
+      "project",null,"project-revision","server-actor","denied",anchor,UUID.randomUUID()));
+  denied=false;
+  assertEquals(reviews,count("timeline.timeline_review"));
+  assertEquals(notes,count("timeline.timeline_comment"));
+
+  var first=comments.addFrameComment("project",null,"project-revision","server-actor","frame review note",anchor,id);
+  var replay=comments.addFrameComment("project",null,"project-revision","server-actor","frame review note",anchor,id);
+  assertEquals(first,replay);
+  assertEquals(anchor,first.frameAnchor());
+  assertNull(first.entityRef());
+  assertNull(first.threadId());
+  assertThrows(ReviewConflictException.class,()->comments.addFrameComment("project",null,"project-revision","server-actor",
+      "different",anchor,id));
+  assertEquals(reviews+1,count("timeline.timeline_review"));
+  assertEquals(notes+1,count("timeline.timeline_comment"));
+  assertEquals(revisions,count("timeline.timeline_revision"));
+  assertEquals(commands,count("timeline.apply_command"));
+  assertEquals(before.size()+1,comments.listProjectComments("project").size());
+  assertEquals(List.of(first),comments.listComments(first.reviewId()));
+  assertEquals(1L,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?",Long.class,first.id()));
+  assertFalse(comments.listProjectComments("other").contains(first));
  }
 
  @Test void retiredAndMalformedDurableTimelineInputsAreExplicitlyDeadLettered()throws Exception {

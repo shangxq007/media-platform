@@ -183,6 +183,8 @@ frontend/src/product/publication/testing.ts	REUSE	EXPLICIT_TEST_ONLY_PUBLICATION
 frontend/src/product/publication/types.ts	REUSE	PUBLICATION_CONSUMPTION_PROPOSAL_NOT_BACKEND_DTO
 frontend/src/product/render/RenderWorkbench.tsx	REUSE	FORMAL_RENDER_PRODUCT_WORKBENCH
 frontend/src/product/review/ReviewWorkspace.test.tsx	REUSE	REVIEW_ASYNC_COMPARISON_REQUEST_OWNERSHIP_EVIDENCE
+frontend/src/product/review/ReviewComments.test.tsx	REUSE	FRAME_COMMENT_DRAFT_AND_RETRY_EVIDENCE
+frontend/src/product/review/ReviewComments.tsx	REUSE	REVISION_ANCHORED_FRAME_COMMENT_CONVERSATION
 frontend/src/product/review/ReviewWorkspace.tsx	REUSE	READ_ONLY_SERVER_SEMANTIC_DIFF_REVIEW_SURFACE
 frontend/src/product/thumbnail/ThumbnailWorkspace.tsx	REUSE	EXISTING_THUMBNAIL_WORKSPACE
 frontend/src/product/timeline-review/TimelineBrowser.test.tsx	REUSE	BOUNDED_AUTHENTICATED_TIMELINE_REVIEW_READ_AND_VERIFICATION

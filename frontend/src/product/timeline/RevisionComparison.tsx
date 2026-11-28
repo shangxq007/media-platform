@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { listEditingBranches, readEditingBranch } from '../../api/app/timeline-query.gateway'
 import { Button, Panel } from '../../components/design-system'
 import type { RevisionListEntry } from './gateways'
+import { ReviewComments } from '../review/ReviewComments'
+import type { FrameCommentDraft } from '../timeline-review/api'
 import { TimelineMediaPreview, type PreviewTransport } from './TimelineMediaPreview'
 import { decimalCursor } from './timeline-preview'
 import { compare, formatRational, parseRational, toSeconds, ZERO, type Rational } from './trim'
@@ -216,6 +218,35 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
       start(selected)
     }
   }
+  function captureFrame(): FrameCommentDraft | null {
+    const side = active.current
+    const mount = mounted.current[side]
+    const ready = preparation(side, mounted.current, reported.current)
+    const held = cursor.current
+    if (!mount || ready?.state !== 'ready' || compare(held, ZERO) < 0 || compare(held, ready.end) >= 0) return null
+    stopActive()
+    intent(false)
+    move(held)
+    transportFor(side)?.seek(held)
+    persist()
+    return { revisionId: mount.pin.revision, frameAnchor: { side, branch: mount.pin.branch, position: formatRational(held) } }
+  }
+
+  function openFrame(target: FrameCommentDraft) {
+    const { side, branch, position: value } = target.frameAnchor
+    const time = parseRational(value)
+    if (!time) return
+    stopActive()
+    intent(false)
+    active.current = side
+    setSelected(side)
+    selectPin(side, { branch, revision: target.revisionId })
+    move(time)
+    // Seeking also has to run when the comment targets the currently mounted revision.
+    nextHandoff(previous => previous + 1)
+    persist()
+  }
+
   const exactTarget = exact.length <= 64 ? parseRational(exact) ?? decimalCursor(exact) : null
   const canSeek = exactTarget && compare(exactTarget, ZERO) >= 0 && compare(exactTarget, maximum) <= 0 && ends.length > 0
   return <section aria-label="Revision comparison" data-review-side={selected}
@@ -225,7 +256,7 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
       persist(false)
       onClose()
     }}>Return to editing</Button>}>
-      <p>Read-only review. Editing stays on <strong>{editingBranch}</strong>. Refreshing a list does not change either pin.</p>
+      <p>Review does not change the timeline. Editing stays on <strong>{editingBranch}</strong>. Refreshing a list does not change either pin.</p>
       {branchError && <p role="alert">Could not list editing branches.</p>}
       {sides.map(side => <RevisionPicker key={side} side={side} project={project}
         branches={branches} initialBranch={side === 'A' ? editingBranch : 'main'}
@@ -287,5 +318,7 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
         </div>
       })}
     </Panel>
+    <ReviewComments key={project} project={project} capture={captureFrame}
+      canCapture={!!duration && !outOfRange(duration)} openFrame={openFrame} />
   </section>
 }

@@ -1,6 +1,9 @@
 package com.example.platform.web.render;
 
+import com.example.platform.timeline.api.review.ReviewFrameAnchor;
 import com.example.platform.timeline.api.review.ReviewRecords;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.UUID;
 import com.example.platform.timeline.api.review.TimelineComments;
 import com.example.platform.timeline.api.review.ReviewQueries;
 import com.example.platform.timeline.api.review.TimelineReviews;
@@ -79,6 +82,21 @@ public class TimelineReviewController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/comments")
+    @Operation(summary = "List project review comments without creating a review")
+    public List<CommentResponse> listProjectComments(@PathVariable String projectId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
+        return commentService.listProjectComments(projectId).stream().map(TimelineReviewController::toCommentResponse).toList();
+    }
+
+    @PostMapping("/comments")
+    @Operation(summary = "Post a revision-anchored frame comment")
+    public ResponseEntity<CommentResponse> addFrameComment(@PathVariable String projectId,
+                                                            @RequestBody AddCommentRequest body) {
+        String actorId = projectAuthorization.requireWrite(TenantContext.get(), projectId).actorId();
+        return postFrame(projectId, null, actorId, body);
+    }
+
     @PostMapping("/{reviewId}/comments")
     @Operation(summary = "Add a comment to a review")
     public ResponseEntity<CommentResponse> addComment(
@@ -87,6 +105,7 @@ public class TimelineReviewController {
             @RequestBody AddCommentRequest body) {
         String actorId = projectAuthorization.requireWrite(TenantContext.get(), projectId).actorId();
         requireOwnedReview(projectId, reviewId);
+        if (body.frameAnchor() != null || body.requestId() != null) return postFrame(projectId, reviewId, actorId, body);
         EntityRef ref = body.entityKind() != null && body.entityId() != null
                 ? new EntityRef(EntityKind.valueOf(body.entityKind()), body.entityId())
                 : null;
@@ -94,6 +113,16 @@ public class TimelineReviewController {
                 reviewId, body.revisionId(), body.threadId(), ref,
                 actorId, body.content());
         return ResponseEntity.status(HttpStatus.CREATED).body(toCommentResponse(comment));
+    }
+
+    private ResponseEntity<CommentResponse> postFrame(String projectId, String reviewId, String actorId, AddCommentRequest body) {
+        if (body.frameAnchor() == null || body.requestId() == null || body.threadId() != null
+                || body.entityId() != null || body.entityKind() != null) {
+            throw new IllegalArgumentException("A frame comment requires its anchor and request ID instead of a thread or entity");
+        }
+        var row = commentService.addFrameComment(projectId, reviewId, body.revisionId(), actorId, body.content(),
+                body.frameAnchor(), body.requestId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(toCommentResponse(row));
     }
 
     @GetMapping("/{reviewId}/comments")
@@ -216,13 +245,13 @@ public class TimelineReviewController {
     private static CommentResponse toCommentResponse(ReviewRecords.CommentRow c) {
         return new CommentResponse(c.id(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef(), c.authorUserId(), c.content(),
-                c.createdAt() != null ? c.createdAt().toString() : null);
+                c.createdAt() != null ? c.createdAt().toString() : null, c.frameAnchor());
     }
 
     private static CommentResponse toCommentResponse(TimelineComment c) {
         return new CommentResponse(c.commentId(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef() != null ? c.entityRef().key() : null,
-                c.authorUserId(), c.content(), c.createdAt().toString());
+                c.authorUserId(), c.content(), c.createdAt().toString(), null);
     }
 
     private static ThreadResponse toThreadResponse(ReviewRecords.ThreadRow t) {
@@ -240,7 +269,7 @@ public class TimelineReviewController {
 
     public record AddCommentRequest(String threadId, String revisionId,
                                       String entityKind, String entityId,
-                                      String content) {}
+                                      String content, ReviewFrameAnchor frameAnchor, UUID requestId) {}
 
     public record ReviewResponse(String reviewId, String projectId, String revisionId,
                                    String authorUserId, String title, String description,
@@ -253,7 +282,8 @@ public class TimelineReviewController {
 
     public record CommentResponse(String commentId, String reviewId, String threadId,
                                     String revisionId, String entityRef,
-                                    String authorUserId, String content, String createdAt) {}
+                                    String authorUserId, String content, String createdAt,
+                                    @JsonInclude(JsonInclude.Include.NON_NULL) ReviewFrameAnchor frameAnchor) {}
 
     public record ThreadResponse(String threadId, String reviewId, String entityRef,
                                    String diffId, String status, String createdAt) {}

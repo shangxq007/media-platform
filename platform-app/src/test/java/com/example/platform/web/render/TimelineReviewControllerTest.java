@@ -69,6 +69,34 @@ class TimelineReviewControllerTest {
     }
 
     @Test
+    void frameCommentUsesAuthenticatedActorAndBindsTheExactAnchor() {
+        var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
+                com.example.platform.timeline.api.review.ReviewFrameAnchor.Side.B, "alternate", "73/24");
+        var request = UUID.randomUUID();
+        var body = new TimelineReviewController.AddCommentRequest(null, "trev_001", null, null, "note", anchor, request);
+        var comment = new ReviewRecords.CommentRow("comment", "rvw_1", null, "trev_001", null,
+                "user_1", "note", OffsetDateTime.now(), anchor);
+        when(commentService.addFrameComment("proj_1", null, "trev_001", "user_1", "note", anchor, request))
+                .thenReturn(comment);
+        var response = controller.addFrameComment("proj_1", body);
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(anchor, response.getBody().frameAnchor());
+        assertEquals("trev_001", response.getBody().revisionId());
+        verify(projectAuthorization).requireWrite(null, "proj_1");
+    }
+
+    @Test
+    void rejectsAnUnownedReviewBeforePostingAFrameComment() {
+        var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
+                com.example.platform.timeline.api.review.ReviewFrameAnchor.Side.A, "main", "3/1");
+        when(reviewService.getReview("proj_1", null, "missing")).thenReturn(Optional.empty());
+        var body = new TimelineReviewController.AddCommentRequest(null, "trev_001", null, null, "note", anchor, UUID.randomUUID());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controller.addComment("proj_1", "missing", body));
+        verifyNoInteractions(commentService);
+    }
+
+    @Test
     void shouldApproveReview() {
         ResponseEntity<Map<String, Object>> response =
                 controller.approve("proj_1", "rvw_1");

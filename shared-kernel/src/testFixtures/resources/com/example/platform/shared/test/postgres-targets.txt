@@ -36,3 +36,4 @@ local com.example.platform.entitlement.app.QuotaUsageAuthorityPostgresTest
 local com.example.platform.workflow.definition.infrastructure.UserWorkflowDefinitionJdbcRepositoryTest
 local com.example.platform.BillingUsageCompositionTest
 local com.example.platform.BillingOwnerReadProjectionTest
+local com.example.platform.timeline.TimelineReviewOwnerIntegrationTest

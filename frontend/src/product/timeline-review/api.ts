@@ -16,8 +16,20 @@ export type Revision = z.infer<typeof Revision>
 export const Review = z.object({ reviewId: id, projectId: id, revisionId: id, authorUserId: text,
   title: text, description: text, status: id, createdAt: text, updatedAt: text }).strict()
 export type Review = z.infer<typeof Review>
+export const FrameAnchor = z.object({
+  side: z.enum(['A', 'B']),
+  branch: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/),
+  position: z.string().regex(/^[0-9]{1,19}\/[1-9][0-9]{0,18}$/),
+}).strict()
+export type FrameAnchor = z.infer<typeof FrameAnchor>
+const ReviewComment = z.object({ commentId: id, reviewId: id, threadId: text, revisionId: text, entityRef: text,
+  authorUserId: text, content: z.string(), createdAt: text, frameAnchor: FrameAnchor.nullish() }).strict()
+export type ReviewComment = z.infer<typeof ReviewComment>
+export type FrameCommentDraft = { revisionId: string; frameAnchor: FrameAnchor }
+export type FrameCommentWrite = FrameCommentDraft & { content: string; requestId: string }
+
 export const ReviewDetail = z.object({ review: Review,
-  comments: z.array(z.object({ commentId: id, reviewId: id, threadId: text, revisionId: text, entityRef: text, authorUserId: text, content: z.string(), createdAt: text }).strict()),
+  comments: z.array(ReviewComment),
   threads: z.array(z.object({ threadId: id, reviewId: id, entityRef: text, diffId: text, status: id, createdAt: text }).strict()),
   decisions: z.array(z.object({ decisionId: id, reviewId: id, reviewerUserId: text, decision: id, createdAt: text }).strict()),
   mergeGuard: z.object({ canMerge: z.boolean(), reason: text }).strict(),
@@ -58,3 +70,20 @@ export const timelineReviewSource = {
   },
 }
 export type TimelineReviewSource = typeof timelineReviewSource
+
+export const timelineCommentSource = {
+  async list(project: string, signal: AbortSignal) {
+    const rows = ReviewComment.array().parse(await get(`${path(project)}/reviews/comments`, signal))
+    unique(rows.map(row => row.commentId))
+    return rows
+  },
+  async submitFrame(project: string, body: FrameCommentWrite, signal: AbortSignal) {
+    const { data } = await api.post(`${path(project)}/reviews/comments`, body, { baseURL: '', signal })
+    signal.throwIfAborted()
+    const row = ReviewComment.parse(data)
+    if (row.revisionId !== body.revisionId || row.content !== body.content
+      || row.frameAnchor?.side !== body.frameAnchor.side || row.frameAnchor.branch !== body.frameAnchor.branch
+      || row.frameAnchor.position !== body.frameAnchor.position) throw new Error('Comment target mismatch')
+    return row
+  },
+}

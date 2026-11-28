@@ -48,6 +48,7 @@ export const POST_H7_GOVERNED_PATHS = [
   'product/canvas/WorkspaceCanvas.tsx',
   'product/canvas/model.ts',
   'product/review/ReviewWorkspace.tsx',
+  'product/review/ReviewComments.tsx',
   'product/timeline/ClipEditor.tsx',
   'product/timeline/NleWorkspace.tsx',
   'product/timeline/NleRenderPanel.tsx',
