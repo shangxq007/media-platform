@@ -134,7 +134,9 @@ export interface PreviewTransport {
 
 export interface ComparisonPreview {
   audioContext(): AudioContext
+  onLoading(): void
   onPrepared(end: Rational | null): void
+  onStarted(): void
   onCursor(position: Rational): void
   onEnd(): void
 }
@@ -370,9 +372,12 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
 
   function fail(session: PreviewSession, error: unknown) {
     if (current.current !== session) return
-    comparisonRef.current?.onPrepared(null)
+    session.playAttempt++
+    session.starting = false
     stopPlayback(session)
+    if (host.current) host.current.dataset.audioRms = '0'
     setStatus('FAILED')
+    comparisonRef.current?.onPrepared(null)
     setMessage(error instanceof Error ? error.message : 'Timeline media could not be played.')
   }
 
@@ -593,6 +598,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
 
     async function prepare(revision: string, tenant: string) {
       setStatus('PREPARING')
+      comparisonRef.current?.onLoading()
       try {
         const snapshot = await FormalRenderAPI.snapshot(projectId, revision, signal)
         if (signal.aborted) return
@@ -791,6 +797,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     }
     setStatus('PLAYING')
     session.frame = requestAnimationFrame(advance)
+    comparisonRef.current?.onStarted()
   }
 
   function pause(): Rational {

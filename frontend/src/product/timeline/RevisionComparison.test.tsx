@@ -15,13 +15,15 @@ vi.mock('../../api/app/timeline-query.gateway', () => ({
 vi.mock('./TimelineMediaPreview', async () => {
   const { useEffect, useImperativeHandle, useRef } = await import('react')
   return { TimelineMediaPreview: ({ revisionId, comparison, transportRef }: {
-    revisionId: string; comparison: { onPrepared(end: Rational | null): void };
+    revisionId: string; comparison: { onPrepared(end: Rational | null): void; onStarted(): void };
     transportRef: import('react').Ref<import('./TimelineMediaPreview').PreviewTransport>
   }) => {
     const cursor = useRef(ZERO)
+    const started = useRef(comparison.onStarted)
+    started.current = comparison.onStarted
     useImperativeHandle(transportRef, () => ({
       pause: () => { mocks.events.push('pause ' + revisionId); return cursor.current },
-      play: () => { mocks.events.push('play ' + revisionId) },
+      play: () => { mocks.events.push('play ' + revisionId); started.current() },
       seek: position => { cursor.current = position; mocks.events.push('seek ' + revisionId + ' ' + formatRational(position)) },
     }), [revisionId])
     const prepared = useRef(comparison.onPrepared)

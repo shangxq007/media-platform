@@ -11,6 +11,11 @@ const sides = ['A', 'B'] as const
 type Side = typeof sides[number]
 interface Pin { branch: string; revision: string }
 type Pair = Record<Side, Pin | null>
+interface Mount { id: number; pin: Pin }
+type Mounts = Record<Side, Mount | null>
+type Preparation = { mount: Mount; state: 'loading' | 'failed' } | { mount: Mount; state: 'ready'; end: Rational }
+type Preparations = Partial<Record<Side, Preparation>>
+type Playback = 'paused' | 'pending' | 'playing'
 interface Saved { open: boolean; selected: Side; pins: Pair; position: string }
 const empty = (): Saved => ({ open: false, selected: 'A', pins: { A: null, B: null }, position: '0/1' })
 
@@ -74,43 +79,69 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
   project: string; tenant: string | null; editingBranch: string; preferenceScope: string; onClose(): void
 }) {
   const [initial] = useState(() => readRevisionComparison(preferenceScope))
-  const [pins, setPins] = useState(initial.pins)
-  const pinned = useRef(pins)
+  const [mounts, setMounts] = useState<Mounts>(() => ({
+    A: initial.pins.A && { id: 0, pin: initial.pins.A },
+    B: initial.pins.B && { id: 1, pin: initial.pins.B },
+  }))
+  const mounted = useRef(mounts)
+  const nextMount = useRef(2)
   const [selected, setSelected] = useState(initial.selected)
   const active = useRef(selected)
   const [position, setPosition] = useState(() => parseRational(initial.position) ?? ZERO)
   const cursor = useRef(position)
-  const [playing, setPlaying] = useState(false)
+  const [playback, setPlayback] = useState<Playback>('paused')
   const wantsPlayback = useRef(false)
-  const running = useRef<{ side: Side; key: string } | null>(null)
+  const running = useRef<Mount | null>(null)
   const [handoff, nextHandoff] = useState(0)
-  const transports = useRef<Partial<Record<Side, PreviewTransport>>>({})
-  const [prepared, setPrepared] = useState<Partial<Record<Side, { key: string; end: Rational | null }>>>({})
+  const transports = useRef<Partial<Record<Side, { mount: Mount; transport: PreviewTransport }>>>({})
+  const [prepared, setPrepared] = useState<Preparations>({})
+  const reported = useRef<Preparations>({})
   const [exact, setExact] = useState('')
   const [branches, setBranches] = useState(['main', editingBranch])
   const [branchError, setBranchError] = useState(false)
   const audio = useRef<AudioContext | null>(null)
   const audioContext = () => audio.current ??= new AudioContext({ sampleRate: 48_000 })
-  const latestKey = pinKey(pins[selected])
-  const durationFor = (side: Side) => prepared[side]?.key === pinKey(pins[side]) ? prepared[side]?.end ?? null : null
-  const duration = durationFor(selected)
-  const ownsPlayback = (side: Side, key: string) => running.current?.side === side && running.current.key === key
-  const start = (side: Side) => {
-    const transport = transports.current[side]
-    if (!transport) return
-    running.current = { side, key: pinKey(pinned.current[side]) }
-    transport.play()
+
+  const preparation = (side: Side, pair: Mounts, records: Preparations) => {
+    const record = records[side]
+    return record?.mount === pair[side] ? record : undefined
   }
-  const durationText = duration && formatRational(duration)
+  const durationFor = (side: Side) => {
+    const record = preparation(side, mounts, prepared)
+    return record?.state === 'ready' ? record.end : null
+  }
+  const transportFor = (side: Side) => {
+    const bound = transports.current[side]
+    return bound?.mount === mounted.current[side] ? bound.transport : undefined
+  }
+  const currentMount = mounts[selected]
+  const duration = durationFor(selected)
   const ends = sides.map(durationFor).filter((value): value is Rational => value !== null)
   const maximum = ends.reduce((longer, end) => compare(end, longer) > 0 ? end : longer, ZERO)
   const outOfRange = (end: Rational | null) => end !== null && compare(position, end) >= 0
 
   const persist = (open = true) => saveRevisionComparison(preferenceScope, {
-    open, selected: active.current, pins: pinned.current, position: formatRational(cursor.current),
+    open, selected: active.current,
+    pins: { A: mounted.current.A?.pin ?? null, B: mounted.current.B?.pin ?? null },
+    position: formatRational(cursor.current),
   })
   const move = (next: Rational) => { cursor.current = next; setPosition(next) }
-  const intent = (next: boolean) => { wantsPlayback.current = next; setPlaying(next) }
+  const intent = (next: boolean) => {
+    wantsPlayback.current = next
+    setPlayback(next ? 'pending' : 'paused')
+  }
+  const canResume = (side: Side) => {
+    if (!tenant || !mounted.current[side]) return false
+    const report = preparation(side, mounted.current, reported.current)
+    return report?.state !== 'failed' && (report?.state !== 'ready' || compare(cursor.current, report.end) < 0)
+  }
+  const start = (side: Side) => {
+    const mount = mounted.current[side]
+    const transport = transportFor(side)
+    if (!mount || !transport || active.current !== side || !wantsPlayback.current) return
+    running.current = mount
+    transport.play()
+  }
 
   useEffect(() => {
     const request = new AbortController()
@@ -129,59 +160,58 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
     }
   }, [preferenceScope])
 
-  // Commit the new selection before its graph can play. Only a ready graph for the exact pin
-  // may claim playback. This also restores the shared cursor after a late prepare or a reload.
+  // A saved pin can be mounted more than once. Only this mount's ready report
+  // authorizes a seek, and the seek must install the shared cursor before play.
   useLayoutEffect(() => {
-    const end = parseRational(durationText)
-    const transport = transports.current[selected]
-    if (!end || !transport) return
+    const transport = transportFor(selected)
+    if (!duration || !transport) return
     transport.seek(cursor.current)
-    if (compare(cursor.current, end) >= 0) intent(false)
-    else if (wantsPlayback.current) start(selected)
-  }, [selected, latestKey, durationText, handoff])
+    if (compare(cursor.current, duration) >= 0) intent(false)
+    else start(selected)
+  }, [selected, currentMount, duration, handoff])
 
   function stopActive() {
-    const old = active.current
-    const hadPlayback = ownsPlayback(old, pinKey(pinned.current[old]))
+    const side = active.current
+    const hadPlayback = running.current !== null && running.current === mounted.current[side]
     running.current = null
-    const held = transports.current[old]?.pause()
+    const held = transportFor(side)?.pause()
     if (held && hadPlayback) move(held)
   }
   function selectSide(side: Side) {
     if (side === active.current) return
     stopActive()
     active.current = side
+    intent(wantsPlayback.current && canResume(side))
     setSelected(side)
     nextHandoff(value => value + 1)
     persist()
   }
   function selectPin(side: Side, next: Pin) {
-    if (pinKey(pinned.current[side]) === pinKey(next)) return
-    if (side === active.current) {
-      stopActive()
-      nextHandoff(value => value + 1)
-    }
-    pinned.current = { ...pinned.current, [side]: next }
-    setPins(pinned.current)
+    if (pinKey(mounted.current[side]?.pin ?? null) === pinKey(next)) return
+    const replacingActive = side === active.current
+    if (replacingActive) stopActive()
+    mounted.current = { ...mounted.current, [side]: { id: nextMount.current++, pin: next } }
+    if (replacingActive) intent(wantsPlayback.current && canResume(side))
+    setMounts(mounted.current)
     persist()
   }
   function seek(next: Rational) {
     if (compare(next, ZERO) < 0 || compare(next, maximum) > 0) return
-    const transport = transports.current[active.current]
-    running.current = null
-    transport?.pause()
+    const side = active.current
+    stopActive()
     move(next)
-    transport?.seek(next)
-    if (wantsPlayback.current && duration && compare(next, duration) < 0) start(active.current)
-    else intent(false)
+    const report = preparation(side, mounted.current, reported.current)
+    if (report?.state === 'ready') transportFor(side)?.seek(next)
+    intent(wantsPlayback.current && canResume(side))
+    if (report?.state === 'ready') start(side)
     persist()
   }
   function toggle() {
-    if (wantsPlayback.current) {
+    if (playback === 'playing') {
       stopActive()
       intent(false)
       persist()
-    } else if (duration && !outOfRange(duration)) {
+    } else if (playback === 'paused' && duration && !outOfRange(duration)) {
       intent(true)
       start(selected)
     }
@@ -189,7 +219,7 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
   const exactTarget = exact.length <= 64 ? parseRational(exact) ?? decimalCursor(exact) : null
   const canSeek = exactTarget && compare(exactTarget, ZERO) >= 0 && compare(exactTarget, maximum) <= 0 && ends.length > 0
   return <section aria-label="Revision comparison" data-review-side={selected}
-    data-review-revision={pins[selected]?.revision} data-review-position={formatRational(position)}>
+    data-review-revision={currentMount?.pin.revision} data-review-position={formatRational(position)}>
     <Panel title="Revision A/B comparison" actions={<Button type="button" onClick={() => {
       stopActive()
       persist(false)
@@ -199,13 +229,15 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
       {branchError && <p role="alert">Could not list editing branches.</p>}
       {sides.map(side => <RevisionPicker key={side} side={side} project={project}
         branches={branches} initialBranch={side === 'A' ? editingBranch : 'main'}
-        pin={pins[side]} onPin={next => selectPin(side, next)} />)}
+        pin={mounts[side]?.pin ?? null} onPin={next => selectPin(side, next)} />)}
       <div aria-label="Comparison transport">
         {sides.map(side => <Button key={side} type="button" aria-pressed={selected === side}
           onClick={() => selectSide(side)}>Show {side}</Button>)}
-        <Button type="button" onClick={toggle} disabled={!playing && (!duration || outOfRange(duration))}>
-          {playing ? 'Pause comparison' : 'Play comparison'}
+        <Button type="button" onClick={toggle}
+          disabled={playback !== 'playing' && (playback === 'pending' || !duration || outOfRange(duration))}>
+          {playback === 'playing' ? 'Pause comparison' : 'Play comparison'}
         </Button>
+        {playback === 'pending' && <span role="status">Playback pending for {selected}.</span>}
         <label>Shared playhead <input type="range" min={0} max={toSeconds(maximum)} step="any"
           value={toSeconds(position)} disabled={!ends.length} onChange={event => {
             const next = decimalCursor(event.target.value)
@@ -218,30 +250,38 @@ export function RevisionComparison({ project, tenant, editingBranch, preferenceS
           <Button type="submit" disabled={!canSeek}>Seek comparison</Button>
         </form>
       </div>
-      <p aria-live="polite">Viewing {selected}{pins[selected] && <> · {pins[selected]?.branch} · <code>{pins[selected]?.revision}</code></>}</p>
+      <p aria-live="polite">Viewing {selected}{currentMount && <> · {currentMount.pin.branch} · <code>{currentMount.pin.revision}</code></>}</p>
       {sides.map(side => outOfRange(durationFor(side)) && <p key={side}>Shared playhead is outside revision {side}.</p>)}
-      {!pins[selected] && <p>Choose a saved revision for {selected} to preview it.</p>}
+      {!currentMount && <p>Choose a saved revision for {selected} to preview it.</p>}
       {sides.map(side => {
-        const pin = pins[side]
-        if (!pin) return null
-        const key = pinKey(pin)
-        const ownsPin = () => pinKey(pinned.current[side]) === key
-        return <div key={JSON.stringify([side, key])} hidden={selected !== side || outOfRange(durationFor(side))}>
-          <TimelineMediaPreview revisionId={pin.revision} tenantId={tenant} projectId={project}
+        const mount = mounts[side]
+        if (!mount) return null
+        const ownsMount = () => mounted.current[side] === mount
+        const ownsPlayback = () => ownsMount() && active.current === side && running.current === mount
+        const report = (value: Preparation) => {
+          if (!ownsMount()) return
+          reported.current = { ...reported.current, [side]: value }
+          setPrepared(reported.current)
+          if (value.state === 'failed' && active.current === side) {
+            running.current = null
+            intent(false)
+          }
+        }
+        return <div key={mount.id} hidden={selected !== side || outOfRange(durationFor(side))}>
+          <TimelineMediaPreview revisionId={mount.pin.revision} tenantId={tenant} projectId={project}
             transportRef={transport => {
-              if (transport) transports.current[side] = transport
+              if (!ownsMount()) return
+              if (transport) transports.current[side] = { mount, transport }
               else delete transports.current[side]
             }}
             comparison={{
               audioContext,
-              onPrepared: end => {
-                if (!ownsPin()) return
-                setPrepared(previous => ({ ...previous, [side]: { key, end } }))
-                if (end === null && active.current === side) { running.current = null; intent(false) }
-              },
-              onCursor: time => { if (ownsPin() && ownsPlayback(side, key)) move(time) },
+              onLoading: () => report({ mount, state: 'loading' }),
+              onPrepared: end => report(end === null ? { mount, state: 'failed' } : { mount, state: 'ready', end }),
+              onStarted: () => { if (ownsPlayback()) setPlayback('playing') },
+              onCursor: time => { if (ownsPlayback()) move(time) },
               onEnd: () => {
-                if (ownsPin() && ownsPlayback(side, key)) { running.current = null; intent(false); persist() }
+                if (ownsPlayback()) { running.current = null; intent(false); persist() }
               },
             }} />
         </div>
