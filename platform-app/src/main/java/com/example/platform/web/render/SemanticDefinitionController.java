@@ -37,7 +37,9 @@ public final class SemanticDefinitionController {
         return List.of(creative("EFFECT", com.example.platform.timeline.semantics.effect.BasicVideoEffect.EFFECT_KEY,
                         com.example.platform.timeline.semantics.effect.BasicVideoEffect.FORMAT, OperationDefinition.V3.SET_VIDEO_EFFECT),
                 creative("TRANSITION", com.example.platform.timeline.canonicalmodel.CanonicalTransition.CROSS_DISSOLVE,
-                        com.example.platform.timeline.canonicalmodel.CanonicalTransition.CROSS_DISSOLVE_VERSION, OperationDefinition.V3.CREATE_CROSS_DISSOLVE));
+                        com.example.platform.timeline.canonicalmodel.CanonicalTransition.CROSS_DISSOLVE_VERSION, OperationDefinition.V3.CREATE_CROSS_DISSOLVE),
+                creative("TRANSITION", com.example.platform.timeline.canonicalmodel.CanonicalTransition.WIPE_LEFT_TO_RIGHT,
+                        com.example.platform.timeline.canonicalmodel.CanonicalTransition.WIPE_VERSION, OperationDefinition.V3.CREATE_WIPE));
     }
 
     private static CreativeDefinition creative(String kind, String id, String format, OperationDefinition operation) {

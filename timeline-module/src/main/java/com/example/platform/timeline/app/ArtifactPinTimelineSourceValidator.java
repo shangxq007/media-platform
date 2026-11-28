@@ -98,7 +98,8 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
         var facts = sourceFacts.find(tenant, project, binding.artifactId(), binding.contentDigest());
         if (facts.isEmpty()) return invalid("normalized source facts unavailable for artifact pin");
         if (binding.sourceRange().end().isGreaterThan(facts.get().duration())) {
-            return invalid("source range exceeds accepted media duration");
+            return invalid("source range exceeds accepted media duration (short by "
+                    + binding.sourceRange().end().subtract(facts.get().duration()) + " s)");
         }
         var expected = switch (trackType == null ? TrackType.TEXT : trackType) {
             case VIDEO -> ArtifactSourceFacts.Kind.VIDEO;
@@ -111,7 +112,8 @@ public class ArtifactPinTimelineSourceValidator implements TimelineSourceValidat
             return invalid("source stream is unavailable or incompatible with target track");
         }
         if (binding.sourceRange().end().isGreaterThan(stream.get().duration())) {
-            return invalid("source range exceeds accepted stream duration");
+            return invalid("source range exceeds accepted stream duration (short by "
+                    + binding.sourceRange().end().subtract(stream.get().duration()) + " s)");
         }
         if (routedEmbeddedAudio) {
             var audio = facts.get().streams().stream().filter(item -> item.kind() == ArtifactSourceFacts.Kind.AUDIO).toList();

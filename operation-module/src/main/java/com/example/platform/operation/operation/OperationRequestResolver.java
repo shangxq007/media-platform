@@ -164,7 +164,9 @@ public final class OperationRequestResolver {
                         || def.equals(OperationDefinition.V3.DELETE_AUDIO_CROSSFADE);
                 if (!(target instanceof OperationTargetRequest.TransitionTargetRequest t)
                         || base.timeline().getTransitions().stream().filter(x -> x.transitionId().equals(t.transitionId())
-                            && (audio ? x.isAudioCrossfade() : x.isCrossDissolve())).count() != 1) {
+                            && (audio ? x.isAudioCrossfade()
+                                : (def.equals(OperationDefinition.V3.UPDATE_WIPE) || def.equals(OperationDefinition.V3.DELETE_WIPE))
+                                    ? x.isWipeLeftToRight() : x.isCrossDissolve())).count() != 1) {
                     throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE, "Transition unavailable");
                 }
                 return new OperationTarget.TransitionTarget(t.transitionId());

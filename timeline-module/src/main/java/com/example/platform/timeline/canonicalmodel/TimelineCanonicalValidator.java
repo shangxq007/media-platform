@@ -223,7 +223,7 @@ public final class TimelineCanonicalValidator {
                         path, transition.transitionId(), "Transition endpoints must be different"));
                 continue;
             }
-            if (!transition.isCrossDissolve() && !transition.isAudioCrossfade()) continue;
+            if (!transition.isVideoTransition() && !transition.isAudioCrossfade()) continue;
             try {
                 if (transition.isAudioCrossfade()) {
                     validateAudioCrossfade(candidate, layers, transition, outgoing, incoming, incomingEndpoints, windows);
@@ -283,17 +283,18 @@ public final class TimelineCanonicalValidator {
         int lower = layers.get(outgoing.clipId());
         int upper = layers.get(incoming.clipId());
         boolean handle = transition.usesOutgoingHandle();
-        if (!transition.supportsCrossDissolve() || (handle ? lower != upper : lower >= upper)
+        if (!transition.supportsVideoTransition() || (handle ? lower != upper : lower >= upper)
                 || candidate.tracks().get(lower).type() != TimelineCandidate.TrackType.VIDEO
                 || candidate.tracks().get(upper).type() != TimelineCandidate.TrackType.VIDEO) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_PROFILE_UNSUPPORTED,
-                    path, id, "Cross dissolve requires the R1 profile and an incoming clip on a higher video layer"));
+                    path, id, handle ? "A shared-cut video transition requires two clips on the same video track"
+                            : "Cross dissolve requires the R1 profile and an incoming clip on a higher video layer"));
             return;
         }
         if (!ConstantRateTemporalMapping.identity().equals(outgoing.temporalMapping())
                 || !ConstantRateTemporalMapping.identity().equals(incoming.temporalMapping())) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_MAPPING_UNSUPPORTED,
-                    path, id, "Cross dissolve requires forward 1x endpoint mappings"));
+                    path, id, "Video transition requires forward 1x endpoint mappings"));
         }
         if (!incomingEndpoints.add(incoming.clipId())) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_CONFLICT,
@@ -308,7 +309,7 @@ public final class TimelineCanonicalValidator {
                 || !(outgoing.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding)
                 || !(incoming.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding))) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID, path, id,
-                    "A shared-cut dissolve requires two adjacent pinned video clips"));
+                    "A shared-cut video transition requires two adjacent pinned video clips"));
             return;
         }
         if (handle && candidate.audioMix().routes().stream().anyMatch(r -> r.input().clipId().equals(outgoing.clipId()))) {
@@ -320,6 +321,12 @@ public final class TimelineCanonicalValidator {
                 .map(e -> BasicVideoEffect.fromParameters(e.parameters())).anyMatch(e -> e.enabled() && e.fadeOutSeconds() > 0)) {
             diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_PROFILE_UNSUPPORTED, path, id,
                     "Remove the outgoing fade-out before extending its video handle"));
+            return;
+        }
+        if (transition.isWipeLeftToRight() && transition.duration().isGreaterThan(incoming.duration())) {
+            diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_INTERVAL_INVALID, path, id,
+                    "Incoming source handle is short by " + transition.duration().subtract(incoming.duration())
+                            + " s within the authored incoming clip"));
             return;
         }
         if (start.isLessThan(outgoing.timelineStart())

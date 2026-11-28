@@ -50,6 +50,9 @@ export type SemanticStep =
   | { definitionId: "timeline.transition.cross-dissolve.create"; parameters: { duration: string; incomingClipId: string; transitionId: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.transition.cross-dissolve.update"; parameters: { duration: string }; target: { transitionId: string }; version?: "2.0" }
   | { definitionId: "timeline.transition.cross-dissolve.delete"; parameters?: {  }; target: { transitionId: string }; version?: "2.0" }
+  | { definitionId: "timeline.transition.wipe-left-to-right.create"; parameters: { duration: string; incomingClipId: string; transitionId: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
+  | { definitionId: "timeline.transition.wipe-left-to-right.update"; parameters: { duration: string }; target: { transitionId: string }; version?: "1.0" }
+  | { definitionId: "timeline.transition.wipe-left-to-right.delete"; parameters?: {  }; target: { transitionId: string }; version?: "1.0" }
   | { definitionId: "timeline.transition.audio-crossfade.create"; parameters: { duration: string; incomingClipId: string; transitionId: string }; target: { clipId: string } | { clipIds: Array<string> }; version?: "1.0" }
   | { definitionId: "timeline.transition.audio-crossfade.update"; parameters: { duration: string }; target: { transitionId: string }; version?: "1.0" }
   | { definitionId: "timeline.transition.audio-crossfade.delete"; parameters?: {  }; target: { transitionId: string }; version?: "1.0" }

@@ -29,6 +29,7 @@ export const IDENTITY_VIDEO_EFFECT: ProjectedVideoEffect = {
 export interface ProjectedTransition {
   readonly outgoingHandle?: boolean
   readonly audioCrossfade?: true
+  readonly wipeLeftToRight?: true
   readonly transitionId: string
   readonly outgoingClipId: string
   readonly incomingClipId: string
@@ -478,7 +479,9 @@ export function projectTimeline(document: unknown): TimelineProjection {
     const duration = exactTime(t.duration, 'transition duration')
     const outgoingHandle = t.alignment === 'START_AT_CUT' && t.temporalPolicy === 'USE_SOURCE_HANDLES'
     const audioCrossfade = t.transitionDefinitionId === 'audio.crossfade'
+    const wipeLeftToRight = t.transitionDefinitionId === 'video.wipe-left-to-right'
     const supported = audioCrossfade ? t.mediaType === 'AUDIO' && outgoingHandle
+      : wipeLeftToRight ? t.mediaType === 'VIDEO' && outgoingHandle
       : t.transitionDefinitionId === 'video.cross-dissolve' && t.mediaType === 'VIDEO'
         && (outgoingHandle || (t.alignment === 'START_AT_INCOMING' && t.temporalPolicy === 'OVERLAP_TIMELINE'))
     if (outgoingClipId === incomingClipId || duration.numerator <= 0n || incoming.has(incomingClipId)
@@ -488,7 +491,9 @@ export function projectTimeline(document: unknown): TimelineProjection {
       throw new Error('Unsupported Timeline transition')
     }
     incoming.add(incomingClipId)
-    return { transitionId, outgoingClipId, incomingClipId, duration, ...(outgoingHandle ? { outgoingHandle } : {}), ...(audioCrossfade ? { audioCrossfade: true as const } : {}) }
+    return { transitionId, outgoingClipId, incomingClipId, duration, ...(outgoingHandle ? { outgoingHandle } : {}),
+      ...(audioCrossfade ? { audioCrossfade: true as const } : {}),
+      ...(wipeLeftToRight ? { wipeLeftToRight: true as const } : {}) }
   })
   return { compositionAspectRatio: aspect, tracks, clips, audioRoutes, transitions, ...(subtitles.length ? { subtitles } : {}) }
 }

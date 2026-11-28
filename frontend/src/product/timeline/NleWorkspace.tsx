@@ -778,7 +778,8 @@ export function NleWorkspace({
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
             disabled={!!voiceoverPlan || !!audioCrossfadePlan || !!fadePlan || !!gainPlan || !!scalePlan || !!subtitlePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('dissolve')} readback={() => loadHead('RANGE_READBACK')} onPreview={setDissolvePlan}
-            onAccepted={(base, hash, receipt) => trimHistory.recordEdit(base, hash, receipt, 'dissolve')} />}
+            onAccepted={(base, hash, receipt, step) => trimHistory.recordEdit(base, hash, receipt,
+              step.definitionId.startsWith('timeline.transition.wipe-left-to-right.') ? 'wipe' : 'dissolve')} />}
           {defaultBranch && !historyRevision && <OpacityEdit key={JSON.stringify(['opacity', project.workspaceId, project.tenantId, project.projectId, editingBranch])}
             head={editingHead} tenant={project.tenantId} tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
             disabled={!!voiceoverPlan || !!audioCrossfadePlan || !!fadePlan || !!gainPlan || !!scalePlan || !!subtitlePlan || !!dissolvePlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}

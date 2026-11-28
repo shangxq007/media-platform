@@ -74,7 +74,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }).toList();
         // Keep video ordering independent of audio source-handle extensions.
         var handleLayers = new java.util.HashMap<String, Integer>();
-        if (revision.transitions().stream().anyMatch(t -> t.isCrossDissolve() && t.usesOutgoingHandle())) {
+        if (revision.transitions().stream().anyMatch(t -> t.isVideoTransition() && t.usesOutgoingHandle())) {
             revision.clips().stream().sorted(java.util.Comparator.comparingInt((MediaClip c) -> revision.layer(c.trackId()))
                     .thenComparing(c -> c.timelineRange().start())).forEach(c -> handleLayers.put(c.clipId(), handleLayers.size()));
         }
@@ -127,11 +127,11 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 revision.track(clip.trackId()).type() == com.example.platform.timeline.canonical.TrackType.AUDIO);
         boolean hasAudioRoutes = audioMix != null && !audioMix.routes().isEmpty();
         boolean hasAudio = hasAudioTracks || hasAudioRoutes;
-        var dissolvesByIncoming = revision.transitions().stream().filter(t -> t.isCrossDissolve()).collect(
+        var dissolvesByIncoming = revision.transitions().stream().filter(t -> t.isVideoTransition()).collect(
                 java.util.stream.Collectors.toMap(
                         com.example.platform.timeline.canonicalmodel.CanonicalTransition::incomingClipId,
                         t -> new RenderDependency.Dissolve(t.transitionId(), t.outgoingClipId(),
-                                t.incomingClipId(), t.duration())));
+                                t.incomingClipId(), t.duration(), t.isWipeLeftToRight())));
         boolean hasBasicEffects = clips.stream().anyMatch(clip -> clip.effect().enabled() && !clip.effect().identity());
         boolean hasTransform = clips.stream().anyMatch(clip -> !clip.transform().equals(
                 com.example.platform.timeline.semantics.effect.VideoTransform.IDENTITY));

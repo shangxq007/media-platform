@@ -85,6 +85,31 @@ class TransitionEffectOperationPlanningTest {
     }
 
     @Test
+    void wipeKeepsTheSharedCutAndHasItsOwnCanonicalTypeAndVersion() {
+        var first = clip("left", MediaTime.ZERO, MediaTime.parse("3/1"));
+        var second = clip("right", MediaTime.parse("3/1"), MediaTime.parse("5/1"));
+        var base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("v1", "V1", TrackType.VIDEO, List.of(first, second))),
+                TimelineMetadata.empty(), com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of());
+        var step = new OperationParameters.TransitionCreateParameters("wipe", "right", MediaTime.parse("1/1"));
+        var candidate = plan(base, OperationDefinition.V3.CREATE_WIPE, "left", step).candidateTimeline();
+        var wipe = candidate.getTransitions().getFirst();
+        assertThat(wipe.transitionDefinitionId()).isEqualTo("video.wipe-left-to-right");
+        assertThat(wipe.transitionDefinitionVersion()).isEqualTo("1.0");
+        assertThat(wipe.duration()).isEqualTo(MediaTime.parse("1/1"));
+        assertThat(wipe.usesOutgoingHandle()).isTrue();
+        assertThat(wipe.supportsVideoTransition()).isTrue();
+        assertThat(wipe.supportsCrossDissolve()).isFalse();
+        assertThat(candidate.getTracks()).isEqualTo(base.getTracks());
+        assertThat(validate(candidate)).isEmpty();
+        var tooLong = new OperationParameters.TransitionUpdateParameters("wipe", MediaTime.parse("9/4"));
+        assertThat(validate(plan(candidate, OperationDefinition.V3.UPDATE_WIPE, "left", tooLong).candidateTimeline()))
+                .contains("TIMELINE_TRANSITION_INTERVAL_INVALID");
+        assertThatThrownBy(() -> plan(candidate, OperationDefinition.V3.UPDATE_CROSS_DISSOLVE, "left", tooLong))
+                .isInstanceOf(PlanException.class);
+    }
+
+    @Test
     void canonicalGateRejectsCompetingIncomingTransitionsAndAcceptsASequentialChain() {
         TimelineDocument chain = withThirdClip();
         var first = dissolve(chain, "first", "clip-a", "clip-b", 1);

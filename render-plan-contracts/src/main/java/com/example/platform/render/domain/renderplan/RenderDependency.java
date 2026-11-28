@@ -91,9 +91,14 @@ public sealed interface RenderDependency permits
             return "TIMED_COMPOSITE_INPUT:" + start + ":" + end;
         }
     }
-    /** An incoming layer's authored linear dissolve and its explicit outgoing clip. */
+    /** An incoming layer's authored linear transition and its explicit outgoing clip. */
     record Dissolve(String transitionId, String outgoingClipId, String incomingClipId,
-                    com.example.platform.shared.time.MediaTime duration) {
+                    com.example.platform.shared.time.MediaTime duration, boolean wipeLeftToRight) {
+        public Dissolve(String transitionId, String outgoingClipId, String incomingClipId,
+                        com.example.platform.shared.time.MediaTime duration) {
+            this(transitionId, outgoingClipId, incomingClipId, duration, false);
+        }
+
         public Dissolve {
             java.util.Objects.requireNonNull(transitionId);
             java.util.Objects.requireNonNull(outgoingClipId);

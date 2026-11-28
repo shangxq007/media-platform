@@ -107,6 +107,7 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
             import importlib
             import math
             import os
+            import re
             import sys
             import bmf
 
@@ -352,6 +353,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 clip = ff.ff_filter(clip, 'fps', rate)
                 clip = ff.ff_filter(clip, 'tpad', stop='1', stop_mode='clone')
                 fx = placement[16].split(';')
+                wipe = fx.pop()[5:].split('|') if fx[-1].startswith('wipe=') else None
+                if wipe:
+                    fx[9] = '0'  # The wipe is a geometric mask, not a dissolve.
                 # Evaluate using timestamps relative to the authored clip, then place on output.
                 clip = ff.setpts(clip, 'PTS-STARTPTS+' + fx[7] + '/TB')
                 clip, px, py = transformed(clip, placement, fx, animated_scale)
@@ -363,10 +367,32 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                     px, py = 0, 0
                     visible = frames_visible(first_frame, end_frame)
                 else:
-                    clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
-                    visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
+                    if wipe:
+                        first_frame = math.ceil(Fraction(wipe[0]) * output_rate)
+                        end_frame = math.ceil(Fraction(wipe[1]) * output_rate)
+                        if first_frame >= end_frame:
+                            continue
+                        clip = ff.ff_filter(clip, 'settb', 'expr=' + str(1 / output_rate))
+                        clip = ff.setpts(clip, 'N+' + str(first_frame))
+                        visible = frames_visible(first_frame, end_frame)
+                    else:
+                        clip = ff.setpts(clip, 'PTS-STARTPTS+' + start + '/TB')
+                        visible = '(1+sgn(t-' + start + '+0.000000001))*(1-sgn(t-' + end + '+0.000000001))'
                     if len(placement) > 17 and placement[17]:
                         clip, px, py = position_layer(clip, placement[17], start, fx[7])
+                if wipe:
+                    start_exact, _, elapsed_exact, length = map(Fraction, wipe)
+                    cut = start_exact - elapsed_exact
+                    step = canvas_width / (length * output_rate)
+                    edge0 = (Fraction(first_frame) / output_rate - cut) * canvas_width / length
+                    denom = math.lcm(edge0.denominator, step.denominator)
+                    edge = '(' + str(int(edge0 * denom)) + '+N*' + str(int(step * denom)) + ')'
+                    # Position has already been resolved. Test the pixel center in output
+                    # canvas coordinates, not a translated or normalized source coordinate.
+                    x = re.sub(r'\\bt\\b', 'T', str(px))
+                    left = '(X+0.5+(' + x + '))*' + str(denom)
+                    clip = ff.ff_filter(clip, 'geq', r='r(X,Y)', g='g(X,Y)', b='b(X,Y)',
+                            a='alpha(X,Y)*lt(' + left + ',' + edge + ')', interpolation='nearest')
                 canvas = ff.overlay(canvas, clip, x=str(px), y=str(py), enable=visible, format='rgb')
 
             def still_at_output_rate(path):
@@ -491,7 +517,9 @@ public final class BmfCpuRuntimeAdapter implements RuntimeAdapter<BmfCpuTranscod
                 + e.fadeOutSeconds() + ";" + (e.enabled() ? "1" : "0") + ";"
                 + seconds(input.elapsed()) + ";" + seconds(input.authoredDuration()) + ";"
                 + seconds(input.dissolveDuration()) + input.opacityKeys().map(k -> ";" + k.firstTime().toString()
-                        + ";" + k.firstValue() + ";" + k.lastTime().subtract(k.firstTime()).toString() + ";" + k.lastValue()).orElse("");
+                        + ";" + k.firstValue() + ";" + k.lastTime().subtract(k.firstTime()).toString() + ";" + k.lastValue()).orElse("")
+                + (input.wipeLeftToRight() ? ";wipe=" + input.start() + "|" + input.end()
+                    + "|" + input.elapsed() + "|" + input.dissolveDuration() : "");
     }
 
     private final Path python;

@@ -3370,6 +3370,130 @@
           "additionalProperties" : false,
           "properties" : {
             "definitionId" : {
+              "enum" : [ "timeline.transition.wipe-left-to-right.create" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "duration" : {
+                  "type" : "string"
+                },
+                "incomingClipId" : {
+                  "type" : "string"
+                },
+                "transitionId" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "duration", "incomingClipId", "transitionId" ],
+              "type" : "object"
+            },
+            "target" : {
+              "oneOf" : [ {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipId" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "clipId" ],
+                "type" : "object"
+              }, {
+                "additionalProperties" : false,
+                "properties" : {
+                  "clipIds" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "maxItems" : 1,
+                    "minItems" : 1,
+                    "type" : "array",
+                    "uniqueItems" : true
+                  }
+                },
+                "required" : [ "clipIds" ],
+                "type" : "object"
+              } ]
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.transition.wipe-left-to-right.update" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "duration" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "duration" ],
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "transitionId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "transitionId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "parameters", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
+              "enum" : [ "timeline.transition.wipe-left-to-right.delete" ],
+              "type" : "string"
+            },
+            "parameters" : {
+              "additionalProperties" : false,
+              "properties" : { },
+              "type" : "object"
+            },
+            "target" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "transitionId" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "transitionId" ],
+              "type" : "object"
+            },
+            "version" : {
+              "enum" : [ "1.0" ],
+              "type" : "string"
+            }
+          },
+          "required" : [ "definitionId", "target" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "properties" : {
+            "definitionId" : {
               "enum" : [ "timeline.transition.audio-crossfade.create" ],
               "type" : "string"
             },

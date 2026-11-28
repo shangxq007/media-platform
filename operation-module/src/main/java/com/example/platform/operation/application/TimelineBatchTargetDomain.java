@@ -540,7 +540,10 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
                         ? sourceValidator.validateRoutedVideo(binding, target.tenantId(), target.projectId())
                         : sourceValidator.validate(binding, target.tenantId(), target.projectId(), track.type());
                 if (!validation.valid()) {
-                    throw new IllegalArgumentException(operation + " source " + id.value() + " is invalid: " + validation.violations());
+                    String side = transition != null && transition.isWipeLeftToRight()
+                            ? (transition.outgoingClipId().equals(id.value()) ? "Outgoing source handle" : "Incoming source handle")
+                            : operation + " source";
+                    throw new IllegalArgumentException(side + " " + id.value() + " is invalid: " + validation.violations());
                 }
             }
         } catch (IllegalArgumentException | ArithmeticException invalid) {

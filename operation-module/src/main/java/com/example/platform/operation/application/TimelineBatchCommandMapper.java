@@ -227,7 +227,7 @@ public final class TimelineBatchCommandMapper {
                             requiredDouble(parameters, "fadeOutSeconds"),
                             requiredBoolean(parameters, "enabled")));
             case "timeline.clip.effect.remove" -> new OperationParameters.NoParameters();
-            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create" -> new OperationParameters.TransitionCreateParameters(
+            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create", "timeline.transition.wipe-left-to-right.create" -> new OperationParameters.TransitionCreateParameters(
                     requiredText(parameters, "transitionId"),
                     requiredText(parameters, "incomingClipId"), time(parameters, "duration"));
             case "timeline.clip.split" -> new OperationParameters.SplitParameters(

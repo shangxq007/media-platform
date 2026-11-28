@@ -55,7 +55,19 @@ public record BmfCpuTranscodePlan(
                              Optional<RenderDependency.OpacityRamp> opacityKeys,
                              Optional<RenderDependency.PositionRamp> positionKeys,
                              Optional<RenderDependency.ScaleRamp> scaleKeys,
-                             Optional<RenderDependency.GainRamp> gainKeys, RenderDependency.AudioFades fades) {
+                             Optional<RenderDependency.GainRamp> gainKeys, RenderDependency.AudioFades fades,
+                             boolean wipeLeftToRight) {
+        public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
+                          double gain, boolean mute, double balance, VideoPlacement transform,
+                          com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
+                          MediaTime elapsed, MediaTime authoredDuration, MediaTime dissolveDuration,
+                          Optional<RenderDependency.OpacityRamp> opacityKeys, Optional<RenderDependency.PositionRamp> positionKeys,
+                          Optional<RenderDependency.ScaleRamp> scaleKeys, Optional<RenderDependency.GainRamp> gainKeys,
+                          RenderDependency.AudioFades fades) {
+            this(inputId, start, end, layer, audio, gain, mute, balance, transform, effect, elapsed, authoredDuration,
+                    dissolveDuration, opacityKeys, positionKeys, scaleKeys, gainKeys, fades, false);
+        }
+
         public TimedInput(ExecutionInputId inputId, MediaTime start, MediaTime end, int layer, boolean audio,
                           double gain, boolean mute, double balance, VideoPlacement transform,
                           com.example.platform.render.domain.renderplan.VideoEffectSpec effect,
@@ -133,6 +145,9 @@ public record BmfCpuTranscodePlan(
                 fades.requireFits(authoredDuration);
             }
             Objects.requireNonNull(dissolveDuration, "dissolveDuration");
+            if (wipeLeftToRight && (audio || dissolveDuration.ticks() <= 0)) {
+                throw new IllegalArgumentException("A wipe requires a positive video transition duration");
+            }
             if (elapsed.ticks() < 0 || dissolveDuration.ticks() < 0
                     || dissolveDuration.isGreaterThan(authoredDuration)
                     || elapsed.add(end.subtract(start)).isGreaterThan(authoredDuration)) {

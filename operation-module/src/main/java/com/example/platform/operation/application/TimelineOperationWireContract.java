@@ -87,9 +87,9 @@ public final class TimelineOperationWireContract {
                 fields(fields, "number", "brightness", "contrast", "saturation", "fadeInSeconds", "fadeOutSeconds");
                 fields(fields, "boolean", "grayscale", "enabled");
             }
-            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create" -> fields(fields, "string", "transitionId", "duration", "incomingClipId");
-            case "timeline.transition.cross-dissolve.update", "timeline.transition.audio-crossfade.update" -> fields(fields, "string", "duration");
-            case "timeline.transition.cross-dissolve.delete", "timeline.transition.audio-crossfade.delete" -> {}
+            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create", "timeline.transition.wipe-left-to-right.create" -> fields(fields, "string", "transitionId", "duration", "incomingClipId");
+            case "timeline.transition.cross-dissolve.update", "timeline.transition.audio-crossfade.update", "timeline.transition.wipe-left-to-right.update" -> fields(fields, "string", "duration");
+            case "timeline.transition.cross-dissolve.delete", "timeline.transition.audio-crossfade.delete", "timeline.transition.wipe-left-to-right.delete" -> {}
             case "timeline.temporal.set-rate" -> fields(fields, "integer", "numerator", "denominator");
             case "timeline.temporal.set-direction" -> fields(fields, "string", "direction");
             case "timeline.temporal.freeze" -> fields(fields, "string", "sourcePosition");

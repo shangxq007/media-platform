@@ -21,7 +21,7 @@ export interface ConfirmedEditProps {
   disabled: boolean
   access: EditorCommandAccess
   readback: () => Promise<CanonicalHeadReference | undefined>
-  onAccepted: (base: string, hash: string, receipt: { revisionId: string; contentHash: string }) => void
+  onAccepted: (base: string, hash: string, receipt: { revisionId: string; contentHash: string }, step: SemanticStep) => void
 }
 
 export function ConfirmedClipEdit({ edit, head, tenant, refId, disabled, access, readback, onAccepted, inputIdentity, draft, onPreview, children }: ConfirmedEditProps & {
@@ -99,7 +99,7 @@ export function ConfirmedClipEdit({ edit, head, tenant, refId, disabled, access,
         attempt.body.baseRevisionId, attempt.digest, request.signal)
       if (request.signal.aborted) return
       setPlan(null); setRetry(null)
-      onAccepted(attempt.body.baseRevisionId, attempt.body.baseContentHash, receipt)
+      onAccepted(attempt.body.baseRevisionId, attempt.body.baseContentHash, receipt, attempt.body.operations[0])
       const current = await readback().catch(() => undefined)
       setMessage((receipt.revisionId === attempt.body.baseRevisionId ? label + ' created no revision at ' : label + ' accepted at revision ')
         + receipt.revisionId + '.' + (current ? (current.revisionId === receipt.revisionId && current.contentHash === receipt.contentHash

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeClipAt, audioCrossfadePlacement, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt } from './timeline-preview'
+import { activeClipAt, audioCrossfadePlacement, audioFadeEnvelope, clampTimelineTime, sourceTimeAt, timelineDuration, clockCursor, decimalCursor, scaleAt, wipeEdge } from './timeline-preview'
 import { decorationVisible, type SubtitleCue } from './subtitle-cues'
 import { projectTimeline } from './timeline-projection'
 import { compare, formatRational, parseRational } from './trim'
@@ -12,6 +12,12 @@ const projection = projectTimeline({ schemaVersion: 'timeline-1.0', tracks: [{ t
 const t = (v: string) => parseRational(v)!
 
 describe('timeline media preview time mapping', () => {
+  it('reveals pixel centers from left to right using the exact half-open wipe interval', () => {
+    expect(['71/24', '3', '13/4', '7/2', '15/4', '4'].map(time => wipeEdge(320, t(time), t('3'), t('1'))))
+      .toEqual([0, 0, 80, 160, 240, 320])
+    expect(wipeEdge(3, t('1/2'), t('0'), t('1'))).toBe(1)
+    expect(wipeEdge(3, t('36028797018963969/72057594037927936'), t('0'), t('1'))).toBe(2)
+  })
   it('selects clips and gaps by Timeline time', () => {
     expect(activeClipAt(projection, t('1/2'))?.clipId).toBe('a')
     expect(activeClipAt(projection, t('2'))).toBeNull()

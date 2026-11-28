@@ -585,7 +585,7 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                     .field("authoredStart", timed.authoredStart().toString())
                     .field("authoredEnd", timed.authoredEnd().toString())
                     .optional(timed.dissolve().isPresent(), timed.dissolve().map(dissolve ->
-                            new CanonicalWriter().tag("Dissolve")
+                            new CanonicalWriter().tag(dissolve.wipeLeftToRight() ? "WipeLeftToRight" : "Dissolve")
                                     .field("transitionId", dissolve.transitionId())
                                     .field("outgoingClipId", dissolve.outgoingClipId())
                                     .field("incomingClipId", dissolve.incomingClipId())
@@ -700,12 +700,15 @@ public final class PhysicalExecutionPlanCanonicalCodec {
 
     private static Optional<RenderDependency.Dissolve> dissolve(FrameReader reader) {
         if (reader == null) return Optional.empty();
-        reader.requireTag("Dissolve");
+        String kind = reader.text();
+        if (!kind.equals("Dissolve") && !kind.equals("WipeLeftToRight")) {
+            throw new UnsupportedPersistedConstructException("unsupported video transition " + kind);
+        }
         var value = new RenderDependency.Dissolve(reader.field("transitionId"),
                 reader.field("outgoingClipId"), reader.field("incomingClipId"),
-                MediaTime.parse(reader.field("duration")));
+                MediaTime.parse(reader.field("duration")), kind.equals("WipeLeftToRight"));
         if (reader.hasRemaining()) {
-            throw new UnsupportedPersistedConstructException("trailing dissolve data");
+            throw new UnsupportedPersistedConstructException("trailing video transition data");
         }
         return Optional.of(value);
     }

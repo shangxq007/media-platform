@@ -30,11 +30,21 @@ export function activeClipsAt(projection: TimelineProjection, timelineTime: Rati
   return active
 }
 
-/** The canonical cross-dissolve whose incoming clip is this clip, if any. */
+/** The canonical video transition whose incoming clip is this clip, if any. */
 export function transitionForIncoming(projection: TimelineProjection, clipId: string): ProjectedTransition | null {
   const matches = projection.transitions.filter(transition => !transition.audioCrossfade && transition.incomingClipId === clipId)
   if (matches.length > 1) throw new Error('Conflicting incoming Timeline transitions')
   return matches[0] ?? null
+}
+
+/** Number of output pixel centers strictly to the left of the moving edge. */
+export function wipeEdge(width: number, time: Rational, cut: Rational, duration: Rational): number {
+  const elapsed = subtract(time, cut)
+  if (elapsed.numerator <= 0n) return 0
+  if (compare(elapsed, duration) >= 0) return width
+  const numerator = elapsed.numerator * duration.denominator * BigInt(width)
+  const denominator = elapsed.denominator * duration.numerator
+  return Number((2n * numerator + denominator - 1n) / (2n * denominator))
 }
 
 /** The topmost video clip covering a Timeline time, or null for a video gap. */

@@ -7,7 +7,7 @@ import { Button } from '../../components/design-system'
 import { FormalRenderAPI } from '../../api/formal-render'
 import { assetGateway } from '../../api/app/asset.gateway'
 import { parseRational, add, compare, subtract, toSeconds, formatRational, ZERO, type Rational } from './trim'
-import { activeClipsAt, audioCrossfadePlacement, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming } from './timeline-preview'
+import { activeClipsAt, audioCrossfadePlacement, audioFadeEnvelope, decimalCursor, clockCursor, scaleAt, sourceTimeAt, timelineDuration, transitionForIncoming, wipeEdge } from './timeline-preview'
 import { audioRouteFor, projectSnapshotJson, type ProjectedAudioFades, type ProjectedVideoEffect, type ProjectedClip, type ProjectedTransition, type ScaleKey, type TimelineProjection } from './timeline-projection'
 import { projectId as validateProjectId } from './types'
 
@@ -426,13 +426,15 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
     const step = plan?.operations[0]
     if (projection && plan?.baseRevisionId === revisionId && step) {
       let transitions = projection.transitions
-      if (step.definitionId === 'timeline.transition.cross-dissolve.create' && 'clipId' in step.target) {
+      if ((step.definitionId === 'timeline.transition.cross-dissolve.create'
+          || step.definitionId === 'timeline.transition.wipe-left-to-right.create') && 'clipId' in step.target) {
         transitions = [...transitions, { ...step.parameters, outgoingClipId: step.target.clipId,
+          ...(step.definitionId === 'timeline.transition.wipe-left-to-right.create' ? { wipeLeftToRight: true } : {}),
           outgoingHandle: true, duration: parseRational(step.parameters.duration)! }]
-      } else if (step.definitionId === 'timeline.transition.cross-dissolve.update') {
+      } else if (step.definitionId === 'timeline.transition.cross-dissolve.update' || step.definitionId === 'timeline.transition.wipe-left-to-right.update') {
         transitions = transitions.map(t => t.transitionId === step.target.transitionId
           ? { ...t, duration: parseRational(step.parameters.duration)! } : t)
-      } else if (step.definitionId === 'timeline.transition.cross-dissolve.delete') {
+      } else if (step.definitionId === 'timeline.transition.cross-dissolve.delete' || step.definitionId === 'timeline.transition.wipe-left-to-right.delete') {
         transitions = transitions.filter(t => t.transitionId !== step.target.transitionId)
       }
       projection = { ...projection, transitions }
@@ -471,7 +473,7 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         ? Math.min(1, Math.max(0, (clipEnd - now) / effect.fadeOutSeconds)) : 1
       const transition = projection
         ? transitionForIncoming(projection, clip.clipId) : null
-      const transitionAlpha = transition
+      const transitionAlpha = transition && !transition.wipeLeftToRight
         ? Math.min(1, Math.max(0, (now - clipStart) / toSeconds(transition.duration))) : 1
       const t = clip.transform
       const sourceWidth = media.videoWidth
@@ -509,6 +511,11 @@ export function TimelineMediaPreview({ revisionId, tenantId, projectId, onTime, 
         sample = surface
       }
       context.save()
+      if (transition?.wipeLeftToRight) {
+        context.beginPath()
+        context.rect(0, 0, wipeEdge(target.width, time, clip.start, transition.duration), target.height)
+        context.clip()
+      }
       const override = transient.current
       const keys = override && override.revisionId === revisionId && override.clipId === clip.clipId ? override.keys : clip.opacityKeys
       let opacity = t.opacity

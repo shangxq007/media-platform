@@ -91,9 +91,9 @@ public final class OperationPlanner {
             case "timeline.clip.transform.set" -> planVideoTransform(instance, base, changes);
             case "timeline.clip.effect.set" -> planVideoEffectSet(instance, base, changes);
             case "timeline.clip.effect.remove" -> planVideoEffectRemove(instance, base, changes);
-            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create" -> planTransitionCreate(instance, base, changes);
-            case "timeline.transition.cross-dissolve.update", "timeline.transition.audio-crossfade.update" -> planTransitionUpdate(instance, base, changes);
-            case "timeline.transition.cross-dissolve.delete", "timeline.transition.audio-crossfade.delete" -> planTransitionDelete(instance, base, changes);
+            case "timeline.transition.cross-dissolve.create", "timeline.transition.audio-crossfade.create", "timeline.transition.wipe-left-to-right.create" -> planTransitionCreate(instance, base, changes);
+            case "timeline.transition.cross-dissolve.update", "timeline.transition.audio-crossfade.update", "timeline.transition.wipe-left-to-right.update" -> planTransitionUpdate(instance, base, changes);
+            case "timeline.transition.cross-dissolve.delete", "timeline.transition.audio-crossfade.delete", "timeline.transition.wipe-left-to-right.delete" -> planTransitionDelete(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.clip.ripple-delete" -> planRippleDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
@@ -1485,6 +1485,8 @@ public final class OperationPlanner {
         boolean sameTrack = base.getTracks().stream().anyMatch(t -> t.clips().contains(outgoing) && t.clips().contains(incoming));
         CanonicalTransition transition = isAudioCrossfadeOperation(inst)
                 ? CanonicalTransition.audioCrossfade(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
+                : isWipeOperation(inst)
+                    ? CanonicalTransition.cutWipe(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
                 : sameTrack ? CanonicalTransition.cutDissolve(params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration())
                 : CanonicalTransition.crossDissolve(
                 params.transitionId(), outgoing.getClipId().value(), incoming.getClipId().value(), params.duration());
@@ -1558,8 +1560,17 @@ public final class OperationPlanner {
         };
     }
 
+    private static boolean isWipeOperation(OperationInstance inst) {
+        return switch (inst.definitionId().value()) {
+            case "timeline.transition.wipe-left-to-right.create", "timeline.transition.wipe-left-to-right.update",
+                    "timeline.transition.wipe-left-to-right.delete" -> true;
+            default -> false;
+        };
+    }
+
     private static boolean matchesTransitionOperation(CanonicalTransition transition, OperationInstance inst) {
-        return isAudioCrossfadeOperation(inst) ? transition.isAudioCrossfade() : transition.isCrossDissolve();
+        return isAudioCrossfadeOperation(inst) ? transition.isAudioCrossfade()
+                : isWipeOperation(inst) ? transition.isWipeLeftToRight() : transition.isCrossDissolve();
     }
 
     private static TimelineDocument withTransitions(TimelineDocument base,

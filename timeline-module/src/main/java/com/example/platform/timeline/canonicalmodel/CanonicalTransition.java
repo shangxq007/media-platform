@@ -29,6 +29,8 @@ public record CanonicalTransition(
         Map<String, String> parameters) {
 
     public static final String CROSS_DISSOLVE = "video.cross-dissolve";
+    public static final String WIPE_LEFT_TO_RIGHT = "video.wipe-left-to-right";
+    public static final String WIPE_VERSION = "1.0";
     public static final String AUDIO_CROSSFADE = "audio.crossfade";
     public static final String CROSS_DISSOLVE_VERSION = "1.0";
     private static final Map<String, String> LINEAR_CURVE = Map.of("curve", "LINEAR");
@@ -42,6 +44,24 @@ public record CanonicalTransition(
     public static CanonicalTransition cutDissolve(String id, String outgoing, String incoming, MediaTime duration) {
         return new CanonicalTransition(id, CROSS_DISSOLVE, CROSS_DISSOLVE_VERSION,
                 outgoing, incoming, "VIDEO", duration, "START_AT_CUT", "USE_SOURCE_HANDLES", LINEAR_CURVE);
+    }
+
+    public static CanonicalTransition cutWipe(String id, String outgoing, String incoming, MediaTime duration) {
+        return new CanonicalTransition(id, WIPE_LEFT_TO_RIGHT, WIPE_VERSION,
+                outgoing, incoming, "VIDEO", duration, "START_AT_CUT", "USE_SOURCE_HANDLES", LINEAR_CURVE);
+    }
+
+    public boolean isWipeLeftToRight() {
+        return WIPE_LEFT_TO_RIGHT.equals(transitionDefinitionId);
+    }
+
+    public boolean isVideoTransition() {
+        return isCrossDissolve() || isWipeLeftToRight();
+    }
+
+    public boolean supportsVideoTransition() {
+        return supportsCrossDissolve() || (isWipeLeftToRight() && WIPE_VERSION.equals(transitionDefinitionVersion)
+                && "VIDEO".equals(mediaType) && LINEAR_CURVE.equals(parameters) && usesOutgoingHandle());
     }
 
     public static CanonicalTransition audioCrossfade(String id, String outgoing, String incoming, MediaTime duration) {
@@ -60,7 +80,7 @@ public record CanonicalTransition(
     }
 
     public boolean usesOutgoingHandle() {
-        return (isCrossDissolve() || isAudioCrossfade()) && "START_AT_CUT".equals(alignment)
+        return (isVideoTransition() || isAudioCrossfade()) && "START_AT_CUT".equals(alignment)
                 && "USE_SOURCE_HANDLES".equals(temporalPolicy);
     }
 

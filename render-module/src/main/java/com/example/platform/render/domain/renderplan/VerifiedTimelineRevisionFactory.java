@@ -93,7 +93,7 @@ public final class VerifiedTimelineRevisionFactory {
         }
 
         TimelineValidation.verifyPersistedEditorialState(timelineRevision.productId(), document);
-        if (document.getTransitions().stream().anyMatch(transition -> !transition.supportsCrossDissolve() && !transition.supportsAudioCrossfade())) {
+        if (document.getTransitions().stream().anyMatch(transition -> !transition.supportsVideoTransition() && !transition.supportsAudioCrossfade())) {
             throw new IllegalArgumentException("The revision contains an unsupported render transition profile");
         }
 
