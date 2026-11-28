@@ -114,13 +114,16 @@ export function ReviewComments({ project, capture, openFrame, canCapture, pinned
     setProblem('')
     void timelineCommentSource.list(project, signal.signal).then(rows => {
       if (!signal.signal.aborted) setComments(previous => {
-        const indexed = new Map(rows.map(row => [row.commentId, row]))
+        const listedIds = new Set(rows.map(row => row.commentId))
+        const known = Object.fromEntries(previous.map(row => [row.commentId, row]))
         // A list initiated before a confirmed Post must not erase that receipt.
-        for (const row of previous) {
-          const listed = indexed.get(row.commentId)
-          indexed.set(row.commentId, listed ? newestStatus(row, listed) : row)
-        }
-        return [...indexed.values()]
+        return [
+          ...rows.map(listed => {
+            const current = Object.hasOwn(known, listed.commentId) ? known[listed.commentId] : undefined
+            return current ? newestStatus(current, listed) : listed
+          }),
+          ...previous.filter(row => !listedIds.has(row.commentId)),
+        ]
       })
     }, () => { if (!signal.signal.aborted) setProblem('Review comments could not be read.') })
       .finally(() => { if (!signal.signal.aborted) setLoading(false) })
