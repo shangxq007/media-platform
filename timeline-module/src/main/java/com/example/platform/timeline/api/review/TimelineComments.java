@@ -7,6 +7,7 @@ public interface TimelineComments {
  CommentRow addFrameComment(String project, String review, String revision, String author, String content,
                            ReviewFrameAnchor anchor, UUID requestId);
  List<CommentRow> listProjectComments(String project);
+ Optional<CommentRow> transitionFrameComment(String project, String commentId, FrameCommentStatus status);
  List<CommentRow> listComments(String review);
  boolean resolveThread(String review,String thread);
  boolean reopenThread(String review,String thread);

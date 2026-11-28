@@ -23,7 +23,8 @@ export const FrameAnchor = z.object({
 }).strict()
 export type FrameAnchor = z.infer<typeof FrameAnchor>
 const ReviewComment = z.object({ commentId: id, reviewId: id, threadId: text, revisionId: text, entityRef: text,
-  authorUserId: text, content: z.string(), createdAt: text, frameAnchor: FrameAnchor.nullish() }).strict()
+  authorUserId: text, content: z.string(), createdAt: text, frameAnchor: FrameAnchor.nullish(),
+  frameStatus: z.enum(['OPEN', 'RESOLVED']).optional() }).strict()
 export type ReviewComment = z.infer<typeof ReviewComment>
 export type FrameCommentDraft = { revisionId: string; frameAnchor: FrameAnchor }
 export type FrameCommentWrite = FrameCommentDraft & { content: string; requestId: string }
@@ -84,6 +85,19 @@ export const timelineCommentSource = {
     if (row.revisionId !== body.revisionId || row.content !== body.content
       || row.frameAnchor?.side !== body.frameAnchor.side || row.frameAnchor.branch !== body.frameAnchor.branch
       || row.frameAnchor.position !== body.frameAnchor.position) throw new Error('Comment target mismatch')
+    return row
+  },
+  async transitionFrame(project: string, comment: ReviewComment, action: 'resolve' | 'reopen', signal: AbortSignal) {
+    const { data } = await api.post(`${path(project)}/reviews/comments/${part(comment.commentId)}/${action}`,
+      undefined, { baseURL: '', signal })
+    signal.throwIfAborted()
+    const row = ReviewComment.parse(data)
+    if (row.commentId !== comment.commentId || row.reviewId !== comment.reviewId
+      || row.revisionId !== comment.revisionId || row.content !== comment.content
+      || row.frameStatus !== (action === 'resolve' ? 'RESOLVED' : 'OPEN')
+      || !row.frameAnchor || row.frameAnchor.side !== comment.frameAnchor?.side
+      || row.frameAnchor.branch !== comment.frameAnchor.branch
+      || row.frameAnchor.position !== comment.frameAnchor.position) throw new Error('Comment action target mismatch')
     return row
   },
 }

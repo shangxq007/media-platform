@@ -50,3 +50,38 @@ it('does not write while browsing, opening a draft, or cancelling it', async () 
   expect(list).toHaveBeenCalledTimes(1)
   expect(post).not.toHaveBeenCalled()
 })
+
+it('changes only the selected note and opens its saved frame in either state without touching the draft', async () => {
+  const frame = { side: 'B' as const, branch: 'alternate', position: '73/24' }
+  const first: ReviewComment = { ...legacy, commentId: 'first', content: 'First frame note', frameAnchor: frame, frameStatus: 'OPEN' }
+  const second: ReviewComment = { ...first, commentId: 'second', content: 'Second frame note' }
+  const list = vi.spyOn(timelineCommentSource, 'list').mockResolvedValue([first, second])
+  const transition = vi.spyOn(timelineCommentSource, 'transitionFrame').mockImplementation(
+    async (_, row, action) => ({ ...row, threadId: 'thread', frameStatus: action === 'resolve' ? 'RESOLVED' : 'OPEN' }),
+  )
+  const openFrame = vi.fn()
+  const capture = () => ({ revisionId: 'r1', frameAnchor: frame })
+  const ui = render(<ReviewComments project="project" canCapture capture={capture} openFrame={openFrame} />)
+  const note = within((await screen.findByText(first.content)).closest('li')!)
+  const sibling = within(screen.getByText(second.content).closest('li')!)
+  fireEvent.click(note.getByRole('button', { name: 'Open saved frame' }))
+  expect(transition).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Comment on this frame' }))
+  fireEvent.change(screen.getByLabelText('Comment text'), { target: { value: 'Unsent draft' } })
+  fireEvent.click(note.getByRole('button', { name: 'Resolve comment' }))
+  await note.findByText('Resolved')
+  expect(sibling.getByText('Open')).toBeDefined()
+  expect((screen.getByLabelText('Comment text') as HTMLTextAreaElement).value).toBe('Unsent draft')
+  fireEvent.click(note.getByRole('button', { name: 'Open saved frame' }))
+  expect(openFrame).toHaveBeenNthCalledWith(2, capture())
+  expect(transition).toHaveBeenCalledTimes(1)
+  const saved = { ...first, threadId: 'thread', frameStatus: 'RESOLVED' as const }
+  list.mockResolvedValue([saved, second])
+  ui.unmount()
+  render(<ReviewComments project="project" openFrame={openFrame} />)
+  const reloaded = within((await screen.findByText(first.content)).closest('li')!)
+  expect(reloaded.getByText('Resolved')).toBeDefined()
+  fireEvent.click(reloaded.getByRole('button', { name: 'Reopen comment' }))
+  await reloaded.findByText('Open')
+  expect(transition).toHaveBeenLastCalledWith('project', saved, 'reopen', expect.any(AbortSignal))
+})

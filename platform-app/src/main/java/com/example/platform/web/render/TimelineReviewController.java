@@ -145,6 +145,27 @@ public class TimelineReviewController {
                 .toList();
     }
 
+    @PostMapping("/comments/{commentId}/resolve")
+    @Operation(summary = "Resolve one saved frame comment")
+    public CommentResponse resolveFrameComment(@PathVariable String projectId, @PathVariable String commentId) {
+        return transitionFrameComment(projectId, commentId, ReviewRecords.FrameCommentStatus.RESOLVED);
+    }
+
+    @PostMapping("/comments/{commentId}/reopen")
+    @Operation(summary = "Reopen one saved frame comment")
+    public CommentResponse reopenFrameComment(@PathVariable String projectId, @PathVariable String commentId) {
+        return transitionFrameComment(projectId, commentId, ReviewRecords.FrameCommentStatus.OPEN);
+    }
+
+    private CommentResponse transitionFrameComment(String projectId, String commentId,
+                                                    ReviewRecords.FrameCommentStatus status) {
+        projectAuthorization.requireWrite(TenantContext.get(), projectId);
+        return commentService.transitionFrameComment(projectId, commentId, status)
+                .map(TimelineReviewController::toCommentResponse)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "frame comment not found in project"));
+    }
+
     @PostMapping("/{reviewId}/comments/{threadId}/resolve")
     @Operation(summary = "Resolve a comment thread")
     public ResponseEntity<Map<String, Object>> resolveThread(
@@ -253,13 +274,13 @@ public class TimelineReviewController {
     private static CommentResponse toCommentResponse(ReviewRecords.CommentRow c) {
         return new CommentResponse(c.id(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef(), c.authorUserId(), c.content(),
-                c.createdAt() != null ? c.createdAt().toString() : null, c.frameAnchor());
+                c.createdAt() != null ? c.createdAt().toString() : null, c.frameAnchor(), c.frameStatus());
     }
 
     private static CommentResponse toCommentResponse(TimelineComment c) {
         return new CommentResponse(c.commentId(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef() != null ? c.entityRef().key() : null,
-                c.authorUserId(), c.content(), c.createdAt().toString(), null);
+                c.authorUserId(), c.content(), c.createdAt().toString(), null, null);
     }
 
     private static ThreadResponse toThreadResponse(ReviewRecords.ThreadRow t) {
@@ -291,7 +312,8 @@ public class TimelineReviewController {
     public record CommentResponse(String commentId, String reviewId, String threadId,
                                     String revisionId, String entityRef,
                                     String authorUserId, String content, String createdAt,
-                                    @JsonInclude(JsonInclude.Include.NON_NULL) ReviewFrameAnchor frameAnchor) {}
+                                    @JsonInclude(JsonInclude.Include.NON_NULL) ReviewFrameAnchor frameAnchor,
+                                    @JsonInclude(JsonInclude.Include.NON_NULL) ReviewRecords.FrameCommentStatus frameStatus) {}
 
     public record ThreadResponse(String threadId, String reviewId, String entityRef,
                                    String diffId, String status, String createdAt) {}

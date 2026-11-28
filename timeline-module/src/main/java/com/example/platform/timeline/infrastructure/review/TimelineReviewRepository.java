@@ -9,6 +9,8 @@ import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.SelectOnConditionStep;
+import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 import static com.example.platform.typedschema.jooq.generated.timeline.tables.ReviewDecision.REVIEW_DECISION;
 import static com.example.platform.typedschema.jooq.generated.timeline.tables.ReviewThread.REVIEW_THREAD;
@@ -126,15 +128,13 @@ public class TimelineReviewRepository {
     }
 
     public Optional<CommentRow> findOwnedComment(String projectId, String tenantId, String id) {
-        return dsl.select(TIMELINE_COMMENT.fields()).from(TIMELINE_COMMENT).join(TIMELINE_REVIEW)
-                .on(TIMELINE_COMMENT.REVIEW_ID.eq(TIMELINE_REVIEW.ID))
+        return commentsWithThread().join(TIMELINE_REVIEW).on(TIMELINE_COMMENT.REVIEW_ID.eq(TIMELINE_REVIEW.ID))
                 .where(ownedReview(projectId, tenantId)).and(TIMELINE_COMMENT.ID.eq(id))
                 .fetchOptional(TimelineReviewRepository::mapComment);
     }
 
     public List<CommentRow> listOwnedProjectComments(String projectId, String tenantId) {
-        return dsl.select(TIMELINE_COMMENT.fields()).from(TIMELINE_COMMENT).join(TIMELINE_REVIEW)
-                .on(TIMELINE_COMMENT.REVIEW_ID.eq(TIMELINE_REVIEW.ID))
+        return commentsWithThread().join(TIMELINE_REVIEW).on(TIMELINE_COMMENT.REVIEW_ID.eq(TIMELINE_REVIEW.ID))
                 .where(ownedReview(projectId, tenantId))
                 .orderBy(TIMELINE_COMMENT.CREATED_AT.desc(), TIMELINE_COMMENT.ID.desc())
                 .fetch(TimelineReviewRepository::mapComment);
@@ -152,6 +152,12 @@ public class TimelineReviewRepository {
                         REVIEW_THREAD.DIFF_ID, REVIEW_THREAD.STATUS, REVIEW_THREAD.CREATED_AT)
                 .values(id, reviewId, entityRef, diffId, status, now.toLocalDateTime())
                 .execute();
+    }
+
+    public Optional<ThreadRow> findThread(String reviewId, String threadId) {
+        return dsl.selectFrom(REVIEW_THREAD)
+                .where(REVIEW_THREAD.REVIEW_ID.eq(reviewId).and(REVIEW_THREAD.ID.eq(threadId)))
+                .fetchOptional(TimelineReviewRepository::mapThread);
     }
 
     public boolean updateThreadStatus(String reviewId, String threadId, String status) {
@@ -179,10 +185,21 @@ public class TimelineReviewRepository {
     }
 
     public List<CommentRow> listCommentsByReview(String reviewId) {
-        return dsl.select().from(TIMELINE_COMMENT)
+        return commentsWithThread()
                 .where(TIMELINE_COMMENT.REVIEW_ID.eq(reviewId))
                 .orderBy(TIMELINE_COMMENT.CREATED_AT.asc())
                 .fetch().map(TimelineReviewRepository::mapComment);
+    }
+
+    private SelectOnConditionStep<Record> commentsWithThread() {
+        // Frame comments are append-only. Their dedicated thread uses the comment's
+        // identity in the thread table. Legacy comments still use their explicit link.
+        var threadKey = DSL.when(TIMELINE_COMMENT.ENTITY_REF.startsWith(FRAME_PREFIX), TIMELINE_COMMENT.ID)
+                .otherwise(TIMELINE_COMMENT.THREAD_ID);
+        return dsl.select(TIMELINE_COMMENT.fields()).select(REVIEW_THREAD.ID, REVIEW_THREAD.STATUS)
+                .from(TIMELINE_COMMENT).leftJoin(REVIEW_THREAD)
+                .on(REVIEW_THREAD.ID.eq(threadKey)
+                        .and(REVIEW_THREAD.REVIEW_ID.eq(TIMELINE_COMMENT.REVIEW_ID)));
     }
 
     public List<ThreadRow> listThreadsByReview(String reviewId) {
@@ -207,22 +224,27 @@ public class TimelineReviewRepository {
 
     private static CommentRow mapComment(Record r) {
         String ref = r.get(TIMELINE_COMMENT.ENTITY_REF);
+        String threadId = r.get(TIMELINE_COMMENT.THREAD_ID);
         ReviewFrameAnchor anchor = null;
+        FrameCommentStatus status = null;
         if (ref != null && ref.startsWith(FRAME_PREFIX)) {
             String[] parts = ref.substring(FRAME_PREFIX.length()).split("\\|", -1);
             if (parts.length != 3) throw new IllegalStateException("Malformed saved review frame anchor");
             anchor = new ReviewFrameAnchor(ReviewFrameAnchor.Side.valueOf(parts[0]), parts[1], parts[2]);
+            threadId = r.get(REVIEW_THREAD.ID);
+            status = threadId == null ? FrameCommentStatus.OPEN
+                    : FrameCommentStatus.valueOf(r.get(REVIEW_THREAD.STATUS));
             ref = null;
         }
         return new CommentRow(
                 r.get(TIMELINE_COMMENT.ID),
                 r.get(TIMELINE_COMMENT.REVIEW_ID),
-                r.get(TIMELINE_COMMENT.THREAD_ID),
+                threadId,
                 r.get(TIMELINE_COMMENT.REVISION_ID),
                 ref,
                 r.get(TIMELINE_COMMENT.AUTHOR_USER_ID),
                 r.get(TIMELINE_COMMENT.CONTENT),
-                r.get(TIMELINE_COMMENT.CREATED_AT).atOffset(java.time.ZoneOffset.UTC), anchor);
+                r.get(TIMELINE_COMMENT.CREATED_AT).atOffset(java.time.ZoneOffset.UTC), anchor, status);
     }
 
     private static ThreadRow mapThread(Record r) {

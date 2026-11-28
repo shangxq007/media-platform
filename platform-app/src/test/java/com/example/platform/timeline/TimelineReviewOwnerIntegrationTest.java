@@ -25,6 +25,8 @@ import org.jooq.impl.DSL;
 import org.flywaydb.core.Flyway;
 import javax.sql.DataSource;
 import java.util.*;
+import java.util.concurrent.*;
+import static com.example.platform.timeline.api.review.ReviewRecords.FrameCommentStatus.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
@@ -199,6 +201,66 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   }
   assertEquals(reviews+1,count("timeline.timeline_review"));
   assertEquals(notes+3,count("timeline.timeline_comment"));
+  assertEquals(revisions,count("timeline.timeline_revision"));
+  assertEquals(commands,count("timeline.apply_command"));
+ }
+
+ @Test void concurrentFirstFrameActionsUseOneThreadAndOneResolutionFact() throws Exception {
+  var review=create();
+  var first="legacy-"+UUID.randomUUID();
+  var second="legacy-"+UUID.randomUUID();
+  for(var id:List.of(first,second)) {
+   jdbc.update("insert into timeline.timeline_comment(id,review_id,revision_id,entity_ref,author_user_id,content,created_at)"
+       +" values (?,?,'project-revision','FRAME.v1|B|alternate|73/24','server-actor',?,now())",id,review,id);
+  }
+  var comments=context.getBean(TimelineComments.class);
+  long threads=count("timeline.review_thread"), revisions=count("timeline.timeline_revision"),
+      commands=count("timeline.apply_command"), notes=count("timeline.timeline_comment");
+  assertTrue(comments.listComments(review).stream().allMatch(row->row.frameStatus()==OPEN && row.threadId()==null));
+  assertEquals(threads,count("timeline.review_thread"));
+  assertEquals(Optional.empty(),comments.transitionFrameComment("other",first,RESOLVED));
+  denied=true;
+  assertThrows(org.springframework.web.server.ResponseStatusException.class,
+      ()->comments.transitionFrameComment("project",first,RESOLVED));
+  denied=false;
+  assertEquals(threads,count("timeline.review_thread"));
+
+  var ready=new CountDownLatch(2);
+  var go=new CountDownLatch(1);
+  Callable<ReviewRecords.CommentRow> action=()->{
+   TenantContext.set("tenant");
+   try {
+    ready.countDown();
+    if(!go.await(10,TimeUnit.SECONDS))throw new IllegalStateException("Action gate did not open");
+    return comments.transitionFrameComment("project",first,RESOLVED).orElseThrow();
+   } finally {TenantContext.clear();actor.remove();}
+  };
+  ReviewRecords.CommentRow resolved;
+  try(var pool=Executors.newFixedThreadPool(2)) {
+   var one=pool.submit(action);
+   var two=pool.submit(action);
+   assertTrue(ready.await(10,TimeUnit.SECONDS));
+   go.countDown();
+   resolved=one.get(20,TimeUnit.SECONDS);
+   assertEquals(resolved,two.get(20,TimeUnit.SECONDS));
+  }
+  assertEquals(RESOLVED,resolved.frameStatus());
+  assertEquals("73/24",resolved.frameAnchor().position());
+  assertEquals("project-revision",resolved.revisionId());
+  assertNotNull(resolved.threadId());
+  assertEquals(resolved,comments.transitionFrameComment("project",first,RESOLVED).orElseThrow());
+  var independent=comments.listComments(review).stream().filter(row->row.id().equals(second)).findFirst().orElseThrow();
+  assertEquals(OPEN,independent.frameStatus());
+  assertNull(independent.threadId());
+
+  var reopened=comments.transitionFrameComment("project",first,OPEN).orElseThrow();
+  assertEquals(OPEN,reopened.frameStatus());
+  assertEquals(resolved.threadId(),reopened.threadId());
+  assertEquals(reopened,comments.transitionFrameComment("project",first,OPEN).orElseThrow());
+  assertEquals(1L,jdbc.queryForObject("select count(*) from infrastructure.outbox_events where aggregate_id=?"
+      +" and event_type='timeline.review.thread.resolved'",Long.class,resolved.threadId()));
+  assertEquals(threads+1,count("timeline.review_thread"));
+  assertEquals(notes,count("timeline.timeline_comment"));
   assertEquals(revisions,count("timeline.timeline_revision"));
   assertEquals(commands,count("timeline.apply_command"));
  }

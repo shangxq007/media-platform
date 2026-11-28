@@ -13,6 +13,7 @@ import com.example.platform.timeline.diff.merge.TimelineComment;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -103,6 +104,32 @@ public class TimelineCommentService implements TimelineComments {
         return reviewRepository.listOwnedProjectComments(projectId, TenantGuard.requireTenantId());
     }
 
+    @Override
+    @Transactional
+    public Optional<CommentRow> transitionFrameComment(String projectId, String commentId, FrameCommentStatus status) {
+        String tenantId = auth.require(projectId, true).tenantId();
+        var target = reviewRepository.findOwnedComment(projectId, tenantId, commentId)
+                .filter(row -> row.frameAnchor() != null);
+        if (target.isEmpty()) return Optional.empty();
+
+        // Share the legacy review lock and re-read after obtaining it. A concurrent
+        // action sees both the committed thread and its latest status.
+        var review = reviews.requireReview(target.get().reviewId(), true);
+        var current = reviewRepository.findOwnedComment(projectId, tenantId, commentId).orElseThrow();
+        if (current.frameStatus() == status) return Optional.of(current);
+
+        String threadId = current.threadId();
+        if (threadId == null) {
+            threadId = current.id();
+            reviewRepository.insertThread(threadId, review.id(), null, null, FrameCommentStatus.OPEN.name(),
+                    OffsetDateTime.now(ZoneOffset.UTC));
+        }
+        if (!transitionThread(review, threadId, status)) {
+            throw new IllegalStateException("Frame comment thread is missing from its review");
+        }
+        return reviewRepository.findOwnedComment(projectId, tenantId, commentId);
+    }
+
     private void requireFrameWithinRevision(String projectId, String tenantId, String revisionId, ReviewFrameAnchor anchor) {
         var snapshot = revisions.getRevisionSnapshotPayload(projectId, tenantId, revisionId)
                 .orElseThrow(() -> new IllegalArgumentException("revision snapshot not found in project"));
@@ -134,17 +161,25 @@ public class TimelineCommentService implements TimelineComments {
 
     @Transactional
     public boolean resolveThread(String reviewId, String threadId) {
-        var review=reviews.requireReview(reviewId,true);
-        var thread=reviewRepository.listThreadsByReview(reviewId).stream().filter(t->t.id().equals(threadId)).findFirst();
-        if(thread.isEmpty())return false;if("RESOLVED".equals(thread.get().status()))return true;
-        boolean changed=reviewRepository.updateThreadStatus(reviewId,threadId,"RESOLVED");
-        if(changed&&"TIMELINE".equals(reviewRepository.targetType(reviewId)))events.publish(new TimelineReviewThreadResolvedEvent(new TimelineReviewReference(reviewId,new TimelineRevisionIdentity(review.tenantId(),review.projectId(),review.revisionId())),java.util.UUID.randomUUID().toString(),threadId,thread.get().entityRef(),java.time.Instant.now()));
-        return changed;
+        return transitionThread(reviews.requireReview(reviewId, true), threadId, FrameCommentStatus.RESOLVED);
     }
 
     @Transactional
     public boolean reopenThread(String reviewId, String threadId) {
-        reviews.requireReview(reviewId,true);return reviewRepository.updateThreadStatus(reviewId, threadId, "OPEN");
+        return transitionThread(reviews.requireReview(reviewId, true), threadId, FrameCommentStatus.OPEN);
+    }
+
+    private boolean transitionThread(ReviewRow review, String threadId, FrameCommentStatus status) {
+        var thread = reviewRepository.findThread(review.id(), threadId);
+        if (thread.isEmpty()) return false;
+        if (status.name().equals(thread.get().status())) return true;
+        if (!reviewRepository.updateThreadStatus(review.id(), threadId, status.name())) return false;
+        if (status == FrameCommentStatus.RESOLVED && "TIMELINE".equals(reviewRepository.targetType(review.id()))) {
+            events.publish(new TimelineReviewThreadResolvedEvent(new TimelineReviewReference(review.id(),
+                    new TimelineRevisionIdentity(review.tenantId(), review.projectId(), review.revisionId())),
+                    UUID.randomUUID().toString(), threadId, thread.get().entityRef(), java.time.Instant.now()));
+        }
+        return true;
     }
 
     public List<ThreadRow> listThreads(String reviewId) {

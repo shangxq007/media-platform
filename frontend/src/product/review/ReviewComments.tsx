@@ -10,6 +10,9 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
 }) {
   const lifetime = useRef<AbortController | null>(null)
   const inFlight = useRef(false)
+  const transitioning = useRef(new Set<string>())
+  const [pending, setPending] = useState<string[]>([])
+  const [actionProblems, setActionProblems] = useState<Record<string, string>>({})
   const [comments, setComments] = useState<ReviewComment[]>([])
   const [problem, setProblem] = useState('')
   const [loading, setLoading] = useState(true)
@@ -65,6 +68,25 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
     }
   }
 
+  async function changeStatus(row: ReviewComment) {
+    const signal = lifetime.current?.signal
+    const id = row.commentId
+    if (!signal || signal.aborted || !row.frameStatus || transitioning.current.has(id)) return
+    const action = row.frameStatus === 'RESOLVED' ? 'reopen' : 'resolve'
+    transitioning.current.add(id)
+    setPending([...transitioning.current])
+    setActionProblems(previous => ({ ...previous, [id]: '' }))
+    try {
+      const saved = await timelineCommentSource.transitionFrame(project, row, action, signal)
+      if (!signal.aborted) setComments(previous => previous.map(item => item.commentId === id ? saved : item))
+    } catch {
+      if (!signal.aborted) setActionProblems(previous => ({ ...previous, [id]: `Could not ${action} this comment.` }))
+    } finally {
+      transitioning.current.delete(id)
+      if (!signal.aborted) setPending([...transitioning.current])
+    }
+  }
+
   return <section aria-label="Review comments"><Panel title="Review comments">
     {capture && <Button type="button" disabled={!canCapture || !!draft} onClick={begin}>Comment on this frame</Button>}
     {draft && <form aria-label="Frame comment draft" onSubmit={event => { event.preventDefault(); void post() }}>
@@ -78,16 +100,20 @@ export function ReviewComments({ project, capture, openFrame, canCapture }: {
     </form>}
     {acknowledged && <p role="status">{acknowledged}</p>}
     {loading && <p role="status">Loading review comments…</p>}
-    {problem && <p role="alert">{problem} <Button type="button" disabled={sending}
+    {problem && <p role="alert">{problem} <Button type="button" disabled={sending || pending.length > 0}
       onClick={() => setReload(value => value + 1)}>Retry loading comments</Button></p>}
     {!loading && !problem && !comments.length && <p>No comments yet.</p>}
     {comments.length > 0 && <ul>{comments.map(row => <li key={row.commentId} data-comment-id={row.commentId}>
       <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.content}</p>
       {row.frameAnchor && row.revisionId ? <>
         <p>Side {row.frameAnchor.side} · {row.frameAnchor.branch} · <code>{row.revisionId}</code> · {row.frameAnchor.position} s</p>
+        {row.frameStatus && <p role="status" aria-label="Frame comment status">{row.frameStatus === 'RESOLVED' ? 'Resolved' : 'Open'}</p>}
         {openFrame && <Button type="button" onClick={() => {
           if (row.revisionId && row.frameAnchor) openFrame({ revisionId: row.revisionId, frameAnchor: row.frameAnchor })
-        }}>Open saved frame</Button>}
+        }}>Open saved frame</Button>}{' '}
+        {openFrame && row.frameStatus && <Button type="button" disabled={loading || pending.includes(row.commentId)}
+          onClick={() => void changeStatus(row)}>{row.frameStatus === 'RESOLVED' ? 'Reopen comment' : 'Resolve comment'}</Button>}
+        {actionProblems[row.commentId] && <p role="alert">{actionProblems[row.commentId]}</p>}
       </> : <p>No frame anchor.</p>}
     </li>)}</ul>}
   </Panel></section>

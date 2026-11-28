@@ -75,14 +75,41 @@ class TimelineReviewControllerTest {
         var request = UUID.randomUUID();
         var body = new TimelineReviewController.AddCommentRequest(null, "trev_001", null, null, "note", anchor, request);
         var comment = new ReviewRecords.CommentRow("comment", "rvw_1", null, "trev_001", null,
-                "user_1", "note", OffsetDateTime.now(), anchor);
+                "user_1", "note", OffsetDateTime.now(), anchor, ReviewRecords.FrameCommentStatus.OPEN);
         when(commentService.addFrameComment("proj_1", null, "trev_001", "user_1", "note", anchor, request))
                 .thenReturn(comment);
         var response = controller.addFrameComment("proj_1", body);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(anchor, response.getBody().frameAnchor());
         assertEquals("trev_001", response.getBody().revisionId());
+        assertEquals(ReviewRecords.FrameCommentStatus.OPEN, response.getBody().frameStatus());
         verify(projectAuthorization).requireWrite(null, "proj_1");
+    }
+
+    @Test
+    void frameActionsUseProjectWritePermissionAndTheCommentIdentity() {
+        var status = ReviewRecords.FrameCommentStatus.RESOLVED;
+        var anchor = new com.example.platform.timeline.api.review.ReviewFrameAnchor(
+                com.example.platform.timeline.api.review.ReviewFrameAnchor.Side.B, "alternate", "73/24");
+        var row = new ReviewRecords.CommentRow("comment", "rvw_1", "thread", "revision", null,
+                "user_1", "note", OffsetDateTime.now(), anchor, status);
+        when(commentService.transitionFrameComment("proj_1", "comment", status)).thenReturn(Optional.of(row));
+        var response = controller.resolveFrameComment("proj_1", "comment");
+        assertEquals("comment", response.commentId());
+        assertEquals(anchor, response.frameAnchor());
+        assertEquals(status, response.frameStatus());
+        var calls = inOrder(projectAuthorization, commentService);
+        calls.verify(projectAuthorization).requireWrite(null, "proj_1");
+        calls.verify(commentService).transitionFrameComment("proj_1", "comment", status);
+    }
+
+    @Test
+    void deniedFrameActionDoesNotReachTheOwner() {
+        when(projectAuthorization.requireWrite(null, "proj_1")).thenThrow(
+                new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controller.reopenFrameComment("proj_1", "comment"));
+        verifyNoInteractions(commentService);
     }
 
     @Test
