@@ -16,8 +16,9 @@ function save(blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
-export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = DEFAULT_COMPOSITION_ASPECT }: {
+export function NleRenderPanel({ head, version, timelineEndMillis = 3000, aspectRatio = DEFAULT_COMPOSITION_ASPECT }: {
   head: CanonicalHeadReference | null
+  version: string
   timelineEndMillis?: number
   aspectRatio?: CompositionAspectRatio
 }) {
@@ -93,7 +94,7 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = D
       const accepted = await FormalRenderAPI.submit(intent, key([project.projectId, intent]))
       const current = await FormalRenderAPI.result(project.tenantId!, project.projectId, accepted.renderJobId)
       setJob(current); await refresh()
-      setMessage(`RenderJob ${accepted.renderJobId} accepted for revision ${head.revisionId}.`)
+      setMessage(`RenderJob ${accepted.renderJobId} accepted for version ${version}, revision ${intent.revisionId}.`)
     })
   }
   async function selectJob(id: string) {
@@ -102,7 +103,7 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = D
   }
   return <section aria-label="Render and delivery">
     <h3>Render current revision</h3>
-    <p>{head ? 'Current authoritative revision is ready to render.' : 'Authoritative revision unavailable.'}</p>
+    <p>Export version <strong>{version}</strong>{head ? <> · Revision <code>{head.revisionId}</code></> : ' · Authoritative revision unavailable.'}</p>
     <div className="ff-nle-render-controls">
     <label>Output start (ms) <Input type="number" min={0} value={startMillis} onChange={event => setStartMillis(Number(event.target.value))} /></label>
     <label>Output end (ms) <Input type="number" min={1} value={endMillis} onChange={event => setEndMillis(Number(event.target.value))} /></label>
@@ -121,6 +122,7 @@ export function NleRenderPanel({ head, timelineEndMillis = 3000, aspectRatio = D
       <Button type="button" onClick={() => void selectJob(item.id)}>{item.id}: {item.status}</Button>
     </li>)}</ul>}
     {job && <div aria-label="Current RenderJob"><p>Job <code>{job.renderJobId}</code> · <span role="status">{job.status}</span></p>
+      {job.timelineRevisionId && <p>Submitted revision <code>{job.timelineRevisionId}</code></p>}
       {job.failureCode && <p role="alert">{job.failureCode}</p>}
       {!terminal.has(job.status) && project.tenantId && <Button type="button" disabled={busy} onClick={() => void run(async () => {
         await FormalRenderAPI.cancel(project.tenantId!, project.projectId, job.renderJobId)

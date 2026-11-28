@@ -20,7 +20,7 @@ export interface TransitionCommand { baseRevisionId: string; baseContentHash: st
   transitionId: string; incomingClipId?: string; duration?: string; commandId: string }
 export interface AudioMixCommand { baseRevisionId: string; baseContentHash: string; trackId: string; clipId: string; gain: number; mute: boolean; pan: number; commandId: string }
 const Submission = z.object({ renderJobId: id, requestId: id, executionPlanId: id, status: z.literal('PLANNED'), workflowId: id, workflowStarted: z.boolean() })
-const Result = z.object({ renderJobId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
+const Result = z.object({ renderJobId: id, timelineRevisionId: id, status: z.enum(RENDER_JOB_STATUSES), finalArtifactId: id.nullable(), failureCode: z.string().nullable() })
 export type RenderResult = z.infer<typeof Result>
 const Revision = z.object({ revisionId: id, productId: id, contentDigest: id, timelineContentHash: id })
 const Head = z.object({ revisionId: id, revision: z.object({ revisionId: id, productId: id, semanticContext: z.object({ timelineContentDigest: id }) }) })
@@ -224,9 +224,13 @@ export const FormalRenderAPI = {
   },
   async commitBatch(tenant: string, project: string, body: SemanticBatch, fallbackRevision: string, digest: string, signal?: AbortSignal) {
     const endpoint = batchEndpoint(tenant, project)
-    const value = z.object({ status: z.enum(['APPLIED', 'NO_OP']), newRevisionId: id.nullable().optional(), newContentHash: id })
+    const value = z.object({ status: z.enum(['APPLIED', 'NO_OP']), newRevisionId: id.nullable().optional(), newContentHash: id,
+      targetRefId: id.optional(), baseRevisionId: id.optional(), batchId: id.optional() })
       .parse(await request(c => versionlessApi.post(
         `${endpoint}/apply`, body, { ...c, headers: { 'If-Match': `"${digest}"` } }), signal))
+    if (body.refId && (value.targetRefId !== body.refId || value.baseRevisionId !== body.baseRevisionId || value.batchId !== body.batchId)) {
+      throw new Error('BATCH_RECEIPT_SCOPE_MISMATCH')
+    }
     return { revisionId: value.newRevisionId ?? fallbackRevision, contentHash: value.newContentHash }
   },
 

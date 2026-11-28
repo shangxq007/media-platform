@@ -665,12 +665,48 @@ class OperationBatchPostgresTest extends PostgresTestContainerSupport {
     }
 
     private OperationBatchRequest restoreRequest(String id, TimelineRevision base, TimelineRevision source) {
+        return restoreRequest(id, base, source, "main");
+    }
+
+    private OperationBatchRequest restoreRequest(String id, TimelineRevision base, TimelineRevision source, String refId) {
         var definition = OperationDefinition.V3.RESTORE_REVISION;
         var step = new OperationRequest(definition.definitionId(), definition.version(),
                 new OperationTargetRequest.TimelineTargetRequest(PROJECT),
                 new OperationParameters.RestoreRevisionParameters(source.revisionId()), base.revisionId(), hash(base), null);
-        return new OperationBatchRequest(id, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "main"),
+        return new OperationBatchRequest(id, new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, refId),
                 base.revisionId(), List.of(step), null);
+    }
+
+    @Test
+    void namedBranchUndoRedoRestoresOnlyItsHistoryWithoutMovingOriginal() {
+        var fork = saveRevision(twoClipDocument());
+        var ref = new VersionedAggregateRef("TIMELINE", TENANT, PROJECT, PROJECT, "alternate");
+        saveService.createEditingRef(mutation(), ref.refId(), fork.revisionId(), "fork-undo-redo").orElseThrow();
+        var original = applyPrepared(new OperationBatchRequest("advance-original", new VersionedAggregateRef(
+                "TIMELINE", TENANT, PROJECT, PROJECT, "main"), fork.revisionId(), List.of(trim(fork, "clip-a", "1/1")), null));
+        var originalRevision = saveService.findById(TENANT, original.newRevisionId());
+        var changed = applyPrepared(new OperationBatchRequest("edit-alternate", ref, fork.revisionId(),
+                List.of(trim(fork, "clip-b", "1/1")), null));
+        var changedRevision = saveService.findById(TENANT, changed.newRevisionId());
+        long rows = count("timeline.timeline_revision");
+        long commands = count("timeline.apply_command");
+        var across = restoreRequest("restore-sibling", changedRevision, originalRevision, ref.refId());
+        assertEquals(BatchErrorCode.REF_NOT_SUPPORTED, assertThrows(BatchException.class,
+                () -> batch.preview(across, OperationBatchContext.preview(mutation().actor(), "test"))).code());
+        assertEquals(rows, count("timeline.timeline_revision"));
+        assertEquals(commands, count("timeline.apply_command"));
+        assertEquals(changed.newRevisionId(), refHead(ref.refId()));
+        var undo = restoreRequest("undo-alternate", changedRevision, fork, ref.refId());
+        var undone = applyPrepared(undo);
+        assertEquals(hash(fork), undone.newContentHash());
+        assertTrue(applyPrepared(undo).replayed());
+        var restoredFork = saveService.findById(TENANT, undone.newRevisionId());
+        var redone = applyPrepared(restoreRequest("redo-alternate", restoredFork, changedRevision, ref.refId()));
+        assertEquals(hash(changedRevision), redone.newContentHash());
+        assertEquals(redone.newRevisionId(), refHead(ref.refId()));
+        assertEquals(original.newRevisionId(), refHead("main"));
+        assertEquals(rows + 2, count("timeline.timeline_revision"));
+        assertEquals(commands + 2, count("timeline.apply_command"));
     }
 
     @Test

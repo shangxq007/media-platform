@@ -24,8 +24,9 @@ export interface ConfirmedEditProps {
   onAccepted: (base: string, hash: string, receipt: { revisionId: string; contentHash: string }) => void
 }
 
-export function ConfirmedClipEdit({ edit, head, tenant, disabled, access, readback, onAccepted, inputIdentity, draft, onPreview, children }: ConfirmedEditProps & {
+export function ConfirmedClipEdit({ edit, head, tenant, refId, disabled, access, readback, onAccepted, inputIdentity, draft, onPreview, children }: ConfirmedEditProps & {
   edit: string
+  refId?: string
   inputIdentity: string
   draft: (() => { step: SemanticStep; ranges: string[] }) | null
   onPreview?: (batch: SemanticBatch | null) => void
@@ -34,7 +35,7 @@ export function ConfirmedClipEdit({ edit, head, tenant, disabled, access, readba
   const label = edit[0].toUpperCase() + edit.slice(1)
   const locked = disabled || access.blocked
   const context = !locked && tenant && head && draft
-    ? JSON.stringify([tenant, head.projectId, head.revisionId, head.contentHash, inputIdentity]) : null
+    ? JSON.stringify([tenant, head.projectId, refId, head.revisionId, head.contentHash, inputIdentity]) : null
   const [plan, setPlan] = useState<RangePlan | null>(null)
   const [retry, setRetry] = useState<RangePlan | null>(null)
   const [busy, setBusy] = useState(false)
@@ -61,7 +62,7 @@ export function ConfirmedClipEdit({ edit, head, tenant, disabled, access, readba
     reading.current = request
     const { step, ranges } = draft()
     const body: SemanticBatch = { batchId: crypto.randomUUID(), baseRevisionId: head.revisionId,
-      baseContentHash: head.contentHash, operations: [step] }
+      baseContentHash: head.contentHash, ...(refId ? { refId } : {}), operations: [step] }
     setBusy(true); setPlan(null); setMessage(''); setFailed(false)
     try {
       const result = await FormalRenderAPI.previewBatch(tenant, head.projectId, body, request.signal)

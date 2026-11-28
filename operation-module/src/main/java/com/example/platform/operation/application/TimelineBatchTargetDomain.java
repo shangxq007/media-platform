@@ -38,6 +38,7 @@ import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.timeline.version.TimelineRevision;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -216,10 +217,6 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
             }
         }
         if (instance.parameters() instanceof OperationParameters.ReplaceVoiceoverParameters replacement) {
-            if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
-                throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                        "Replace voiceover is available on the default editing branch");
-            }
             if (batch.operations().size() != 1) {
                 throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
                         "Replace one voiceover per confirmation");
@@ -237,13 +234,12 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         final OperationPlan plan;
         try {
             if (instance.parameters() instanceof OperationParameters.RestoreRevisionParameters restore) {
-                if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
-                    throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
-                            "Restore is currently available on the default editing branch");
-                }
                 if (batch.operations().size() != 1) {
                     throw new BatchException(BatchErrorCode.UNSUPPORTED_BATCH_OPERATION, null,
                             "Restore requires a single-operation batch");
+                }
+                if (!RevisionRef.MAIN_REF.equals(batch.target().refId())) {
+                    requireEditingBranchHistory(batch, restore.sourceRevisionId());
                 }
                 var base = requireRestoreRevision(batch, batch.baseRevisionId());
                 var source = requireRestoreRevision(batch, restore.sourceRevisionId());
@@ -293,6 +289,21 @@ public final class TimelineBatchTargetDomain implements BatchTargetDomain<Timeli
         return revisions.completedCommandRevision(ref, context.applyCommandId(), BATCH_COMMAND_DOMAIN,
                         request.baseRevisionId(), context.expectedBatchDigest())
                 .map(id -> requireRestoreRevision(request, id).document());
+    }
+
+    private void requireEditingBranchHistory(OperationBatchRequest batch, String sourceRevisionId) {
+        // Named-branch Undo/Redo can restore only the history of the exact CAS base.
+        // Do not use a mutable ref head here: retries must replan the original command.
+        var seen = new HashSet<String>();
+        var target = batch.target();
+        for (String id = batch.baseRevisionId(); id != null && seen.add(id);) {
+            var revision = revisions.findById(target.tenantId(), id);
+            if (revision == null || !target.projectId().equals(revision.productId())) break;
+            if (id.equals(sourceRevisionId)) return;
+            id = revision.parentRevisionId();
+        }
+        throw new BatchException(BatchErrorCode.REF_NOT_SUPPORTED, null,
+                "A named editing branch can only restore its own revision history");
     }
 
     private TimelineRevisionCommands.RestoreSource requireRestoreRevision(OperationBatchRequest batch, String revisionId) {

@@ -603,7 +603,7 @@ export function NleWorkspace({
     if (!onSwitchBranch || next === editingBranch || switchLocked || issuedCommand.current !== null) return
     const manualDraft = !['AppliedRevision', 'CanonicalHead'].includes(state.phase.kind) && state.draft.command !== null
       || (state.phase.kind !== 'AppliedRevision' && fields !== emptyFields)
-    if (clipDraft || restoreDraft || manualDraft) setSwitchTarget(next)
+    if (clipDraft || restoreDraft || voiceoverPlan || manualDraft) setSwitchTarget(next)
     else onSwitchBranch(next)
   }
   useEffect(() => {
@@ -619,7 +619,7 @@ export function NleWorkspace({
   const trimHistoryAccess = commandAccess('trim-history')
   const trimHistory = useTrimHistory(JSON.stringify([project.tenantId, project.projectId, editingBranch]), editingHead,
     project.tenantId, trimHistoryAccess, loading || !!historyRevision || clipWriteLocked || trimHistoryAccess.blocked,
-    () => loadHead('TRIM_HISTORY_READBACK'))
+    () => loadHead('TRIM_HISTORY_READBACK'), defaultBranch ? undefined : editingBranch)
   return (
     <>
       <PageHeading eyebrow="Creative · NLE" title="Timeline editor" description="One canonical Timeline core with explicit server HEAD, read-only revision queries, and preview-before-apply operations." />
@@ -650,8 +650,8 @@ export function NleWorkspace({
             <Status label="Read-only historical revision" tone="info" />
             <Button disabled={loading || revisionSelectionLocked} onClick={() => { setRestoreMessage(''); void loadHead() }}>Return to editing head</Button>
           </>}
-          {onSwitchBranch && historyRevision && !selectionPending && project.tenantId && <CreateEditingBranch
-            key={historyRevision} projectId={project.projectId} source={historyRevision}
+          {onSwitchBranch && viewedRevision && (defaultBranch || historyRevision) && !selectionPending && project.tenantId && <CreateEditingBranch
+            key={viewedRevision} projectId={project.projectId} source={viewedRevision}
             disabled={loading} access={commandAccess('create')}
             onCreated={ref => {
               setBranches(previous => previous.includes(ref) ? previous : [...previous, ref])
@@ -668,19 +668,20 @@ export function NleWorkspace({
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
         </Panel>
         <Panel title="Timeline media preview" className="ff-operation-panel">
+          <p>Previewing version <strong>{editingBranch}</strong>{historyRevision ? ' (historical revision)' : ''}.</p>
           <TimelineMediaPreview voiceoverPlan={voiceoverPlan} subtitlePlan={subtitlePlan} positionPreview={positionPreview} scalePreview={scalePreview} gainPreview={gainPreview} fadePreview={fadePreview} dissolvePlan={dissolvePlan} audioCrossfadePlan={audioCrossfadePlan} opacityPreview={opacityPreview} key={JSON.stringify([project.projectId, viewedRevision])} revisionId={viewedRevision} tenantId={project.tenantId} projectId={project.projectId} onTime={setPreviewTime} />
         </Panel>
         <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
-          {defaultBranch && !historyRevision && <section aria-label="Confirmed trim history">
+          {!historyRevision && <section aria-label={defaultBranch ? "Confirmed trim history" : "Confirmed voiceover history"}>
             {(['Undo', 'Redo'] as const).map(direction => <Button key={direction}
               disabled={loading || revisionSelectionLocked || selectionPending || trimHistory.busy || !trimHistory.can(direction)}
-              onClick={() => void trimHistory.execute(direction)}>{direction} {trimHistory.kindFor(direction)}</Button>)}
+              onClick={() => void trimHistory.execute(direction)}>{direction} {defaultBranch ? trimHistory.kindFor(direction) : 'replace voiceover'}</Button>)}
             {trimHistory.retry && <Button disabled={trimHistory.busy}
               onClick={() => void trimHistory.execute(trimHistory.retry!.direction, trimHistory.retry!)}>Retry {trimHistory.retry.direction.toLowerCase()} {trimHistory.kindFor(trimHistory.retry.direction, trimHistory.retry)}</Button>}
             {trimHistory.message && <p role={trimHistory.failed ? 'alert' : 'status'}>{trimHistory.message}</p>}
           </section>}
-          {defaultBranch && !historyRevision && <ReplaceVoiceoverEdit key={JSON.stringify([project.projectId, editingBranch])}
-            project={project.projectId} head={editingHead} tenant={project.tenantId} transitions={transitions}
+          {!historyRevision && <ReplaceVoiceoverEdit key={JSON.stringify([project.projectId, editingBranch])}
+            project={project.projectId} refId={defaultBranch ? undefined : editingBranch} head={editingHead} tenant={project.tenantId} transitions={transitions}
             tracks={loadedProjection && loadedProjection === requestedProjection ? tracks : []}
             disabled={!!audioCrossfadePlan || !!fadePlan || !!gainPlan || !!scalePlan || !!subtitlePlan || !!dissolvePlan || !!opacityPlan || !!positionPlan || loading || state.phase.kind === 'Unavailable' || clipWriteLocked || !loadedProjection || loadedProjection !== requestedProjection}
             access={commandAccess('replace voiceover')} readback={() => loadHead('RANGE_READBACK')} onPreview={setVoiceoverPlan}
@@ -757,7 +758,7 @@ export function NleWorkspace({
               onTrimReadback={() => loadHead('CLIP_READBACK')} />}
           </MultiClipMove>
         </Panel>
-        {!defaultBranch && !historyRevision && <p>Source insertion and render controls are available on main.</p>}
+        {!defaultBranch && !historyRevision && <p>Source insertion is available on main.</p>}
         {defaultBranch && !historyRevision && <><Panel title="Add media clip" className="ff-operation-panel">
           <SourceBrowser tenantId={project.tenantId} project={project.projectId} onSelect={source => {
             const selectedTrack = tracks.find(track => track.trackId === state.presentation.selectedTrackId)
@@ -809,13 +810,13 @@ export function NleWorkspace({
           </section> : null}
           {(state.phase.kind === 'StaleBase' || state.phase.kind === 'Conflict') ? <Button disabled={revisionSelectionLocked} onClick={() => void loadHead()}>Reload HEAD for re-preview</Button> : null}
         </Panel>
-        <Panel title="Render and delivery" className="ff-operation-panel">
+        </>}
+        {!historyRevision && <Panel title="Render and delivery" className="ff-operation-panel">
           {projectionError && <p role="alert">{projectionError}</p>}
-          <NleRenderPanel head={projectionError ? null : state.server.head} aspectRatio={aspectRatio} timelineEndMillis={Math.ceil(
+          <NleRenderPanel version={editingBranch} head={projectionError || loading || !loadedProjection || loadedProjection !== requestedProjection ? null : editingHead} aspectRatio={aspectRatio} timelineEndMillis={Math.ceil(
             1000 * toSeconds(parseRational(appendStart) ?? { numerator: 0n, denominator: 1n })
           )} />
-        </Panel>
-        </>}
+        </Panel>}
         <Panel title="Server semantic comparison" className="ff-nle-diff-panel"><SemanticDiff comparison={state.server.comparison} actionFilter={state.presentation.comparisonActionFilter} onActionFilterChange={action => dispatch({ type: 'COMPARISON_FILTER_CHANGED', action })} /></Panel>
       </div>
     </>

@@ -23,7 +23,8 @@ interface Attempt {
 }
 
 export function useTrimHistory(scope: string, head: CanonicalHeadReference | null, tenant: string | null | undefined,
-  access: EditorCommandAccess, disabled: boolean, readback: () => Promise<CanonicalHeadReference | undefined>) {
+  access: EditorCommandAccess, disabled: boolean, readback: () => Promise<CanonicalHeadReference | undefined>,
+  refId?: string) {
   const [history, setHistory] = useState<History | null>(null)
   const [retry, setRetry] = useState<Attempt | null>(null)
   const [busy, setBusy] = useState(false)
@@ -77,6 +78,7 @@ export function useTrimHistory(scope: string, head: CanonicalHeadReference | nul
         const cursor = active.cursor + (direction === 'Undo' ? -1 : 1)
         const body: SemanticBatch = {
           batchId: crypto.randomUUID(), baseRevisionId: head.revisionId, baseContentHash: head.contentHash,
+          ...(refId ? { refId } : {}),
           operations: [{ definitionId: 'timeline.revision.restore', version: '1.0',
             parameters: { sourceRevisionId: active.revisions[cursor] } }],
         }

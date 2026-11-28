@@ -14,6 +14,7 @@ function missingDuration(required: Rational, available: Rational): string {
 
 export function ReplaceVoiceoverEdit({ project, tracks, transitions, onPreview, ...props }: ConfirmedEditProps & {
   project: string
+  refId?: string
   tracks: readonly ProjectedTrack[]
   transitions: readonly ProjectedTransition[]
   onPreview: (batch: SemanticBatch | null) => void
